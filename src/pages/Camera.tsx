@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { CameraDirection } from "@capacitor/camera";
 import type { Site, Finding, Photo } from "../db/types";
@@ -127,10 +127,10 @@ export default function Camera() {
         disabled={busy}
         style={{
           flexGrow: 1,
-          margin: "0 12px",
-          border: "none",
-          borderRadius: 16,
-          background: "var(--panel-2)",
+          margin: "0 18px 14px",
+          border: "1px solid rgba(46,196,182,0.35)",
+          borderRadius: 20,
+          background: "linear-gradient(160deg, var(--panel-2), #050f1a)",
           position: "relative",
           overflow: "hidden",
           display: "flex",
@@ -139,20 +139,27 @@ export default function Camera() {
           color: "var(--text)",
         }}
       >
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, opacity: 0.55 }}>
-          <IconCamera size={40} strokeWidth={1.6} />
-          <div style={{ fontSize: 13, fontWeight: 600 }}>{busy ? "Saving…" : "Tap to capture a new finding"}</div>
-        </div>
+        <IconCamera size={56} strokeWidth={1.4} style={{ opacity: 0.35 }} />
 
-        {/* corner reticles */}
-        <Reticle style={{ top: 16, left: 16, borderTop: "2px solid rgba(245,245,244,0.35)", borderLeft: "2px solid rgba(245,245,244,0.35)", borderRadius: "4px 0 0 0" }} />
-        <Reticle style={{ top: 16, right: 16, borderTop: "2px solid rgba(245,245,244,0.35)", borderRight: "2px solid rgba(245,245,244,0.35)", borderRadius: "0 4px 0 0" }} />
-        <Reticle style={{ bottom: 16, left: 16, borderBottom: "2px solid rgba(245,245,244,0.35)", borderLeft: "2px solid rgba(245,245,244,0.35)", borderRadius: "0 0 0 4px" }} />
-        <Reticle style={{ bottom: 16, right: 16, borderBottom: "2px solid rgba(245,245,244,0.35)", borderRight: "2px solid rgba(245,245,244,0.35)", borderRadius: "0 0 4px 0" }} />
+        <div
+          style={{
+            position: "absolute",
+            top: 14,
+            left: 14,
+            fontSize: 11,
+            fontWeight: 700,
+            color: "rgba(244,247,249,0.55)",
+            background: "rgba(11,41,66,0.6)",
+            padding: "5px 9px",
+            borderRadius: 8,
+          }}
+        >
+          {busy ? "Saving…" : "Tap anywhere to capture a new finding"}
+        </div>
       </button>
 
       {/* bottom controls */}
-      <div style={{ flexShrink: 0, padding: "16px 16px 30px", display: "flex", flexDirection: "column", gap: 18 }}>
+      <div style={{ flexShrink: 0, padding: "16px 16px calc(30px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 18 }}>
         {currentFinding && (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
@@ -169,7 +176,7 @@ export default function Camera() {
                   key={currentPhotos[i]?.id ?? i}
                   src={url}
                   alt=""
-                  style={{ flexShrink: 0, width: 48, height: 48, borderRadius: 10, objectFit: "cover", border: "1px solid var(--border-strong)" }}
+                  style={{ flexShrink: 0, width: 58, height: 58, borderRadius: 12, objectFit: "cover", border: "1px solid var(--border-strong)" }}
                 />
               ))}
               <button
@@ -178,10 +185,10 @@ export default function Camera() {
                 disabled={busy}
                 style={{
                   flexShrink: 0,
-                  width: 48,
-                  height: 48,
-                  borderRadius: 10,
-                  border: "1.5px dashed #4a4e5a",
+                  width: 58,
+                  height: 58,
+                  borderRadius: 12,
+                  border: "1.5px dashed var(--border-strong)",
                   background: "none",
                   display: "flex",
                   alignItems: "center",
@@ -222,14 +229,15 @@ export default function Camera() {
               width: 76,
               height: 76,
               borderRadius: "50%",
-              border: "4px solid var(--text)",
-              background: "none",
+              background: "var(--accent)",
+              border: "5px solid rgba(46,196,182,0.28)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
+              boxShadow: "0 8px 20px rgba(46,196,182,0.3)",
             }}
           >
-            <div style={{ width: 60, height: 60, borderRadius: "50%", background: "var(--text)" }} />
+            <div style={{ width: 60, height: 60, borderRadius: "50%", background: "var(--accent-text)", opacity: 0.08 }} />
           </button>
 
           <button
@@ -243,8 +251,4 @@ export default function Camera() {
       </div>
     </div>
   );
-}
-
-function Reticle({ style }: { style: CSSProperties }) {
-  return <div style={{ position: "absolute", width: 22, height: 22, ...style }} />;
 }

@@ -10,7 +10,7 @@ import {
   updateFinding,
 } from "../db/db";
 import { capturePhoto } from "../lib/capture";
-import { IconRetake, IconTrash } from "../components/Icons";
+import { IconRetake, IconTrash, IconChevronLeft } from "../components/Icons";
 
 function formatTimestamp(ms: number) {
   const d = new Date(ms);
@@ -107,56 +107,114 @@ export default function Note() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
-      {/* captured photo */}
-      <div style={{ flexShrink: 0, height: 300, position: "relative", background: "var(--panel-2)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
-        {photoUrl ? (
-          <img src={photoUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-        ) : (
-          <div style={{ opacity: 0.4, fontSize: 13, fontWeight: 600 }}>No photo</div>
-        )}
+      {/* top bar */}
+      <div style={{ flexShrink: 0, padding: "18px 18px 12px", display: "flex", alignItems: "center", gap: 12 }}>
+        <button
+          aria-label="Save and go back"
+          onClick={handleSaveAndContinue}
+          style={{ width: 32, height: 32, borderRadius: "50%", background: "none", border: "none", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text)", padding: 0 }}
+        >
+          <IconChevronLeft size={20} strokeWidth={2.2} />
+        </button>
+        <div style={{ fontSize: 15, fontWeight: 800 }}>Finding</div>
+      </div>
 
-        {latestPhoto && (
-          <div
-            style={{
-              position: "absolute",
-              top: 14,
-              left: 14,
-              background: "rgba(20,22,26,0.75)",
-              borderRadius: 8,
-              padding: "6px 10px",
-              fontSize: 12,
-              fontWeight: 700,
-            }}
-          >
-            {formatTimestamp(latestPhoto.takenAt)}
-          </div>
-        )}
+      <div style={{ flexGrow: 1, overflowY: "auto", padding: "4px 18px 18px", display: "flex", flexDirection: "column", gap: 16 }}>
+        {/* photo */}
+        <div
+          style={{
+            position: "relative",
+            width: "100%",
+            aspectRatio: "4/3",
+            borderRadius: 16,
+            overflow: "hidden",
+            background: "linear-gradient(160deg, var(--panel-2), #050f1a)",
+            border: "1px solid var(--border)",
+          }}
+        >
+          {photoUrl ? (
+            <img src={photoUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+          ) : (
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                opacity: 0.3,
+              }}
+            >
+              <IconCameraOutline />
+            </div>
+          )}
+          {latestPhoto && (
+            <div
+              style={{
+                position: "absolute",
+                right: 10,
+                bottom: 8,
+                fontSize: 12,
+                fontWeight: 700,
+                color: "#ffffff",
+                textShadow: "0 0 3px #000, 0 0 3px #000, 0 0 3px #000, 0 1px 2px #000",
+              }}
+            >
+              {formatTimestamp(latestPhoto.takenAt)}
+            </div>
+          )}
+        </div>
 
-        <div style={{ position: "absolute", top: 14, right: 14, display: "flex", gap: 8 }}>
+        {/* retake / delete */}
+        <div style={{ display: "flex", gap: 10 }}>
           <button
             aria-label="Retake photo"
             onClick={handleRetake}
             disabled={busy}
-            style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(20,22,26,0.75)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text)" }}
+            style={{
+              flexGrow: 1,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+              padding: "11px 0",
+              borderRadius: 12,
+              background: "var(--panel)",
+              border: "1px solid var(--border)",
+              fontSize: 13,
+              fontWeight: 700,
+              color: "var(--text)",
+            }}
           >
-            <IconRetake />
+            <IconRetake size={15} />
+            Retake
           </button>
           <button
             aria-label="Delete photo"
             onClick={handleDelete}
             disabled={busy}
-            style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(20,22,26,0.75)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text)" }}
+            style={{
+              flexGrow: 1,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+              padding: "11px 0",
+              borderRadius: 12,
+              background: "var(--panel)",
+              border: "1px solid rgba(224,90,90,0.35)",
+              fontSize: 13,
+              fontWeight: 700,
+              color: "#e07a7a",
+            }}
           >
-            <IconTrash />
+            <IconTrash size={15} />
+            Delete
           </button>
         </div>
-      </div>
 
-      {/* note sheet */}
-      <div style={{ flexGrow: 1, background: "#1c1e24", borderRadius: "20px 20px 0 0", marginTop: -20, position: "relative", padding: "22px 20px 24px", display: "flex", flexDirection: "column", gap: 18, overflowY: "auto" }}>
-        <div style={{ width: 36, height: 4, borderRadius: 2, background: "var(--border-strong)", margin: "0 auto" }} />
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {/* note */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <label htmlFor="noteInput" style={labelStyle}>Note</label>
           <textarea
             id="noteInput"
@@ -164,37 +222,57 @@ export default function Note() {
             placeholder="Tap to add"
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            style={{ background: "#2a2e37", border: "1px solid #454956", borderRadius: 12, padding: 14, fontSize: 15, fontWeight: 500, color: "var(--text)", minHeight: 64, resize: "none", outline: "none" }}
+            style={fieldStyle}
           />
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {/* location */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <label htmlFor="locationInput" style={labelStyle}>Location</label>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(42,46,55,0.7)", border: "1px solid rgba(69,73,86,0.9)", borderRadius: 12, padding: "12px 14px" }}>
-            <input
-              id="locationInput"
-              type="text"
-              placeholder="Tap to add"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              style={{ flexGrow: 1, minWidth: 0, background: "none", border: "none", outline: "none", fontSize: 14, fontWeight: 500, color: "var(--text)" }}
-            />
-          </div>
+          <input
+            id="locationInput"
+            type="text"
+            placeholder="Tap to add"
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            style={fieldStyle}
+          />
         </div>
+      </div>
 
-        <div style={{ flexGrow: 1 }} />
-
-        <button
-          onClick={handleSaveAndContinue}
-          style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "var(--accent)", border: "none", borderRadius: 14, padding: "16px 0", fontSize: 15, fontWeight: 800, color: "var(--accent-text)" }}
-        >
-          Save &amp; Continue
-        </button>
+      {/* save bar */}
+      <div style={{ flexShrink: 0, padding: "12px 18px calc(26px + env(safe-area-inset-bottom))", display: "flex", gap: 10 }}>
         <button
           onClick={handleSaveAndView}
-          style={{ textAlign: "center", fontSize: 13, fontWeight: 700, color: "var(--muted)", background: "none", border: "none", padding: 4 }}
+          style={{
+            flexGrow: 1,
+            textAlign: "center",
+            padding: "15px 0",
+            borderRadius: 14,
+            background: "var(--panel)",
+            border: "1px solid var(--border)",
+            fontSize: 14,
+            fontWeight: 700,
+            color: "var(--text)",
+          }}
         >
-          Save &amp; view findings
+          View findings
+        </button>
+        <button
+          onClick={handleSaveAndContinue}
+          style={{
+            flexGrow: 1.4,
+            textAlign: "center",
+            padding: "15px 0",
+            borderRadius: 14,
+            background: "var(--accent)",
+            border: "none",
+            fontSize: 14,
+            fontWeight: 800,
+            color: "var(--accent-text)",
+          }}
+        >
+          Save &amp; next photo
         </button>
       </div>
     </div>
@@ -202,9 +280,30 @@ export default function Note() {
 }
 
 const labelStyle: CSSProperties = {
-  fontSize: 13,
-  fontWeight: 700,
-  color: "var(--muted)",
-  textTransform: "uppercase",
+  fontSize: 12,
+  fontWeight: 800,
   letterSpacing: "0.04em",
+  textTransform: "uppercase",
+  color: "var(--muted-2)",
 };
+
+const fieldStyle: CSSProperties = {
+  background: "var(--panel-2)",
+  border: "1px solid rgba(46,196,182,0.28)",
+  borderRadius: 12,
+  padding: "13px 14px",
+  fontSize: 14,
+  fontWeight: 500,
+  color: "var(--text)",
+  outline: "none",
+  resize: "none",
+};
+
+function IconCameraOutline() {
+  return (
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--text)" strokeWidth="1.4">
+      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+      <circle cx="12" cy="13" r="4"></circle>
+    </svg>
+  );
+}

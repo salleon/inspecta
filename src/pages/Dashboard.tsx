@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import type { Site, SiteKind } from "../db/types";
 import { createSite, findingCount, listSites } from "../db/db";
 import { IconSearch, IconBuilding, IconPlus } from "../components/Icons";
+import logo from "../assets/logo.png";
 
 interface SiteRow extends Site {
   findings: number;
@@ -52,7 +53,13 @@ export default function Dashboard() {
     <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
       {/* top bar */}
       <div style={{ flexShrink: 0, padding: "20px 20px 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div style={{ fontSize: 22, fontWeight: 800, color: "var(--text)" }}>Sites</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <img src={logo} alt="Inspecta by EnFact" style={{ width: 34, height: 34, borderRadius: 9, display: "block" }} />
+          <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.1 }}>
+            <span style={{ fontSize: 17, fontWeight: 800, letterSpacing: -0.2 }}>Inspecta</span>
+            <span style={{ fontSize: 10, fontWeight: 700, color: "var(--accent)", letterSpacing: 0.4 }}>BY ENFACT</span>
+          </div>
+        </div>
         <div
           style={{
             width: 38,
@@ -135,7 +142,7 @@ export default function Dashboard() {
         style={{
           position: "absolute",
           right: 20,
-          bottom: 28,
+          bottom: "calc(28px + env(safe-area-inset-bottom))",
           width: 58,
           height: 58,
           borderRadius: "50%",
@@ -168,7 +175,7 @@ export default function Dashboard() {
               width: "100%",
               background: "var(--panel)",
               borderRadius: "20px 20px 0 0",
-              padding: "22px 20px 28px",
+              padding: "22px 20px calc(28px + env(safe-area-inset-bottom))",
               display: "flex",
               flexDirection: "column",
               gap: 14,

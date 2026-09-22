@@ -1,19 +1,19 @@
 @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap");
 
 :root {
-  --bg: #14161a;
-  --panel: #1f2229;
-  --panel-2: #23262d;
-  --border: #2c2f38;
-  --border-strong: #3a3d47;
-  --text: #f5f5f4;
-  --muted: #8b8d94;
-  --muted-2: #6b6d76;
-  --accent: #f2a93b;
-  --accent-text: #14161a;
-  --paper: #f7f6f3;
-  --paper-border: #e3e1da;
-  --paper-text: #1c1e24;
+  --bg: #071b2c;
+  --panel: #0e2740;
+  --panel-2: #143452;
+  --border: #163a5a;
+  --border-strong: #1c4468;
+  --text: #f4f7f9;
+  --muted: #8ba0b5;
+  --muted-2: #6a8098;
+  --accent: #2ec4b6;
+  --accent-text: #04140f;
+  --paper: #f7f3ea;
+  --paper-border: #e2ddd0;
+  --paper-text: #1c2530;
 }
 
 * {
@@ -59,6 +59,7 @@ textarea {
   background: var(--bg);
   position: relative;
   overflow: hidden;
+  padding-top: env(safe-area-inset-top);
 }
 
 ::-webkit-scrollbar {

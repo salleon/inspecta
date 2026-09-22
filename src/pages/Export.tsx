@@ -284,7 +284,7 @@ export default function ExportPreview() {
       </div>
 
       {/* share bar */}
-      <div style={{ flexShrink: 0, padding: "12px 16px 28px", borderTop: "1px solid #23262d" }}>
+      <div style={{ flexShrink: 0, padding: "12px 16px calc(28px + env(safe-area-inset-bottom))", borderTop: "1px solid var(--border)" }}>
         <button
           onClick={handleShare}
           disabled={loading || sharing || items.length === 0}

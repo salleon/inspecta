@@ -90,12 +90,12 @@ export default function Findings() {
           <button
             key={finding.id}
             onClick={() => navigate(`/site/${siteId}/finding/${finding.id}/note`)}
-            style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "14px 0", borderBottom: "1px solid #23262d", background: "none", border: "none", borderBottomWidth: 1, textAlign: "left", color: "inherit" }}
+            style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "14px 0", borderBottom: "1px solid var(--border)", background: "none", border: "none", borderBottomWidth: 1, textAlign: "left", color: "inherit" }}
           >
             <div style={{ flexShrink: 0, width: 56, height: 56, borderRadius: 10, background: "var(--panel-2)", overflow: "hidden", position: "relative" }}>
               {thumb && <img src={thumb} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
               {photoCount > 1 && (
-                <div style={{ position: "absolute", bottom: 2, right: 2, background: "rgba(20,22,26,0.85)", borderRadius: 4, padding: "1px 4px", fontSize: 9, fontWeight: 800 }}>
+                <div style={{ position: "absolute", bottom: 2, right: 2, background: "rgba(7,27,44,0.85)", borderRadius: 4, padding: "1px 4px", fontSize: 9, fontWeight: 800 }}>
                   +{photoCount - 1}
                 </div>
               )}
@@ -108,13 +108,13 @@ export default function Findings() {
                 {formatShort(finding.createdAt)}{finding.location ? ` · ${finding.location}` : ""}
               </div>
             </div>
-            <IconEdit style={{ flexShrink: 0, marginTop: 2 }} color="#5b5e68" />
+            <IconEdit style={{ flexShrink: 0, marginTop: 2 }} color="var(--muted-2)" />
           </button>
         ))}
       </div>
 
       {/* bottom action */}
-      <div style={{ flexShrink: 0, padding: "12px 16px 28px", borderTop: "1px solid #23262d" }}>
+      <div style={{ flexShrink: 0, padding: "12px 16px calc(28px + env(safe-area-inset-bottom))", borderTop: "1px solid var(--border)" }}>
         <button
           onClick={() => navigate(`/site/${siteId}/camera`)}
           style={{ display: "block", width: "100%", textAlign: "center", padding: "17px 0", borderRadius: 14, background: "var(--accent)", border: "none", fontSize: 16, fontWeight: 800, color: "var(--accent-text)" }}
