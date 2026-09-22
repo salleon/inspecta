@@ -7,7 +7,13 @@ android {
         applicationId "au.com.inspecta.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
+        // versionCode is auto-bumped by CI from the GitHub Actions run number
+        // (see .github/workflows/build-apk.yml), so every release build is a
+        // higher code than the last and Android will offer it as an update.
+        // Locally (no CI_VERSION_CODE set) it just falls back to 1.
+        versionCode (System.getenv("CI_VERSION_CODE") as Integer) ?: 1
+        // versionName is the human-readable version — bump this by hand in
+        // this file for real releases (e.g. "1.1", "1.2") so it's meaningful.
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
@@ -16,10 +22,36 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // Release signing reads from environment variables rather than a
+    // committed file, so the real keystore/passwords never touch the repo.
+    // CI (see .github/workflows/build-apk.yml) sets these from GitHub
+    // Actions secrets before invoking gradle; a signingConfig is only wired
+    // up when they're actually present, so a plain local `assembleDebug`
+    // (which doesn't need signing) still works with nothing configured.
+    def releaseKeystorePath = System.getenv("RELEASE_KEYSTORE_PATH")
+    def releaseKeystorePassword = System.getenv("RELEASE_KEYSTORE_PASSWORD")
+    def releaseKeyAlias = System.getenv("RELEASE_KEY_ALIAS")
+    def releaseKeyPassword = System.getenv("RELEASE_KEY_PASSWORD")
+    def hasReleaseSigning = releaseKeystorePath && releaseKeystorePassword && releaseKeyAlias && releaseKeyPassword
+
+    if (hasReleaseSigning) {
+        signingConfigs {
+            release {
+                storeFile file(releaseKeystorePath)
+                storePassword releaseKeystorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }
