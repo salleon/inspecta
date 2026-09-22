@@ -10,7 +10,7 @@ import {
   updateFinding,
 } from "../db/db";
 import { capturePhoto } from "../lib/capture";
-import { IconRetake, IconTrash, IconChevronLeft } from "../components/Icons";
+import { IconRetake, IconTrash, IconChevronLeft, IconPlus } from "../components/Icons";
 
 function formatTimestamp(ms: number) {
   const d = new Date(ms);
@@ -29,39 +29,40 @@ export default function Note() {
   const navigate = useNavigate();
 
   const [photos, setPhotos] = useState<Photo[]>([]);
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [photoUrls, setPhotoUrls] = useState<string[]>([]);
+  const [selected, setSelected] = useState(0);
   const [note, setNote] = useState("");
   const [location, setLocation] = useState("");
   const [busy, setBusy] = useState(false);
 
-  async function refresh() {
+  async function refresh(selectIndex?: number) {
     if (!findingId) return;
     const f = await getFinding(findingId);
     setNote(f?.note ?? "");
     setLocation(f?.location ?? "");
     const p = await listPhotos(findingId);
     setPhotos(p);
+    setSelected((prev) => {
+      const target = selectIndex ?? prev;
+      return Math.max(0, Math.min(target, p.length - 1));
+    });
   }
 
   useEffect(() => {
-    refresh();
+    refresh(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [findingId]);
 
   useEffect(() => {
-    const latest = photos[photos.length - 1];
-    if (!latest) {
-      setPhotoUrl(null);
-      return;
-    }
-    const url = URL.createObjectURL(latest.blob);
-    setPhotoUrl(url);
-    return () => URL.revokeObjectURL(url);
+    const urls = photos.map((p) => URL.createObjectURL(p.blob));
+    setPhotoUrls(urls);
+    return () => urls.forEach((u) => URL.revokeObjectURL(u));
   }, [photos]);
 
   if (!siteId || !findingId) return null;
 
-  const latestPhoto = photos[photos.length - 1];
+  const activePhoto = photos[selected];
+  const activeUrl = photoUrls[selected] ?? null;
 
   async function persist() {
     if (!findingId) return;
@@ -70,7 +71,9 @@ export default function Note() {
 
   async function handleSaveAndContinue() {
     await persist();
-    navigate(`/site/${siteId}/camera`);
+    // Hand this finding back to the Camera screen as the active session, so
+    // "Add photo" there keeps adding to it instead of starting a new one.
+    navigate(`/site/${siteId}/camera`, { state: { activeFindingId: findingId } });
   }
 
   async function handleSaveAndView() {
@@ -78,23 +81,44 @@ export default function Note() {
     navigate(`/site/${siteId}/findings`);
   }
 
+  async function handleSaveAndNextFinding() {
+    await persist();
+    // Straight to Camera with a blank session — skips both re-adding a
+    // photo to this finding and the detour through the Findings list.
+    navigate(`/site/${siteId}/camera`);
+  }
+
   async function handleRetake() {
+    if (!findingId || !siteId || busy || !activePhoto) return;
+    setBusy(true);
+    try {
+      const blob = await capturePhoto();
+      if (!blob) return; // cancelled
+      const idx = selected;
+      await deletePhoto(activePhoto.id);
+      await addPhoto(findingId, siteId, blob);
+      await refresh(idx);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleAddPhoto() {
     if (!findingId || !siteId || busy) return;
     setBusy(true);
     try {
       const blob = await capturePhoto();
       if (!blob) return; // cancelled
-      if (latestPhoto) await deletePhoto(latestPhoto.id);
       await addPhoto(findingId, siteId, blob);
-      await refresh();
+      await refresh(photos.length); // select the newly added photo
     } finally {
       setBusy(false);
     }
   }
 
   async function handleDelete() {
-    if (!latestPhoto || !findingId) return;
-    await deletePhoto(latestPhoto.id);
+    if (!activePhoto || !findingId) return;
+    await deletePhoto(activePhoto.id);
     const remaining = await listPhotos(findingId);
     if (remaining.length === 0) {
       // no photos left — this finding can't stand on its own
@@ -102,7 +126,7 @@ export default function Note() {
       navigate(`/site/${siteId}/camera`);
       return;
     }
-    await refresh();
+    await refresh(Math.min(selected, remaining.length - 1));
   }
 
   return (
@@ -132,8 +156,8 @@ export default function Note() {
             border: "1px solid var(--border)",
           }}
         >
-          {photoUrl ? (
-            <img src={photoUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+          {activeUrl ? (
+            <img src={activeUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
           ) : (
             <div
               style={{
@@ -148,7 +172,7 @@ export default function Note() {
               <IconCameraOutline />
             </div>
           )}
-          {latestPhoto && (
+          {activePhoto && (
             <div
               style={{
                 position: "absolute",
@@ -160,10 +184,73 @@ export default function Note() {
                 textShadow: "0 0 3px #000, 0 0 3px #000, 0 0 3px #000, 0 1px 2px #000",
               }}
             >
-              {formatTimestamp(latestPhoto.takenAt)}
+              {formatTimestamp(activePhoto.takenAt)}
+            </div>
+          )}
+          {photos.length > 1 && (
+            <div
+              style={{
+                position: "absolute",
+                left: 10,
+                top: 8,
+                fontSize: 11,
+                fontWeight: 800,
+                color: "#ffffff",
+                background: "rgba(7,27,44,0.7)",
+                borderRadius: 8,
+                padding: "3px 8px",
+              }}
+            >
+              {selected + 1} / {photos.length}
             </div>
           )}
         </div>
+
+        {/* thumbnail strip — every photo on this finding is reachable, not just the latest */}
+        {photos.length > 0 && (
+          <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 2 }}>
+            {photos.map((p, i) => (
+              <button
+                key={p.id}
+                aria-label={`View photo ${i + 1}`}
+                onClick={() => setSelected(i)}
+                style={{
+                  flexShrink: 0,
+                  width: 56,
+                  height: 56,
+                  borderRadius: 10,
+                  overflow: "hidden",
+                  padding: 0,
+                  background: "var(--panel-2)",
+                  border: i === selected ? "2px solid var(--accent)" : "1px solid var(--border-strong)",
+                }}
+              >
+                {photoUrls[i] && (
+                  <img src={photoUrls[i]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                )}
+              </button>
+            ))}
+            <button
+              aria-label="Add another photo to this finding"
+              onClick={handleAddPhoto}
+              disabled={busy}
+              style={{
+                flexShrink: 0,
+                width: 56,
+                height: 56,
+                borderRadius: 10,
+                border: "1.5px dashed var(--border-strong)",
+                background: "none",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "var(--muted)",
+              }}
+            >
+              <IconPlus size={18} strokeWidth={2.2} />
+            </button>
+          </div>
+        )}
 
         {/* retake / delete */}
         <div style={{ display: "flex", gap: 10 }}>
@@ -240,28 +327,14 @@ export default function Note() {
         </div>
       </div>
 
-      {/* save bar */}
-      <div style={{ flexShrink: 0, padding: "12px 18px calc(26px + env(safe-area-inset-bottom))", display: "flex", gap: 10 }}>
+      {/* save bar — "Save & next finding" is the most-used action so it's
+          the big primary button; View findings and Save & add photo are
+          both less common and share a row below it */}
+      <div style={{ flexShrink: 0, padding: "12px 18px calc(26px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 10 }}>
         <button
-          onClick={handleSaveAndView}
+          onClick={handleSaveAndNextFinding}
           style={{
-            flexGrow: 1,
-            textAlign: "center",
-            padding: "15px 0",
-            borderRadius: 14,
-            background: "var(--panel)",
-            border: "1px solid var(--border)",
-            fontSize: 14,
-            fontWeight: 700,
-            color: "var(--text)",
-          }}
-        >
-          View findings
-        </button>
-        <button
-          onClick={handleSaveAndContinue}
-          style={{
-            flexGrow: 1.4,
+            width: "100%",
             textAlign: "center",
             padding: "15px 0",
             borderRadius: 14,
@@ -272,8 +345,42 @@ export default function Note() {
             color: "var(--accent-text)",
           }}
         >
-          Save &amp; next photo
+          Save &amp; next finding
         </button>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button
+            onClick={handleSaveAndContinue}
+            style={{
+              flexGrow: 1,
+              textAlign: "center",
+              padding: "13px 0",
+              borderRadius: 14,
+              background: "var(--panel)",
+              border: "1px solid var(--border)",
+              fontSize: 13,
+              fontWeight: 700,
+              color: "var(--text)",
+            }}
+          >
+            Add another photo to finding
+          </button>
+          <button
+            onClick={handleSaveAndView}
+            style={{
+              flexGrow: 1,
+              textAlign: "center",
+              padding: "13px 0",
+              borderRadius: 14,
+              background: "var(--panel)",
+              border: "1px solid var(--border)",
+              fontSize: 13,
+              fontWeight: 700,
+              color: "var(--text)",
+            }}
+          >
+            View findings
+          </button>
+        </div>
       </div>
     </div>
   );
