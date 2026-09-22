@@ -46,7 +46,11 @@ jobs:
       - name: Build signed release APK
         working-directory: android
         env:
-          RELEASE_KEYSTORE_PATH: app/release.jks
+          # build.gradle lives in android/app, so Gradle's file() resolves
+          # this relative to that module dir — not this step's
+          # working-directory — hence just "release.jks", matching where
+          # the previous step decoded it (android/app/release.jks).
+          RELEASE_KEYSTORE_PATH: release.jks
           RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
