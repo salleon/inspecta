@@ -11,7 +11,7 @@ import {
   updateFinding,
 } from "../db/db";
 import { capturePhoto } from "../lib/capture";
-import { IconRetake, IconTrash, IconChevronLeft, IconPlus } from "../components/Icons";
+import { IconRetake, IconTrash, IconChevronLeft, IconPlus, IconCamera } from "../components/Icons";
 
 export default function Note() {
   const { siteId, findingId } = useParams<{ siteId: string; findingId: string }>();
@@ -148,7 +148,7 @@ export default function Note() {
         <div style={{ fontSize: 15, fontWeight: 800 }}>Finding</div>
       </div>
 
-      <div className="no-scrollbar" style={{ flexGrow: 1, overflowY: "auto", padding: "4px 18px 18px", display: "flex", flexDirection: "column", gap: fieldFocused ? 10 : 16 }}>
+      <div style={{ flexGrow: 1, overflowY: "auto", padding: "4px 18px 18px", display: "flex", flexDirection: "column", gap: fieldFocused ? 10 : 16 }}>
         {/* photo — collapses when a text field is focused so Note and
             Location stay visible above the keyboard without scrolling */}
         <div
@@ -200,11 +200,11 @@ export default function Note() {
                   opacity: 0.3,
                 }}
               >
-                <IconCameraOutline />
+                <IconCamera size={40} color="var(--text)" strokeWidth={1.4} />
               </div>
             )}
           </button>
-          {activePhoto && !fieldFocused && (
+          {!activePhoto && !fieldFocused && (
             <div
               style={{
                 position: "absolute",
@@ -287,7 +287,7 @@ export default function Note() {
                 }}
               >
                 {photoUrls[i] && (
-                  <img src={photoUrls[i]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                  <img src={photoUrls[i]} alt="" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
                 )}
               </button>
             ))}
@@ -346,24 +346,19 @@ export default function Note() {
 
       {/* save bar — "Save & next finding" is the most-used action so it's
           the visually bigger button; the two sit side by side, View findings
-          on the left and Save & next finding on the right. Both are tall
-          with large text so they're easy to hit on the fly. */}
+          on the left and Save & next finding on the right */}
       <div style={{ flexShrink: 0, padding: "12px 18px calc(26px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "row", gap: 10 }}>
         <button
           onClick={handleSaveAndView}
           style={{
             flex: 1,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
             textAlign: "center",
-            padding: "16px 6px",
+            padding: "13px 0",
             borderRadius: 14,
             background: "var(--panel)",
             border: "1px solid var(--border)",
-            fontSize: 22,
-            fontWeight: 800,
-            lineHeight: 1.15,
+            fontSize: 13,
+            fontWeight: 700,
             color: "var(--text)",
           }}
         >
@@ -374,17 +369,13 @@ export default function Note() {
           disabled={busy}
           style={{
             flex: 1,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
             textAlign: "center",
-            padding: "16px 6px",
+            padding: "15px 0",
             borderRadius: 14,
             background: "var(--accent)",
             border: "none",
-            fontSize: 22,
+            fontSize: 14,
             fontWeight: 800,
-            lineHeight: 1.15,
             color: "var(--accent-text)",
           }}
         >
@@ -426,12 +417,3 @@ const overlayIconButtonStyle: CSSProperties = {
   justifyContent: "center",
   padding: 0,
 };
-
-function IconCameraOutline() {
-  return (
-    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--text)" strokeWidth="1.4">
-      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-      <circle cx="12" cy="13" r="4"></circle>
-    </svg>
-  );
-}
