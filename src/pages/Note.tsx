@@ -96,6 +96,8 @@ export default function Note() {
     return () => urls.forEach((u) => URL.revokeObjectURL(u));
   }, [photos]);
 
+  const wasCollapsedRef = useRef(false);
+
   if (!siteId || !findingId) return null;
 
   const activePhoto = photos[selected];
@@ -166,6 +168,20 @@ export default function Note() {
     }
   }
 
+  // Tapping the photo while it's collapsed (a text field has focus) should
+  // just bring it back to full size — not jump straight to the camera. We
+  // read fieldFocused on pointerdown rather than in the click handler
+  // because tapping the photo blurs the focused field first, which would
+  // otherwise make every tap look like the field was never focused by the
+  // time onClick runs.
+  function handlePhotoPointerDown() {
+    wasCollapsedRef.current = fieldFocused;
+  }
+  function handlePhotoTap() {
+    if (wasCollapsedRef.current) return; // this tap just re-expanded it
+    handleAddPhoto();
+  }
+
   async function handleDelete() {
     if (!activePhoto || !findingId) return;
     await deletePhoto(activePhoto.id);
@@ -214,10 +230,13 @@ export default function Note() {
           }}
         >
           {/* tapping the photo opens the camera to add another shot to
-              this finding — same action as the dashed "+" thumbnail */}
+              this finding — same action as the dashed "+" thumbnail. If a
+              text field currently has focus, this first tap just re-expands
+              the collapsed photo instead of jumping straight to the camera. */}
           <button
             aria-label="Add another photo to this finding"
-            onClick={handleAddPhoto}
+            onPointerDown={handlePhotoPointerDown}
+            onClick={handlePhotoTap}
             disabled={busy}
             style={{
               position: "absolute",
