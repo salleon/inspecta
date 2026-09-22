@@ -296,6 +296,7 @@ export default function Camera() {
                 key={currentPhotos[i]?.id ?? i}
                 src={url}
                 alt=""
+                className="thumb-in"
                 style={{ flexShrink: 0, width: 58, height: 58, borderRadius: 12, objectFit: "cover", border: "1px solid var(--border-strong)" }}
               />
             ))}

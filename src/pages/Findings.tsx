@@ -86,11 +86,12 @@ export default function Findings() {
             No findings yet — tap the camera to log your first one.
           </div>
         )}
-        {rows.map(({ finding, thumb, photoCount }) => (
+        {rows.map(({ finding, thumb, photoCount }, i) => (
           <button
             key={finding.id}
             onClick={() => navigate(`/site/${siteId}/finding/${finding.id}/note`)}
-            style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "14px 0", borderBottom: "1px solid var(--border)", background: "none", border: "none", borderBottomWidth: 1, textAlign: "left", color: "inherit" }}
+            className="pop-in"
+            style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "14px 0", borderBottom: "1px solid var(--border)", background: "none", border: "none", borderBottomWidth: 1, textAlign: "left", color: "inherit", animationDelay: `${Math.min(i, 8) * 35}ms` }}
           >
             <div style={{ flexShrink: 0, width: 56, height: 56, borderRadius: 10, background: "var(--panel-2)", overflow: "hidden", position: "relative" }}>
               {thumb && <img src={thumb} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}

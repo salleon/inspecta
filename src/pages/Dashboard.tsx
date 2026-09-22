@@ -120,16 +120,16 @@ export default function Dashboard() {
         {afssSites.length > 0 && (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <div style={sectionHeaderStyle}>AFSS</div>
-            {afssSites.map((site) => (
-              <SiteButton key={site.id} site={site} onClick={() => navigate(`/site/${site.id}/findings`)} />
+            {afssSites.map((site, i) => (
+              <SiteButton key={site.id} site={site} index={i} onClick={() => navigate(`/site/${site.id}/findings`)} />
             ))}
           </div>
         )}
         {projectSites.length > 0 && (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <div style={sectionHeaderStyle}>Project work</div>
-            {projectSites.map((site) => (
-              <SiteButton key={site.id} site={site} onClick={() => navigate(`/site/${site.id}/findings`)} />
+            {projectSites.map((site, i) => (
+              <SiteButton key={site.id} site={site} index={i} onClick={() => navigate(`/site/${site.id}/findings`)} />
             ))}
           </div>
         )}
@@ -139,6 +139,7 @@ export default function Dashboard() {
       <button
         aria-label="Start new site inspection"
         onClick={() => setAdding(true)}
+        className={sites.length === 0 ? "fab-pulse" : undefined}
         style={{
           position: "absolute",
           right: 20,
@@ -159,6 +160,7 @@ export default function Dashboard() {
 
       {adding && (
         <div
+          className="sheet-backdrop"
           style={{
             position: "absolute",
             inset: 0,
@@ -171,6 +173,7 @@ export default function Dashboard() {
           <form
             onClick={(e) => e.stopPropagation()}
             onSubmit={handleAddSite}
+            className="sheet-panel"
             style={{
               width: "100%",
               background: "var(--panel)",
@@ -272,10 +275,11 @@ function kindToggleStyle(active: boolean): CSSProperties {
   };
 }
 
-function SiteButton({ site, onClick }: { site: SiteRow; onClick: () => void }) {
+function SiteButton({ site, index, onClick }: { site: SiteRow; index: number; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
+      className="pop-in"
       style={{
         display: "flex",
         alignItems: "center",
@@ -286,6 +290,7 @@ function SiteButton({ site, onClick }: { site: SiteRow; onClick: () => void }) {
         padding: 14,
         textAlign: "left",
         color: "inherit",
+        animationDelay: `${Math.min(index, 8) * 35}ms`,
       }}
     >
       <div

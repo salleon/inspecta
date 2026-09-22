@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
+import { HashRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { App as CapacitorApp } from "@capacitor/app";
 import Dashboard from "./pages/Dashboard";
 import Camera from "./pages/Camera";
@@ -28,15 +28,26 @@ function App() {
   return (
     <div className="app-shell">
       <HashRouter>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/site/:siteId/camera" element={<Camera />} />
-          <Route path="/site/:siteId/finding/:findingId/note" element={<Note />} />
-          <Route path="/site/:siteId/findings" element={<Findings />} />
-          <Route path="/site/:siteId/export" element={<ExportPreview />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        <AnimatedRoutes />
       </HashRouter>
+    </div>
+  );
+}
+
+function AnimatedRoutes() {
+  const location = useLocation();
+  return (
+    // keyed on pathname so each screen remounts (and replays its enter
+    // animation) on navigation, without disturbing state within a screen
+    <div key={location.pathname} className="route-fade">
+      <Routes location={location}>
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/site/:siteId/camera" element={<Camera />} />
+        <Route path="/site/:siteId/finding/:findingId/note" element={<Note />} />
+        <Route path="/site/:siteId/findings" element={<Findings />} />
+        <Route path="/site/:siteId/export" element={<ExportPreview />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </div>
   );
 }

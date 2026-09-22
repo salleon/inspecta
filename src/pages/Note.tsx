@@ -157,7 +157,13 @@ export default function Note() {
           }}
         >
           {activeUrl ? (
-            <img src={activeUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+            <img
+              key={activePhoto?.id}
+              src={activeUrl}
+              alt=""
+              className="photo-fade"
+              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+            />
           ) : (
             <div
               style={{
@@ -214,6 +220,7 @@ export default function Note() {
                 key={p.id}
                 aria-label={`View photo ${i + 1}`}
                 onClick={() => setSelected(i)}
+                className="thumb-in"
                 style={{
                   flexShrink: 0,
                   width: 56,
