@@ -39,14 +39,27 @@ jobs:
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "platforms;android-36" "build-tools;36.0.0"
 
-      - name: Build debug APK
+      - name: Decode release keystore
+        working-directory: android/app
+        run: echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > release.jks
+
+      - name: Build signed release APK
         working-directory: android
+        env:
+          RELEASE_KEYSTORE_PATH: app/release.jks
+          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+          # Every CI run gets a unique, ever-increasing run number, so using
+          # it as versionCode guarantees each release build can install as
+          # an update over the previous one with no manual bump needed.
+          CI_VERSION_CODE: ${{ github.run_number }}
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleRelease --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: inspecta-debug-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: inspecta-release-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
