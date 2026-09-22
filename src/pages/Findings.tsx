@@ -107,11 +107,20 @@ export default function Findings() {
         {rows.map(({ finding, thumb, photoCount }, i) => (
           <button
             key={finding.id}
-            onClick={() => navigate(`/site/${siteId}/finding/${finding.id}/note`)}
+            onClick={(e) => {
+              // hand the tapped thumbnail's on-screen position to Note, so
+              // it can grow the photo out from exactly where this thumbnail
+              // sits instead of just cutting to the new screen
+              const thumbEl = e.currentTarget.querySelector<HTMLElement>("[data-thumb]");
+              const r = thumbEl?.getBoundingClientRect();
+              navigate(`/site/${siteId}/finding/${finding.id}/note`, {
+                state: r ? { photoRect: { top: r.top, left: r.left, width: r.width, height: r.height } } : undefined,
+              });
+            }}
             className="pop-in"
             style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "14px 0", borderBottom: "1px solid var(--border)", background: "none", border: "none", borderBottomWidth: 1, textAlign: "left", color: "inherit", animationDelay: `${Math.min(i, 8) * 35}ms` }}
           >
-            <div style={{ flexShrink: 0, width: 56, height: 56, borderRadius: 10, background: "var(--panel-2)", overflow: "hidden", position: "relative" }}>
+            <div data-thumb style={{ flexShrink: 0, width: 56, height: 56, borderRadius: 10, background: "var(--panel-2)", overflow: "hidden", position: "relative" }}>
               {thumb && <img src={thumb} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
               {photoCount > 1 && (
                 <div style={{ position: "absolute", bottom: 2, right: 2, background: "rgba(7,27,44,0.85)", borderRadius: 4, padding: "1px 4px", fontSize: 9, fontWeight: 800 }}>
@@ -137,7 +146,8 @@ export default function Findings() {
         <button
           onClick={handleNewFinding}
           disabled={busy}
-          style={{ display: "block", width: "100%", textAlign: "center", padding: "17px 0", borderRadius: 14, background: "var(--accent)", border: "none", fontSize: 16, fontWeight: 800, color: "var(--accent-text)" }}
+          className="glow-sweep"
+          style={{ position: "relative", display: "block", width: "100%", textAlign: "center", padding: "17px 0", borderRadius: 14, background: "var(--accent)", border: "none", fontSize: 16, fontWeight: 800, color: "var(--accent-text)", overflow: "hidden" }}
         >
           {busy ? "Opening camera…" : "+ New finding"}
         </button>

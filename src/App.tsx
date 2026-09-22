@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { HashRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { App as CapacitorApp } from "@capacitor/app";
 import Dashboard from "./pages/Dashboard";
@@ -33,12 +33,34 @@ function App() {
   );
 }
 
+// How many taps deep a route sits from the dashboard — used to tell a
+// forward navigation from a back one, so the transition can slide the
+// right way instead of just fading.
+function routeDepth(pathname: string): number {
+  if (pathname === "/") return 0;
+  if (/\/findings$/.test(pathname)) return 1;
+  // Note and Export are both one level below Findings
+  return 2;
+}
+
 function AnimatedRoutes() {
   const location = useLocation();
+  const depth = routeDepth(location.pathname);
+
+  // Track the previous route's depth as state (not a ref) so the direction
+  // can be derived safely during render — this is React's sanctioned
+  // "adjust state during render" pattern for reacting to a prop/route
+  // change without an extra effect + render round-trip.
+  const [tracked, setTracked] = useState({ pathname: location.pathname, depth, prevDepth: depth });
+  if (tracked.pathname !== location.pathname) {
+    setTracked({ pathname: location.pathname, depth, prevDepth: tracked.depth });
+  }
+  const direction = depth >= tracked.prevDepth ? "forward" : "back";
+
   return (
     // keyed on pathname so each screen remounts (and replays its enter
     // animation) on navigation, without disturbing state within a screen
-    <div key={location.pathname} className="route-fade">
+    <div key={location.pathname} className={direction === "forward" ? "route-slide-in" : "route-slide-back"}>
       <Routes location={location}>
         <Route path="/" element={<Dashboard />} />
         <Route path="/site/:siteId/finding/:findingId/note" element={<Note />} />

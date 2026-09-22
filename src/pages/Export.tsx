@@ -329,7 +329,8 @@ export default function ExportPreview() {
         <button
           onClick={handleShare}
           disabled={loading || sharing || items.length === 0}
-          style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", textAlign: "center", padding: "15px 0", borderRadius: 12, background: "var(--accent)", border: "none", fontSize: 14, fontWeight: 800, color: "var(--accent-text)" }}
+          className="glow-sweep"
+          style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", textAlign: "center", padding: "15px 0", borderRadius: 12, background: "var(--accent)", border: "none", fontSize: 14, fontWeight: 800, color: "var(--accent-text)", overflow: "hidden" }}
         >
           <IconShare size={16} />
           {sharing ? "Preparing…" : "Share PDF"}

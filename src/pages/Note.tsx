@@ -1,5 +1,5 @@
-import { useEffect, useState, type CSSProperties } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import { useNavigate, useParams, useLocation as useRouterLocation } from "react-router-dom";
 import type { Photo } from "../db/types";
 import {
   addPhoto,
@@ -13,9 +13,17 @@ import {
 import { capturePhoto } from "../lib/capture";
 import { IconRetake, IconTrash, IconChevronLeft, IconPlus, IconCamera } from "../components/Icons";
 
+interface PhotoRect {
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+}
+
 export default function Note() {
   const { siteId, findingId } = useParams<{ siteId: string; findingId: string }>();
   const navigate = useNavigate();
+  const routerLocation = useRouterLocation();
 
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
@@ -26,6 +34,43 @@ export default function Note() {
   // when a text field has focus (keyboard is up), shrink the photo so both
   // Note and Location stay visible above the keyboard without scrolling
   const [fieldFocused, setFieldFocused] = useState(false);
+
+  // the tapped thumbnail's on-screen position, handed over from Findings
+  // via navigation state — captured once at mount, used to grow the photo
+  // card out from that exact spot instead of just cutting to this screen
+  const photoBoxRef = useRef<HTMLDivElement>(null);
+  const originRectRef = useRef<PhotoRect | undefined>(
+    (routerLocation.state as { photoRect?: PhotoRect } | null)?.photoRect,
+  );
+
+  useLayoutEffect(() => {
+    const origin = originRectRef.current;
+    const el = photoBoxRef.current;
+    if (!origin || !el) return;
+    const final = el.getBoundingClientRect();
+    if (final.width === 0 || final.height === 0) return;
+    const dx = origin.left - final.left;
+    const dy = origin.top - final.top;
+    const sx = origin.width / final.width;
+    const sy = origin.height / final.height;
+    el.style.transformOrigin = "top left";
+    el.style.transition = "none";
+    el.style.transform = `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`;
+    // force a reflow so the browser registers that starting transform
+    // before we animate away from it
+    void el.offsetHeight;
+    el.style.transition = "transform 380ms cubic-bezier(0.16, 1, 0.3, 1)";
+    el.style.transform = "none";
+    const clear = () => {
+      el.style.transition = "";
+      el.style.transform = "";
+      el.style.transformOrigin = "";
+    };
+    el.addEventListener("transitionend", clear, { once: true });
+    return () => el.removeEventListener("transitionend", clear);
+    // one-shot entrance transition — deliberately runs once on mount only
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function refresh(selectIndex?: number) {
     if (!findingId) return;
@@ -150,8 +195,11 @@ export default function Note() {
 
       <div style={{ flexGrow: 1, overflowY: "auto", padding: "4px 18px 18px", display: "flex", flexDirection: "column", gap: fieldFocused ? 10 : 16 }}>
         {/* photo — collapses when a text field is focused so Note and
-            Location stay visible above the keyboard without scrolling */}
+            Location stay visible above the keyboard without scrolling.
+            Grows in from the tapped thumbnail's position on first mount
+            (see the useLayoutEffect above) when arriving from Findings. */}
         <div
+          ref={photoBoxRef}
           style={{
             position: "relative",
             width: "100%",
@@ -367,7 +415,9 @@ export default function Note() {
         <button
           onClick={handleSaveAndNextFinding}
           disabled={busy}
+          className="glow-sweep"
           style={{
+            position: "relative",
             flex: 1,
             textAlign: "center",
             padding: "15px 0",
@@ -377,6 +427,7 @@ export default function Note() {
             fontSize: 14,
             fontWeight: 800,
             color: "var(--accent-text)",
+            overflow: "hidden",
           }}
         >
           {busy ? "Opening camera…" : "Save & next finding"}

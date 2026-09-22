@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import type { Site, SiteKind } from "../db/types";
 import { createSite, findingCount, listSites } from "../db/db";
 import { IconSearch, IconBuilding, IconPlus } from "../components/Icons";
+import CountUp from "../components/CountUp";
 import logo from "../assets/logo.png";
 
 interface SiteRow extends Site {
@@ -139,7 +140,7 @@ export default function Dashboard() {
       <button
         aria-label="Start new site inspection"
         onClick={() => setAdding(true)}
-        className={sites.length === 0 ? "fab-pulse" : undefined}
+        className={`glow-sweep${sites.length === 0 ? " fab-pulse" : ""}`}
         style={{
           position: "absolute",
           right: 20,
@@ -153,6 +154,7 @@ export default function Dashboard() {
           alignItems: "center",
           justifyContent: "center",
           boxShadow: "0 8px 20px rgba(0,0,0,0.35)",
+          overflow: "hidden",
         }}
       >
         <IconPlus size={24} color="var(--accent-text)" strokeWidth={2.4} />
@@ -216,7 +218,9 @@ export default function Dashboard() {
             />
             <button
               type="submit"
+              className="glow-sweep"
               style={{
+                position: "relative",
                 display: "block",
                 textAlign: "center",
                 padding: "16px 0",
@@ -226,6 +230,7 @@ export default function Dashboard() {
                 fontSize: 15,
                 fontWeight: 800,
                 color: "var(--accent-text)",
+                overflow: "hidden",
               }}
             >
               Start inspection
@@ -327,7 +332,7 @@ function SiteButton({ site, index, onClick }: { site: SiteRow; index: number; on
           {formatInspectedDate(site.createdAt)}
         </span>
         <span style={{ fontSize: 11, fontWeight: 600, color: "var(--muted-2)" }}>
-          {site.findings} finding{site.findings === 1 ? "" : "s"}
+          <CountUp value={site.findings} /> finding{site.findings === 1 ? "" : "s"}
         </span>
       </div>
     </button>
