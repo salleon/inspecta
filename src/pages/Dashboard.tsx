@@ -46,7 +46,7 @@ export default function Dashboard() {
     setName("");
     setAddress("");
     setKind("afss");
-    navigate(`/site/${site.id}/camera`);
+    navigate(`/site/${site.id}/findings`);
   }
 
   return (

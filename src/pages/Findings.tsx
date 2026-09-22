@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import type { Finding, Photo, Site } from "../db/types";
-import { getSite, listFindings, listPhotos } from "../db/db";
+import { addPhoto, createFinding, getSite, listFindings, listPhotos } from "../db/db";
+import { capturePhoto } from "../lib/capture";
 import { IconChevronLeft, IconShare, IconEdit } from "../components/Icons";
 
 interface Row {
@@ -24,6 +25,7 @@ export default function Findings() {
   const navigate = useNavigate();
   const [site, setSite] = useState<Site | null>(null);
   const [rows, setRows] = useState<Row[]>([]);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (!siteId) return;
@@ -55,13 +57,29 @@ export default function Findings() {
 
   if (!siteId) return null;
 
+  // Launches the native camera straight away — no intermediate screen.
+  // Cancelling leaves you right where you were, on this list.
+  async function handleNewFinding() {
+    if (!siteId || busy) return;
+    setBusy(true);
+    try {
+      const blob = await capturePhoto();
+      if (!blob) return; // cancelled
+      const finding = await createFinding(siteId);
+      await addPhoto(finding.id, siteId, blob);
+      navigate(`/site/${siteId}/finding/${finding.id}/note`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
       {/* top bar */}
       <div style={{ flexShrink: 0, height: 64, padding: "0 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <button
-          aria-label="Back to camera"
-          onClick={() => navigate(`/site/${siteId}/camera`)}
+          aria-label="Back to sites"
+          onClick={() => navigate("/")}
           style={{ width: 40, height: 40, borderRadius: "50%", background: "none", border: "none", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text)" }}
         >
           <IconChevronLeft size={20} strokeWidth={2.2} />
@@ -83,7 +101,7 @@ export default function Findings() {
       <div style={{ flexGrow: 1, overflowY: "auto", padding: "4px 16px 12px", display: "flex", flexDirection: "column" }}>
         {rows.length === 0 && (
           <div style={{ padding: "40px 8px", textAlign: "center", color: "var(--muted-2)", fontSize: 14, fontWeight: 500 }}>
-            No findings yet — tap the camera to log your first one.
+            No findings yet — tap + New finding to log your first one.
           </div>
         )}
         {rows.map(({ finding, thumb, photoCount }, i) => (
@@ -117,10 +135,11 @@ export default function Findings() {
       {/* bottom action */}
       <div style={{ flexShrink: 0, padding: "12px 16px calc(28px + env(safe-area-inset-bottom))", borderTop: "1px solid var(--border)" }}>
         <button
-          onClick={() => navigate(`/site/${siteId}/camera`)}
+          onClick={handleNewFinding}
+          disabled={busy}
           style={{ display: "block", width: "100%", textAlign: "center", padding: "17px 0", borderRadius: 14, background: "var(--accent)", border: "none", fontSize: 16, fontWeight: 800, color: "var(--accent-text)" }}
         >
-          + New finding
+          {busy ? "Opening camera…" : "+ New finding"}
         </button>
       </div>
     </div>

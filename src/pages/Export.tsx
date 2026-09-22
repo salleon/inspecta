@@ -1,9 +1,26 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { jsPDF } from "jspdf";
+import { Directory, Filesystem } from "@capacitor/filesystem";
+import { Share } from "@capacitor/share";
+import { Capacitor } from "@capacitor/core";
 import type { Finding, Site } from "../db/types";
 import { getSite, listFindings, listPhotos } from "../db/db";
 import { IconChevronLeft, IconShare } from "../components/Icons";
+
+// Blob -> base64 (without the data: URL prefix), which is what
+// Filesystem.writeFile wants for a binary file.
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = reader.result as string;
+      resolve(result.slice(result.indexOf(",") + 1));
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
 
 interface FindingImages {
   finding: Finding;
@@ -47,7 +64,7 @@ function watermark(blob: Blob, timestampMs: number): Promise<string> {
       ctx.drawImage(img, 0, 0);
 
       const text = formatTimestamp(timestampMs);
-      const fontSize = Math.max(16, Math.round(canvas.width * 0.024));
+      const fontSize = Math.max(30, Math.round(canvas.width * 0.045));
       ctx.font = `700 ${fontSize}px Manrope, system-ui, sans-serif`;
       ctx.textAlign = "right";
       ctx.textBaseline = "alphabetic";
@@ -199,19 +216,43 @@ export default function ExportPreview() {
     try {
       const blob = await buildPdf();
       const filename = `${(site?.name ?? "inspection").replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.pdf`;
-      const file = new File([blob], filename, { type: "application/pdf" });
 
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], title: site?.name ?? "Inspection report" });
+      if (Capacitor.isNativePlatform()) {
+        // navigator.share() doesn't work for files inside an Android
+        // WebView — write the PDF to the app's cache and hand THAT file
+        // URI to the native share sheet instead.
+        const base64 = await blobToBase64(blob);
+        const written = await Filesystem.writeFile({
+          path: filename,
+          data: base64,
+          directory: Directory.Cache,
+        });
+        await Share.share({
+          title: site?.name ?? "Inspection report",
+          url: written.uri,
+        });
       } else {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(url);
+        // plain web fallback (e.g. previewing in a desktop browser)
+        const file = new File([blob], filename, { type: "application/pdf" });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: site?.name ?? "Inspection report" });
+        } else {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+        }
+      }
+    } catch (err) {
+      // a genuine failure (not the user cancelling the share sheet) —
+      // surface it instead of silently doing nothing
+      if (!(err instanceof Error) || !/cancell?ed/i.test(err.message)) {
+        console.error("PDF share failed", err);
+        alert("Couldn't share the PDF. Please try again.");
       }
     } finally {
       setSharing(false);

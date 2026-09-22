@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import type { Photo } from "../db/types";
 import {
   addPhoto,
+  createFinding,
   deleteFinding,
   deletePhoto,
   getFinding,
@@ -11,18 +12,6 @@ import {
 } from "../db/db";
 import { capturePhoto } from "../lib/capture";
 import { IconRetake, IconTrash, IconChevronLeft, IconPlus } from "../components/Icons";
-
-function formatTimestamp(ms: number) {
-  const d = new Date(ms);
-  const dd = String(d.getDate()).padStart(2, "0");
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const yy = String(d.getFullYear()).slice(-2);
-  let h = d.getHours();
-  const min = String(d.getMinutes()).padStart(2, "0");
-  const ampm = h >= 12 ? "PM" : "AM";
-  h = h % 12 || 12;
-  return `${dd}/${mm}/${yy} - ${String(h).padStart(2, "0")}:${min} ${ampm}`;
-}
 
 export default function Note() {
   const { siteId, findingId } = useParams<{ siteId: string; findingId: string }>();
@@ -34,6 +23,9 @@ export default function Note() {
   const [note, setNote] = useState("");
   const [location, setLocation] = useState("");
   const [busy, setBusy] = useState(false);
+  // when a text field has focus (keyboard is up), shrink the photo so both
+  // Note and Location stay visible above the keyboard without scrolling
+  const [fieldFocused, setFieldFocused] = useState(false);
 
   async function refresh(selectIndex?: number) {
     if (!findingId) return;
@@ -69,11 +61,9 @@ export default function Note() {
     await updateFinding(findingId, { note, location });
   }
 
-  async function handleSaveAndContinue() {
+  async function handleBack() {
     await persist();
-    // Hand this finding back to the Camera screen as the active session, so
-    // "Add photo" there keeps adding to it instead of starting a new one.
-    navigate(`/site/${siteId}/camera`, { state: { activeFindingId: findingId } });
+    navigate(`/site/${siteId}/findings`);
   }
 
   async function handleSaveAndView() {
@@ -82,10 +72,24 @@ export default function Note() {
   }
 
   async function handleSaveAndNextFinding() {
+    if (!siteId || busy) return;
     await persist();
-    // Straight to Camera with a blank session — skips both re-adding a
-    // photo to this finding and the detour through the Findings list.
-    navigate(`/site/${siteId}/camera`);
+    // Launch the camera straight away for the next finding — no
+    // intermediate screen. Cancelling just leaves you on Findings, since a
+    // finding can't exist without a first photo.
+    setBusy(true);
+    try {
+      const blob = await capturePhoto();
+      if (!blob) {
+        navigate(`/site/${siteId}/findings`);
+        return;
+      }
+      const finding = await createFinding(siteId);
+      await addPhoto(finding.id, siteId, blob);
+      navigate(`/site/${siteId}/finding/${finding.id}/note`);
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function handleRetake() {
@@ -107,6 +111,7 @@ export default function Note() {
     if (!findingId || !siteId || busy) return;
     setBusy(true);
     try {
+      await persist(); // don't lose a typed note/location while the camera is open
       const blob = await capturePhoto();
       if (!blob) return; // cancelled
       await addPhoto(findingId, siteId, blob);
@@ -123,7 +128,7 @@ export default function Note() {
     if (remaining.length === 0) {
       // no photos left — this finding can't stand on its own
       await deleteFinding(findingId);
-      navigate(`/site/${siteId}/camera`);
+      navigate(`/site/${siteId}/findings`);
       return;
     }
     await refresh(Math.min(selected, remaining.length - 1));
@@ -134,8 +139,8 @@ export default function Note() {
       {/* top bar */}
       <div style={{ flexShrink: 0, padding: "18px 18px 12px", display: "flex", alignItems: "center", gap: 12 }}>
         <button
-          aria-label="Save and go back"
-          onClick={handleSaveAndContinue}
+          aria-label="Save and back to findings"
+          onClick={handleBack}
           style={{ width: 32, height: 32, borderRadius: "50%", background: "none", border: "none", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text)", padding: 0 }}
         >
           <IconChevronLeft size={20} strokeWidth={2.2} />
@@ -143,54 +148,78 @@ export default function Note() {
         <div style={{ fontSize: 15, fontWeight: 800 }}>Finding</div>
       </div>
 
-      <div style={{ flexGrow: 1, overflowY: "auto", padding: "4px 18px 18px", display: "flex", flexDirection: "column", gap: 16 }}>
-        {/* photo */}
+      <div className="no-scrollbar" style={{ flexGrow: 1, overflowY: "auto", padding: "4px 18px 18px", display: "flex", flexDirection: "column", gap: fieldFocused ? 10 : 16 }}>
+        {/* photo — collapses when a text field is focused so Note and
+            Location stay visible above the keyboard without scrolling */}
         <div
           style={{
             position: "relative",
             width: "100%",
-            aspectRatio: "4/3",
+            aspectRatio: fieldFocused ? undefined : "4/3",
+            height: fieldFocused ? 96 : undefined,
             borderRadius: 16,
             overflow: "hidden",
             background: "linear-gradient(160deg, var(--panel-2), #050f1a)",
             border: "1px solid var(--border)",
+            flexShrink: 0,
+            transition: "height 180ms ease",
           }}
         >
-          {activeUrl ? (
-            <img
-              key={activePhoto?.id}
-              src={activeUrl}
-              alt=""
-              className="photo-fade"
-              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-            />
-          ) : (
+          {/* tapping the photo opens the camera to add another shot to
+              this finding — same action as the dashed "+" thumbnail */}
+          <button
+            aria-label="Add another photo to this finding"
+            onClick={handleAddPhoto}
+            disabled={busy}
+            style={{
+              position: "absolute",
+              inset: 0,
+              width: "100%",
+              height: "100%",
+              padding: 0,
+              border: "none",
+              background: "none",
+            }}
+          >
+            {activeUrl ? (
+              <img
+                key={activePhoto?.id}
+                src={activeUrl}
+                alt=""
+                className="photo-fade"
+                style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+              />
+            ) : (
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: 0.3,
+                }}
+              >
+                <IconCameraOutline />
+              </div>
+            )}
+          </button>
+          {activePhoto && !fieldFocused && (
             <div
               style={{
                 position: "absolute",
-                inset: 0,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                opacity: 0.3,
+                top: "58%",
+                left: "50%",
+                transform: "translateX(-50%)",
+                fontSize: 16,
+                fontWeight: 800,
+                color: "rgba(255,255,255,0.55)",
+                textShadow: "0 1px 2px rgba(0,0,0,0.4)",
+                pointerEvents: "none",
+                textAlign: "center",
               }}
             >
-              <IconCameraOutline />
-            </div>
-          )}
-          {activePhoto && (
-            <div
-              style={{
-                position: "absolute",
-                right: 10,
-                bottom: 8,
-                fontSize: 12,
-                fontWeight: 700,
-                color: "#ffffff",
-                textShadow: "0 0 3px #000, 0 0 3px #000, 0 0 3px #000, 0 1px 2px #000",
-              }}
-            >
-              {formatTimestamp(activePhoto.takenAt)}
+              Tap to add picture
             </div>
           )}
           {photos.length > 1 && (
@@ -210,10 +239,35 @@ export default function Note() {
               {selected + 1} / {photos.length}
             </div>
           )}
+
+          {/* retake / delete — overlaid on the photo instead of a row below
+              it, so the thumbnail strip below always has full room */}
+          {activePhoto && !fieldFocused && (
+            <div style={{ position: "absolute", right: 8, top: 8, display: "flex", flexDirection: "column", gap: 6 }}>
+              <button
+                aria-label="Retake photo"
+                onClick={handleRetake}
+                disabled={busy}
+                style={overlayIconButtonStyle}
+              >
+                <IconRetake size={15} color="#fff" />
+              </button>
+              <button
+                aria-label="Delete photo"
+                onClick={handleDelete}
+                disabled={busy}
+                style={overlayIconButtonStyle}
+              >
+                <IconTrash size={15} color="#e07a7a" />
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* thumbnail strip — every photo on this finding is reachable, not just the latest */}
-        {photos.length > 0 && (
+        {/* thumbnail strip — every photo on this finding is reachable, not
+            just the latest; hidden while typing to leave Note + Location
+            both visible above the keyboard */}
+        {photos.length > 0 && !fieldFocused && (
           <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 2 }}>
             {photos.map((p, i) => (
               <button
@@ -259,63 +313,17 @@ export default function Note() {
           </div>
         )}
 
-        {/* retake / delete */}
-        <div style={{ display: "flex", gap: 10 }}>
-          <button
-            aria-label="Retake photo"
-            onClick={handleRetake}
-            disabled={busy}
-            style={{
-              flexGrow: 1,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 6,
-              padding: "11px 0",
-              borderRadius: 12,
-              background: "var(--panel)",
-              border: "1px solid var(--border)",
-              fontSize: 13,
-              fontWeight: 700,
-              color: "var(--text)",
-            }}
-          >
-            <IconRetake size={15} />
-            Retake
-          </button>
-          <button
-            aria-label="Delete photo"
-            onClick={handleDelete}
-            disabled={busy}
-            style={{
-              flexGrow: 1,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 6,
-              padding: "11px 0",
-              borderRadius: 12,
-              background: "var(--panel)",
-              border: "1px solid rgba(224,90,90,0.35)",
-              fontSize: 13,
-              fontWeight: 700,
-              color: "#e07a7a",
-            }}
-          >
-            <IconTrash size={15} />
-            Delete
-          </button>
-        </div>
-
         {/* note */}
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <label htmlFor="noteInput" style={labelStyle}>Note</label>
           <textarea
             id="noteInput"
-            rows={3}
+            rows={fieldFocused ? 2 : 3}
             placeholder="Tap to add"
             value={note}
             onChange={(e) => setNote(e.target.value)}
+            onFocus={() => setFieldFocused(true)}
+            onBlur={() => setFieldFocused(false)}
             style={fieldStyle}
           />
         </div>
@@ -329,65 +337,59 @@ export default function Note() {
             placeholder="Tap to add"
             value={location}
             onChange={(e) => setLocation(e.target.value)}
+            onFocus={() => setFieldFocused(true)}
+            onBlur={() => setFieldFocused(false)}
             style={fieldStyle}
           />
         </div>
       </div>
 
       {/* save bar — "Save & next finding" is the most-used action so it's
-          the big primary button; View findings and Save & add photo are
-          both less common and share a row below it */}
-      <div style={{ flexShrink: 0, padding: "12px 18px calc(26px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 10 }}>
+          the visually bigger button; the two sit side by side, View findings
+          on the left and Save & next finding on the right. Both are tall
+          with large text so they're easy to hit on the fly. */}
+      <div style={{ flexShrink: 0, padding: "12px 18px calc(26px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "row", gap: 10 }}>
+        <button
+          onClick={handleSaveAndView}
+          style={{
+            flex: 1,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            textAlign: "center",
+            padding: "16px 6px",
+            borderRadius: 14,
+            background: "var(--panel)",
+            border: "1px solid var(--border)",
+            fontSize: 22,
+            fontWeight: 800,
+            lineHeight: 1.15,
+            color: "var(--text)",
+          }}
+        >
+          View findings
+        </button>
         <button
           onClick={handleSaveAndNextFinding}
+          disabled={busy}
           style={{
-            width: "100%",
+            flex: 1,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
             textAlign: "center",
-            padding: "15px 0",
+            padding: "16px 6px",
             borderRadius: 14,
             background: "var(--accent)",
             border: "none",
-            fontSize: 14,
+            fontSize: 22,
             fontWeight: 800,
+            lineHeight: 1.15,
             color: "var(--accent-text)",
           }}
         >
-          Save &amp; next finding
+          {busy ? "Opening camera…" : "Save & next finding"}
         </button>
-        <div style={{ display: "flex", gap: 10 }}>
-          <button
-            onClick={handleSaveAndContinue}
-            style={{
-              flexGrow: 1,
-              textAlign: "center",
-              padding: "13px 0",
-              borderRadius: 14,
-              background: "var(--panel)",
-              border: "1px solid var(--border)",
-              fontSize: 13,
-              fontWeight: 700,
-              color: "var(--text)",
-            }}
-          >
-            Add another photo to finding
-          </button>
-          <button
-            onClick={handleSaveAndView}
-            style={{
-              flexGrow: 1,
-              textAlign: "center",
-              padding: "13px 0",
-              borderRadius: 14,
-              background: "var(--panel)",
-              border: "1px solid var(--border)",
-              fontSize: 13,
-              fontWeight: 700,
-              color: "var(--text)",
-            }}
-          >
-            View findings
-          </button>
-        </div>
       </div>
     </div>
   );
@@ -411,6 +413,18 @@ const fieldStyle: CSSProperties = {
   color: "var(--text)",
   outline: "none",
   resize: "none",
+};
+
+const overlayIconButtonStyle: CSSProperties = {
+  width: 32,
+  height: 32,
+  borderRadius: "50%",
+  background: "rgba(7,27,44,0.7)",
+  border: "1px solid rgba(255,255,255,0.15)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  padding: 0,
 };
 
 function IconCameraOutline() {
