@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Inspecta</string>
+    <string name="title_activity_main">Inspecta</string>
+    <string name="package_name">au.com.inspecta.app</string>
+    <string name="custom_url_scheme">au.com.inspecta.app</string>
+</resources>
