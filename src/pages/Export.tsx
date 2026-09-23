@@ -9,8 +9,9 @@ import { getSite, listFindings, listPhotos } from "../db/db";
 import { IconChevronLeft, IconShare } from "../components/Icons";
 import RoundIconButton from "../components/RoundIconButton";
 import { getInitials, getInspectorName } from "../lib/profile";
-import coverBgAfss from "../assets/cover-bg-afss.jpg";
-import coverBgProjects from "../assets/cover-bg-projects.jpg";
+import coverBg from "../assets/cover-bg.jpg";
+import coverWatermarkAfss from "../assets/cover-watermark-afss.png";
+import coverWatermarkProjects from "../assets/cover-watermark-projects.png";
 
 // Blob -> base64 (without the data: URL prefix), which is what
 // Filesystem.writeFile wants for a binary file.
@@ -107,6 +108,50 @@ async function loadAssetAsDataUrl(src: string): Promise<{ dataUrl: string; natur
   return { dataUrl, naturalWidth: img.naturalWidth, naturalHeight: img.naturalHeight };
 }
 
+// Crops a (data URL) image to fill a fixed width:height box exactly —
+// "cover" behaviour, like CSS object-fit: cover — by cutting off whichever
+// dimension has extra, rather than letterboxing or stretching. Used so
+// every photo tile in the report reads as the same uniform rectangle
+// regardless of the source photo's own orientation/aspect ratio. Crops at
+// the source photo's native resolution (no downscaling), so the cropped
+// region keeps as much of its original detail as possible for anyone
+// zooming in or clipping it back out of the PDF.
+function cropToBox(dataUrl: string, targetAspect: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const srcW = img.naturalWidth;
+      const srcH = img.naturalHeight;
+      const srcAspect = srcH / srcW;
+
+      let cropW = srcW;
+      let cropH = srcH;
+      if (srcAspect > targetAspect) {
+        // source is relatively taller than the box -- crop top/bottom
+        cropH = srcW * targetAspect;
+      } else {
+        // source is relatively wider than the box -- crop left/right
+        cropW = srcH / targetAspect;
+      }
+      const cropX = (srcW - cropW) / 2;
+      const cropY = (srcH - cropH) / 2;
+
+      const canvas = document.createElement("canvas");
+      canvas.width = cropW;
+      canvas.height = cropH;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        reject(new Error("no canvas context"));
+        return;
+      }
+      ctx.drawImage(img, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+      resolve(canvas.toDataURL("image/jpeg", 0.9));
+    };
+    img.onerror = reject;
+    img.src = dataUrl;
+  });
+}
+
 // draws the photo onto a canvas with a burned-in bottom-right timestamp watermark
 function watermark(blob: Blob, timestampMs: number): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -186,30 +231,31 @@ export default function ExportPreview() {
 
   if (!siteId) return null;
 
-  function imgSize(dataUrl: string): Promise<{ w: number; h: number }> {
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
-      img.src = dataUrl;
-    });
-  }
-
-  // Full-bleed cover page. The gradient wash, EnFact wordmark and the
-  // site's classification watermark (AFSS or Projects) never vary per
-  // report, so they're pre-rendered once into a single flat JPEG per site
-  // kind (src/assets/cover-bg-*.jpg) rather than assembled at PDF-build
-  // time from three separate images plus opacity compositing. That's a
-  // deliberate simplification after the original per-report compositing
-  // (multiple doc.addImage() calls plus jsPDF's GState opacity API) proved
-  // unreliable in the field — this cuts cover generation down to one image
-  // load plus plain text/shape drawing, which is much harder to get wrong.
+  // Full-bleed cover page. The gradient wash and EnFact masthead wordmark
+  // never vary per report, so they're pre-rendered once into a single flat
+  // JPEG (src/assets/cover-bg.jpg) rather than assembled at PDF-build time.
+  // That's a deliberate simplification after the original per-report
+  // compositing (multiple doc.addImage() calls plus jsPDF's GState opacity
+  // API) proved unreliable in the field.
+  //
+  // The classification watermark (AFSS or Projects) is NOT part of that
+  // baked image, even though it doesn't change per report kind: per the
+  // approved cover design it has to vertically center itself in the gap
+  // between the masthead and the details block, and that gap's height
+  // varies with the actual title/address/badge content, so it can't be
+  // part of a single fixed-layout background. It's still drawn with a
+  // single plain doc.addImage() call — a PNG whose 18% opacity is baked
+  // into its own alpha channel (src/assets/cover-watermark-*.png) rather
+  // than applied at runtime — so this keeps the "no GState" simplification
+  // while restoring the mockup's dynamic placement.
   async function drawCoverPage(doc: jsPDF, findingsCount: number) {
     const pageW = doc.internal.pageSize.getWidth();
     const pageH = doc.internal.pageSize.getHeight();
     const margin = 40;
     const contentW = pageW - margin * 2;
+    const mastheadH = 118;
 
-    const bg = await loadAssetAsDataUrl(site?.kind === "project" ? coverBgProjects : coverBgAfss);
+    const bg = await loadAssetAsDataUrl(coverBg);
     doc.addImage(bg.dataUrl, "JPEG", 0, 0, pageW, pageH);
 
     // report title + address, built bottom-up so we know exactly how tall
@@ -230,6 +276,32 @@ export default function ExportPreview() {
     const bottomPad = 56;
     const detailsH =
       accentH + 16 + titleH + (addressH ? 4 + addressH : 0) + 16 + badgePillH + bottomPad;
+
+    // classification watermark, centered in the blank space between the
+    // masthead above and the details block below (mirrors the mockup's
+    // "flex-grow: 1; align-items: center; justify-content: center" gap)
+    const watermarkTop = mastheadH;
+    const watermarkAreaH = Math.max(0, pageH - detailsH - mastheadH);
+    if (watermarkAreaH > 0) {
+      const wm = await loadAssetAsDataUrl(site?.kind === "project" ? coverWatermarkProjects : coverWatermarkAfss);
+      const maxWmW = 420;
+      let wmW = Math.min(maxWmW, wm.naturalWidth);
+      let wmH = (wm.naturalHeight / wm.naturalWidth) * wmW;
+      if (wmH > watermarkAreaH) {
+        wmH = watermarkAreaH;
+        wmW = (wm.naturalWidth / wm.naturalHeight) * wmH;
+      }
+      if (wmW > 0 && wmH > 0) {
+        doc.addImage(
+          wm.dataUrl,
+          "PNG",
+          (pageW - wmW) / 2,
+          watermarkTop + (watermarkAreaH - wmH) / 2,
+          wmW,
+          wmH,
+        );
+      }
+    }
 
     // details block, anchored to the bottom of the page
     let dy = pageH - detailsH;
@@ -296,12 +368,28 @@ export default function ExportPreview() {
     const pageW = doc.internal.pageSize.getWidth();
     const pageH = doc.internal.pageSize.getHeight();
     const margin = 40;
-    const contentW = pageW - margin * 2;
-    const imgColW = 150;
-    const colGap = 16;
-    const textColW = contentW - imgColW - colGap;
-    const photoGap = 8;
-    const blockGap = 24;
+    const blockGap = 28;
+
+    // Half-page split: a fixed-width photo column on the left running from
+    // the margin to the page's own centerline, and a text column that
+    // always starts a fixed gap past that centerline — so the text edge
+    // lines up down the page the same way for every finding, whether it
+    // has one photo or three.
+    const midX = pageW / 2;
+    const photoColW = midX - margin;
+    const textGap = 16;
+    const textX = midX + textGap;
+    const textColW = pageW - margin - textX;
+
+    // Every photo tile is the same fixed box — cropped to fit, not
+    // stretched — so a landscape and a portrait photo sit at identical
+    // size next to each other. Up to 2 across; a 3rd (rare — most findings
+    // only ever get 2 photos) drops in beneath the first rather than
+    // widening the row.
+    const tileGap = 8;
+    const tileW = (photoColW - tileGap) / 2;
+    const tileH = tileW * (161 / 121); // matches the approved mockup's proportions
+    const tileAspect = tileH / tileW;
 
     await drawCoverPage(doc, items.length);
     doc.addPage();
@@ -310,11 +398,9 @@ export default function ExportPreview() {
     for (const item of items) {
       if (item.dataUrls.length === 0) continue;
 
-      // each photo keeps the full column width, stacked one under another
-      // so a multi-photo finding is unmistakably one group
-      const sizes = await Promise.all(item.dataUrls.map((u) => imgSize(u)));
-      const photoHeights = sizes.map(({ w, h }) => (h / w) * imgColW);
-      const photosBlockH = photoHeights.reduce((a, b) => a + b, 0) + photoGap * (photoHeights.length - 1);
+      const tiles = await Promise.all(item.dataUrls.map((u) => cropToBox(u, tileAspect)));
+      const rows = Math.ceil(tiles.length / 2);
+      const photosBlockH = rows * tileH + (rows - 1) * tileGap;
 
       doc.setFont("helvetica", "bold");
       doc.setFontSize(12);
@@ -330,14 +416,16 @@ export default function ExportPreview() {
 
       const rowTop = y;
 
-      let py = rowTop;
-      for (let i = 0; i < item.dataUrls.length; i++) {
-        doc.addImage(item.dataUrls[i], "JPEG", margin, py, imgColW, photoHeights[i]);
-        py += photoHeights[i] + photoGap;
+      for (let i = 0; i < tiles.length; i++) {
+        const row = Math.floor(i / 2);
+        const col = i % 2;
+        const tx = margin + col * (tileW + tileGap);
+        const ty = rowTop + row * (tileH + tileGap);
+        doc.addImage(tiles[i], "JPEG", tx, ty, tileW, tileH);
       }
 
-      // title + location, once per finding regardless of photo count
-      const textX = margin + imgColW + colGap;
+      // title + location, once per finding regardless of photo count,
+      // always anchored to the shared centerline column
       let ty = rowTop + 14;
       doc.setFont("helvetica", "bold");
       doc.setFontSize(12);
