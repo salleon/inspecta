@@ -169,7 +169,7 @@ export default function Dashboard() {
         )}
         {projectSites.length > 0 && (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <div style={sectionHeaderStyle}>Project work</div>
+            <div style={sectionHeaderStyle}>Projects</div>
             {projectSites.map((site, i) => (
               <SiteButton key={site.id} site={site} index={i} onClick={() => navigate(`/site/${site.id}/findings`)} />
             ))}
@@ -241,7 +241,7 @@ export default function Dashboard() {
                 onClick={() => setKind("project")}
                 style={kindToggleStyle(kind === "project")}
               >
-                Project work
+                Projects
               </button>
             </div>
             <input
