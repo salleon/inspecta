@@ -28,18 +28,22 @@ const LONG_PRESS_MS = 700;
 // A finger moving more than this many px before the hold timer fires reads
 // as a scroll, not a hold — cancel the timer rather than trigger reorder.
 const MOVE_CANCEL_PX = 10;
+// Pointer within this many px of the top/bottom of the scrollable list
+// triggers auto-scroll while dragging.
+const EDGE_ZONE_PX = 56;
+// Fastest the list auto-scrolls, in px per animation frame, right at the edge.
+const MAX_SCROLL_PX = 16;
 
-// One row's measurements + every other row's midpoint, captured once when
-// a drag starts. Hit-testing (which slot the pointer is over) always
-// compares against these original positions for the rest of the gesture —
-// they stay valid as a relative ordering even as the placeholder reflows
-// the visible layout, so there's no need to remeasure on every move.
+// Every OTHER row's original midpoint, captured once when a drag starts —
+// these never move (rows stay in normal DOM flow for the whole gesture, only
+// visually offset via transform), so hit-testing the live pointer position
+// against this fixed snapshot is valid for the whole drag.
 interface DragMeta {
-  containerTop: number;
-  containerScrollTop: number;
-  startClientY: number;
-  top: number;
-  height: number;
+  // viewport-space distance from the pointer down to the dragged row's top
+  // edge, so the floating ghost can be positioned from raw clientY without
+  // needing any "delta from start" bookkeeping.
+  grabOffsetY: number;
+  rowHeightPx: number;
   others: { finding: Finding; mid: number }[];
 }
 
@@ -57,13 +61,28 @@ export default function Findings() {
 
   // reorder mode — entered by holding any row for LONG_PRESS_MS
   const [reordering, setReordering] = useState(false);
+  // which row (by its index in `rows`) is currently being dragged, and which
+  // slot it's currently hovering over — rows never leave the DOM or change
+  // order while dragging, only their transform changes, so `rows` itself
+  // stays untouched until the drop.
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
-  const [dragY, setDragY] = useState(0);
+  // vertical spacing between two adjacent rows — measured once per drag —
+  // used to shift the other rows out of the way by exactly one slot.
+  const [slotHeight, setSlotHeight] = useState(0);
+  // the floating "ghost" card that visually represents the row being
+  // dragged — a position:fixed overlay driven by viewport coordinates, kept
+  // entirely separate from the real (invisible-but-interactive) row so it
+  // can never affect the scrollable list's content size. See handleGripDown
+  // for why the real row can't just grow a transform to follow the finger.
+  const [ghostRect, setGhostRect] = useState<{ left: number; width: number; height: number } | null>(null);
+  const [ghostTop, setGhostTop] = useState(0);
 
   const listRef = useRef<HTMLDivElement>(null);
   const rowElsRef = useRef(new Map<string, HTMLButtonElement>());
   const dragMetaRef = useRef<DragMeta | null>(null);
+  const lastClientYRef = useRef(0);
+  const rafIdRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!siteId) return;
@@ -92,6 +111,13 @@ export default function Findings() {
       urls.forEach((u) => URL.revokeObjectURL(u));
     };
   }, [siteId]);
+
+  // Stop any in-flight auto-scroll loop on unmount.
+  useEffect(() => {
+    return () => {
+      if (rafIdRef.current !== null) cancelAnimationFrame(rafIdRef.current);
+    };
+  }, []);
 
   if (!siteId) return null;
 
@@ -153,9 +179,11 @@ export default function Findings() {
     const containerEl = listRef.current;
     if (!rowEl || !containerEl) return;
 
+    // Capture on the grip itself, and — crucially — this row (and its grip)
+    // stays mounted in the DOM for the whole gesture, so this capture and
+    // these listeners are never torn out from under the drag.
     e.currentTarget.setPointerCapture(e.pointerId);
 
-    const containerRect = containerEl.getBoundingClientRect();
     const others = rows
       .filter((_, i) => i !== index)
       .map((r) => {
@@ -164,32 +192,97 @@ export default function Findings() {
         return { finding: r.finding, mid };
       });
 
+    // Spacing between adjacent rows, measured from a real neighbour so it
+    // includes any border/margin — falls back to this row's own height if
+    // it's the only one.
+    const neighbourEl = rowElsRef.current.get(rows[index + 1]?.finding.id ?? rows[index - 1]?.finding.id ?? "");
+    const measuredSlot = neighbourEl ? Math.abs(neighbourEl.offsetTop - rowEl.offsetTop) : rowEl.offsetHeight;
+
+    // The real row stays exactly where it is — in normal flow, at its
+    // original size — for the whole gesture: that's what keeps its pointer
+    // capture alive and keeps its siblings' layout from reflowing under it.
+    // It just turns invisible. The visible "lifted" card the finger actually
+    // drags is a separate position:fixed ghost, positioned from raw
+    // viewport coordinates below. Giving the REAL row a growing translateY
+    // instead (an earlier version of this did) looks equivalent at first,
+    // but CSS transform on an in-flow element still counts toward its
+    // scrolling ancestor's scrollHeight — so as auto-scroll pushed that
+    // transform larger, scrollHeight kept growing to match, which let
+    // auto-scroll go further still: a runaway feedback loop that scrolled
+    // the list into empty space. The fixed-position ghost sidesteps that
+    // entirely, since out-of-flow elements don't contribute to it.
+    const rowRect = rowEl.getBoundingClientRect();
+
     dragMetaRef.current = {
-      containerTop: containerRect.top,
-      containerScrollTop: containerEl.scrollTop,
-      startClientY: e.clientY,
-      top: rowEl.offsetTop,
-      height: rowEl.offsetHeight,
+      grabOffsetY: e.clientY - rowRect.top,
+      rowHeightPx: rowRect.height,
       others,
     };
+    lastClientYRef.current = e.clientY;
 
     setDragIndex(index);
     setHoverIndex(index);
-    setDragY(0);
+    setSlotHeight(measuredSlot || rowEl.offsetHeight);
+    setGhostRect({ left: rowRect.left, width: rowRect.width, height: rowRect.height });
+    setGhostTop(rowRect.top);
+
+    if (rafIdRef.current === null) rafIdRef.current = requestAnimationFrame(autoScrollTick);
   }
 
   function handleGripMove(e: ReactPointerEvent<HTMLDivElement>) {
-    const meta = dragMetaRef.current;
-    if (!meta) return;
-    const current = e.clientY - meta.containerTop + meta.containerScrollTop;
-    const start = meta.startClientY - meta.containerTop + meta.containerScrollTop;
-    setDragY(current - start);
+    // Just record the latest pointer position — the rAF loop (running for
+    // the whole gesture) does the actual position/auto-scroll math every
+    // frame, so dragging stays smooth even when the finger holds still near
+    // an edge and only the auto-scroll is moving things.
+    lastClientYRef.current = e.clientY;
+  }
 
+  // Runs every animation frame for the duration of a drag. Reads only refs
+  // (never component state) so it never goes stale across renders.
+  function autoScrollTick() {
+    const meta = dragMetaRef.current;
+    const containerEl = listRef.current;
+    if (!meta || !containerEl) {
+      rafIdRef.current = null;
+      return;
+    }
+
+    const rect = containerEl.getBoundingClientRect();
+    const clientY = lastClientYRef.current;
+
+    if (clientY < rect.top + EDGE_ZONE_PX && containerEl.scrollTop > 0) {
+      const intensity = Math.min(1, (rect.top + EDGE_ZONE_PX - clientY) / EDGE_ZONE_PX);
+      containerEl.scrollTop = Math.max(0, containerEl.scrollTop - MAX_SCROLL_PX * intensity);
+    } else if (
+      clientY > rect.bottom - EDGE_ZONE_PX &&
+      containerEl.scrollTop < containerEl.scrollHeight - containerEl.clientHeight
+    ) {
+      const intensity = Math.min(1, (clientY - (rect.bottom - EDGE_ZONE_PX)) / EDGE_ZONE_PX);
+      containerEl.scrollTop = Math.min(
+        containerEl.scrollHeight - containerEl.clientHeight,
+        containerEl.scrollTop + MAX_SCROLL_PX * intensity,
+      );
+    }
+
+    // Content-space Y (same space `offsetTop` lives in) — reading scrollTop
+    // fresh here, rather than a value snapshotted at drag-start, is what
+    // makes hit-testing track correctly through auto-scroll.
+    const contentY = clientY - rect.top + containerEl.scrollTop;
     let count = 0;
     for (const other of meta.others) {
-      if (current > other.mid) count++;
+      if (contentY > other.mid) count++;
     }
     setHoverIndex(count);
+
+    // The ghost's position is plain viewport math — clientY minus the
+    // original grab offset — clamped so it can't visually escape the list
+    // into the top/bottom bars.
+    const rawTop = clientY - meta.grabOffsetY;
+    const minTop = rect.top;
+    const maxTop = rect.bottom - meta.rowHeightPx;
+    setGhostTop(Math.min(maxTop, Math.max(minTop, rawTop)));
+
+    rafIdRef.current = requestAnimationFrame(autoScrollTick);
   }
 
   function handleGripUp() {
@@ -215,16 +308,29 @@ export default function Findings() {
       }
     }
 
+    if (rafIdRef.current !== null) {
+      cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
+    }
     dragMetaRef.current = null;
     setDragIndex(null);
     setHoverIndex(null);
-    setDragY(0);
+    setSlotHeight(0);
+    setGhostRect(null);
   }
 
-  const isDraggingRow = dragIndex !== null;
-  const others = isDraggingRow ? rows.filter((_, i) => i !== dragIndex) : rows;
-  const draggedRow = isDraggingRow ? rows[dragIndex!] : null;
-  const draggedMeta = dragMetaRef.current;
+  // How far (in slots) row `i` should visually shift to make room for the
+  // dragged row passing over it. Rows between the drag's start and current
+  // hover position shift by exactly one slot, opposite the drag direction.
+  function shiftSlotsFor(i: number): number {
+    if (dragIndex === null || hoverIndex === null || i === dragIndex) return 0;
+    if (hoverIndex > dragIndex) {
+      if (i > dragIndex && i <= hoverIndex) return -1;
+    } else if (hoverIndex < dragIndex) {
+      if (i >= hoverIndex && i < dragIndex) return 1;
+    }
+    return 0;
+  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
@@ -257,11 +363,10 @@ export default function Findings() {
           </div>
         )}
 
-        {others.map(({ finding, thumb, photoCount }, i) => (
-          <>
-            {isDraggingRow && hoverIndex === i && draggedMeta && (
-              <div style={{ height: draggedMeta.height, border: "1.5px dashed var(--border-strong)", borderRadius: 10, margin: "3px 0" }} />
-            )}
+        {rows.map(({ finding, thumb, photoCount }, i) => {
+          const isDragged = dragIndex === i;
+          const shiftPx = isDragged ? 0 : shiftSlotsFor(i) * slotHeight;
+          return (
             <FindingRow
               key={finding.id}
               finding={finding}
@@ -269,64 +374,68 @@ export default function Findings() {
               photoCount={photoCount}
               index={i}
               reordering={reordering}
+              isDragged={isDragged}
+              offsetY={shiftPx}
               setRowEl={(el) => {
                 if (el) rowElsRef.current.set(finding.id, el);
                 else rowElsRef.current.delete(finding.id);
               }}
               onOpen={(thumbEl) => openFinding(finding, thumbEl)}
               onEnterReorder={() => setReordering(true)}
-              onGripDown={(e) => handleGripDown(rows.findIndex((r) => r.finding.id === finding.id), e)}
+              onGripDown={(e) => handleGripDown(i, e)}
               onGripMove={handleGripMove}
               onGripUp={handleGripUp}
             />
-          </>
-        ))}
-        {isDraggingRow && hoverIndex === others.length && draggedMeta && (
-          <div style={{ height: draggedMeta.height, border: "1.5px dashed var(--border-strong)", borderRadius: 10, margin: "3px 0" }} />
-        )}
+          );
+        })}
+      </div>
 
-        {/* the row being dragged, floating above the rest, following the pointer */}
-        {draggedRow && draggedMeta && (
-          <div
-            style={{
-              position: "absolute",
-              left: 16,
-              right: 16,
-              top: draggedMeta.top,
-              display: "flex",
-              gap: 12,
-              alignItems: "flex-start",
-              padding: "14px 10px",
-              borderRadius: 12,
-              background: "var(--panel-2)",
-              boxShadow: "0 14px 30px rgba(0,0,0,0.45)",
-              border: "1px solid rgba(46,196,182,0.35)",
-              transform: `translateY(${dragY}px) scale(1.02)`,
-              pointerEvents: "none",
-            }}
-          >
-            <div style={{ flexShrink: 0, width: 56, height: 56, borderRadius: 10, background: "var(--border-strong)", overflow: "hidden", position: "relative" }}>
-              {draggedRow.thumb && <img src={draggedRow.thumb} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
-              {draggedRow.photoCount > 1 && (
-                <div style={{ position: "absolute", bottom: 2, right: 2, background: "rgba(7,27,44,0.85)", borderRadius: 4, padding: "1px 4px", fontSize: 9, fontWeight: 800 }}>
-                  +{draggedRow.photoCount - 1}
-                </div>
-              )}
-            </div>
-            <div style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {draggedRow.finding.note || "Untitled finding"}
+      {/* the floating "lifted" card that visually represents whichever row
+          is being dragged — see the comment in handleGripDown for why this
+          has to be a separate fixed overlay rather than a transform on the
+          real row. */}
+      {dragIndex !== null && ghostRect && (
+        <div
+          style={{
+            position: "fixed",
+            left: ghostRect.left,
+            width: ghostRect.width,
+            top: ghostTop,
+            display: "flex",
+            gap: 12,
+            alignItems: "flex-start",
+            padding: "14px 10px",
+            borderRadius: 12,
+            background: "var(--panel-2)",
+            boxShadow: "0 14px 30px rgba(0,0,0,0.45)",
+            outline: "1px solid rgba(46,196,182,0.35)",
+            outlineOffset: -1,
+            transform: "scale(1.02)",
+            zIndex: 100,
+            pointerEvents: "none",
+          }}
+        >
+          <div style={{ flexShrink: 0, width: 56, height: 56, borderRadius: 10, background: "var(--border-strong)", overflow: "hidden", position: "relative" }}>
+            {rows[dragIndex].thumb && <img src={rows[dragIndex].thumb!} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+            {rows[dragIndex].photoCount > 1 && (
+              <div style={{ position: "absolute", bottom: 2, right: 2, background: "rgba(7,27,44,0.85)", borderRadius: 4, padding: "1px 4px", fontSize: 9, fontWeight: 800 }}>
+                +{rows[dragIndex].photoCount - 1}
               </div>
-              <div style={{ fontSize: 12, fontWeight: 500, color: "var(--muted)" }}>
-                {formatShort(draggedRow.finding.createdAt)}{draggedRow.finding.location ? ` · ${draggedRow.finding.location}` : ""}
-              </div>
+            )}
+          </div>
+          <div style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {rows[dragIndex].finding.note || "Untitled finding"}
             </div>
-            <div style={{ flexShrink: 0, alignSelf: "stretch", width: 26, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <IconGrip size={20} color="var(--accent)" />
+            <div style={{ fontSize: 12, fontWeight: 500, color: "var(--muted)" }}>
+              {formatShort(rows[dragIndex].finding.createdAt)}{rows[dragIndex].finding.location ? ` · ${rows[dragIndex].finding.location}` : ""}
             </div>
           </div>
-        )}
-      </div>
+          <div style={{ flexShrink: 0, alignSelf: "stretch", width: 26, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <IconGrip size={20} color="var(--accent)" />
+          </div>
+        </div>
+      )}
 
       {/* bottom action — "+ New finding" and "Confirm order" occupy the
           same slot and cross-slide: New finding slides out the bottom as
@@ -435,118 +544,138 @@ export default function Findings() {
       )}
     </div>
   );
+}
 
-  function FindingRow({
-    finding,
-    thumb,
-    photoCount,
-    index,
-    reordering: rowReordering,
-    setRowEl,
-    onOpen,
-    onEnterReorder,
-    onGripDown,
-    onGripMove,
-    onGripUp,
-  }: {
-    finding: Finding;
-    thumb: string | null;
-    photoCount: number;
-    index: number;
-    reordering: boolean;
-    setRowEl: (el: HTMLButtonElement | null) => void;
-    onOpen: (thumbEl: HTMLElement | null) => void;
-    onEnterReorder: () => void;
-    onGripDown: (e: ReactPointerEvent<HTMLDivElement>) => void;
-    onGripMove: (e: ReactPointerEvent<HTMLDivElement>) => void;
-    onGripUp: (e: ReactPointerEvent<HTMLDivElement>) => void;
-  }) {
-    const holdTimer = useRef<number | null>(null);
-    const startPos = useRef({ x: 0, y: 0 });
+// Hoisted to module scope deliberately — if this were a nested function
+// declared inside Findings(), React would see a brand-new component type on
+// every single re-render (every dragY/hoverIndex update, which fires ~60
+// times a second from the auto-scroll loop while dragging). That forces a
+// full unmount+remount of every row on every frame, which (a) destroys the
+// dragged grip's pointer capture mid-gesture — the root cause of drags
+// getting permanently stuck — and (b) restarts the .pop-in entrance
+// animation, producing a fade/scale glitch instead of a smooth drag. Keeping
+// this at module scope gives it a stable identity across renders, so React
+// only updates props on the existing DOM nodes instead of recreating them.
+function FindingRow({
+  finding,
+  thumb,
+  photoCount,
+  index,
+  reordering: rowReordering,
+  isDragged,
+  offsetY,
+  setRowEl,
+  onOpen,
+  onEnterReorder,
+  onGripDown,
+  onGripMove,
+  onGripUp,
+}: {
+  finding: Finding;
+  thumb: string | null;
+  photoCount: number;
+  index: number;
+  reordering: boolean;
+  isDragged: boolean;
+  offsetY: number;
+  setRowEl: (el: HTMLButtonElement | null) => void;
+  onOpen: (thumbEl: HTMLElement | null) => void;
+  onEnterReorder: () => void;
+  onGripDown: (e: ReactPointerEvent<HTMLDivElement>) => void;
+  onGripMove: (e: ReactPointerEvent<HTMLDivElement>) => void;
+  onGripUp: (e: ReactPointerEvent<HTMLDivElement>) => void;
+}) {
+  const holdTimer = useRef<number | null>(null);
+  const startPos = useRef({ x: 0, y: 0 });
 
-    function cancelHold() {
-      if (holdTimer.current !== null) {
-        window.clearTimeout(holdTimer.current);
-        holdTimer.current = null;
-      }
+  function cancelHold() {
+    if (holdTimer.current !== null) {
+      window.clearTimeout(holdTimer.current);
+      holdTimer.current = null;
     }
-
-    function handlePointerDown(e: ReactPointerEvent<HTMLButtonElement>) {
-      if (rowReordering) return; // already in reorder mode — nothing new to start
-      startPos.current = { x: e.clientX, y: e.clientY };
-      holdTimer.current = window.setTimeout(() => {
-        holdTimer.current = null;
-        onEnterReorder();
-      }, LONG_PRESS_MS);
-    }
-
-    function handlePointerMove(e: ReactPointerEvent<HTMLButtonElement>) {
-      if (holdTimer.current === null) return;
-      const dx = e.clientX - startPos.current.x;
-      const dy = e.clientY - startPos.current.y;
-      if (Math.hypot(dx, dy) > MOVE_CANCEL_PX) cancelHold();
-    }
-
-    return (
-      <button
-        ref={setRowEl}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={cancelHold}
-        onPointerCancel={cancelHold}
-        onClick={(e) => {
-          if (rowReordering) return;
-          const thumbEl = e.currentTarget.querySelector<HTMLElement>("[data-thumb]");
-          onOpen(thumbEl);
-        }}
-        className="pop-in"
-        style={{
-          display: "flex",
-          gap: 12,
-          alignItems: "flex-start",
-          padding: "14px 0",
-          borderBottom: "1px solid var(--border)",
-          background: "none",
-          border: "none",
-          borderBottomWidth: 1,
-          textAlign: "left",
-          color: "inherit",
-          animationDelay: `${Math.min(index, 8) * 35}ms`,
-        }}
-      >
-        <div data-thumb style={{ flexShrink: 0, width: 56, height: 56, borderRadius: 10, background: "var(--panel-2)", overflow: "hidden", position: "relative" }}>
-          {thumb && <img src={thumb} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
-          {photoCount > 1 && (
-            <div style={{ position: "absolute", bottom: 2, right: 2, background: "rgba(7,27,44,0.85)", borderRadius: 4, padding: "1px 4px", fontSize: 9, fontWeight: 800 }}>
-              +{photoCount - 1}
-            </div>
-          )}
-        </div>
-        <div style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {finding.note || "Untitled finding"}
-          </div>
-          <div style={{ fontSize: 12, fontWeight: 500, color: "var(--muted)" }}>
-            {formatShort(finding.createdAt)}{finding.location ? ` · ${finding.location}` : ""}
-          </div>
-        </div>
-        {rowReordering ? (
-          <div
-            className="grip-in"
-            onPointerDown={onGripDown}
-            onPointerMove={onGripMove}
-            onPointerUp={onGripUp}
-            onPointerCancel={onGripUp}
-            style={{ flexShrink: 0, alignSelf: "stretch", width: 26, display: "flex", alignItems: "center", justifyContent: "center", touchAction: "none" }}
-          >
-            <IconGrip size={20} color="var(--muted-2)" />
-          </div>
-        ) : (
-          <IconEdit style={{ flexShrink: 0, marginTop: 2 }} color="var(--muted-2)" />
-        )}
-      </button>
-    );
   }
+
+  function handlePointerDown(e: ReactPointerEvent<HTMLButtonElement>) {
+    if (rowReordering) return; // already in reorder mode — nothing new to start
+    startPos.current = { x: e.clientX, y: e.clientY };
+    holdTimer.current = window.setTimeout(() => {
+      holdTimer.current = null;
+      onEnterReorder();
+    }, LONG_PRESS_MS);
+  }
+
+  function handlePointerMove(e: ReactPointerEvent<HTMLButtonElement>) {
+    if (holdTimer.current === null) return;
+    const dx = e.clientX - startPos.current.x;
+    const dy = e.clientY - startPos.current.y;
+    if (Math.hypot(dx, dy) > MOVE_CANCEL_PX) cancelHold();
+  }
+
+  return (
+    <button
+      ref={setRowEl}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={cancelHold}
+      onPointerCancel={cancelHold}
+      onClick={(e) => {
+        if (rowReordering) return;
+        const thumbEl = e.currentTarget.querySelector<HTMLElement>("[data-thumb]");
+        onOpen(thumbEl);
+      }}
+      className="pop-in"
+      style={{
+        display: "flex",
+        gap: 12,
+        alignItems: "flex-start",
+        padding: "14px 0",
+        background: "none",
+        border: "none",
+        borderBottom: "1px solid var(--border)",
+        textAlign: "left",
+        color: "inherit",
+        position: "relative",
+        // The dragged row stays in its normal flow slot the whole gesture
+        // (see handleGripDown for why) and just turns invisible — the
+        // visible "lifted" card is a separate fixed-position ghost overlay.
+        opacity: isDragged ? 0 : 1,
+        transform: `translateY(${offsetY}px)`,
+        transition: isDragged ? "none" : "transform 220ms cubic-bezier(0.16, 1, 0.3, 1)",
+        animationDelay: `${Math.min(index, 8) * 35}ms`,
+      }}
+    >
+      <div data-thumb style={{ flexShrink: 0, width: 56, height: 56, borderRadius: 10, background: "var(--panel-2)", overflow: "hidden", position: "relative" }}>
+        {thumb && <img src={thumb} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+        {photoCount > 1 && (
+          <div style={{ position: "absolute", bottom: 2, right: 2, background: "rgba(7,27,44,0.85)", borderRadius: 4, padding: "1px 4px", fontSize: 9, fontWeight: 800 }}>
+            +{photoCount - 1}
+          </div>
+        )}
+      </div>
+      <div style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {finding.note || "Untitled finding"}
+        </div>
+        <div style={{ fontSize: 12, fontWeight: 500, color: "var(--muted)" }}>
+          {formatShort(finding.createdAt)}{finding.location ? ` · ${finding.location}` : ""}
+        </div>
+      </div>
+      {rowReordering ? (
+        <div
+          className="grip-in"
+          onPointerDown={onGripDown}
+          onPointerMove={onGripMove}
+          onPointerUp={onGripUp}
+          onPointerCancel={onGripUp}
+          style={{ flexShrink: 0, alignSelf: "stretch", width: 26, display: "flex", alignItems: "center", justifyContent: "center", touchAction: "none" }}
+        >
+          <IconGrip size={20} color={isDragged ? "var(--accent)" : "var(--muted-2)"} />
+        </div>
+      ) : (
+        <IconEdit style={{ flexShrink: 0, marginTop: 2 }} color="var(--muted-2)" />
+      )}
+    </button>
+  );
 }
 
 const inputStyle = {
