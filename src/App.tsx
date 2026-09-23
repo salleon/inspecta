@@ -5,8 +5,15 @@ import Dashboard from "./pages/Dashboard";
 import Note from "./pages/Note";
 import Findings from "./pages/Findings";
 import ExportPreview from "./pages/Export";
+import Onboarding from "./pages/Onboarding";
+import { hasInspectorName } from "./lib/profile";
 
 function App() {
+  // Gate the whole app behind a one-time name prompt — there's no login,
+  // so this is the only way we know who's using this install. Checked once
+  // at startup; flips to false the moment Onboarding saves a name.
+  const [needsOnboarding, setNeedsOnboarding] = useState(() => !hasInspectorName());
+
   useEffect(() => {
     // Android hardware/gesture back button: step back through in-app screens
     // instead of dropping straight out to the home screen. The webview's own
@@ -26,9 +33,13 @@ function App() {
 
   return (
     <div className="app-shell">
-      <HashRouter>
-        <AnimatedRoutes />
-      </HashRouter>
+      {needsOnboarding ? (
+        <Onboarding onDone={() => setNeedsOnboarding(false)} />
+      ) : (
+        <HashRouter>
+          <AnimatedRoutes />
+        </HashRouter>
+      )}
     </div>
   );
 }

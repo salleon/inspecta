@@ -5,6 +5,7 @@ import { createSite, findingCount, listSites } from "../db/db";
 import { IconSearch, IconBuilding, IconPlus } from "../components/Icons";
 import CountUp from "../components/CountUp";
 import logo from "../assets/logo.png";
+import { getInitials, getInspectorName } from "../lib/profile";
 
 interface SiteRow extends Site {
   findings: number;
@@ -242,7 +243,7 @@ export default function Dashboard() {
   );
 
   function initials() {
-    return "LS";
+    return getInitials(getInspectorName()) || "?";
   }
 }
 

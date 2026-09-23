@@ -7,6 +7,7 @@ import { Capacitor } from "@capacitor/core";
 import type { Finding, Site } from "../db/types";
 import { getSite, listFindings, listPhotos } from "../db/db";
 import { IconChevronLeft, IconShare } from "../components/Icons";
+import { getInitials, getInspectorName } from "../lib/profile";
 
 // Blob -> base64 (without the data: URL prefix), which is what
 // Filesystem.writeFile wants for a binary file.
@@ -44,6 +45,24 @@ function formatDate(ms: number) {
   const dd = String(d.getDate()).padStart(2, "0");
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   return `${dd}/${mm}/${d.getFullYear()}`;
+}
+
+// "Site name - Full name" — shown as the document heading, the in-app
+// preview header, and the native share-sheet title, so every surface
+// agrees on whose report this is. Falls back gracefully if the inspector
+// hasn't set a name (shouldn't happen — Onboarding gates the whole app).
+function reportTitle(siteName: string | undefined, inspectorName: string) {
+  const site = siteName ?? "Inspection";
+  return inspectorName ? `${site} - ${inspectorName}` : site;
+}
+
+// "harbourline-apartments-LS.pdf" — site name slugified, plus the
+// inspector's capitalised initials, so reports from different team members
+// never collide or get mixed up once they're all sitting in one inbox.
+function reportFilename(siteName: string | undefined, inspectorName: string) {
+  const slug = (siteName ?? "inspection").replace(/[^a-z0-9]+/gi, "-").toLowerCase();
+  const initials = getInitials(inspectorName);
+  return initials ? `${slug}-${initials}.pdf` : `${slug}.pdf`;
 }
 
 // draws the photo onto a canvas with a burned-in bottom-right timestamp watermark
@@ -149,7 +168,7 @@ export default function ExportPreview() {
     // header (page 1 only)
     doc.setFont("helvetica", "bold");
     doc.setFontSize(16);
-    doc.text(site?.name ?? "Inspection", margin, y + 4);
+    doc.text(reportTitle(site?.name, getInspectorName()), margin, y + 4);
     y += 20;
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
@@ -215,7 +234,9 @@ export default function ExportPreview() {
     setSharing(true);
     try {
       const blob = await buildPdf();
-      const filename = `${(site?.name ?? "inspection").replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.pdf`;
+      const inspectorName = getInspectorName();
+      const filename = reportFilename(site?.name, inspectorName);
+      const title = reportTitle(site?.name, inspectorName);
 
       if (Capacitor.isNativePlatform()) {
         // navigator.share() doesn't work for files inside an Android
@@ -228,14 +249,14 @@ export default function ExportPreview() {
           directory: Directory.Cache,
         });
         await Share.share({
-          title: site?.name ?? "Inspection report",
+          title,
           url: written.uri,
         });
       } else {
         // plain web fallback (e.g. previewing in a desktop browser)
         const file = new File([blob], filename, { type: "application/pdf" });
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          await navigator.share({ files: [file], title: site?.name ?? "Inspection report" });
+          await navigator.share({ files: [file], title });
         } else {
           const url = URL.createObjectURL(blob);
           const a = document.createElement("a");
@@ -278,7 +299,7 @@ export default function ExportPreview() {
       <div style={{ flexGrow: 1, overflowY: "auto", padding: "8px 16px 12px" }}>
         <div style={{ background: "var(--paper)", borderRadius: 12, padding: "22px 18px", display: "flex", flexDirection: "column", gap: 18 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 2, borderBottom: "1px solid var(--paper-border)", paddingBottom: 14 }}>
-            <div style={{ fontSize: 16, fontWeight: 800, color: "var(--paper-text)" }}>{site?.name ?? ""}</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: "var(--paper-text)" }}>{reportTitle(site?.name, getInspectorName())}</div>
             <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted-2)" }}>
               {site?.address ? `${site.address} · ` : ""}Inspected {formatDate(Date.now())}
             </div>
