@@ -4,6 +4,9 @@ import type { Finding, Photo, Site } from "../db/types";
 import { addPhoto, createFinding, deleteSite, getSite, listFindings, listPhotos, updateSite } from "../db/db";
 import { capturePhoto } from "../lib/capture";
 import { IconChevronLeft, IconShare, IconEdit } from "../components/Icons";
+import ConfirmDialog from "../components/ConfirmDialog";
+import FormActions from "../components/FormActions";
+import RoundIconButton from "../components/RoundIconButton";
 
 interface Row {
   finding: Finding;
@@ -109,13 +112,9 @@ export default function Findings() {
     <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
       {/* top bar */}
       <div style={{ flexShrink: 0, height: 64, padding: "0 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <button
-          aria-label="Back to sites"
-          onClick={() => navigate("/")}
-          style={{ width: 40, height: 40, borderRadius: "50%", background: "none", border: "none", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text)" }}
-        >
+        <RoundIconButton ariaLabel="Back to sites" onClick={() => navigate("/")}>
           <IconChevronLeft size={20} strokeWidth={2.2} />
-        </button>
+        </RoundIconButton>
         <button
           onClick={openEditSite}
           aria-label="Edit site"
@@ -127,13 +126,9 @@ export default function Findings() {
           </div>
           <IconEdit size={13} color="var(--muted-2)" />
         </button>
-        <button
-          aria-label="Export PDF"
-          onClick={() => navigate(`/site/${siteId}/export`)}
-          style={{ width: 40, height: 40, borderRadius: "50%", background: "none", border: "none", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text)" }}
-        >
+        <RoundIconButton ariaLabel="Export PDF" onClick={() => navigate(`/site/${siteId}/export`)}>
           <IconShare />
-        </button>
+        </RoundIconButton>
       </div>
 
       {/* list */}
@@ -213,14 +208,7 @@ export default function Findings() {
               <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted-2)", textTransform: "uppercase", letterSpacing: 0.4 }}>Address</div>
               <input value={editAddress} onChange={(e) => setEditAddress(e.target.value)} style={inputStyle} />
             </div>
-            <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
-              <button type="button" onClick={() => setEditingSite(false)} style={{ flex: 1, textAlign: "center", padding: "14px 0", borderRadius: 12, background: "var(--panel-2)", border: "1px solid var(--border)", fontSize: 14, fontWeight: 700, color: "var(--text)" }}>
-                Cancel
-              </button>
-              <button type="submit" style={{ flex: 1, textAlign: "center", padding: "14px 0", borderRadius: 12, background: "var(--accent)", border: "none", fontSize: 14, fontWeight: 800, color: "var(--accent-text)" }}>
-                Save
-              </button>
-            </div>
+            <FormActions onCancel={() => setEditingSite(false)} />
 
             <div style={{ height: 1, background: "var(--border)", margin: "4px 0" }} />
             <button
@@ -235,37 +223,13 @@ export default function Findings() {
       )}
 
       {confirmingDelete && (
-        <div
-          style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 32px" }}
-          onClick={() => setConfirmingDelete(false)}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{ width: "100%", background: "var(--panel)", borderRadius: 18, padding: "24px 22px", display: "flex", flexDirection: "column", gap: 8, boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }}
-          >
-            <div style={{ fontSize: 16, fontWeight: 800 }}>Are you sure?</div>
-            <div style={{ fontSize: 13, fontWeight: 500, color: "var(--muted)", lineHeight: 1.45, marginBottom: 10 }}>
-              "{site?.name}" and all of its findings and photos will be permanently deleted. This can't be undone.
-            </div>
-            <div style={{ display: "flex", gap: 10 }}>
-              <button
-                type="button"
-                onClick={() => setConfirmingDelete(false)}
-                style={{ flex: 1, textAlign: "center", padding: "13px 0", borderRadius: 12, background: "var(--panel-2)", border: "1px solid var(--border)", fontSize: 14, fontWeight: 700, color: "var(--text)" }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleDeleteSite}
-                disabled={deleting}
-                style={{ flex: 1, textAlign: "center", padding: "13px 0", borderRadius: 12, background: "#ff6b6b", border: "none", fontSize: 14, fontWeight: 800, color: "#2a0808" }}
-              >
-                {deleting ? "Deleting…" : "Delete"}
-              </button>
-            </div>
-          </div>
-        </div>
+        <ConfirmDialog
+          title="Are you sure?"
+          message={`"${site?.name}" and all of its findings and photos will be permanently deleted. This can't be undone.`}
+          busy={deleting}
+          onCancel={() => setConfirmingDelete(false)}
+          onConfirm={handleDeleteSite}
+        />
       )}
     </div>
   );

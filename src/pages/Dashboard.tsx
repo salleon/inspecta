@@ -1,9 +1,11 @@
-import { useEffect, useState, type FormEvent, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type FormEvent, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Site, SiteKind } from "../db/types";
-import { createSite, findingCount, listSites } from "../db/db";
-import { IconSearch, IconBuilding, IconPlus, IconEdit } from "../components/Icons";
+import { createSite, deleteSite, findingCount, listSites } from "../db/db";
+import { IconSearch, IconBuilding, IconPlus, IconEdit, IconTrash } from "../components/Icons";
 import CountUp from "../components/CountUp";
+import ConfirmDialog from "../components/ConfirmDialog";
+import FormActions from "../components/FormActions";
 import logo from "../assets/logo.png";
 import { getInitials, getInspectorName, setInspectorName } from "../lib/profile";
 
@@ -22,6 +24,9 @@ export default function Dashboard() {
   const [inspectorName, setInspectorNameState] = useState(() => getInspectorName());
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
+  const [openSwipeId, setOpenSwipeId] = useState<string | null>(null);
+  const [confirmDeleteSite, setConfirmDeleteSite] = useState<SiteRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   async function refresh() {
     const list = await listSites();
@@ -57,6 +62,19 @@ export default function Dashboard() {
     setEditingName(false);
   }
 
+  async function handleDeleteSite() {
+    if (!confirmDeleteSite || deleting) return;
+    setDeleting(true);
+    try {
+      await deleteSite(confirmDeleteSite.id);
+      setConfirmDeleteSite(null);
+      setOpenSwipeId(null);
+      await refresh();
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   async function handleAddSite(e: FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
@@ -66,6 +84,29 @@ export default function Dashboard() {
     setAddress("");
     setKind("afss");
     navigate(`/site/${site.id}/findings`);
+  }
+
+  // AFSS and Projects sections render identically — only the label and the
+  // filtered list differ.
+  function renderSiteGroup(label: string, group: SiteRow[]) {
+    if (group.length === 0) return null;
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={sectionHeaderStyle}>{label}</div>
+        {group.map((site, i) => (
+          <SiteButton
+            key={site.id}
+            site={site}
+            index={i}
+            onClick={() => navigate(`/site/${site.id}/findings`)}
+            isOpen={openSwipeId === site.id}
+            onOpen={() => setOpenSwipeId(site.id)}
+            onClose={() => setOpenSwipeId((id) => (id === site.id ? null : id))}
+            onDelete={() => setConfirmDeleteSite(site)}
+          />
+        ))}
+      </div>
+    );
   }
 
   return (
@@ -159,22 +200,8 @@ export default function Dashboard() {
             {sites.length === 0 ? "No sites yet — tap + to start your first inspection." : "No sites match your search."}
           </div>
         )}
-        {afssSites.length > 0 && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <div style={sectionHeaderStyle}>AFSS</div>
-            {afssSites.map((site, i) => (
-              <SiteButton key={site.id} site={site} index={i} onClick={() => navigate(`/site/${site.id}/findings`)} />
-            ))}
-          </div>
-        )}
-        {projectSites.length > 0 && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <div style={sectionHeaderStyle}>Projects</div>
-            {projectSites.map((site, i) => (
-              <SiteButton key={site.id} site={site} index={i} onClick={() => navigate(`/site/${site.id}/findings`)} />
-            ))}
-          </div>
-        )}
+        {renderSiteGroup("AFSS", afssSites)}
+        {renderSiteGroup("Projects", projectSites)}
       </div>
 
       {/* new site fab */}
@@ -297,16 +324,19 @@ export default function Dashboard() {
               Used for the avatar above and to label your PDF reports.
             </div>
             <input autoFocus value={nameDraft} onChange={(e) => setNameDraft(e.target.value)} style={inputStyle} />
-            <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
-              <button type="button" onClick={() => setEditingName(false)} style={{ flex: 1, textAlign: "center", padding: "14px 0", borderRadius: 12, background: "var(--panel-2)", border: "1px solid var(--border)", fontSize: 14, fontWeight: 700, color: "var(--text)" }}>
-                Cancel
-              </button>
-              <button type="submit" style={{ flex: 1, textAlign: "center", padding: "14px 0", borderRadius: 12, background: "var(--accent)", border: "none", fontSize: 14, fontWeight: 800, color: "var(--accent-text)" }}>
-                Save
-              </button>
-            </div>
+            <FormActions onCancel={() => setEditingName(false)} />
           </form>
         </div>
+      )}
+
+      {confirmDeleteSite && (
+        <ConfirmDialog
+          title="Are you sure?"
+          message={`"${confirmDeleteSite.name}" and all of its findings and photos will be permanently deleted. This can't be undone.`}
+          busy={deleting}
+          onCancel={() => setConfirmDeleteSite(null)}
+          onConfirm={handleDeleteSite}
+        />
       )}
     </div>
   );
@@ -350,62 +380,177 @@ function kindToggleStyle(active: boolean): CSSProperties {
   };
 }
 
-function SiteButton({ site, index, onClick }: { site: SiteRow; index: number; onClick: () => void }) {
+// Distance (px) the row slides left to reveal the delete panel — matches
+// the trash button's own width, so the reveal exactly fits it.
+const SWIPE_REVEAL = 84;
+// Fraction of the reveal distance a drag must pass to snap open on release.
+const SWIPE_OPEN_THRESHOLD = SWIPE_REVEAL / 2;
+
+function SiteButton({
+  site,
+  index,
+  onClick,
+  isOpen,
+  onOpen,
+  onClose,
+  onDelete,
+}: {
+  site: SiteRow;
+  index: number;
+  onClick: () => void;
+  isOpen: boolean;
+  onOpen: () => void;
+  onClose: () => void;
+  onDelete: () => void;
+}) {
+  // dragX tracks the row's live horizontal offset: 0 (resting) to
+  // -SWIPE_REVEAL (fully open, trash panel showing). While the parent's
+  // isOpen flips this row closed (another row was opened, or this site
+  // was just deleted), dragX snaps to match it.
+  const [dragX, setDragX] = useState(0);
+  // Whether a drag is in progress — read during render to switch the
+  // transition off while tracking the finger, so the row doesn't lag.
+  const [dragging, setDragging] = useState(false);
+  const startX = useRef(0);
+  const startOffset = useRef(0);
+  const draggedFar = useRef(false);
+
+  useEffect(() => {
+    setDragX(isOpen ? -SWIPE_REVEAL : 0);
+  }, [isOpen]);
+
+  function handlePointerDown(e: ReactPointerEvent<HTMLButtonElement>) {
+    setDragging(true);
+    draggedFar.current = false;
+    startX.current = e.clientX;
+    startOffset.current = isOpen ? -SWIPE_REVEAL : 0;
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
+
+  function handlePointerMove(e: ReactPointerEvent<HTMLButtonElement>) {
+    if (!dragging) return;
+    const delta = e.clientX - startX.current;
+    if (Math.abs(delta) > 6) draggedFar.current = true;
+    setDragX(Math.min(0, Math.max(-SWIPE_REVEAL, startOffset.current + delta)));
+  }
+
+  function endDrag() {
+    if (!dragging) return;
+    setDragging(false);
+    setDragX((current) => {
+      if (current <= -SWIPE_OPEN_THRESHOLD) {
+        onOpen();
+        return -SWIPE_REVEAL;
+      }
+      onClose();
+      return 0;
+    });
+  }
+
+  function handleRowClick() {
+    if (draggedFar.current) return; // this click ended a swipe, not a tap
+    if (isOpen) {
+      onClose();
+      return;
+    }
+    onClick();
+  }
+
   return (
-    <button
-      onClick={onClick}
-      className="pop-in"
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 12,
-        background: "var(--panel)",
-        border: "1px solid var(--border)",
-        borderRadius: 14,
-        padding: 14,
-        textAlign: "left",
-        color: "inherit",
-        animationDelay: `${Math.min(index, 8) * 35}ms`,
-      }}
-    >
+    <div style={{ position: "relative", borderRadius: 14, overflow: "hidden" }}>
+      {/* delete panel, revealed as the row above slides left */}
       <div
         style={{
-          flexShrink: 0,
-          width: 46,
-          height: 46,
-          borderRadius: 10,
-          background: "var(--panel-2)",
+          position: "absolute",
+          inset: 0,
+          background: "#ff6b6b",
           display: "flex",
           alignItems: "center",
-          justifyContent: "center",
+          justifyContent: "flex-end",
         }}
       >
-        <IconBuilding strokeWidth={1.8} />
-      </div>
-      <div style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
-        <div style={{ fontSize: 15, fontWeight: 700 }}>{site.name}</div>
-        <div
+        <button
+          type="button"
+          aria-label={`Delete ${site.name}`}
+          onClick={onDelete}
           style={{
-            fontSize: 12,
-            fontWeight: 500,
-            color: "var(--muted)",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
+            width: SWIPE_REVEAL,
+            height: "100%",
+            background: "none",
+            border: "none",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
           }}
         >
-          {site.address || "No address set"}
+          <IconTrash size={22} strokeWidth={2} color="#2a0808" />
+        </button>
+      </div>
+
+      <button
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+        onClick={handleRowClick}
+        className="pop-in"
+        style={{
+          position: "relative",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          width: "100%",
+          background: "var(--panel)",
+          border: "1px solid var(--border)",
+          borderRadius: 14,
+          padding: 14,
+          textAlign: "left",
+          color: "inherit",
+          touchAction: "pan-y",
+          transform: `translateX(${dragX}px)`,
+          transition: dragging ? "none" : "transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1)",
+          animationDelay: `${Math.min(index, 8) * 35}ms`,
+        }}
+      >
+        <div
+          style={{
+            flexShrink: 0,
+            width: 46,
+            height: 46,
+            borderRadius: 10,
+            background: "var(--panel-2)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <IconBuilding strokeWidth={1.8} />
         </div>
-      </div>
-      <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5 }}>
-        <span style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)" }}>
-          {formatInspectedDate(site.createdAt)}
-        </span>
-        <span style={{ fontSize: 11, fontWeight: 600, color: "var(--muted-2)" }}>
-          <CountUp value={site.findings} /> finding{site.findings === 1 ? "" : "s"}
-        </span>
-      </div>
-    </button>
+        <div style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
+          <div style={{ fontSize: 15, fontWeight: 700 }}>{site.name}</div>
+          <div
+            style={{
+              fontSize: 12,
+              fontWeight: 500,
+              color: "var(--muted)",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {site.address || "No address set"}
+          </div>
+        </div>
+        <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)" }}>
+            {formatInspectedDate(site.createdAt)}
+          </span>
+          <span style={{ fontSize: 11, fontWeight: 600, color: "var(--muted-2)" }}>
+            <CountUp value={site.findings} /> finding{site.findings === 1 ? "" : "s"}
+          </span>
+        </div>
+      </button>
+    </div>
   );
 }
 

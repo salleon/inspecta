@@ -11,6 +11,7 @@ import {
 } from "../db/db";
 import { capturePhoto } from "../lib/capture";
 import { IconRetake, IconTrash, IconChevronLeft, IconPlus, IconCamera } from "../components/Icons";
+import RoundIconButton from "../components/RoundIconButton";
 
 interface PhotoRect {
   top: number;
@@ -107,12 +108,9 @@ export default function Note() {
     await updateFinding(findingId, { note, location });
   }
 
+  // Used by both the back button and "View findings" — they're the same
+  // action (persist the note/location, then return to the list).
   async function handleBack() {
-    await persist();
-    navigate(`/site/${siteId}/findings`);
-  }
-
-  async function handleSaveAndView() {
     await persist();
     navigate(`/site/${siteId}/findings`);
   }
@@ -198,13 +196,9 @@ export default function Note() {
     <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
       {/* top bar */}
       <div style={{ flexShrink: 0, padding: "18px 18px 12px", display: "flex", alignItems: "center", gap: 12 }}>
-        <button
-          aria-label="Save and back to findings"
-          onClick={handleBack}
-          style={{ width: 32, height: 32, borderRadius: "50%", background: "none", border: "none", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text)", padding: 0 }}
-        >
+        <RoundIconButton size={32} ariaLabel="Save and back to findings" onClick={handleBack}>
           <IconChevronLeft size={20} strokeWidth={2.2} />
-        </button>
+        </RoundIconButton>
         <div style={{ fontSize: 15, fontWeight: 800 }}>Finding</div>
       </div>
 
@@ -415,7 +409,7 @@ export default function Note() {
           on the left and Save & next finding on the right */}
       <div style={{ flexShrink: 0, padding: "12px 18px calc(26px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "row", gap: 10 }}>
         <button
-          onClick={handleSaveAndView}
+          onClick={handleBack}
           style={{
             flex: 1,
             textAlign: "center",

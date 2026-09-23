@@ -7,6 +7,7 @@ import { Capacitor } from "@capacitor/core";
 import type { Finding, Site } from "../db/types";
 import { getSite, listFindings, listPhotos } from "../db/db";
 import { IconChevronLeft, IconShare } from "../components/Icons";
+import RoundIconButton from "../components/RoundIconButton";
 import { getInitials, getInspectorName } from "../lib/profile";
 import enfactWordmark from "../assets/enfact-wordmark.png";
 import afssLogo from "../assets/afss-logo.png";
@@ -432,13 +433,9 @@ export default function ExportPreview() {
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
       {/* top bar */}
       <div style={{ flexShrink: 0, height: 64, padding: "0 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <button
-          aria-label="Back to findings"
-          onClick={() => navigate(`/site/${siteId}/findings`)}
-          style={{ width: 40, height: 40, borderRadius: "50%", background: "none", border: "none", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text)" }}
-        >
+        <RoundIconButton ariaLabel="Back to findings" onClick={() => navigate(`/site/${siteId}/findings`)}>
           <IconChevronLeft size={20} strokeWidth={2.2} />
-        </button>
+        </RoundIconButton>
         <div style={{ fontSize: 14, fontWeight: 700 }}>Export preview</div>
         <div style={{ width: 40, height: 40 }} />
       </div>

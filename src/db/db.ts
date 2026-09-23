@@ -61,7 +61,7 @@ export async function updateSite(
   await db.sites.update(siteId, changes);
 }
 
-export async function touchSite(siteId: string) {
+async function touchSite(siteId: string) {
   await db.sites.update(siteId, { updatedAt: Date.now() });
 }
 
@@ -93,12 +93,6 @@ export async function updateFinding(
   changes: Partial<Pick<Finding, "note" | "location">>,
 ) {
   await db.findings.update(findingId, { ...changes, updatedAt: Date.now() });
-}
-
-export async function deleteFinding(findingId: string) {
-  const photos = await db.photos.where("findingId").equals(findingId).toArray();
-  await db.photos.bulkDelete(photos.map((p) => p.id));
-  await db.findings.delete(findingId);
 }
 
 export async function listFindings(siteId: string) {
@@ -136,13 +130,4 @@ export async function listPhotos(findingId: string) {
 
 export async function deletePhoto(photoId: string) {
   await db.photos.delete(photoId);
-}
-
-export async function lastPhoto(findingId: string) {
-  const photos = await listPhotos(findingId);
-  return photos[photos.length - 1];
-}
-
-export async function photoCount(findingId: string) {
-  return db.photos.where("findingId").equals(findingId).count();
 }
