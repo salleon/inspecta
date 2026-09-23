@@ -4,9 +4,12 @@ const config: CapacitorConfig = {
   appId: "au.com.inspecta.app",
   appName: "Inspecta",
   webDir: "dist",
-  backgroundColor: "#14161a",
+  // matches --bg in src/index.css, so there's no flash of a different dark
+  // shade between the native splash, the WebView's own background, and the
+  // app's first paint
+  backgroundColor: "#071b2c",
   android: {
-    backgroundColor: "#14161a",
+    backgroundColor: "#071b2c",
   },
 };
 

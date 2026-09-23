@@ -4,7 +4,6 @@ import type { Photo } from "../db/types";
 import {
   addPhoto,
   createFinding,
-  deleteFinding,
   deletePhoto,
   getFinding,
   listPhotos,
@@ -186,13 +185,13 @@ export default function Note() {
     if (!activePhoto || !findingId) return;
     await deletePhoto(activePhoto.id);
     const remaining = await listPhotos(findingId);
-    if (remaining.length === 0) {
-      // no photos left — this finding can't stand on its own
-      await deleteFinding(findingId);
-      navigate(`/site/${siteId}/findings`);
-      return;
-    }
-    await refresh(Math.min(selected, remaining.length - 1));
+    // Deleting the last photo just leaves the finding photo-less (the
+    // camera placeholder + "Tap to add picture" state below already
+    // handles that) — it does NOT delete the finding itself. The note and
+    // location text the person already typed stays exactly as it was;
+    // they can retake/add a photo from here the same way they did the
+    // first time.
+    await refresh(Math.min(selected, Math.max(remaining.length - 1, 0)));
   }
 
   return (
