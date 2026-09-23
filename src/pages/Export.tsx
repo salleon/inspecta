@@ -221,7 +221,7 @@ export default function ExportPreview() {
         doc.setFont("helvetica", "normal");
         doc.setFontSize(10);
         doc.setTextColor(140, 140, 140);
-        doc.text(`Location   ${item.finding.location}`, textX, ty);
+        doc.text(item.finding.location, textX, ty);
       }
 
       y = rowTop + blockH + blockGap;
@@ -337,7 +337,7 @@ export default function ExportPreview() {
                   {finding.note || "Untitled finding"}
                 </div>
                 {finding.location && (
-                  <div style={{ fontSize: 11, fontWeight: 600, color: "var(--muted-2)" }}>Location   {finding.location}</div>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "var(--muted-2)" }}>{finding.location}</div>
                 )}
               </div>
             </div>
