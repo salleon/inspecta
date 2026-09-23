@@ -65,6 +65,14 @@ export async function touchSite(siteId: string) {
   await db.sites.update(siteId, { updatedAt: Date.now() });
 }
 
+export async function deleteSite(siteId: string) {
+  const findings = await db.findings.where("siteId").equals(siteId).toArray();
+  const photos = await db.photos.where("siteId").equals(siteId).toArray();
+  await db.photos.bulkDelete(photos.map((p) => p.id));
+  await db.findings.bulkDelete(findings.map((f) => f.id));
+  await db.sites.delete(siteId);
+}
+
 export async function createFinding(siteId: string) {
   const now = Date.now();
   const finding: Finding = {

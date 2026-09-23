@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import type { Finding, Photo, Site } from "../db/types";
-import { addPhoto, createFinding, getSite, listFindings, listPhotos, updateSite } from "../db/db";
+import { addPhoto, createFinding, deleteSite, getSite, listFindings, listPhotos, updateSite } from "../db/db";
 import { capturePhoto } from "../lib/capture";
 import { IconChevronLeft, IconShare, IconEdit } from "../components/Icons";
 
@@ -29,6 +29,8 @@ export default function Findings() {
   const [editingSite, setEditingSite] = useState(false);
   const [editName, setEditName] = useState("");
   const [editAddress, setEditAddress] = useState("");
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!siteId) return;
@@ -74,6 +76,17 @@ export default function Findings() {
     await updateSite(siteId, { name, address: editAddress.trim() });
     setSite((s) => (s ? { ...s, name, address: editAddress.trim() } : s));
     setEditingSite(false);
+  }
+
+  async function handleDeleteSite() {
+    if (!siteId || deleting) return;
+    setDeleting(true);
+    try {
+      await deleteSite(siteId);
+      navigate("/");
+    } finally {
+      setDeleting(false);
+    }
   }
 
   // Launches the native camera straight away — no intermediate screen.
@@ -208,7 +221,50 @@ export default function Findings() {
                 Save
               </button>
             </div>
+
+            <div style={{ height: 1, background: "var(--border)", margin: "4px 0" }} />
+            <button
+              type="button"
+              onClick={() => setConfirmingDelete(true)}
+              style={{ textAlign: "center", padding: "13px 0", borderRadius: 12, background: "none", border: "none", fontSize: 14, fontWeight: 700, color: "#ff6b6b" }}
+            >
+              Delete site
+            </button>
           </form>
+        </div>
+      )}
+
+      {confirmingDelete && (
+        <div
+          style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 32px" }}
+          onClick={() => setConfirmingDelete(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: "100%", background: "var(--panel)", borderRadius: 18, padding: "24px 22px", display: "flex", flexDirection: "column", gap: 8, boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }}
+          >
+            <div style={{ fontSize: 16, fontWeight: 800 }}>Are you sure?</div>
+            <div style={{ fontSize: 13, fontWeight: 500, color: "var(--muted)", lineHeight: 1.45, marginBottom: 10 }}>
+              "{site?.name}" and all of its findings and photos will be permanently deleted. This can't be undone.
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                type="button"
+                onClick={() => setConfirmingDelete(false)}
+                style={{ flex: 1, textAlign: "center", padding: "13px 0", borderRadius: 12, background: "var(--panel-2)", border: "1px solid var(--border)", fontSize: 14, fontWeight: 700, color: "var(--text)" }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteSite}
+                disabled={deleting}
+                style={{ flex: 1, textAlign: "center", padding: "13px 0", borderRadius: 12, background: "#ff6b6b", border: "none", fontSize: 14, fontWeight: 800, color: "#2a0808" }}
+              >
+                {deleting ? "Deleting…" : "Delete"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

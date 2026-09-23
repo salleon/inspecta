@@ -28,7 +28,7 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
         <div style={{ display: "flex", flexDirection: "column", gap: 8, textAlign: "center" }}>
           <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: -0.2 }}>Welcome to Inspecta</div>
           <div style={{ fontSize: 14, fontWeight: 500, color: "var(--muted)", lineHeight: 1.5 }}>
-            What's your name? It's used to label your reports and mark this device as yours — nothing is sent anywhere.
+            Your name is only used to label each generated report with an author — nothing is sent anywhere.
           </div>
         </div>
 
