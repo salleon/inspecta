@@ -2,10 +2,10 @@ import { useEffect, useState, type FormEvent, type CSSProperties } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Site, SiteKind } from "../db/types";
 import { createSite, findingCount, listSites } from "../db/db";
-import { IconSearch, IconBuilding, IconPlus } from "../components/Icons";
+import { IconSearch, IconBuilding, IconPlus, IconEdit } from "../components/Icons";
 import CountUp from "../components/CountUp";
 import logo from "../assets/logo.png";
-import { getInitials, getInspectorName } from "../lib/profile";
+import { getInitials, getInspectorName, setInspectorName } from "../lib/profile";
 
 interface SiteRow extends Site {
   findings: number;
@@ -19,6 +19,9 @@ export default function Dashboard() {
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
   const [kind, setKind] = useState<SiteKind>("afss");
+  const [inspectorName, setInspectorNameState] = useState(() => getInspectorName());
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
 
   async function refresh() {
     const list = await listSites();
@@ -39,6 +42,20 @@ export default function Dashboard() {
   );
   const afssSites = filtered.filter((s) => s.kind === "afss");
   const projectSites = filtered.filter((s) => s.kind === "project");
+
+  function openEditName() {
+    setNameDraft(inspectorName);
+    setEditingName(true);
+  }
+
+  function handleSaveName(e: FormEvent) {
+    e.preventDefault();
+    const trimmed = nameDraft.trim();
+    if (!trimmed) return;
+    setInspectorName(trimmed);
+    setInspectorNameState(trimmed);
+    setEditingName(false);
+  }
 
   async function handleAddSite(e: FormEvent) {
     e.preventDefault();
@@ -62,22 +79,45 @@ export default function Dashboard() {
             <span style={{ fontSize: 10, fontWeight: 700, color: "var(--accent)", letterSpacing: 0.4 }}>BY ENFACT</span>
           </div>
         </div>
-        <div
-          style={{
-            width: 38,
-            height: 38,
-            borderRadius: "50%",
-            background: "var(--panel)",
-            border: "1px solid var(--border)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: 13,
-            fontWeight: 800,
-          }}
+        <button
+          aria-label="Edit your name"
+          onClick={openEditName}
+          style={{ position: "relative", width: 38, height: 38, background: "none", border: "none", padding: 0 }}
         >
-          {initials()}
-        </div>
+          <div
+            style={{
+              width: 38,
+              height: 38,
+              borderRadius: "50%",
+              background: "var(--panel)",
+              border: "1px solid var(--border)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 13,
+              fontWeight: 800,
+            }}
+          >
+            {initials()}
+          </div>
+          <div
+            style={{
+              position: "absolute",
+              bottom: -3,
+              right: -3,
+              width: 16,
+              height: 16,
+              borderRadius: "50%",
+              background: "var(--accent)",
+              border: "2px solid var(--bg)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <IconEdit size={8} strokeWidth={3} color="var(--accent-text)" />
+          </div>
+        </button>
       </div>
 
       {/* search */}
@@ -239,11 +279,40 @@ export default function Dashboard() {
           </form>
         </div>
       )}
+
+      {editingName && (
+        <div
+          className="sheet-backdrop"
+          style={{ position: "absolute", inset: 0, background: "rgba(10,11,13,0.6)", display: "flex", alignItems: "flex-end" }}
+          onClick={() => setEditingName(false)}
+        >
+          <form
+            onClick={(e) => e.stopPropagation()}
+            onSubmit={handleSaveName}
+            className="sheet-panel"
+            style={{ width: "100%", background: "var(--panel)", borderRadius: "20px 20px 0 0", padding: "22px 20px calc(28px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 14 }}
+          >
+            <div style={{ fontSize: 16, fontWeight: 800 }}>Your name</div>
+            <div style={{ fontSize: 13, fontWeight: 500, color: "var(--muted)", lineHeight: 1.5, marginTop: -8 }}>
+              Used for the avatar above and to label your PDF reports.
+            </div>
+            <input autoFocus value={nameDraft} onChange={(e) => setNameDraft(e.target.value)} style={inputStyle} />
+            <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
+              <button type="button" onClick={() => setEditingName(false)} style={{ flex: 1, textAlign: "center", padding: "14px 0", borderRadius: 12, background: "var(--panel-2)", border: "1px solid var(--border)", fontSize: 14, fontWeight: 700, color: "var(--text)" }}>
+                Cancel
+              </button>
+              <button type="submit" style={{ flex: 1, textAlign: "center", padding: "14px 0", borderRadius: 12, background: "var(--accent)", border: "none", fontSize: 14, fontWeight: 800, color: "var(--accent-text)" }}>
+                Save
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 
   function initials() {
-    return getInitials(getInspectorName()) || "?";
+    return getInitials(inspectorName) || "?";
   }
 }
 

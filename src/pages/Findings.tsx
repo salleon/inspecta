@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import type { Finding, Photo, Site } from "../db/types";
-import { addPhoto, createFinding, getSite, listFindings, listPhotos } from "../db/db";
+import { addPhoto, createFinding, getSite, listFindings, listPhotos, updateSite } from "../db/db";
 import { capturePhoto } from "../lib/capture";
 import { IconChevronLeft, IconShare, IconEdit } from "../components/Icons";
 
@@ -26,6 +26,9 @@ export default function Findings() {
   const [site, setSite] = useState<Site | null>(null);
   const [rows, setRows] = useState<Row[]>([]);
   const [busy, setBusy] = useState(false);
+  const [editingSite, setEditingSite] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editAddress, setEditAddress] = useState("");
 
   useEffect(() => {
     if (!siteId) return;
@@ -57,6 +60,22 @@ export default function Findings() {
 
   if (!siteId) return null;
 
+  function openEditSite() {
+    setEditName(site?.name ?? "");
+    setEditAddress(site?.address ?? "");
+    setEditingSite(true);
+  }
+
+  async function handleSaveSite(e: FormEvent) {
+    e.preventDefault();
+    if (!siteId) return;
+    const name = editName.trim();
+    if (!name) return;
+    await updateSite(siteId, { name, address: editAddress.trim() });
+    setSite((s) => (s ? { ...s, name, address: editAddress.trim() } : s));
+    setEditingSite(false);
+  }
+
   // Launches the native camera straight away — no intermediate screen.
   // Cancelling leaves you right where you were, on this list.
   async function handleNewFinding() {
@@ -74,7 +93,7 @@ export default function Findings() {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
       {/* top bar */}
       <div style={{ flexShrink: 0, height: 64, padding: "0 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <button
@@ -84,10 +103,17 @@ export default function Findings() {
         >
           <IconChevronLeft size={20} strokeWidth={2.2} />
         </button>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-          <div style={{ fontSize: 14, fontWeight: 700 }}>Findings</div>
-          <div style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)" }}>{site?.name ?? ""}</div>
-        </div>
+        <button
+          onClick={openEditSite}
+          aria-label="Edit site"
+          style={{ background: "none", border: "none", display: "flex", alignItems: "center", gap: 6, color: "inherit", padding: "4px 6px" }}
+        >
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+            <div style={{ fontSize: 14, fontWeight: 700 }}>Findings</div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)" }}>{site?.name ?? ""}</div>
+          </div>
+          <IconEdit size={13} color="var(--muted-2)" />
+        </button>
         <button
           aria-label="Export PDF"
           onClick={() => navigate(`/site/${siteId}/export`)}
@@ -152,6 +178,50 @@ export default function Findings() {
           {busy ? "Opening camera…" : "+ New finding"}
         </button>
       </div>
+
+      {editingSite && (
+        <div
+          className="sheet-backdrop"
+          style={{ position: "absolute", inset: 0, background: "rgba(10,11,13,0.6)", display: "flex", alignItems: "flex-end" }}
+          onClick={() => setEditingSite(false)}
+        >
+          <form
+            onClick={(e) => e.stopPropagation()}
+            onSubmit={handleSaveSite}
+            className="sheet-panel"
+            style={{ width: "100%", background: "var(--panel)", borderRadius: "20px 20px 0 0", padding: "22px 20px calc(28px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 14 }}
+          >
+            <div style={{ fontSize: 16, fontWeight: 800 }}>Edit site</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted-2)", textTransform: "uppercase", letterSpacing: 0.4 }}>Site name</div>
+              <input autoFocus value={editName} onChange={(e) => setEditName(e.target.value)} style={inputStyle} />
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted-2)", textTransform: "uppercase", letterSpacing: 0.4 }}>Address</div>
+              <input value={editAddress} onChange={(e) => setEditAddress(e.target.value)} style={inputStyle} />
+            </div>
+            <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
+              <button type="button" onClick={() => setEditingSite(false)} style={{ flex: 1, textAlign: "center", padding: "14px 0", borderRadius: 12, background: "var(--panel-2)", border: "1px solid var(--border)", fontSize: 14, fontWeight: 700, color: "var(--text)" }}>
+                Cancel
+              </button>
+              <button type="submit" style={{ flex: 1, textAlign: "center", padding: "14px 0", borderRadius: 12, background: "var(--accent)", border: "none", fontSize: 14, fontWeight: 800, color: "var(--accent-text)" }}>
+                Save
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 }
+
+const inputStyle = {
+  background: "var(--panel-2)",
+  border: "1px solid var(--border)",
+  borderRadius: 12,
+  padding: "13px 14px",
+  color: "var(--text)",
+  fontSize: 15,
+  fontWeight: 600,
+  outline: "none",
+} as const;

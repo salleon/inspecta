@@ -54,6 +54,13 @@ export async function getSite(siteId: string) {
   return db.sites.get(siteId);
 }
 
+export async function updateSite(
+  siteId: string,
+  changes: Partial<Pick<Site, "name" | "address">>,
+) {
+  await db.sites.update(siteId, changes);
+}
+
 export async function touchSite(siteId: string) {
   await db.sites.update(siteId, { updatedAt: Date.now() });
 }
