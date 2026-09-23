@@ -9,9 +9,8 @@ import { getSite, listFindings, listPhotos } from "../db/db";
 import { IconChevronLeft, IconShare } from "../components/Icons";
 import RoundIconButton from "../components/RoundIconButton";
 import { getInitials, getInspectorName } from "../lib/profile";
-import coverBg from "../assets/cover-bg.jpg";
-import coverWatermarkAfss from "../assets/cover-watermark-afss.png";
-import coverWatermarkProjects from "../assets/cover-watermark-projects.png";
+import coverBgAfss from "../assets/cover-bg-afss.jpg";
+import coverBgProjects from "../assets/cover-bg-projects.jpg";
 
 // Blob -> base64 (without the data: URL prefix), which is what
 // Filesystem.writeFile wants for a binary file.
@@ -231,31 +230,24 @@ export default function ExportPreview() {
 
   if (!siteId) return null;
 
-  // Full-bleed cover page. The gradient wash and EnFact masthead wordmark
-  // never vary per report, so they're pre-rendered once into a single flat
-  // JPEG (src/assets/cover-bg.jpg) rather than assembled at PDF-build time.
-  // That's a deliberate simplification after the original per-report
-  // compositing (multiple doc.addImage() calls plus jsPDF's GState opacity
-  // API) proved unreliable in the field.
-  //
-  // The classification watermark (AFSS or Projects) is NOT part of that
-  // baked image, even though it doesn't change per report kind: per the
-  // approved cover design it has to vertically center itself in the gap
-  // between the masthead and the details block, and that gap's height
-  // varies with the actual title/address/badge content, so it can't be
-  // part of a single fixed-layout background. It's still drawn with a
-  // single plain doc.addImage() call — a PNG whose 18% opacity is baked
-  // into its own alpha channel (src/assets/cover-watermark-*.png) rather
-  // than applied at runtime — so this keeps the "no GState" simplification
-  // while restoring the mockup's dynamic placement.
+  // Full-bleed cover page. The gradient wash, EnFact masthead wordmark AND
+  // the classification watermark (AFSS or Projects) are all baked ahead of
+  // time into a single flat JPEG per site kind (src/assets/cover-bg-*.jpg)
+  // — nothing about the cover is assembled from multiple images at
+  // PDF-build time. The watermark's position/size is fixed (not resized to
+  // the actual title/address/badge content the way the approved mockup
+  // shows), which is a deliberate trade against pixel-perfect fidelity: a
+  // single baked-per-kind image, with only plain text drawn on top of it,
+  // is the simplest and most robust thing this cover can be, after the
+  // original per-report compositing (multiple doc.addImage() calls plus
+  // jsPDF's GState opacity API) proved unreliable in the field.
   async function drawCoverPage(doc: jsPDF, findingsCount: number) {
     const pageW = doc.internal.pageSize.getWidth();
     const pageH = doc.internal.pageSize.getHeight();
     const margin = 40;
     const contentW = pageW - margin * 2;
-    const mastheadH = 118;
 
-    const bg = await loadAssetAsDataUrl(coverBg);
+    const bg = await loadAssetAsDataUrl(site?.kind === "project" ? coverBgProjects : coverBgAfss);
     doc.addImage(bg.dataUrl, "JPEG", 0, 0, pageW, pageH);
 
     // report title + address, built bottom-up so we know exactly how tall
@@ -276,32 +268,6 @@ export default function ExportPreview() {
     const bottomPad = 56;
     const detailsH =
       accentH + 16 + titleH + (addressH ? 4 + addressH : 0) + 16 + badgePillH + bottomPad;
-
-    // classification watermark, centered in the blank space between the
-    // masthead above and the details block below (mirrors the mockup's
-    // "flex-grow: 1; align-items: center; justify-content: center" gap)
-    const watermarkTop = mastheadH;
-    const watermarkAreaH = Math.max(0, pageH - detailsH - mastheadH);
-    if (watermarkAreaH > 0) {
-      const wm = await loadAssetAsDataUrl(site?.kind === "project" ? coverWatermarkProjects : coverWatermarkAfss);
-      const maxWmW = 420;
-      let wmW = Math.min(maxWmW, wm.naturalWidth);
-      let wmH = (wm.naturalHeight / wm.naturalWidth) * wmW;
-      if (wmH > watermarkAreaH) {
-        wmH = watermarkAreaH;
-        wmW = (wm.naturalWidth / wm.naturalHeight) * wmH;
-      }
-      if (wmW > 0 && wmH > 0) {
-        doc.addImage(
-          wm.dataUrl,
-          "PNG",
-          (pageW - wmW) / 2,
-          watermarkTop + (watermarkAreaH - wmH) / 2,
-          wmW,
-          wmH,
-        );
-      }
-    }
 
     // details block, anchored to the bottom of the page
     let dy = pageH - detailsH;
