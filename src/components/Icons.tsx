@@ -91,11 +91,38 @@ export function IconBuilding({ size = 20, ...p }: IconProps) {
   );
 }
 
+export function IconCheck({ size = 18, ...p }: IconProps) {
+  return (
+    <svg {...base(size)} {...p}>
+      <polyline points="20 6 9 17 4 12"></polyline>
+    </svg>
+  );
+}
+
 export function IconEdit({ size = 15, ...p }: IconProps) {
   return (
     <svg {...base(size)} {...p}>
       <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
       <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+    </svg>
+  );
+}
+
+// A drag-handle "grip" — two columns of three dots. Deliberately filled
+// (not stroked, unlike every other icon here) since a grip is conventionally
+// a dot/dash pattern rather than a line drawing, and it needs to read as
+// "grab me" at a glance among otherwise-linework icons. Takes `color` the
+// same way every other icon here does (an SVG presentation attribute that
+// `fill="currentColor"` resolves against).
+export function IconGrip({ size = 20, ...p }: IconProps) {
+  return (
+    <svg width={size} height={(size * 26) / 20} viewBox="0 0 20 26" fill="currentColor" {...p}>
+      <circle cx="6" cy="5" r="2"></circle>
+      <circle cx="14" cy="5" r="2"></circle>
+      <circle cx="6" cy="13" r="2"></circle>
+      <circle cx="14" cy="13" r="2"></circle>
+      <circle cx="6" cy="21" r="2"></circle>
+      <circle cx="14" cy="21" r="2"></circle>
     </svg>
   );
 }

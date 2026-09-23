@@ -22,6 +22,19 @@ class InspectaDB extends Dexie {
       .upgrade((tx) => tx.table("sites").toCollection().modify((s) => {
         if (!s.kind) s.kind = "project";
       }));
+    this.version(3)
+      .stores({
+        sites: "id, updatedAt, kind",
+        findings: "id, siteId, createdAt, order",
+        photos: "id, findingId, siteId, order",
+      })
+      .upgrade((tx) => tx.table("findings").toCollection().modify((f) => {
+        // seed manual order from the existing newest-first display order —
+        // negative createdAt sorts ascending exactly the way createdAt
+        // descending used to, so the list looks identical until someone
+        // actually drags a row.
+        if (f.order === undefined) f.order = -f.createdAt;
+      }));
   }
 }
 
@@ -80,6 +93,9 @@ export async function createFinding(siteId: string) {
     siteId,
     note: "",
     location: "",
+    // negative timestamp so a new finding sorts before every existing one
+    // (matches the old "newest first" default) until it's dragged.
+    order: -now,
     createdAt: now,
     updatedAt: now,
   };
@@ -95,9 +111,16 @@ export async function updateFinding(
   await db.findings.update(findingId, { ...changes, updatedAt: Date.now() });
 }
 
+// Moves a finding to a new manual sort position. `order` is typically the
+// midpoint between its new neighbours' own order values (fractional
+// indexing), so a reorder only ever writes the one row that moved.
+export async function reorderFinding(findingId: string, order: number) {
+  await db.findings.update(findingId, { order });
+}
+
 export async function listFindings(siteId: string) {
   const findings = await db.findings.where("siteId").equals(siteId).toArray();
-  return findings.sort((a, b) => b.createdAt - a.createdAt);
+  return findings.sort((a, b) => a.order - b.order);
 }
 
 export async function getFinding(findingId: string) {

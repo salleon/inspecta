@@ -14,6 +14,10 @@ export interface Finding {
   siteId: string;
   note: string;
   location: string;
+  // manual sort position within a site's findings list — lower sorts
+  // first. New findings get a very small (very negative) value so they
+  // appear first, same as the old createdAt-desc default, until dragged.
+  order: number;
   createdAt: number;
   updatedAt: number;
 }

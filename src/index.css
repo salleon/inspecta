@@ -180,6 +180,23 @@ button:active:not(:disabled) {
   }
 }
 
+/* Findings list: the drag-handle grip that replaces each row's edit
+   pencil when reorder mode is entered, sliding in from the right. */
+.grip-in {
+  animation: gripIn 220ms var(--spring) both;
+}
+
+@keyframes gripIn {
+  from {
+    opacity: 0;
+    transform: translateX(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
 /* bottom sheet + its backdrop (Dashboard "new site") */
 .sheet-backdrop {
   animation: backdropIn 180ms ease-out;
