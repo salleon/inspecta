@@ -6,13 +6,33 @@ import Note from "./pages/Note";
 import Findings from "./pages/Findings";
 import ExportPreview from "./pages/Export";
 import Onboarding from "./pages/Onboarding";
+import Splash from "./components/Splash";
 import { hasInspectorName } from "./lib/profile";
+
+// How long the splash sits fully visible before it starts fading, and how
+// long the fade itself takes (kept in sync with .splash-leaving's CSS
+// animation-duration in index.css) — after HOLD_MS + FADE_MS it's unmounted
+// for good, revealing onboarding or the app underneath.
+const SPLASH_HOLD_MS = 1100;
+const SPLASH_FADE_MS = 360;
 
 function App() {
   // Gate the whole app behind a one-time name prompt — there's no login,
   // so this is the only way we know who's using this install. Checked once
   // at startup; flips to false the moment Onboarding saves a name.
   const [needsOnboarding, setNeedsOnboarding] = useState(() => !hasInspectorName());
+
+  const [splashLeaving, setSplashLeaving] = useState(false);
+  const [splashVisible, setSplashVisible] = useState(true);
+
+  useEffect(() => {
+    const leaveTimer = setTimeout(() => setSplashLeaving(true), SPLASH_HOLD_MS);
+    const removeTimer = setTimeout(() => setSplashVisible(false), SPLASH_HOLD_MS + SPLASH_FADE_MS);
+    return () => {
+      clearTimeout(leaveTimer);
+      clearTimeout(removeTimer);
+    };
+  }, []);
 
   useEffect(() => {
     // Android hardware/gesture back button: step back through in-app screens
@@ -40,6 +60,7 @@ function App() {
           <AnimatedRoutes />
         </HashRouter>
       )}
+      {splashVisible && <Splash leaving={splashLeaving} />}
     </div>
   );
 }
