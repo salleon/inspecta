@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { jsPDF, GState } from "jspdf";
+import { jsPDF } from "jspdf";
 import { Directory, Filesystem } from "@capacitor/filesystem";
 import { Share } from "@capacitor/share";
 import { Capacitor } from "@capacitor/core";
@@ -9,9 +9,8 @@ import { getSite, listFindings, listPhotos } from "../db/db";
 import { IconChevronLeft, IconShare } from "../components/Icons";
 import RoundIconButton from "../components/RoundIconButton";
 import { getInitials, getInspectorName } from "../lib/profile";
-import enfactWordmark from "../assets/enfact-wordmark.png";
-import afssLogo from "../assets/afss-logo.png";
-import projectsLogo from "../assets/projects-logo.png";
+import coverBgAfss from "../assets/cover-bg-afss.jpg";
+import coverBgProjects from "../assets/cover-bg-projects.jpg";
 
 // Blob -> base64 (without the data: URL prefix), which is what
 // Filesystem.writeFile wants for a binary file.
@@ -108,23 +107,6 @@ async function loadAssetAsDataUrl(src: string): Promise<{ dataUrl: string; natur
   return { dataUrl, naturalWidth: img.naturalWidth, naturalHeight: img.naturalHeight };
 }
 
-// A flat navy → near-black diagonal wash, matching the app's brand
-// gradient, rendered once as a JPEG the size of the page and used as the
-// cover's full-bleed background.
-function coverGradientDataUrl(w: number, h: number): string {
-  const canvas = document.createElement("canvas");
-  canvas.width = w;
-  canvas.height = h;
-  const ctx = canvas.getContext("2d")!;
-  const grad = ctx.createLinearGradient(0, 0, w * 0.35, h);
-  grad.addColorStop(0, "#0e2740");
-  grad.addColorStop(0.6, "#071b2c");
-  grad.addColorStop(1, "#05141f");
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, w, h);
-  return canvas.toDataURL("image/jpeg", 0.92);
-}
-
 // draws the photo onto a canvas with a burned-in bottom-right timestamp watermark
 function watermark(blob: Blob, timestampMs: number): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -212,32 +194,26 @@ export default function ExportPreview() {
     });
   }
 
-  // Full-bleed cover page: brand gradient background, the EnFact wordmark
-  // in a masthead strip, the site's classification logo (AFSS or Projects)
-  // watermarked in the space beneath it, then the report's own details —
-  // title, address, date, finding count and inspector — pulled out large
-  // since that's what the reader actually needs from a cover.
+  // Full-bleed cover page. The gradient wash, EnFact wordmark and the
+  // site's classification watermark (AFSS or Projects) never vary per
+  // report, so they're pre-rendered once into a single flat JPEG per site
+  // kind (src/assets/cover-bg-*.jpg) rather than assembled at PDF-build
+  // time from three separate images plus opacity compositing. That's a
+  // deliberate simplification after the original per-report compositing
+  // (multiple doc.addImage() calls plus jsPDF's GState opacity API) proved
+  // unreliable in the field — this cuts cover generation down to one image
+  // load plus plain text/shape drawing, which is much harder to get wrong.
   async function drawCoverPage(doc: jsPDF, findingsCount: number) {
     const pageW = doc.internal.pageSize.getWidth();
     const pageH = doc.internal.pageSize.getHeight();
     const margin = 40;
     const contentW = pageW - margin * 2;
-    const mastheadH = 118;
 
-    doc.addImage(coverGradientDataUrl(pageW, pageH), "JPEG", 0, 0, pageW, pageH);
-
-    const [enfactImg, kindImg] = await Promise.all([
-      loadAssetAsDataUrl(enfactWordmark),
-      loadAssetAsDataUrl(site?.kind === "project" ? projectsLogo : afssLogo),
-    ]);
-
-    // masthead: EnFact wordmark, fixed height, vertically centered
-    const logoH = 46;
-    const logoW = (enfactImg.naturalWidth / enfactImg.naturalHeight) * logoH;
-    doc.addImage(enfactImg.dataUrl, "PNG", margin, (mastheadH - logoH) / 2, logoW, logoH);
+    const bg = await loadAssetAsDataUrl(site?.kind === "project" ? coverBgProjects : coverBgAfss);
+    doc.addImage(bg.dataUrl, "JPEG", 0, 0, pageW, pageH);
 
     // report title + address, built bottom-up so we know exactly how tall
-    // the details block is before laying out the watermark above it
+    // the details block is
     const title = site?.name || "Inspection";
     doc.setFont("helvetica", "bold");
     doc.setFontSize(40);
@@ -254,26 +230,6 @@ export default function ExportPreview() {
     const bottomPad = 56;
     const detailsH =
       accentH + 16 + titleH + (addressH ? 4 + addressH : 0) + 16 + badgePillH + bottomPad;
-
-    // classification watermark, centered in the blank space between the
-    // masthead and the details block
-    const watermarkTop = mastheadH;
-    const watermarkAreaH = Math.max(0, pageH - mastheadH - detailsH);
-    const maxLogoW = 420;
-    const naturalW = kindImg.naturalWidth;
-    const naturalH = kindImg.naturalHeight;
-    let wmW = Math.min(maxLogoW, naturalW);
-    let wmH = (naturalH / naturalW) * wmW;
-    if (wmH > watermarkAreaH) {
-      wmH = watermarkAreaH;
-      wmW = (naturalW / naturalH) * wmH;
-    }
-    if (wmW > 0 && wmH > 0) {
-      doc.saveGraphicsState();
-      doc.setGState(new GState({ opacity: 0.18 }));
-      doc.addImage(kindImg.dataUrl, "PNG", (pageW - wmW) / 2, watermarkTop + (watermarkAreaH - wmH) / 2, wmW, wmH);
-      doc.restoreGraphicsState();
-    }
 
     // details block, anchored to the bottom of the page
     let dy = pageH - detailsH;
@@ -319,11 +275,15 @@ export default function ExportPreview() {
         doc.roundedRect(bx, dy, pillW, badgePillH, 14, 14, "F");
         doc.setTextColor(4, 20, 15);
       } else {
-        doc.saveGraphicsState();
-        doc.setGState(new GState({ opacity: 0.12 }));
-        doc.setFillColor(255, 255, 255);
+        // A plain solid fill standing in for "white at 12% opacity over
+        // the cover's dark background" — precomputed rather than drawn
+        // with jsPDF's GState opacity API, which this cover used to
+        // depend on for every translucent pill. Removing that runtime
+        // compositing (along with the multi-image watermark it also
+        // gated) is the whole point of this rework: fewer moving parts
+        // that can fail on-device.
+        doc.setFillColor(35, 50, 60);
         doc.roundedRect(bx, dy, pillW, badgePillH, 14, 14, "F");
-        doc.restoreGraphicsState();
         doc.setTextColor(244, 247, 249);
       }
       doc.text(badge.text, bx + 14, dy + badgePillH / 2 + 4.5);
