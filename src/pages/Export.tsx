@@ -89,6 +89,25 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
+// Fetches a bundled static asset (e.g. an imported PNG's built URL) and
+// returns it as a base64 data URL, plus its natural size read from a second
+// Image loaded off that data URL. Passing jsPDF a data URL *string* rather
+// than an HTMLImageElement matters: doc.addImage() with an element draws it
+// onto an offscreen canvas internally and reads the pixels back out via
+// canvas.toDataURL(), and on a Capacitor Android WebView that readback can
+// throw a "tainted canvas" SecurityError for bundled assets even though the
+// same image displays fine as a plain <img> — it only ever showed up on
+// device, never in the desktop preview. A data URL skips that canvas
+// round-trip entirely, so it can't be tainted.
+async function loadAssetAsDataUrl(src: string): Promise<{ dataUrl: string; naturalWidth: number; naturalHeight: number }> {
+  const res = await fetch(src);
+  const blob = await res.blob();
+  const base64 = await blobToBase64(blob);
+  const dataUrl = `data:${blob.type || "image/png"};base64,${base64}`;
+  const img = await loadImage(dataUrl);
+  return { dataUrl, naturalWidth: img.naturalWidth, naturalHeight: img.naturalHeight };
+}
+
 // A flat navy → near-black diagonal wash, matching the app's brand
 // gradient, rendered once as a JPEG the size of the page and used as the
 // cover's full-bleed background.
@@ -208,14 +227,14 @@ export default function ExportPreview() {
     doc.addImage(coverGradientDataUrl(pageW, pageH), "JPEG", 0, 0, pageW, pageH);
 
     const [enfactImg, kindImg] = await Promise.all([
-      loadImage(enfactWordmark),
-      loadImage(site?.kind === "project" ? projectsLogo : afssLogo),
+      loadAssetAsDataUrl(enfactWordmark),
+      loadAssetAsDataUrl(site?.kind === "project" ? projectsLogo : afssLogo),
     ]);
 
     // masthead: EnFact wordmark, fixed height, vertically centered
     const logoH = 46;
     const logoW = (enfactImg.naturalWidth / enfactImg.naturalHeight) * logoH;
-    doc.addImage(enfactImg, "PNG", margin, (mastheadH - logoH) / 2, logoW, logoH);
+    doc.addImage(enfactImg.dataUrl, "PNG", margin, (mastheadH - logoH) / 2, logoW, logoH);
 
     // report title + address, built bottom-up so we know exactly how tall
     // the details block is before laying out the watermark above it
@@ -252,7 +271,7 @@ export default function ExportPreview() {
     if (wmW > 0 && wmH > 0) {
       doc.saveGraphicsState();
       doc.setGState(new GState({ opacity: 0.18 }));
-      doc.addImage(kindImg, "PNG", (pageW - wmW) / 2, watermarkTop + (watermarkAreaH - wmH) / 2, wmW, wmH);
+      doc.addImage(kindImg.dataUrl, "PNG", (pageW - wmW) / 2, watermarkTop + (watermarkAreaH - wmH) / 2, wmW, wmH);
       doc.restoreGraphicsState();
     }
 
