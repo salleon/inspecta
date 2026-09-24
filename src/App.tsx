@@ -8,6 +8,7 @@ import ExportPreview from "./pages/Export";
 import Onboarding from "./pages/Onboarding";
 import Splash from "./components/Splash";
 import { hasInspectorName } from "./lib/profile";
+import { useKeepFocusedFieldVisible } from "./lib/keepFocusedVisible";
 
 // How long the splash sits fully visible before it starts fading, and how
 // long the fade itself takes (kept in sync with .splash-leaving's CSS
@@ -23,6 +24,9 @@ function App() {
   // so this is the only way we know who's using this install. Checked once
   // at startup; flips to false the moment Onboarding saves a name.
   const [needsOnboarding, setNeedsOnboarding] = useState(() => !hasInspectorName());
+
+  // whatever field you're typing in stays visible above the keyboard
+  useKeepFocusedFieldVisible();
 
   const [splashLeaving, setSplashLeaving] = useState(false);
   const [splashVisible, setSplashVisible] = useState(true);

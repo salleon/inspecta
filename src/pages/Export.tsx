@@ -130,9 +130,10 @@ export default function ExportPreview() {
   const [items, setItems] = useState<FindingImages[]>([]);
   const [loading, setLoading] = useState(true);
   const [sharing, setSharing] = useState<"pdf" | "excel" | null>(null);
-  // Excel loading screen: 0–85% while photos are stamped and added (nearly
-  // all the time), then building the file, then handing it to the share menu
-  const [excelProgress, setExcelProgress] = useState<{ percent: number; step: string } | null>(null);
+  // Loading screen for both exports: 0–85% while photos are stamped and
+  // added (nearly all the time), then building the file, then handing it to
+  // the share menu
+  const [exportProgress, setExportProgress] = useState<{ percent: number; step: string } | null>(null);
 
   useEffect(() => {
     if (!siteId) return;
@@ -269,7 +270,7 @@ export default function ExportPreview() {
     }
   }
 
-  async function buildPdf(): Promise<Blob> {
+  async function buildPdf(onPhoto: (done: number, total: number) => void): Promise<Blob> {
     const doc = new jsPDF({ unit: "pt", format: "a4" });
     const pageW = doc.internal.pageSize.getWidth();
     const pageH = doc.internal.pageSize.getHeight();
@@ -301,12 +302,22 @@ export default function ExportPreview() {
     doc.addPage();
     let y = margin;
 
+    const totalPhotos = items.reduce((n, i) => n + i.photos.length, 0);
+    let donePhotos = 0;
+    onPhoto(0, totalPhotos);
+
     for (const item of items) {
       if (item.photos.length === 0) continue;
 
       // cropped to the tile shape from the original photo, THEN stamped, so
       // the timestamp is never trimmed off by the crop
-      const tiles = await Promise.all(item.photos.map((p) => watermark(p.blob, p.takenAt, tileAspect)));
+      const tiles = await Promise.all(
+        item.photos.map(async (p) => {
+          const tile = await watermark(p.blob, p.takenAt, tileAspect);
+          onPhoto(++donePhotos, totalPhotos);
+          return tile;
+        }),
+      );
       const rows = Math.ceil(tiles.length / 2);
       const photosBlockH = rows * tileH + (rows - 1) * tileGap;
 
@@ -377,6 +388,9 @@ export default function ExportPreview() {
       y = rowTop + blockH + blockGap;
     }
 
+    setExportProgress({ percent: 88, step: "Building PDF…" });
+    // let the "Building PDF…" step paint before jsPDF's synchronous output
+    await new Promise((r) => setTimeout(r, 30));
     return doc.output("blob");
   }
 
@@ -384,19 +398,20 @@ export default function ExportPreview() {
   // (or a download, on desktop web).
   async function handleShare(kind: "pdf" | "excel") {
     setSharing(kind);
-    if (kind === "excel") setExcelProgress({ percent: 0, step: "Getting ready…" });
+    setExportProgress({ percent: 0, step: "Getting ready…" });
+    const photoProgress = (done: number, total: number) =>
+      setExportProgress({ percent: total ? (85 * done) / total : 0, step: `Adding photos: ${done} of ${total}` });
     try {
-      const blob =
-        kind === "pdf"
-          ? await buildPdf()
-          : await (await import("../lib/excelExport")).buildFindingsWorkbook(items, inspectionMs, (p) =>
-              setExcelProgress(
-                p.stage === "photos"
-                  ? { percent: p.total ? (85 * p.done) / p.total : 0, step: `Adding photos: ${p.done} of ${p.total}` }
-                  : { percent: 88, step: "Building spreadsheet…" },
-              ),
-            );
-      if (kind === "excel") setExcelProgress({ percent: 97, step: "Opening share menu…" });
+      let blob: Blob;
+      if (kind === "pdf") {
+        blob = await buildPdf(photoProgress);
+      } else {
+        const { buildFindingsWorkbook } = await import("../lib/excelExport");
+        blob = await buildFindingsWorkbook(items, inspectionMs, (p) =>
+          p.stage === "photos" ? photoProgress(p.done, p.total) : setExportProgress({ percent: 88, step: "Building spreadsheet…" }),
+        );
+      }
+      setExportProgress({ percent: 97, step: "Opening share menu…" });
       const inspectorName = getInspectorName();
       const filename = reportFilename(site?.name, inspectorName, kind === "pdf" ? "pdf" : "xlsx");
       const title = reportTitle(site?.name, inspectorName);
@@ -406,14 +421,14 @@ export default function ExportPreview() {
         // WebView — write the file to the app's cache and hand THAT file
         // URI to the native share sheet instead.
         const uri = await writeToCache(blob, filename);
-        setExcelProgress(null); // the share menu takes over from here
+        setExportProgress(null); // the share menu takes over from here
         await Share.share({
           title,
           url: uri,
         });
       } else {
         // plain web fallback (e.g. previewing in a desktop browser)
-        setExcelProgress(null);
+        setExportProgress(null);
         const file = new File([blob], filename, { type: blob.type || "application/pdf" });
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
           await navigator.share({ files: [file], title });
@@ -437,7 +452,7 @@ export default function ExportPreview() {
       }
     } finally {
       setSharing(null);
-      setExcelProgress(null);
+      setExportProgress(null);
     }
   }
 
@@ -529,7 +544,13 @@ export default function ExportPreview() {
         </div>
       </div>
 
-      {excelProgress && <ProgressOverlay percent={excelProgress.percent} title="Preparing Excel" step={excelProgress.step} />}
+      {exportProgress && sharing && (
+        <ProgressOverlay
+          percent={exportProgress.percent}
+          title={sharing === "pdf" ? "Preparing PDF" : "Preparing Excel"}
+          step={exportProgress.step}
+        />
+      )}
     </div>
   );
 }

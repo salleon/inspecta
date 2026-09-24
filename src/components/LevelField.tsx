@@ -51,7 +51,9 @@ export default function LevelField({
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+    // data-keep-visible: when the keyboard opens, keep the box AND its
+    // quick buttons in view (see lib/keepFocusedVisible)
+    <div data-keep-visible style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       <div style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
         <button type="button" aria-label="Down one level" onPointerDown={keepFocus} onClick={() => onChange(stepLevel(value, -1))} style={stepButtonStyle}>
           −
