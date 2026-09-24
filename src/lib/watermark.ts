@@ -109,15 +109,15 @@ export async function watermark(blob: Blob, timestampMs: number, options?: Stamp
   return url;
 }
 
-// Stamped JPEG as a Blob, plus its pixel size (Excel).
+// Stamped JPEG as a Blob, plus its pixel size (Excel, photos zip).
 export async function watermarkBlob(
   blob: Blob,
   timestampMs: number,
-  options?: StampOptions,
+  { quality = 0.9, ...options }: StampOptions & { quality?: number } = {},
 ): Promise<{ jpeg: Blob; width: number; height: number }> {
   const canvas = await stampedCanvas(blob, timestampMs, options);
   const jpeg = await new Promise<Blob>((resolve, reject) =>
-    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("photo encode failed"))), "image/jpeg", 0.9),
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("photo encode failed"))), "image/jpeg", quality),
   );
   const size = { width: canvas.width, height: canvas.height };
   release(canvas);

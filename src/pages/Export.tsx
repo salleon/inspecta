@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { jsPDF } from "jspdf";
-import { Directory, Filesystem } from "@capacitor/filesystem";
 import { Share } from "@capacitor/share";
 import { Capacitor } from "@capacitor/core";
 import type { Finding, Photo, Site } from "../db/types";
@@ -12,6 +11,8 @@ import ProgressOverlay from "../components/ProgressOverlay";
 import { getInitials, getInspectorName } from "../lib/profile";
 import { defectTypeStyle } from "../lib/defectTypes";
 import { EXPORT_MAX_EDGE, PREVIEW_MAX_EDGE, watermark } from "../lib/watermark";
+import { CacheFileWriter, writeBlobToCache } from "../lib/cacheFile";
+import { countPhotos, photosZipName, writePhotosZip } from "../lib/photosZip";
 import DefectTypePill from "../components/DefectTypePill";
 import coverBgAfss from "../assets/cover-bg-afss.jpg";
 import coverBgProjects from "../assets/cover-bg-projects.jpg";
@@ -30,27 +31,8 @@ function blobToBase64(blob: Blob): Promise<string> {
   });
 }
 
-// Writes a blob into the app's cache in base64 chunks rather than one
-// giant string — an Excel export carries full-quality photos and can run
-// to hundreds of MB, which a single base64 string would run the WebView
-// out of memory on. Chunk size is a multiple of 3 bytes so each chunk
-// base64-encodes cleanly on its own.
-const CACHE_CHUNK_BYTES = 3 * 1024 * 1024;
-async function writeToCache(blob: Blob, filename: string): Promise<string> {
-  const written = await Filesystem.writeFile({
-    path: filename,
-    data: await blobToBase64(blob.slice(0, CACHE_CHUNK_BYTES)),
-    directory: Directory.Cache,
-  });
-  for (let offset = CACHE_CHUNK_BYTES; offset < blob.size; offset += CACHE_CHUNK_BYTES) {
-    await Filesystem.appendFile({
-      path: filename,
-      data: await blobToBase64(blob.slice(offset, offset + CACHE_CHUNK_BYTES)),
-      directory: Directory.Cache,
-    });
-  }
-  return written.uri;
-}
+type ShareKind = "pdf" | "excel" | "photos";
+const SHARE_LABEL: Record<ShareKind, string> = { pdf: "PDF", excel: "Excel file", photos: "photos" };
 
 interface FindingImages {
   finding: Finding;
@@ -129,7 +111,7 @@ export default function ExportPreview() {
   const [site, setSite] = useState<Site | null>(null);
   const [items, setItems] = useState<FindingImages[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sharing, setSharing] = useState<"pdf" | "excel" | null>(null);
+  const [sharing, setSharing] = useState<ShareKind | null>(null);
   // Loading screen for both exports: 0–85% while photos are stamped and
   // added (nearly all the time), then building the file, then handing it to
   // the share menu
@@ -396,42 +378,56 @@ export default function ExportPreview() {
     return doc.output("blob");
   }
 
-  // Builds the PDF or Excel file and hands it to the native share sheet
-  // (or a download, on desktop web).
-  async function handleShare(kind: "pdf" | "excel") {
+  // Builds the PDF, Excel file or photos zip and hands it to the native
+  // share sheet (or a download, on desktop web).
+  async function handleShare(kind: ShareKind) {
     setSharing(kind);
     setExportProgress({ percent: 0, step: "Getting ready…" });
-    const photoProgress = (done: number, total: number) =>
-      setExportProgress({ percent: total ? (85 * done) / total : 0, step: `Adding photos: ${done} of ${total}` });
+    const photoProgress = (done: number, total: number, upTo = 85) =>
+      setExportProgress({ percent: total ? (upTo * done) / total : 0, step: `Adding photos: ${done} of ${total}` });
+    const native = Capacitor.isNativePlatform();
+    const inspectorName = getInspectorName();
+    const title = reportTitle(site?.name, inspectorName);
     try {
-      let blob: Blob;
-      if (kind === "pdf") {
-        blob = await buildPdf(photoProgress);
+      let filename: string;
+      let blob: Blob | null = null; // web: the file to share / download
+      let uri: string | null = null; // Android: the file written to the cache
+      if (kind === "photos") {
+        // streamed straight into the file one photo at a time — never
+        // held in memory as a whole
+        filename = photosZipName(site?.name);
+        const onPhoto = (done: number, total: number) => photoProgress(done, total, 95);
+        if (native) {
+          const out = new CacheFileWriter(filename);
+          await writePhotosZip(items, site?.name, (b) => out.write(b), onPhoto);
+          uri = await out.close();
+        } else {
+          const parts: Uint8Array[] = [];
+          await writePhotosZip(items, site?.name, async (b) => void parts.push(b), onPhoto);
+          blob = new Blob(parts as BlobPart[], { type: "application/zip" });
+        }
       } else {
-        const { buildFindingsWorkbook } = await import("../lib/excelExport");
-        blob = await buildFindingsWorkbook(items, inspectionMs, (p) =>
-          p.stage === "photos" ? photoProgress(p.done, p.total) : setExportProgress({ percent: 88, step: "Building spreadsheet…" }),
-        );
+        filename = reportFilename(site?.name, inspectorName, kind === "pdf" ? "pdf" : "xlsx");
+        if (kind === "pdf") {
+          blob = await buildPdf(photoProgress);
+        } else {
+          const { buildFindingsWorkbook } = await import("../lib/excelExport");
+          blob = await buildFindingsWorkbook(items, inspectionMs, (p) =>
+            p.stage === "photos" ? photoProgress(p.done, p.total) : setExportProgress({ percent: 88, step: "Building spreadsheet…" }),
+          );
+        }
+        setExportProgress({ percent: 97, step: "Opening share menu…" });
+        if (native) uri = await writeBlobToCache(blob, filename);
       }
-      setExportProgress({ percent: 97, step: "Opening share menu…" });
-      const inspectorName = getInspectorName();
-      const filename = reportFilename(site?.name, inspectorName, kind === "pdf" ? "pdf" : "xlsx");
-      const title = reportTitle(site?.name, inspectorName);
+      setExportProgress(null); // the share menu takes over from here
 
-      if (Capacitor.isNativePlatform()) {
+      if (uri) {
         // navigator.share() doesn't work for files inside an Android
-        // WebView — write the file to the app's cache and hand THAT file
-        // URI to the native share sheet instead.
-        const uri = await writeToCache(blob, filename);
-        setExportProgress(null); // the share menu takes over from here
-        await Share.share({
-          title,
-          url: uri,
-        });
-      } else {
+        // WebView, so hand the native share sheet the cached file's URI
+        await Share.share({ title, url: uri });
+      } else if (blob) {
         // plain web fallback (e.g. previewing in a desktop browser)
-        setExportProgress(null);
-        const file = new File([blob], filename, { type: blob.type || "application/pdf" });
+        const file = new File([blob], filename, { type: blob.type || "application/octet-stream" });
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
           await navigator.share({ files: [file], title });
         } else {
@@ -450,13 +446,14 @@ export default function ExportPreview() {
       // surface it instead of silently doing nothing
       if (!(err instanceof Error) || !/cancell?ed/i.test(err.message)) {
         console.error(`${kind} share failed`, err);
-        alert(`Couldn't share the ${kind === "pdf" ? "PDF" : "Excel file"}. Please try again.`);
+        alert(`Couldn't share the ${SHARE_LABEL[kind]}. Please try again.`);
       }
     } finally {
       setSharing(null);
       setExportProgress(null);
     }
   }
+
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
@@ -524,7 +521,17 @@ export default function ExportPreview() {
       </div>
 
       {/* share bar */}
-      <div style={{ flexShrink: 0, padding: "12px 16px calc(28px + env(safe-area-inset-bottom))", borderTop: "1px solid var(--border)" }}>
+      <div style={{ flexShrink: 0, padding: "12px 16px calc(28px + env(safe-area-inset-bottom))", borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 10 }}>
+        {/* every photo at full resolution, stamped, zipped in a folder
+            named after the site (see lib/photosZip) */}
+        <button
+          onClick={() => handleShare("photos")}
+          disabled={loading || sharing !== null || countPhotos(items) === 0}
+          style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "12px 0", borderRadius: 12, background: "none", border: "1px dashed var(--border-strong)", fontSize: 14, fontWeight: 700, color: "var(--text)" }}
+        >
+          <IconShare size={16} />
+          Send Photos Only
+        </button>
         <div style={{ display: "flex", gap: 10 }}>
           <button
             onClick={() => handleShare("excel")}
@@ -549,7 +556,7 @@ export default function ExportPreview() {
       {exportProgress && sharing && (
         <ProgressOverlay
           percent={exportProgress.percent}
-          title={sharing === "pdf" ? "Preparing PDF" : "Preparing Excel"}
+          title={sharing === "pdf" ? "Preparing PDF" : sharing === "excel" ? "Preparing Excel" : "Preparing photos"}
           step={exportProgress.step}
         />
       )}

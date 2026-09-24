@@ -12,6 +12,7 @@ A fast, offline-first app for on-site fire safety inspection capture — built t
 - **Everything stored offline** — findings, notes, locations and full-resolution photos are saved to the device (IndexedDB) as you go, no signal required. Nothing is lost if you close the app or lose connection.
 - **PDF export** — generates a report with every photo (burned-in time/date stamp), location and note, ready to share.
 - **Excel export** — fills the company findings-register template (`src/assets/findings-template.xlsx`): one row per finding with location, description, full-resolution stamped photos (5 cm wide), date identified, risk level (colour-filled) and status. Built for desktop Excel.
+- **Send Photos Only** — every photo on the site at full camera resolution, with the time/date stamp, in one zip (e.g. `Harbour Tower.zip`) holding a folder named after the site. Files are named `01 - Level 25 - Back of house kitchen.jpg` in the same finding order as the PDF and Excel. Share it to OneDrive, then *Extract All* on the laptop.
 - **Advanced controls** — an opt-in switch in the settings menu (tap your initials on the dashboard). When on, findings get extra optional fields: **Defect type** (Critical / Non-critical / Non-compliance / Recommend / Note only, colour-coded) and **Level** (type `25` for "Level 25", quick buttons for Ground / Basement / Mezzanine / Roof, carried over to the next finding). Anything entered always shows in the app and in exports, even if the switch is later turned off.
 
 ## Getting the Android APK (recommended for your team)
