@@ -29,6 +29,8 @@ export default defineConfig({
       },
     }),
   ],
+  // the Excel export's company template (inlined into the export chunk)
+  assetsInclude: ["**/*.xlsx"],
   server: {
     host: true,
   },

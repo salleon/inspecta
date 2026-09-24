@@ -4,7 +4,7 @@ import { jsPDF } from "jspdf";
 import { Directory, Filesystem } from "@capacitor/filesystem";
 import { Share } from "@capacitor/share";
 import { Capacitor } from "@capacitor/core";
-import type { Finding, Site } from "../db/types";
+import type { Finding, Photo, Site } from "../db/types";
 import { getSite, listFindings, listPhotos } from "../db/db";
 import { IconChevronLeft, IconShare } from "../components/Icons";
 import RoundIconButton from "../components/RoundIconButton";
@@ -28,9 +28,32 @@ function blobToBase64(blob: Blob): Promise<string> {
   });
 }
 
+// Writes a blob into the app's cache in base64 chunks rather than one
+// giant string — an Excel export carries full-quality photos and can run
+// to hundreds of MB, which a single base64 string would run the WebView
+// out of memory on. Chunk size is a multiple of 3 bytes so each chunk
+// base64-encodes cleanly on its own.
+const CACHE_CHUNK_BYTES = 3 * 1024 * 1024;
+async function writeToCache(blob: Blob, filename: string): Promise<string> {
+  const written = await Filesystem.writeFile({
+    path: filename,
+    data: await blobToBase64(blob.slice(0, CACHE_CHUNK_BYTES)),
+    directory: Directory.Cache,
+  });
+  for (let offset = CACHE_CHUNK_BYTES; offset < blob.size; offset += CACHE_CHUNK_BYTES) {
+    await Filesystem.appendFile({
+      path: filename,
+      data: await blobToBase64(blob.slice(offset, offset + CACHE_CHUNK_BYTES)),
+      directory: Directory.Cache,
+    });
+  }
+  return written.uri;
+}
+
 interface FindingImages {
   finding: Finding;
-  dataUrls: string[];
+  dataUrls: string[]; // watermarked, for the preview + PDF
+  photos: Photo[]; // originals, for the Excel export
 }
 
 function formatTimestamp(ms: number) {
@@ -75,10 +98,10 @@ function reportTitle(siteName: string | undefined, inspectorName: string) {
 // "harbourline-apartments-LS.pdf" — site name slugified, plus the
 // inspector's capitalised initials, so reports from different team members
 // never collide or get mixed up once they're all sitting in one inbox.
-function reportFilename(siteName: string | undefined, inspectorName: string) {
+function reportFilename(siteName: string | undefined, inspectorName: string, ext: "pdf" | "xlsx" = "pdf") {
   const slug = (siteName ?? "inspection").replace(/[^a-z0-9]+/gi, "-").toLowerCase();
   const initials = getInitials(inspectorName);
-  return initials ? `${slug}-${initials}.pdf` : `${slug}.pdf`;
+  return initials ? `${slug}-${initials}.${ext}` : `${slug}.${ext}`;
 }
 
 function loadImage(src: string): Promise<HTMLImageElement> {
@@ -202,7 +225,7 @@ export default function ExportPreview() {
   const [site, setSite] = useState<Site | null>(null);
   const [items, setItems] = useState<FindingImages[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sharing, setSharing] = useState(false);
+  const [sharing, setSharing] = useState<"pdf" | "excel" | null>(null);
 
   useEffect(() => {
     if (!siteId) return;
@@ -216,7 +239,7 @@ export default function ExportPreview() {
       for (const finding of findings) {
         const photos = await listPhotos(finding.id);
         const dataUrls = await Promise.all(photos.map((p) => watermark(p.blob, p.takenAt)));
-        built.push({ finding, dataUrls });
+        built.push({ finding, dataUrls, photos });
       }
       if (!cancelled) {
         setSite(s ?? null);
@@ -440,31 +463,31 @@ export default function ExportPreview() {
     return doc.output("blob");
   }
 
-  async function handleShare() {
-    setSharing(true);
+  // Builds the PDF or Excel file and hands it to the native share sheet
+  // (or a download, on desktop web).
+  async function handleShare(kind: "pdf" | "excel") {
+    setSharing(kind);
     try {
-      const blob = await buildPdf();
+      const blob =
+        kind === "pdf"
+          ? await buildPdf()
+          : await (await import("../lib/excelExport")).buildFindingsWorkbook(site!, items);
       const inspectorName = getInspectorName();
-      const filename = reportFilename(site?.name, inspectorName);
+      const filename = reportFilename(site?.name, inspectorName, kind === "pdf" ? "pdf" : "xlsx");
       const title = reportTitle(site?.name, inspectorName);
 
       if (Capacitor.isNativePlatform()) {
         // navigator.share() doesn't work for files inside an Android
-        // WebView — write the PDF to the app's cache and hand THAT file
+        // WebView — write the file to the app's cache and hand THAT file
         // URI to the native share sheet instead.
-        const base64 = await blobToBase64(blob);
-        const written = await Filesystem.writeFile({
-          path: filename,
-          data: base64,
-          directory: Directory.Cache,
-        });
+        const uri = await writeToCache(blob, filename);
         await Share.share({
           title,
-          url: written.uri,
+          url: uri,
         });
       } else {
         // plain web fallback (e.g. previewing in a desktop browser)
-        const file = new File([blob], filename, { type: "application/pdf" });
+        const file = new File([blob], filename, { type: blob.type || "application/pdf" });
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
           await navigator.share({ files: [file], title });
         } else {
@@ -482,11 +505,11 @@ export default function ExportPreview() {
       // a genuine failure (not the user cancelling the share sheet) —
       // surface it instead of silently doing nothing
       if (!(err instanceof Error) || !/cancell?ed/i.test(err.message)) {
-        console.error("PDF share failed", err);
-        alert("Couldn't share the PDF. Please try again.");
+        console.error(`${kind} share failed`, err);
+        alert(`Couldn't share the ${kind === "pdf" ? "PDF" : "Excel file"}. Please try again.`);
       }
     } finally {
-      setSharing(false);
+      setSharing(null);
     }
   }
 
@@ -557,15 +580,25 @@ export default function ExportPreview() {
 
       {/* share bar */}
       <div style={{ flexShrink: 0, padding: "12px 16px calc(28px + env(safe-area-inset-bottom))", borderTop: "1px solid var(--border)" }}>
-        <button
-          onClick={handleShare}
-          disabled={loading || sharing || items.length === 0}
-          className="glow-sweep"
-          style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", textAlign: "center", padding: "15px 0", borderRadius: 12, background: "var(--accent)", border: "none", fontSize: 14, fontWeight: 800, color: "var(--accent-text)", overflow: "hidden" }}
-        >
-          <IconShare size={16} />
-          {sharing ? "Preparing…" : "Share PDF"}
-        </button>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button
+            onClick={() => handleShare("excel")}
+            disabled={loading || sharing !== null || items.length === 0 || !site}
+            style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, textAlign: "center", padding: "15px 0", borderRadius: 12, background: "var(--panel)", border: "1px solid var(--border)", fontSize: 14, fontWeight: 700, color: "var(--text)" }}
+          >
+            <IconShare size={16} />
+            {sharing === "excel" ? "Preparing…" : "Share Excel"}
+          </button>
+          <button
+            onClick={() => handleShare("pdf")}
+            disabled={loading || sharing !== null || items.length === 0}
+            className="glow-sweep"
+            style={{ position: "relative", flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, textAlign: "center", padding: "15px 0", borderRadius: 12, background: "var(--accent)", border: "none", fontSize: 14, fontWeight: 800, color: "var(--accent-text)", overflow: "hidden" }}
+          >
+            <IconShare size={16} />
+            {sharing === "pdf" ? "Preparing…" : "Share PDF"}
+          </button>
+        </div>
       </div>
     </div>
   );
