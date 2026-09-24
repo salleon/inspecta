@@ -559,11 +559,18 @@ function SiteButton({
 
   return (
     <div style={{ position: "relative", borderRadius: 14, overflow: "hidden" }}>
-      {/* delete panel, revealed as the row above slides left */}
+      {/* delete panel, revealed as the row above slides left. Slightly
+          inset top and bottom, and only shown once a swipe starts: the
+          rows "pop in" from 94% scale, which otherwise let the red peek
+          out around every row's edge for a moment. */}
       <div
         style={{
           position: "absolute",
-          inset: 0,
+          inset: "2px 0",
+          borderRadius: 12,
+          opacity: dragX < 0 || isOpen ? 1 : 0,
+          // hide only once the row has finished sliding back over it
+          transition: dragX < 0 || isOpen ? "none" : "opacity 0s linear 0.22s",
           background: "#ff6b6b",
           display: "flex",
           alignItems: "center",

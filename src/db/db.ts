@@ -130,6 +130,16 @@ export async function reorderFinding(findingId: string, order: number) {
   await db.findings.update(findingId, { order });
 }
 
+// A finding with its photos and their thumbnails.
+export async function deleteFinding(findingId: string) {
+  const photoIds = await db.photos.where("findingId").equals(findingId).primaryKeys();
+  await db.thumbnails.bulkDelete(photoIds);
+  await db.photos.bulkDelete(photoIds);
+  const finding = await db.findings.get(findingId);
+  await db.findings.delete(findingId);
+  if (finding) await touchSite(finding.siteId);
+}
+
 export async function listFindings(siteId: string) {
   const findings = await db.findings.where("siteId").equals(siteId).toArray();
   return findings.sort((a, b) => a.order - b.order);
