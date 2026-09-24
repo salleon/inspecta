@@ -1,14 +1,18 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { HashRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { App as CapacitorApp } from "@capacitor/app";
 import Dashboard from "./pages/Dashboard";
 import Note from "./pages/Note";
 import Findings from "./pages/Findings";
-import ExportPreview from "./pages/Export";
 import Onboarding from "./pages/Onboarding";
 import Splash from "./components/Splash";
 import { hasInspectorName } from "./lib/profile";
 import { useKeepFocusedFieldVisible } from "./lib/keepFocusedVisible";
+
+// The Export screen carries the PDF library (and loads the Excel one), so
+// it's only fetched when first opened rather than parsed at every app
+// launch. It's bundled locally, so this works offline.
+const ExportPreview = lazy(() => import("./pages/Export"));
 
 // How long the splash sits fully visible before it starts fading, and how
 // long the fade itself takes (kept in sync with .splash-leaving's CSS
@@ -99,13 +103,15 @@ function AnimatedRoutes() {
     // keyed on pathname so each screen remounts (and replays its enter
     // animation) on navigation, without disturbing state within a screen
     <div key={location.pathname} className={direction === "forward" ? "route-slide-in" : "route-slide-back"}>
-      <Routes location={location}>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/site/:siteId/finding/:findingId/note" element={<Note />} />
-        <Route path="/site/:siteId/findings" element={<Findings />} />
-        <Route path="/site/:siteId/export" element={<ExportPreview />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <Suspense fallback={null}>
+        <Routes location={location}>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/site/:siteId/finding/:findingId/note" element={<Note />} />
+          <Route path="/site/:siteId/findings" element={<Findings />} />
+          <Route path="/site/:siteId/export" element={<ExportPreview />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
     </div>
   );
 }
