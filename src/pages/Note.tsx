@@ -231,7 +231,9 @@ export default function Note() {
         <div style={{ fontSize: 15, fontWeight: 800 }}>Finding</div>
       </div>
 
-      <div style={{ flexGrow: 1, overflowY: "auto", padding: "4px 18px 18px", display: "flex", flexDirection: "column", gap: fieldFocused ? 10 : 16 }}>
+      {/* .finding-scroll stops every section in here from shrinking — the
+          column scrolls instead, however many fields get added below */}
+      <div className="finding-scroll" style={{ flexGrow: 1, overflowY: "auto", padding: "4px 18px 18px", display: "flex", flexDirection: "column", gap: fieldFocused ? 10 : 16 }}>
         {/* photo — collapses when a text field is focused so Note and
             Location stay visible above the keyboard without scrolling.
             Grows in from the tapped thumbnail's position on first mount
@@ -357,9 +359,11 @@ export default function Note() {
             just the latest; hidden while typing to leave Note + Location
             both visible above the keyboard */}
         {photos.length > 0 && !fieldFocused && (
-          // flexShrink 0: as a horizontal scroller this row may otherwise be
-          // squashed to nothing once the fields below make the screen scroll
-          <div style={{ flexShrink: 0, display: "flex", gap: 8, overflowX: "auto", paddingBottom: 2 }}>
+          // Fixed height (thumbnail + scrollbar room) as well as the
+          // .finding-scroll no-shrink rule: a horizontal scroller in a flex
+          // column is otherwise the first thing squashed when the screen
+          // gets taller than the phone.
+          <div style={{ flexShrink: 0, height: THUMB_SIZE + 4, minHeight: THUMB_SIZE + 4, display: "flex", gap: 8, overflowX: "auto", overflowY: "hidden", paddingBottom: 2 }}>
             {photos.map((p, i) => (
               <button
                 key={p.id}
@@ -368,8 +372,8 @@ export default function Note() {
                 className="thumb-in"
                 style={{
                   flexShrink: 0,
-                  width: 56,
-                  height: 56,
+                  width: THUMB_SIZE,
+                  height: THUMB_SIZE,
                   borderRadius: 10,
                   overflow: "hidden",
                   padding: 0,
@@ -388,8 +392,8 @@ export default function Note() {
               disabled={busy}
               style={{
                 flexShrink: 0,
-                width: 56,
-                height: 56,
+                width: THUMB_SIZE,
+                height: THUMB_SIZE,
                 borderRadius: 10,
                 border: "1.5px dashed var(--border-strong)",
                 background: "none",
@@ -568,6 +572,9 @@ export default function Note() {
     </div>
   );
 }
+
+// photo thumbnail strip under the main photo
+const THUMB_SIZE = 56;
 
 const labelStyle: CSSProperties = {
   fontSize: 12,

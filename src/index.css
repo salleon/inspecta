@@ -197,6 +197,14 @@ button:active:not(:disabled) {
   }
 }
 
+/* Finding screen's scrolling column: nothing in it may shrink to fit —
+   the column scrolls instead. Without this, adding fields squashed the
+   photo thumbnail strip (a horizontal scroller shrinks to ~0 in a flex
+   column). */
+.finding-scroll > * {
+  flex-shrink: 0;
+}
+
 /* bottom sheet + its backdrop (Dashboard "new site") */
 .sheet-backdrop {
   animation: backdropIn 180ms ease-out;
