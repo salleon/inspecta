@@ -1,4 +1,4 @@
-import type { Finding, Photo, Site } from "../db/types";
+import type { Finding, Photo } from "../db/types";
 import { defectTypeStyle } from "./defectTypes";
 // Company template (header row A1:G1 with its fills, fonts and column
 // widths). Inlined as a data URL so the export works offline — the PWA
@@ -97,15 +97,17 @@ async function photoBytes(blob: Blob): Promise<{ bytes: Uint8Array; extension: "
   return { bytes: new Uint8Array(await jpeg.arrayBuffer()), extension: "jpeg" };
 }
 
-// Site inspection date as an Excel date. Built from the local calendar
-// date in UTC, since Excel dates have no time zone — otherwise an
-// Australian morning would land on the previous day.
-function inspectionDate(site: Site): Date {
-  const d = new Date(site.createdAt);
+// Inspection date as an Excel date. Built from the local calendar date in
+// UTC, since Excel dates have no time zone — otherwise an Australian
+// morning would land on the previous day.
+function excelDate(ms: number): Date {
+  const d = new Date(ms);
   return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
 }
 
-export async function buildFindingsWorkbook(site: Site, items: ExcelFinding[]): Promise<Blob> {
+// `inspectionMs`: the site visit date, shown as "Date identified" on every
+// row (see ExportPreview).
+export async function buildFindingsWorkbook(items: ExcelFinding[], inspectionMs: number): Promise<Blob> {
   const ExcelJS = (await import("exceljs")).default;
   const wb = new ExcelJS.Workbook();
   const template = await (await fetch(templateDataUrl)).arrayBuffer();
@@ -121,7 +123,7 @@ export async function buildFindingsWorkbook(site: Site, items: ExcelFinding[]): 
   descCol.width = colWidthFor(descPx);
   const locPx = colPx(ws.getColumn(COL.location).width ?? 19);
 
-  const date = inspectionDate(site);
+  const date = excelDate(inspectionMs);
   let rowNum = 2; // row 1 is the template's header
 
   for (const { finding, photos } of items) {

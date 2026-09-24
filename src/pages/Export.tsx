@@ -255,6 +255,14 @@ export default function ExportPreview() {
 
   if (!siteId) return null;
 
+  // The inspection date on every report (PDF cover, preview, Excel "Date
+  // identified"): the day the findings were entered — a site visit happens
+  // on one day, so the earliest finding's date stands for all of them. Not
+  // the export date, since reports are often sent days later.
+  const inspectionMs = items.length
+    ? Math.min(...items.map((i) => i.finding.createdAt))
+    : (site?.createdAt ?? Date.now());
+
   // Full-bleed cover page. The gradient wash, EnFact masthead wordmark AND
   // the classification watermark (AFSS or Projects) are all baked ahead of
   // time into a single flat JPEG per site kind (src/assets/cover-bg-*.jpg)
@@ -320,7 +328,7 @@ export default function ExportPreview() {
     // inspector name as translucent white pills
     type Badge = { text: string; solid: [number, number, number] | null };
     const badges: Badge[] = [
-      { text: formatFullDate(Date.now()), solid: [46, 196, 182] },
+      { text: formatFullDate(inspectionMs), solid: [46, 196, 182] },
       { text: `${findingsCount} finding${findingsCount === 1 ? "" : "s"}`, solid: null },
     ];
     const inspectorName = getInspectorName();
@@ -471,7 +479,7 @@ export default function ExportPreview() {
       const blob =
         kind === "pdf"
           ? await buildPdf()
-          : await (await import("../lib/excelExport")).buildFindingsWorkbook(site!, items);
+          : await (await import("../lib/excelExport")).buildFindingsWorkbook(items, inspectionMs);
       const inspectorName = getInspectorName();
       const filename = reportFilename(site?.name, inspectorName, kind === "pdf" ? "pdf" : "xlsx");
       const title = reportTitle(site?.name, inspectorName);
@@ -530,7 +538,7 @@ export default function ExportPreview() {
           <div style={{ display: "flex", flexDirection: "column", gap: 2, borderBottom: "1px solid var(--paper-border)", paddingBottom: 14 }}>
             <div style={{ fontSize: 16, fontWeight: 800, color: "var(--paper-text)" }}>{reportTitle(site?.name, getInspectorName())}</div>
             <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted-2)" }}>
-              {site?.address ? `${site.address} · ` : ""}Inspected {formatDate(Date.now())}
+              {site?.address ? `${site.address} · ` : ""}Inspected {formatDate(inspectionMs)}
             </div>
           </div>
 
