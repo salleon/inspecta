@@ -8,6 +8,7 @@ import type { Finding, Photo, Site } from "../db/types";
 import { getSite, listFindings, listPhotos } from "../db/db";
 import { IconChevronLeft, IconShare } from "../components/Icons";
 import RoundIconButton from "../components/RoundIconButton";
+import ProgressOverlay from "../components/ProgressOverlay";
 import { getInitials, getInspectorName } from "../lib/profile";
 import { defectTypeStyle } from "../lib/defectTypes";
 import { watermark } from "../lib/watermark";
@@ -129,6 +130,9 @@ export default function ExportPreview() {
   const [items, setItems] = useState<FindingImages[]>([]);
   const [loading, setLoading] = useState(true);
   const [sharing, setSharing] = useState<"pdf" | "excel" | null>(null);
+  // Excel loading screen: 0–85% while photos are stamped and added (nearly
+  // all the time), then building the file, then handing it to the share menu
+  const [excelProgress, setExcelProgress] = useState<{ percent: number; step: string } | null>(null);
 
   useEffect(() => {
     if (!siteId) return;
@@ -380,11 +384,19 @@ export default function ExportPreview() {
   // (or a download, on desktop web).
   async function handleShare(kind: "pdf" | "excel") {
     setSharing(kind);
+    if (kind === "excel") setExcelProgress({ percent: 0, step: "Getting ready…" });
     try {
       const blob =
         kind === "pdf"
           ? await buildPdf()
-          : await (await import("../lib/excelExport")).buildFindingsWorkbook(items, inspectionMs);
+          : await (await import("../lib/excelExport")).buildFindingsWorkbook(items, inspectionMs, (p) =>
+              setExcelProgress(
+                p.stage === "photos"
+                  ? { percent: p.total ? (85 * p.done) / p.total : 0, step: `Adding photos: ${p.done} of ${p.total}` }
+                  : { percent: 88, step: "Building spreadsheet…" },
+              ),
+            );
+      if (kind === "excel") setExcelProgress({ percent: 97, step: "Opening share menu…" });
       const inspectorName = getInspectorName();
       const filename = reportFilename(site?.name, inspectorName, kind === "pdf" ? "pdf" : "xlsx");
       const title = reportTitle(site?.name, inspectorName);
@@ -394,12 +406,14 @@ export default function ExportPreview() {
         // WebView — write the file to the app's cache and hand THAT file
         // URI to the native share sheet instead.
         const uri = await writeToCache(blob, filename);
+        setExcelProgress(null); // the share menu takes over from here
         await Share.share({
           title,
           url: uri,
         });
       } else {
         // plain web fallback (e.g. previewing in a desktop browser)
+        setExcelProgress(null);
         const file = new File([blob], filename, { type: blob.type || "application/pdf" });
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
           await navigator.share({ files: [file], title });
@@ -423,11 +437,12 @@ export default function ExportPreview() {
       }
     } finally {
       setSharing(null);
+      setExcelProgress(null);
     }
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
       {/* top bar */}
       <div style={{ flexShrink: 0, height: 64, padding: "0 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <RoundIconButton ariaLabel="Back to findings" onClick={() => navigate(`/site/${siteId}/findings`)}>
@@ -513,6 +528,8 @@ export default function ExportPreview() {
           </button>
         </div>
       </div>
+
+      {excelProgress && <ProgressOverlay percent={excelProgress.percent} title="Preparing Excel" step={excelProgress.step} />}
     </div>
   );
 }

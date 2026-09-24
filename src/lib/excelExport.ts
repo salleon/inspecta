@@ -80,7 +80,21 @@ function excelDate(ms: number): Date {
 
 // `inspectionMs`: the site visit date, shown as "Date identified" on every
 // row (see ExportPreview).
-export async function buildFindingsWorkbook(items: ExcelFinding[], inspectionMs: number): Promise<Blob> {
+// Progress for the loading screen. Stamping and adding photos is nearly
+// all of the work, so it's reported photo by photo.
+export type ExcelProgress =
+  | { stage: "photos"; done: number; total: number }
+  | { stage: "building" };
+
+export async function buildFindingsWorkbook(
+  items: ExcelFinding[],
+  inspectionMs: number,
+  onProgress?: (progress: ExcelProgress) => void,
+): Promise<Blob> {
+  const totalPhotos = items.reduce((n, i) => n + i.photos.length, 0);
+  let donePhotos = 0;
+  onProgress?.({ stage: "photos", done: 0, total: totalPhotos });
+
   const ExcelJS = (await import("exceljs")).default;
   const wb = new ExcelJS.Workbook();
   const template = await (await fetch(templateDataUrl)).arrayBuffer();
@@ -115,6 +129,7 @@ export async function buildFindingsWorkbook(items: ExcelFinding[], inspectionMs:
       // (Node) but a Uint8Array is what the browser build accepts.
       const imageId = wb.addImage({ buffer: bytes as unknown as ArrayBuffer, extension: "jpeg" });
       prepared.push({ imageId, heightPx: (PHOTO_W * height) / width });
+      onProgress?.({ stage: "photos", done: ++donePhotos, total: totalPhotos });
     }
 
     // Lay the photos out two per line under the note. If they'd push the
@@ -220,6 +235,10 @@ export async function buildFindingsWorkbook(items: ExcelFinding[], inspectionMs:
   // keep the header visible while scrolling through tall photo rows
   ws.views = [{ state: "frozen", ySplit: 1, topLeftCell: "A2", activeCell: "A2" }];
 
-  const buffer = await wb.xlsx.writeBuffer();
+  onProgress?.({ stage: "building" });
+  // Stored, not deflated: the photos are already JPEG-compressed, so
+  // deflating the zip only burns time (it runs on the main thread and
+  // freezes the loading screen) for a negligible saving on the XML.
+  const buffer = await wb.xlsx.writeBuffer({ zip: { compression: "STORE" } } as never);
   return new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
 }
