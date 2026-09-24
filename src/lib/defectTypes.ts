@@ -1,10 +1,12 @@
 import type { DefectType } from "../db/types";
 
-// Defect type options, in picker order. `bg`/`text` are the bubble's fill
-// and label colour; `rgb` copies are for jsPDF, which takes numeric
-// channels. Orange/green/lime use dark text since white isn't readable on
-// them. "Note only" is a white bubble, so it gets an outline anywhere it
-// sits on a white background (the PDF / export preview).
+// Defect type options, in picker order. Fills are Excel's standard Red,
+// Gold, Green and Light Green, so the spreadsheet matches the app. `bg` /
+// `text` are the bubble's fill and label colour; `rgb` copies are for
+// jsPDF, which takes numeric channels. Gold/green/light green use dark text
+// since white isn't readable on them. "Note only" is a white bubble, so it
+// gets an outline anywhere it sits on a white background (the PDF / export
+// preview).
 
 export interface DefectTypeStyle {
   value: DefectType;
@@ -16,10 +18,10 @@ export interface DefectTypeStyle {
 }
 
 export const DEFECT_TYPES: DefectTypeStyle[] = [
-  { value: "critical", label: "Critical", bg: "#dc2626", text: "#ffffff", bgRgb: [220, 38, 38], textRgb: [255, 255, 255] },
-  { value: "non-critical", label: "Non-critical", bg: "#f97316", text: "#2a1200", bgRgb: [249, 115, 22], textRgb: [42, 18, 0] },
-  { value: "non-compliance", label: "Non-compliance", bg: "#22c55e", text: "#03210f", bgRgb: [34, 197, 94], textRgb: [3, 33, 15] },
-  { value: "recommend", label: "Recommend", bg: "#a3e635", text: "#1a2e05", bgRgb: [163, 230, 53], textRgb: [26, 46, 5] },
+  { value: "critical", label: "Critical", bg: "#ff0000", text: "#ffffff", bgRgb: [255, 0, 0], textRgb: [255, 255, 255] },
+  { value: "non-critical", label: "Non-critical", bg: "#ffc000", text: "#2a1200", bgRgb: [255, 192, 0], textRgb: [42, 18, 0] },
+  { value: "non-compliance", label: "Non-compliance", bg: "#00b050", text: "#03210f", bgRgb: [0, 176, 80], textRgb: [3, 33, 15] },
+  { value: "recommend", label: "Recommend", bg: "#92d050", text: "#1a2e05", bgRgb: [146, 208, 80], textRgb: [26, 46, 5] },
   { value: "note-only", label: "Note only", bg: "#ffffff", text: "#000000", bgRgb: [255, 255, 255], textRgb: [0, 0, 0] },
 ];
 
