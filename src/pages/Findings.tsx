@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import type { Finding, Photo, Site } from "../db/types";
-import { addPhoto, createFinding, deleteSite, getSite, listFindings, listPhotos, reorderFinding, updateSite } from "../db/db";
+import { addPhoto, createFinding, deleteSite, getSite, getThumbnail, listFindings, listPhotos, reorderFinding, updateSite } from "../db/db";
 import { capturePhoto } from "../lib/capture";
 import { IconChevronLeft, IconShare, IconEdit, IconGrip, IconCheck } from "../components/Icons";
 import DefectTypePill from "../components/DefectTypePill";
@@ -94,16 +94,26 @@ export default function Findings() {
       const s = await getSite(siteId!);
       const findings = await listFindings(siteId!);
       const built: Row[] = [];
+      const firstPhotos: Photo[] = [];
       for (const finding of findings) {
         const photos: Photo[] = await listPhotos(finding.id);
-        const first = photos[0];
-        const url = first ? URL.createObjectURL(first.blob) : null;
-        if (url) urls.push(url);
-        built.push({ finding, thumb: url, photoCount: photos.length });
+        if (photos[0]) firstPhotos.push(photos[0]);
+        built.push({ finding, thumb: null, photoCount: photos.length });
       }
-      if (!cancelled) {
-        setSite(s ?? null);
-        setRows(built);
+      if (cancelled) return;
+      setSite(s ?? null);
+      setRows(built);
+
+      // Then the thumbnails, one at a time (small saved copies — see
+      // lib/thumbnail; older photos get theirs made here on first view,
+      // one by one so the phone never decodes a pile of full photos at once)
+      for (const photo of firstPhotos) {
+        const thumb = await getThumbnail(photo).catch(() => null);
+        if (cancelled) return;
+        if (!thumb) continue;
+        const url = URL.createObjectURL(thumb);
+        urls.push(url);
+        setRows((prev) => prev.map((r) => (r.finding.id === photo.findingId ? { ...r, thumb: url } : r)));
       }
     }
     load();

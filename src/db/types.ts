@@ -40,3 +40,10 @@ export interface Photo {
   takenAt: number;
   order: number;
 }
+
+// small JPEG of a photo for list thumbnails (see lib/thumbnail)
+export interface Thumbnail {
+  photoId: string;
+  siteId: string;
+  blob: Blob;
+}

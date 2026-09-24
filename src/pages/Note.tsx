@@ -6,6 +6,7 @@ import {
   createFinding,
   deletePhoto,
   getFinding,
+  getThumbnail,
   listPhotos,
   updateFinding,
 } from "../db/db";
@@ -31,6 +32,8 @@ export default function Note() {
 
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
+  // small copies for the thumbnail strip (see lib/thumbnail), by photo id
+  const [thumbUrls, setThumbUrls] = useState<Record<string, string>>({});
   const [selected, setSelected] = useState(0);
   const [note, setNote] = useState("");
   const [location, setLocation] = useState("");
@@ -108,6 +111,40 @@ export default function Note() {
     setPhotoUrls(urls);
     return () => urls.forEach((u) => URL.revokeObjectURL(u));
   }, [photos]);
+
+  // Thumbnail URLs live in a ref keyed by photo id, so a refresh (e.g.
+  // after adding a photo) only makes the new ones and drops removed ones —
+  // existing thumbnails never flicker.
+  const thumbCache = useRef(new Map<string, string>());
+  useEffect(() => {
+    let cancelled = false;
+    const cache = thumbCache.current;
+    const ids = new Set(photos.map((p) => p.id));
+    for (const [id, url] of cache) {
+      if (!ids.has(id)) {
+        URL.revokeObjectURL(url);
+        cache.delete(id);
+      }
+    }
+    setThumbUrls(Object.fromEntries(cache));
+    (async () => {
+      for (const p of photos) {
+        if (cache.has(p.id)) continue;
+        const thumb = await getThumbnail(p).catch(() => null);
+        if (cancelled) return;
+        if (!thumb) continue;
+        cache.set(p.id, URL.createObjectURL(thumb));
+        setThumbUrls(Object.fromEntries(cache));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [photos]);
+  useEffect(() => {
+    const cache = thumbCache.current;
+    return () => cache.forEach((url) => URL.revokeObjectURL(url));
+  }, []);
 
   const wasCollapsedRef = useRef(false);
 
@@ -381,8 +418,8 @@ export default function Note() {
                   border: i === selected ? "2px solid var(--accent)" : "1px solid var(--border-strong)",
                 }}
               >
-                {photoUrls[i] && (
-                  <img src={photoUrls[i]} alt="" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
+                {thumbUrls[p.id] && (
+                  <img src={thumbUrls[p.id]} alt="" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
                 )}
               </button>
             ))}

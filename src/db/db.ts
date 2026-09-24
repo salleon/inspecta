@@ -1,10 +1,12 @@
 import Dexie, { type Table } from "dexie";
-import type { Site, Finding, Photo, SiteKind } from "./types";
+import type { Site, Finding, Photo, SiteKind, Thumbnail } from "./types";
+import { makeThumbnail } from "../lib/thumbnail";
 
 class InspectaDB extends Dexie {
   sites!: Table<Site, string>;
   findings!: Table<Finding, string>;
   photos!: Table<Photo, string>;
+  thumbnails!: Table<Thumbnail, string>;
 
   constructor() {
     super("inspecta");
@@ -35,6 +37,15 @@ class InspectaDB extends Dexie {
         // actually drags a row.
         if (f.order === undefined) f.order = -f.createdAt;
       }));
+    // v4: small list thumbnails, kept apart from the photos so reading them
+    // never touches the full-size images. Additive only — nothing existing
+    // changes; thumbnails for older photos are made on first view.
+    this.version(4).stores({
+      sites: "id, updatedAt, kind",
+      findings: "id, siteId, createdAt, order",
+      photos: "id, findingId, siteId, order",
+      thumbnails: "photoId, siteId",
+    });
   }
 }
 
@@ -79,10 +90,10 @@ async function touchSite(siteId: string) {
 }
 
 export async function deleteSite(siteId: string) {
-  const findings = await db.findings.where("siteId").equals(siteId).toArray();
-  const photos = await db.photos.where("siteId").equals(siteId).toArray();
-  await db.photos.bulkDelete(photos.map((p) => p.id));
-  await db.findings.bulkDelete(findings.map((f) => f.id));
+  // keys only — no need to read every photo just to delete it
+  await db.thumbnails.where("siteId").equals(siteId).delete();
+  await db.photos.where("siteId").equals(siteId).delete();
+  await db.findings.where("siteId").equals(siteId).delete();
   await db.sites.delete(siteId);
 }
 
@@ -144,6 +155,8 @@ export async function addPhoto(findingId: string, siteId: string, blob: Blob) {
   };
   await db.photos.add(photo);
   await db.findings.update(findingId, { updatedAt: Date.now() });
+  // make its thumbnail now, in the background, so lists never wait on it
+  void getThumbnail(photo).catch(() => {});
   return photo;
 }
 
@@ -154,4 +167,27 @@ export async function listPhotos(findingId: string) {
 
 export async function deletePhoto(photoId: string) {
   await db.photos.delete(photoId);
+  await db.thumbnails.delete(photoId);
+}
+
+// A photo's small list thumbnail, made (and saved) the first time it's
+// asked for. Concurrent requests for the same photo share one job.
+const thumbnailJobs = new Map<string, Promise<Blob>>();
+export function getThumbnail(photo: Photo): Promise<Blob> {
+  let job = thumbnailJobs.get(photo.id);
+  if (!job) {
+    job = (async () => {
+      const saved = await db.thumbnails.get(photo.id);
+      if (saved) return saved.blob;
+      const blob = await makeThumbnail(photo.blob);
+      // only keep it if the photo still exists (it may have been deleted
+      // or retaken while the thumbnail was being made)
+      await db.transaction("rw", db.photos, db.thumbnails, async () => {
+        if (await db.photos.get(photo.id)) await db.thumbnails.put({ photoId: photo.id, siteId: photo.siteId, blob });
+      });
+      return blob;
+    })().finally(() => thumbnailJobs.delete(photo.id));
+    thumbnailJobs.set(photo.id, job);
+  }
+  return job;
 }
