@@ -13,7 +13,7 @@ const ADVANCED_KEY = "inspecta.advancedControls";
 
 const listeners = new Set<() => void>();
 
-export function getAdvancedControls(): boolean {
+function getAdvancedControls(): boolean {
   try {
     return localStorage.getItem(ADVANCED_KEY) === "1";
   } catch {

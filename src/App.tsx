@@ -76,7 +76,7 @@ function App() {
 // right way instead of just fading.
 function routeDepth(pathname: string): number {
   if (pathname === "/") return 0;
-  if (/\/findings$/.test(pathname)) return 1;
+  if (pathname.endsWith("/findings")) return 1;
   // Note and Export are both one level below Findings
   return 2;
 }

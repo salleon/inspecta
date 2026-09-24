@@ -1,6 +1,5 @@
 import { Camera, CameraDirection } from "@capacitor/camera";
 
-export type { CameraDirection };
 
 /**
  * Opens the device camera (native on Android/iOS via Capacitor, falls back to

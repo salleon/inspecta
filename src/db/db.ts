@@ -38,7 +38,7 @@ class InspectaDB extends Dexie {
   }
 }
 
-export const db = new InspectaDB();
+const db = new InspectaDB();
 
 // ---- helpers ----
 

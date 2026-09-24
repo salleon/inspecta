@@ -54,7 +54,7 @@ async function writeToCache(blob: Blob, filename: string): Promise<string> {
 
 interface FindingImages {
   finding: Finding;
-  dataUrls: string[]; // watermarked, for the preview + PDF
+  dataUrls: string[]; // watermarked, for the on-screen preview
   photos: Photo[]; // originals — the Excel export stamps its own full-res copies
 }
 
