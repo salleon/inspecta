@@ -141,6 +141,9 @@ export default function Dashboard() {
               justifyContent: "center",
               fontSize: 13,
               fontWeight: 800,
+              // set explicitly: a <button>'s text colour doesn't inherit,
+              // so this was the browser-default black
+              color: "var(--text)",
             }}
           >
             {initials()}
