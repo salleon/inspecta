@@ -11,7 +11,7 @@ import RoundIconButton from "../components/RoundIconButton";
 import ProgressOverlay from "../components/ProgressOverlay";
 import { getInitials, getInspectorName } from "../lib/profile";
 import { defectTypeStyle } from "../lib/defectTypes";
-import { watermark } from "../lib/watermark";
+import { EXPORT_MAX_EDGE, PREVIEW_MAX_EDGE, watermark } from "../lib/watermark";
 import DefectTypePill from "../components/DefectTypePill";
 import coverBgAfss from "../assets/cover-bg-afss.jpg";
 import coverBgProjects from "../assets/cover-bg-projects.jpg";
@@ -146,7 +146,10 @@ export default function ExportPreview() {
       const built: FindingImages[] = [];
       for (const finding of findings) {
         const photos = await listPhotos(finding.id);
-        const dataUrls = await Promise.all(photos.map((p) => watermark(p.blob, p.takenAt)));
+        // small stamped copies — the preview shows them ~90 px wide; full
+        // photos are only processed when a file is actually exported
+        const dataUrls: string[] = [];
+        for (const p of photos) dataUrls.push(await watermark(p.blob, p.takenAt, { maxEdge: PREVIEW_MAX_EDGE }));
         built.push({ finding, dataUrls, photos });
       }
       if (!cancelled) {
@@ -311,13 +314,12 @@ export default function ExportPreview() {
 
       // cropped to the tile shape from the original photo, THEN stamped, so
       // the timestamp is never trimmed off by the crop
-      const tiles = await Promise.all(
-        item.photos.map(async (p) => {
-          const tile = await watermark(p.blob, p.takenAt, tileAspect);
-          onPhoto(++donePhotos, totalPhotos);
-          return tile;
-        }),
-      );
+      // one photo at a time, so only one full-size photo is ever decoded
+      const tiles: string[] = [];
+      for (const p of item.photos) {
+        tiles.push(await watermark(p.blob, p.takenAt, { cropAspect: tileAspect, maxEdge: EXPORT_MAX_EDGE }));
+        onPhoto(++donePhotos, totalPhotos);
+      }
       const rows = Math.ceil(tiles.length / 2);
       const photosBlockH = rows * tileH + (rows - 1) * tileGap;
 

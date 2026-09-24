@@ -1,6 +1,6 @@
 import type { Finding, Photo } from "../db/types";
 import { defectTypeStyle } from "./defectTypes";
-import { watermarkFullQuality } from "./watermark";
+import { EXPORT_MAX_EDGE, watermarkBlob } from "./watermark";
 // Company template (header row A1:G1 with its fills, fonts and column
 // widths). Inlined as a data URL so the export works offline — the PWA
 // service worker doesn't precache .xlsx files.
@@ -10,10 +10,10 @@ import templateDataUrl from "../assets/findings-template.xlsx?inline";
 // A Ref · B Location · C Description (+ photos) · D Date identified ·
 // E Risk level · F Status · G Corrective action.
 //
-// Photos go in at full camera resolution (no downscaling — these files go
-// to OneDrive, not email) with the same timestamp as the PDF, drawn
-// exactly 5 cm wide underneath the note in the Description cell. Built
-// for desktop Excel.
+// Photos go in with the same timestamp as the PDF, scaled to at most
+// EXPORT_MAX_EDGE px (they're drawn exactly 5 cm wide underneath the note
+// in the Description cell, so that's still far sharper than the cell
+// needs). Built for desktop Excel.
 
 export interface ExcelFinding {
   finding: Finding;
@@ -121,9 +121,10 @@ export async function buildFindingsWorkbook(
     const prepared: PreparedPhoto[] = [];
     for (const p of photos) {
       // Re-drawn to stamp the timestamp on, which also turns sideways
-      // camera photos upright (Excel ignores the JPEG rotation flag).
-      // Full resolution at JPEG quality 0.95 — visually lossless.
-      const { jpeg, width, height } = await watermarkFullQuality(p.blob, p.takenAt);
+      // camera photos upright (Excel ignores the JPEG rotation flag). Capped
+      // at EXPORT_MAX_EDGE: shown 5 cm wide, so full camera resolution only
+      // costs memory and file size.
+      const { jpeg, width, height } = await watermarkBlob(p.blob, p.takenAt, { maxEdge: EXPORT_MAX_EDGE });
       const bytes = new Uint8Array(await jpeg.arrayBuffer());
       // ExcelJS writes `buffer` straight into the zip; its type says Buffer
       // (Node) but a Uint8Array is what the browser build accepts.
