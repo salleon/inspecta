@@ -119,8 +119,13 @@ export default function Dashboard() {
       <div style={{ flexShrink: 0, padding: "20px 20px 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <img src={logo} alt="Inspecta by EnFact" style={{ width: 34, height: 34, borderRadius: 9, display: "block" }} />
-          <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.1 }}>
-            <span style={{ fontSize: 17, fontWeight: 800, letterSpacing: -0.2 }}>Inspecta</span>
+          {/* "Inspecta" sized so its letters (top of the I to the bottom of
+              the p: 0.96em in the bundled Manrope) span the 34 px icon
+              exactly, and nudged up 0.145em because Manrope's line metrics
+              sit the letters that far below centre. "BY ENFACT" follows on
+              the same baseline. */}
+          <div style={{ display: "flex", alignItems: "baseline", gap: 6, fontSize: 34 / 0.96, lineHeight: 1, transform: "translateY(-0.145em)", whiteSpace: "nowrap" }}>
+            <span style={{ fontWeight: 800, letterSpacing: -0.6 }}>Inspecta</span>
             <span style={{ fontSize: 10, fontWeight: 700, color: "var(--accent)", letterSpacing: 0.4 }}>BY ENFACT</span>
           </div>
         </div>
