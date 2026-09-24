@@ -14,7 +14,8 @@ function formatTimestamp(ms: number) {
   const min = String(d.getMinutes()).padStart(2, "0");
   const ampm = h >= 12 ? "PM" : "AM";
   h = h % 12 || 12;
-  return `${dd}/${mm}/${yy} - ${String(h).padStart(2, "0")}:${min} ${ampm}`;
+  // time first, then date: "02:48 PM - 24/09/26"
+  return `${String(h).padStart(2, "0")}:${min} ${ampm} - ${dd}/${mm}/${yy}`;
 }
 
 // Stamp size, as a fraction of the photo's width — matched to the supplied
