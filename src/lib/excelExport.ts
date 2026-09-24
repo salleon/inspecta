@@ -1,5 +1,6 @@
 import type { Finding, Photo } from "../db/types";
 import { defectTypeStyle } from "./defectTypes";
+import { watermarkFullQuality } from "./watermark";
 // Company template (header row A1:G1 with its fills, fonts and column
 // widths). Inlined as a data URL so the export works offline — the PWA
 // service worker doesn't precache .xlsx files.
@@ -9,10 +10,10 @@ import templateDataUrl from "../assets/findings-template.xlsx?inline";
 // A Ref · B Location · C Description (+ photos) · D Date identified ·
 // E Risk level · F Status · G Corrective action.
 //
-// Photos go in at their original camera quality (no downscaling or
-// re-encoding — these files go to OneDrive, not email), drawn exactly 5 cm
-// wide underneath the note in the Description cell. Built for desktop
-// Excel.
+// Photos go in at full camera resolution (no downscaling — these files go
+// to OneDrive, not email) with the same timestamp as the PDF, drawn
+// exactly 5 cm wide underneath the note in the Description cell. Built
+// for desktop Excel.
 
 export interface ExcelFinding {
   finding: Finding;
@@ -69,34 +70,6 @@ interface PreparedPhoto {
   heightPx: number; // at 5 cm wide
 }
 
-// Natural pixel size of a photo, so it can be scaled to 5 cm wide without
-// distorting it.
-async function photoSize(blob: Blob): Promise<{ w: number; h: number }> {
-  const bmp = await createImageBitmap(blob);
-  const size = { w: bmp.width, h: bmp.height };
-  bmp.close();
-  return size;
-}
-
-// Excel only takes JPEG/PNG/GIF. Camera photos are JPEG and go in
-// untouched; anything else (e.g. a HEIC picked on the web) is converted to
-// a full-resolution, near-lossless JPEG.
-async function photoBytes(blob: Blob): Promise<{ bytes: Uint8Array; extension: "jpeg" | "png" | "gif" }> {
-  const type = blob.type.toLowerCase();
-  const ext = type === "image/jpeg" || type === "image/jpg" ? "jpeg" : type === "image/png" ? "png" : type === "image/gif" ? "gif" : null;
-  if (ext) return { bytes: new Uint8Array(await blob.arrayBuffer()), extension: ext };
-  const bmp = await createImageBitmap(blob);
-  const canvas = document.createElement("canvas");
-  canvas.width = bmp.width;
-  canvas.height = bmp.height;
-  canvas.getContext("2d")!.drawImage(bmp, 0, 0);
-  bmp.close();
-  const jpeg = await new Promise<Blob>((resolve, reject) =>
-    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("photo conversion failed"))), "image/jpeg", 0.95),
-  );
-  return { bytes: new Uint8Array(await jpeg.arrayBuffer()), extension: "jpeg" };
-}
-
 // Inspection date as an Excel date. Built from the local calendar date in
 // UTC, since Excel dates have no time zone — otherwise an Australian
 // morning would land on the previous day.
@@ -133,11 +106,15 @@ export async function buildFindingsWorkbook(items: ExcelFinding[], inspectionMs:
 
     const prepared: PreparedPhoto[] = [];
     for (const p of photos) {
-      const [{ w, h }, { bytes, extension }] = await Promise.all([photoSize(p.blob), photoBytes(p.blob)]);
+      // Re-drawn to stamp the timestamp on, which also turns sideways
+      // camera photos upright (Excel ignores the JPEG rotation flag).
+      // Full resolution at JPEG quality 0.95 — visually lossless.
+      const { jpeg, width, height } = await watermarkFullQuality(p.blob, p.takenAt);
+      const bytes = new Uint8Array(await jpeg.arrayBuffer());
       // ExcelJS writes `buffer` straight into the zip; its type says Buffer
       // (Node) but a Uint8Array is what the browser build accepts.
-      const imageId = wb.addImage({ buffer: bytes as unknown as ArrayBuffer, extension });
-      prepared.push({ imageId, heightPx: (PHOTO_W * h) / w });
+      const imageId = wb.addImage({ buffer: bytes as unknown as ArrayBuffer, extension: "jpeg" });
+      prepared.push({ imageId, heightPx: (PHOTO_W * height) / width });
     }
 
     // Lay the photos out two per line under the note. If they'd push the

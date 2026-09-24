@@ -10,6 +10,7 @@ import { IconChevronLeft, IconShare } from "../components/Icons";
 import RoundIconButton from "../components/RoundIconButton";
 import { getInitials, getInspectorName } from "../lib/profile";
 import { defectTypeStyle } from "../lib/defectTypes";
+import { watermark } from "../lib/watermark";
 import DefectTypePill from "../components/DefectTypePill";
 import coverBgAfss from "../assets/cover-bg-afss.jpg";
 import coverBgProjects from "../assets/cover-bg-projects.jpg";
@@ -53,20 +54,9 @@ async function writeToCache(blob: Blob, filename: string): Promise<string> {
 interface FindingImages {
   finding: Finding;
   dataUrls: string[]; // watermarked, for the preview + PDF
-  photos: Photo[]; // originals, for the Excel export
+  photos: Photo[]; // originals — the Excel export stamps its own full-res copies
 }
 
-function formatTimestamp(ms: number) {
-  const d = new Date(ms);
-  const dd = String(d.getDate()).padStart(2, "0");
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const yy = String(d.getFullYear()).slice(-2);
-  let h = d.getHours();
-  const min = String(d.getMinutes()).padStart(2, "0");
-  const ampm = h >= 12 ? "PM" : "AM";
-  h = h % 12 || 12;
-  return `${dd}/${mm}/${yy} - ${String(h).padStart(2, "0")}:${min} ${ampm}`;
-}
 
 function formatDate(ms: number) {
   const d = new Date(ms);
@@ -173,49 +163,6 @@ function cropToBox(dataUrl: string, targetAspect: number): Promise<string> {
     };
     img.onerror = reject;
     img.src = dataUrl;
-  });
-}
-
-// draws the photo onto a canvas with a burned-in bottom-right timestamp watermark
-function watermark(blob: Blob, timestampMs: number): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const url = URL.createObjectURL(blob);
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = img.naturalWidth;
-      canvas.height = img.naturalHeight;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        URL.revokeObjectURL(url);
-        reject(new Error("no canvas context"));
-        return;
-      }
-      ctx.drawImage(img, 0, 0);
-
-      const text = formatTimestamp(timestampMs);
-      const fontSize = Math.max(30, Math.round(canvas.width * 0.045));
-      ctx.font = `700 ${fontSize}px Manrope, system-ui, sans-serif`;
-      ctx.textAlign = "right";
-      ctx.textBaseline = "alphabetic";
-      const x = canvas.width - fontSize * 0.7;
-      const y = canvas.height - fontSize * 0.7;
-
-      ctx.lineWidth = Math.max(2, fontSize * 0.18);
-      ctx.strokeStyle = "#000000";
-      ctx.lineJoin = "round";
-      ctx.strokeText(text, x, y);
-      ctx.fillStyle = "#ffffff";
-      ctx.fillText(text, x, y);
-
-      URL.revokeObjectURL(url);
-      resolve(canvas.toDataURL("image/jpeg", 0.88));
-    };
-    img.onerror = (err) => {
-      URL.revokeObjectURL(url);
-      reject(err);
-    };
-    img.src = url;
   });
 }
 

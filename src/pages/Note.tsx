@@ -357,7 +357,9 @@ export default function Note() {
             just the latest; hidden while typing to leave Note + Location
             both visible above the keyboard */}
         {photos.length > 0 && !fieldFocused && (
-          <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 2 }}>
+          // flexShrink 0: as a horizontal scroller this row may otherwise be
+          // squashed to nothing once the fields below make the screen scroll
+          <div style={{ flexShrink: 0, display: "flex", gap: 8, overflowX: "auto", paddingBottom: 2 }}>
             {photos.map((p, i) => (
               <button
                 key={p.id}
@@ -456,7 +458,14 @@ export default function Note() {
             <button
               id="defectTypeInput"
               type="button"
-              onClick={() => setPickingDefectType(true)}
+              // Don't let this tap blur a focused Note/Location first: the
+              // blur re-expands the photo, shoving this button down so the
+              // tap misses it (it'd take a second tap to open).
+              onPointerDown={(e) => e.preventDefault()}
+              onClick={() => {
+                (document.activeElement as HTMLElement | null)?.blur();
+                setPickingDefectType(true);
+              }}
               style={{ ...fieldStyle, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, textAlign: "left", padding: defectType ? "9px 14px" : fieldStyle.padding }}
             >
               {defectType ? (
