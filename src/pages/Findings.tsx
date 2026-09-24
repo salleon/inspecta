@@ -658,7 +658,9 @@ function FindingRow({
           {finding.note || "Untitled finding"}
         </div>
         <div style={{ fontSize: 12, fontWeight: 500, color: "var(--muted)" }}>
-          {formatShort(finding.createdAt)}{finding.location ? ` · ${finding.location}` : ""}
+          {formatShort(finding.createdAt)}
+          {finding.level && <> · <b style={{ fontWeight: 700, color: "var(--text)" }}>{finding.level}</b></>}
+          {finding.location ? ` · ${finding.location}` : ""}
         </div>
         <DefectTypePill type={finding.defectType} size="sm" />
       </div>

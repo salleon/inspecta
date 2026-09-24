@@ -86,13 +86,14 @@ export async function deleteSite(siteId: string) {
   await db.sites.delete(siteId);
 }
 
-export async function createFinding(siteId: string) {
+export async function createFinding(siteId: string, carried: Partial<Pick<Finding, "level">> = {}) {
   const now = Date.now();
   const finding: Finding = {
     id: uid(),
     siteId,
     note: "",
     location: "",
+    ...carried,
     // negative timestamp so a new finding sorts before every existing one
     // (matches the old "newest first" default) until it's dragged.
     order: -now,
@@ -106,7 +107,7 @@ export async function createFinding(siteId: string) {
 
 export async function updateFinding(
   findingId: string,
-  changes: Partial<Pick<Finding, "note" | "location" | "defectType">>,
+  changes: Partial<Pick<Finding, "note" | "location" | "defectType" | "level">>,
 ) {
   await db.findings.update(findingId, { ...changes, updatedAt: Date.now() });
 }

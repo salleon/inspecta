@@ -20,6 +20,10 @@ export interface Finding {
   // Optional, only offered while advanced controls are on. Absent on
   // findings that never had one set (including every pre-existing finding).
   defectType?: DefectType;
+  // Optional building level, stored as its display text ("Level 25",
+  // "Ground", "Basement 2", "Mezzanine", "Roof") — see lib/levels.ts.
+  // Advanced-controls field, absent unless one was entered.
+  level?: string;
   // manual sort position within a site's findings list — lower sorts
   // first. New findings get a very small (very negative) value so they
   // appear first, same as the old createdAt-desc default, until dragged.

@@ -13,6 +13,7 @@ import { capturePhoto } from "../lib/capture";
 import { IconRetake, IconTrash, IconChevronLeft, IconPlus, IconCamera, IconCheck } from "../components/Icons";
 import RoundIconButton from "../components/RoundIconButton";
 import DefectTypePill from "../components/DefectTypePill";
+import LevelField from "../components/LevelField";
 import { DEFECT_TYPES } from "../lib/defectTypes";
 import { useAdvancedControls } from "../lib/settings";
 
@@ -34,6 +35,10 @@ export default function Note() {
   const [note, setNote] = useState("");
   const [location, setLocation] = useState("");
   const [defectType, setDefectType] = useState<DefectType | undefined>(undefined);
+  const [level, setLevel] = useState<string | undefined>(undefined);
+  // the level "Save & next finding" copied over from the previous finding,
+  // so we can say so under the field until it's changed
+  const carriedLevel = (routerLocation.state as { carriedLevel?: string } | null)?.carriedLevel;
   const [pickingDefectType, setPickingDefectType] = useState(false);
   const advancedControls = useAdvancedControls();
   const [busy, setBusy] = useState(false);
@@ -84,6 +89,7 @@ export default function Note() {
     setNote(f?.note ?? "");
     setLocation(f?.location ?? "");
     setDefectType(f?.defectType);
+    setLevel(f?.level);
     const p = await listPhotos(findingId);
     setPhotos(p);
     setSelected((prev) => {
@@ -112,7 +118,7 @@ export default function Note() {
 
   async function persist() {
     if (!findingId) return;
-    await updateFinding(findingId, { note, location, defectType });
+    await updateFinding(findingId, { note, location, defectType, level });
   }
 
   // Used by both the back button and "View findings" — they're the same
@@ -135,9 +141,12 @@ export default function Note() {
         navigate(`/site/${siteId}/findings`);
         return;
       }
-      const finding = await createFinding(siteId);
+      // carry the level over to the next finding (advanced controls) — a
+      // cleared level carries nothing, so the next one starts empty too
+      const carry = advancedControls && level ? level : undefined;
+      const finding = await createFinding(siteId, carry ? { level: carry } : {});
       await addPhoto(finding.id, siteId, blob);
-      navigate(`/site/${siteId}/finding/${finding.id}/note`);
+      navigate(`/site/${siteId}/finding/${finding.id}/note`, carry ? { state: { carriedLevel: carry } } : undefined);
     } finally {
       setBusy(false);
     }
@@ -197,6 +206,7 @@ export default function Note() {
   // The picker is only offered while advanced controls are on, but a type
   // already saved on this finding stays visible (and editable) either way.
   const showDefectType = advancedControls || defectType !== undefined;
+  const showLevel = advancedControls || level !== undefined;
 
   async function handleDelete() {
     if (!activePhoto || !findingId) return;
@@ -421,6 +431,23 @@ export default function Note() {
             style={fieldStyle}
           />
         </div>
+
+        {/* level — advanced controls; optional, carried to the next finding */}
+        {showLevel && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <label htmlFor="levelInput" style={labelStyle}>Level</label>
+            <LevelField
+              value={level}
+              onChange={setLevel}
+              onFocus={() => setFieldFocused(true)}
+              onBlur={() => setFieldFocused(false)}
+              fieldStyle={fieldStyle}
+            />
+            {carriedLevel && level === carriedLevel && (
+              <div style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)" }}>Same level as your last finding</div>
+            )}
+          </div>
+        )}
 
         {/* defect type — advanced controls */}
         {showDefectType && (

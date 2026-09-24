@@ -374,8 +374,12 @@ export default function ExportPreview() {
       doc.setFontSize(12);
       const titleLines = doc.splitTextToSize(item.finding.note || "Untitled finding", textColW);
       const defect = defectTypeStyle(item.finding.defectType);
+      // level (as a subheading) and location, each on its own grey line
+      const placeLines = [item.finding.level, item.finding.location].filter((t): t is string => !!t);
       const textBlockH =
-        titleLines.length * 15 + (item.finding.location ? 18 : 0) + (defect ? PILL_H + 10 : 0);
+        titleLines.length * 15 +
+        (placeLines.length ? 18 + (placeLines.length - 1) * 13 : 0) +
+        (defect ? PILL_H + 10 : 0);
 
       const blockH = Math.max(photosBlockH, textBlockH);
 
@@ -415,7 +419,7 @@ export default function ExportPreview() {
         ty += PILL_H + 10;
       }
 
-      // title + location, once per finding regardless of photo count,
+      // title + level + location, once per finding regardless of photo count,
       // always anchored to the shared centerline column
       doc.setFont("helvetica", "bold");
       doc.setFontSize(12);
@@ -423,11 +427,11 @@ export default function ExportPreview() {
       doc.text(titleLines, textX, ty);
       ty += titleLines.length * 15 + 8;
 
-      if (item.finding.location) {
+      if (placeLines.length) {
         doc.setFont("helvetica", "normal");
         doc.setFontSize(10);
         doc.setTextColor(140, 140, 140);
-        doc.text(item.finding.location, textX, ty);
+        placeLines.forEach((line, i) => doc.text(line, textX, ty + i * 13));
       }
 
       y = rowTop + blockH + blockGap;
@@ -539,8 +543,11 @@ export default function ExportPreview() {
                 <div style={{ fontSize: 13, fontWeight: 700, color: "var(--paper-text)", lineHeight: 1.35 }}>
                   {finding.note || "Untitled finding"}
                 </div>
-                {finding.location && (
-                  <div style={{ fontSize: 11, fontWeight: 600, color: "var(--muted-2)" }}>{finding.location}</div>
+                {(finding.level || finding.location) && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                    {finding.level && <div style={{ fontSize: 11, fontWeight: 600, color: "var(--muted-2)" }}>{finding.level}</div>}
+                    {finding.location && <div style={{ fontSize: 11, fontWeight: 600, color: "var(--muted-2)" }}>{finding.location}</div>}
+                  </div>
                 )}
               </div>
             </div>
