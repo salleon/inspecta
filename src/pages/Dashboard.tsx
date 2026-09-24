@@ -7,7 +7,7 @@ import CountUp from "../components/CountUp";
 import ConfirmDialog from "../components/ConfirmDialog";
 import FormActions from "../components/FormActions";
 import logo from "../assets/logo.png";
-import { getInitials, getInspectorName, setInspectorName } from "../lib/profile";
+import { getInspectorName, setInspectorName } from "../lib/profile";
 import { setAdvancedControls, useAdvancedControls } from "../lib/settings";
 
 interface SiteRow extends Site {
@@ -139,31 +139,9 @@ export default function Dashboard() {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: 13,
-              fontWeight: 800,
-              // set explicitly: a <button>'s text colour doesn't inherit,
-              // so this was the browser-default black
-              color: "var(--text)",
             }}
           >
-            {initials()}
-          </div>
-          <div
-            style={{
-              position: "absolute",
-              bottom: -3,
-              right: -3,
-              width: 16,
-              height: 16,
-              borderRadius: "50%",
-              background: "var(--accent)",
-              border: "2px solid var(--bg)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <IconSettings size={10} strokeWidth={2.6} color="var(--accent-text)" />
+            <IconSettings size={19} strokeWidth={2} color="var(--text)" />
           </div>
         </button>
       </div>
@@ -371,7 +349,7 @@ export default function Dashboard() {
           >
             <div style={{ fontSize: 16, fontWeight: 800 }}>Your name</div>
             <div style={{ fontSize: 13, fontWeight: 500, color: "var(--muted)", lineHeight: 1.5, marginTop: -8 }}>
-              Used for the avatar above and to label your PDF reports.
+              Used to label your reports.
             </div>
             <input autoFocus value={nameDraft} onChange={(e) => setNameDraft(e.target.value)} style={inputStyle} />
             <FormActions onCancel={() => setEditingName(false)} />
@@ -391,9 +369,6 @@ export default function Dashboard() {
     </div>
   );
 
-  function initials() {
-    return getInitials(inspectorName) || "?";
-  }
 }
 
 const inputStyle: CSSProperties = {

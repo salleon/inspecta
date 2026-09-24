@@ -4,7 +4,7 @@ import { setInspectorName } from "../lib/profile";
 
 // Shown once, on first launch only (App.tsx gates on hasInspectorName()) —
 // captures the inspector's name locally, since this app has no login. Used
-// afterwards for the dashboard avatar initials and to label PDF reports.
+// afterwards to label reports.
 export default function Onboarding({ onDone }: { onDone: () => void }) {
   const [name, setName] = useState("");
 
