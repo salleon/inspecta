@@ -2,12 +2,13 @@ import { useEffect, useRef, useState, type FormEvent, type CSSProperties, type P
 import { useNavigate } from "react-router-dom";
 import type { Site, SiteKind } from "../db/types";
 import { createSite, deleteSite, findingCount, listSites } from "../db/db";
-import { IconSearch, IconBuilding, IconPlus, IconEdit, IconTrash } from "../components/Icons";
+import { IconSearch, IconBuilding, IconPlus, IconTrash, IconSettings, IconChevronRight } from "../components/Icons";
 import CountUp from "../components/CountUp";
 import ConfirmDialog from "../components/ConfirmDialog";
 import FormActions from "../components/FormActions";
 import logo from "../assets/logo.png";
 import { getInitials, getInspectorName, setInspectorName } from "../lib/profile";
+import { setAdvancedControls, useAdvancedControls } from "../lib/settings";
 
 interface SiteRow extends Site {
   findings: number;
@@ -22,11 +23,13 @@ export default function Dashboard() {
   const [address, setAddress] = useState("");
   const [kind, setKind] = useState<SiteKind>("afss");
   const [inspectorName, setInspectorNameState] = useState(() => getInspectorName());
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
   const [openSwipeId, setOpenSwipeId] = useState<string | null>(null);
   const [confirmDeleteSite, setConfirmDeleteSite] = useState<SiteRow | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const advancedControls = useAdvancedControls();
 
   async function refresh() {
     const list = await listSites();
@@ -49,6 +52,7 @@ export default function Dashboard() {
   const projectSites = filtered.filter((s) => s.kind === "project");
 
   function openEditName() {
+    setSettingsOpen(false);
     setNameDraft(inspectorName);
     setEditingName(true);
   }
@@ -121,8 +125,8 @@ export default function Dashboard() {
           </div>
         </div>
         <button
-          aria-label="Edit your name"
-          onClick={openEditName}
+          aria-label="Settings"
+          onClick={() => setSettingsOpen(true)}
           style={{ position: "relative", width: 38, height: 38, background: "none", border: "none", padding: 0 }}
         >
           <div
@@ -156,7 +160,7 @@ export default function Dashboard() {
               justifyContent: "center",
             }}
           >
-            <IconEdit size={8} strokeWidth={3} color="var(--accent-text)" />
+            <IconSettings size={10} strokeWidth={2.6} color="var(--accent-text)" />
           </div>
         </button>
       </div>
@@ -307,6 +311,49 @@ export default function Dashboard() {
         </div>
       )}
 
+      {settingsOpen && (
+        <div
+          className="sheet-backdrop"
+          style={{ position: "absolute", inset: 0, background: "rgba(10,11,13,0.6)", display: "flex", alignItems: "flex-end" }}
+          onClick={() => setSettingsOpen(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="sheet-panel"
+            style={{ width: "100%", background: "var(--panel)", borderRadius: "20px 20px 0 0", padding: "22px 20px calc(28px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 14 }}
+          >
+            <div style={{ fontSize: 16, fontWeight: 800 }}>Settings</div>
+            <button type="button" onClick={openEditName} style={settingsRowStyle}>
+              <div style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
+                <span style={{ fontSize: 14, fontWeight: 700 }}>Your name</span>
+                <span style={settingsRowHintStyle}>{inspectorName || "Not set"}</span>
+              </div>
+              <IconChevronRight color="var(--muted)" />
+            </button>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={advancedControls}
+              onClick={() => setAdvancedControls(!advancedControls)}
+              style={settingsRowStyle}
+            >
+              <div style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
+                <span style={{ fontSize: 14, fontWeight: 700 }}>Advanced controls</span>
+                <span style={settingsRowHintStyle}>Show extra menus for more detailed data entry.</span>
+              </div>
+              <Switch on={advancedControls} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setSettingsOpen(false)}
+              style={{ textAlign: "center", padding: "14px 0", borderRadius: 12, background: "var(--panel-2)", border: "1px solid var(--border)", fontSize: 14, fontWeight: 700, color: "var(--text)", marginTop: 4 }}
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
+
       {editingName && (
         <div
           className="sheet-backdrop"
@@ -356,6 +403,57 @@ const inputStyle: CSSProperties = {
   fontWeight: 500,
   outline: "none",
 };
+
+const settingsRowStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 12,
+  width: "100%",
+  background: "var(--panel-2)",
+  border: "1px solid var(--border)",
+  borderRadius: 12,
+  padding: "13px 14px",
+  textAlign: "left",
+  color: "var(--text)",
+};
+
+const settingsRowHintStyle: CSSProperties = {
+  fontSize: 12,
+  fontWeight: 500,
+  color: "var(--muted)",
+  lineHeight: 1.4,
+};
+
+// Visual-only on/off pill — the row it sits in is the actual switch button.
+function Switch({ on }: { on: boolean }) {
+  return (
+    <div
+      style={{
+        flexShrink: 0,
+        position: "relative",
+        width: 44,
+        height: 26,
+        borderRadius: 13,
+        background: on ? "var(--accent)" : "var(--muted-2)",
+        transition: "background 0.18s ease",
+      }}
+    >
+      <div
+        style={{
+          position: "absolute",
+          top: 3,
+          left: 3,
+          width: 20,
+          height: 20,
+          borderRadius: "50%",
+          background: on ? "var(--accent-text)" : "var(--text)",
+          transform: `translateX(${on ? 18 : 0}px)`,
+          transition: "transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.18s ease",
+        }}
+      />
+    </div>
+  );
+}
 
 const sectionHeaderStyle: CSSProperties = {
   fontSize: 12,
