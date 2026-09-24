@@ -120,11 +120,13 @@ export default function Dashboard() {
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <img src={logo} alt="Inspecta by EnFact" style={{ width: 34, height: 34, borderRadius: 9, display: "block" }} />
           {/* "Inspecta" sized so its letters (top of the I to the bottom of
-              the p: 0.96em in the bundled Manrope) span the 34 px icon
-              exactly, and nudged up 0.145em because Manrope's line metrics
-              sit the letters that far below centre. "BY ENFACT" follows on
-              the same baseline. */}
-          <div style={{ display: "flex", alignItems: "baseline", gap: 6, fontSize: 34 / 0.96, lineHeight: 1, transform: "translateY(-0.145em)", whiteSpace: "nowrap" }}>
+              the p: 0.96em in the bundled Manrope) are as tall as the 34 px
+              icon. Positioned so the main body of the word (the capital-
+              height part, ignoring the p's tail) is centred on the icon:
+              Manrope's line metrics sit it 0.145em low, less 0.12em (half
+              the descender) to centre the body rather than the whole word.
+              "BY ENFACT" follows on the same baseline. */}
+          <div style={{ display: "flex", alignItems: "baseline", gap: 6, fontSize: 34 / 0.96, lineHeight: 1, transform: "translateY(-0.025em)", whiteSpace: "nowrap" }}>
             <span style={{ fontWeight: 800, letterSpacing: -0.6 }}>Inspecta</span>
             <span style={{ fontSize: 10, fontWeight: 700, color: "var(--accent)", letterSpacing: 0.4 }}>BY ENFACT</span>
           </div>
