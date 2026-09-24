@@ -61,8 +61,18 @@ async function decode(blob: Blob): Promise<{ source: CanvasImageSource; width: n
   }
 }
 
+// The app's bundled font. A canvas won't wait for a web font — if it isn't
+// loaded yet the stamp silently falls back — so it's loaded first.
+const STAMP_FONT = `"Manrope Variable", system-ui, sans-serif`;
+let stampFontReady: Promise<unknown> | null = null;
+function loadStampFont() {
+  stampFontReady ??= document.fonts?.load(`700 40px ${STAMP_FONT}`).catch(() => {}) ?? Promise.resolve();
+  return stampFontReady;
+}
+
 // Draws the photo onto a canvas with the timestamp on it.
 async function stampedCanvas(blob: Blob, timestampMs: number, { cropAspect, maxEdge }: StampOptions = {}): Promise<HTMLCanvasElement> {
+  await loadStampFont();
   const photo = await decode(blob);
   try {
     const srcW = photo.width;
@@ -83,7 +93,7 @@ async function stampedCanvas(blob: Blob, timestampMs: number, { cropAspect, maxE
 
     const text = formatTimestamp(timestampMs);
     const fontSize = Math.max(8, Math.round(canvas.width * STAMP_FONT_OF_WIDTH));
-    ctx.font = `700 ${fontSize}px Manrope, system-ui, sans-serif`;
+    ctx.font = `700 ${fontSize}px ${STAMP_FONT}`;
     ctx.textAlign = "right";
     ctx.textBaseline = "alphabetic";
     const x = canvas.width - fontSize * 0.7;

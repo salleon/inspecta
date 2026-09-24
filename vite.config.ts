@@ -25,7 +25,8 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ["**/*.{js,css,html,png,svg,ico}"],
+        // woff2: the bundled Manrope font, so it's there offline
+        globPatterns: ["**/*.{js,css,html,png,svg,ico,woff2}"],
       },
     }),
   ],
