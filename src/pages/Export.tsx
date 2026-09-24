@@ -122,50 +122,6 @@ async function loadAssetAsDataUrl(src: string): Promise<{ dataUrl: string; natur
   return { dataUrl, naturalWidth: img.naturalWidth, naturalHeight: img.naturalHeight };
 }
 
-// Crops a (data URL) image to fill a fixed width:height box exactly —
-// "cover" behaviour, like CSS object-fit: cover — by cutting off whichever
-// dimension has extra, rather than letterboxing or stretching. Used so
-// every photo tile in the report reads as the same uniform rectangle
-// regardless of the source photo's own orientation/aspect ratio. Crops at
-// the source photo's native resolution (no downscaling), so the cropped
-// region keeps as much of its original detail as possible for anyone
-// zooming in or clipping it back out of the PDF.
-function cropToBox(dataUrl: string, targetAspect: number): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
-      const srcW = img.naturalWidth;
-      const srcH = img.naturalHeight;
-      const srcAspect = srcH / srcW;
-
-      let cropW = srcW;
-      let cropH = srcH;
-      if (srcAspect > targetAspect) {
-        // source is relatively taller than the box -- crop top/bottom
-        cropH = srcW * targetAspect;
-      } else {
-        // source is relatively wider than the box -- crop left/right
-        cropW = srcH / targetAspect;
-      }
-      const cropX = (srcW - cropW) / 2;
-      const cropY = (srcH - cropH) / 2;
-
-      const canvas = document.createElement("canvas");
-      canvas.width = cropW;
-      canvas.height = cropH;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        reject(new Error("no canvas context"));
-        return;
-      }
-      ctx.drawImage(img, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
-      resolve(canvas.toDataURL("image/jpeg", 0.9));
-    };
-    img.onerror = reject;
-    img.src = dataUrl;
-  });
-}
-
 export default function ExportPreview() {
   const { siteId } = useParams<{ siteId: string }>();
   const navigate = useNavigate();
@@ -342,9 +298,11 @@ export default function ExportPreview() {
     let y = margin;
 
     for (const item of items) {
-      if (item.dataUrls.length === 0) continue;
+      if (item.photos.length === 0) continue;
 
-      const tiles = await Promise.all(item.dataUrls.map((u) => cropToBox(u, tileAspect)));
+      // cropped to the tile shape from the original photo, THEN stamped, so
+      // the timestamp is never trimmed off by the crop
+      const tiles = await Promise.all(item.photos.map((p) => watermark(p.blob, p.takenAt, tileAspect)));
       const rows = Math.ceil(tiles.length / 2);
       const photosBlockH = rows * tileH + (rows - 1) * tileGap;
 

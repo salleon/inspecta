@@ -17,25 +17,41 @@ function formatTimestamp(ms: number) {
   return `${dd}/${mm}/${yy} - ${String(h).padStart(2, "0")}:${min} ${ampm}`;
 }
 
-// draws the photo onto a full-resolution canvas with the timestamp on it
-function stampedCanvas(blob: Blob, timestampMs: number): Promise<HTMLCanvasElement> {
+// Stamp size, as a fraction of the photo's width — matched to the supplied
+// mockup, where the digits stand 4.4% of the photo's width tall (Manrope
+// bold digits are 0.75 of the font size). Width-based so every photo shows
+// the same size stamp in the fixed-width PDF tiles and 5 cm Excel photos.
+const STAMP_FONT_OF_WIDTH = 0.044 / 0.75;
+
+// Draws the photo onto a full-resolution canvas with the timestamp on it.
+// `cropAspect` (height / width) first crops the photo to that shape,
+// "cover" style — the stamp goes on after cropping, so it's never cut off.
+function stampedCanvas(blob: Blob, timestampMs: number, cropAspect?: number): Promise<HTMLCanvasElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const url = URL.createObjectURL(blob);
     img.onload = () => {
+      const srcW = img.naturalWidth;
+      const srcH = img.naturalHeight;
+      let cropW = srcW;
+      let cropH = srcH;
+      if (cropAspect) {
+        if (srcH / srcW > cropAspect) cropH = srcW * cropAspect; // trim top/bottom
+        else cropW = srcH / cropAspect; // trim left/right
+      }
       const canvas = document.createElement("canvas");
-      canvas.width = img.naturalWidth;
-      canvas.height = img.naturalHeight;
+      canvas.width = Math.round(cropW);
+      canvas.height = Math.round(cropH);
       const ctx = canvas.getContext("2d");
       if (!ctx) {
         URL.revokeObjectURL(url);
         reject(new Error("no canvas context"));
         return;
       }
-      ctx.drawImage(img, 0, 0);
+      ctx.drawImage(img, (srcW - cropW) / 2, (srcH - cropH) / 2, cropW, cropH, 0, 0, canvas.width, canvas.height);
 
       const text = formatTimestamp(timestampMs);
-      const fontSize = Math.max(30, Math.round(canvas.width * 0.045));
+      const fontSize = Math.max(40, Math.round(canvas.width * STAMP_FONT_OF_WIDTH));
       ctx.font = `700 ${fontSize}px Manrope, system-ui, sans-serif`;
       ctx.textAlign = "right";
       ctx.textBaseline = "alphabetic";
@@ -60,9 +76,10 @@ function stampedCanvas(blob: Blob, timestampMs: number): Promise<HTMLCanvasEleme
   });
 }
 
-// PDF / preview: data URL at the PDF's usual quality
-export async function watermark(blob: Blob, timestampMs: number): Promise<string> {
-  const canvas = await stampedCanvas(blob, timestampMs);
+// PDF / preview: data URL at the PDF's usual quality, optionally cropped to
+// a tile shape (see stampedCanvas)
+export async function watermark(blob: Blob, timestampMs: number, cropAspect?: number): Promise<string> {
+  const canvas = await stampedCanvas(blob, timestampMs, cropAspect);
   return canvas.toDataURL("image/jpeg", 0.88);
 }
 
