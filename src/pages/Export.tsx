@@ -394,26 +394,10 @@ export default function ExportPreview() {
         doc.addImage(tiles[i], "JPEG", tx, ty, tileW, tileH);
       }
 
-      // title + location, once per finding regardless of photo count,
-      // always anchored to the shared centerline column
+      // defect type bubble — above the title, when the finding has one
       let ty = rowTop + 14;
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(12);
-      doc.setTextColor(28, 30, 36);
-      doc.text(titleLines, textX, ty);
-      ty += titleLines.length * 15 + 8;
-
-      if (item.finding.location) {
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(10);
-        doc.setTextColor(140, 140, 140);
-        doc.text(item.finding.location, textX, ty);
-      }
-
-      // defect type bubble — under the location, or where the location
-      // would be when there isn't one
       if (defect) {
-        const pillTop = item.finding.location ? ty + 8 : ty - 10;
+        const pillTop = rowTop + 2;
         doc.setFont("helvetica", "bold");
         doc.setFontSize(8);
         const pillW = doc.getTextWidth(defect.label) + PILL_PAD_X * 2;
@@ -428,6 +412,22 @@ export default function ExportPreview() {
         }
         doc.setTextColor(...defect.textRgb);
         doc.text(defect.label, textX + PILL_PAD_X, pillTop + PILL_H / 2, { baseline: "middle" });
+        ty += PILL_H + 10;
+      }
+
+      // title + location, once per finding regardless of photo count,
+      // always anchored to the shared centerline column
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.setTextColor(28, 30, 36);
+      doc.text(titleLines, textX, ty);
+      ty += titleLines.length * 15 + 8;
+
+      if (item.finding.location) {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.setTextColor(140, 140, 140);
+        doc.text(item.finding.location, textX, ty);
       }
 
       y = rowTop + blockH + blockGap;
@@ -535,13 +535,13 @@ export default function ExportPreview() {
                 ))}
               </div>
               <div style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 6, paddingTop: 2 }}>
+                <DefectTypePill type={finding.defectType} size="sm" onPaper />
                 <div style={{ fontSize: 13, fontWeight: 700, color: "var(--paper-text)", lineHeight: 1.35 }}>
                   {finding.note || "Untitled finding"}
                 </div>
                 {finding.location && (
                   <div style={{ fontSize: 11, fontWeight: 600, color: "var(--muted-2)" }}>{finding.location}</div>
                 )}
-                <DefectTypePill type={finding.defectType} size="sm" onPaper />
               </div>
             </div>
           ))}
