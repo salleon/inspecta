@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { useNavigate, useParams, useLocation as useRouterLocation } from "react-router-dom";
-import type { Photo } from "../db/types";
+import type { DefectType, Photo } from "../db/types";
 import {
   addPhoto,
   createFinding,
@@ -10,8 +10,11 @@ import {
   updateFinding,
 } from "../db/db";
 import { capturePhoto } from "../lib/capture";
-import { IconRetake, IconTrash, IconChevronLeft, IconPlus, IconCamera } from "../components/Icons";
+import { IconRetake, IconTrash, IconChevronLeft, IconPlus, IconCamera, IconCheck } from "../components/Icons";
 import RoundIconButton from "../components/RoundIconButton";
+import DefectTypePill from "../components/DefectTypePill";
+import { DEFECT_TYPES } from "../lib/defectTypes";
+import { useAdvancedControls } from "../lib/settings";
 
 interface PhotoRect {
   top: number;
@@ -30,6 +33,9 @@ export default function Note() {
   const [selected, setSelected] = useState(0);
   const [note, setNote] = useState("");
   const [location, setLocation] = useState("");
+  const [defectType, setDefectType] = useState<DefectType | undefined>(undefined);
+  const [pickingDefectType, setPickingDefectType] = useState(false);
+  const advancedControls = useAdvancedControls();
   const [busy, setBusy] = useState(false);
   // when a text field has focus (keyboard is up), shrink the photo so both
   // Note and Location stay visible above the keyboard without scrolling
@@ -77,6 +83,7 @@ export default function Note() {
     const f = await getFinding(findingId);
     setNote(f?.note ?? "");
     setLocation(f?.location ?? "");
+    setDefectType(f?.defectType);
     const p = await listPhotos(findingId);
     setPhotos(p);
     setSelected((prev) => {
@@ -105,7 +112,7 @@ export default function Note() {
 
   async function persist() {
     if (!findingId) return;
-    await updateFinding(findingId, { note, location });
+    await updateFinding(findingId, { note, location, defectType });
   }
 
   // Used by both the back button and "View findings" — they're the same
@@ -178,6 +185,18 @@ export default function Note() {
     if (wasCollapsedRef.current) return; // this tap just re-expanded it
     handleAddPhoto();
   }
+
+  // Saved straight away (not just on leaving the screen) so a picked type
+  // is never lost. Picking is always optional — undefined clears it.
+  async function handlePickDefectType(type: DefectType | undefined) {
+    setDefectType(type);
+    setPickingDefectType(false);
+    if (findingId) await updateFinding(findingId, { defectType: type });
+  }
+
+  // The picker is only offered while advanced controls are on, but a type
+  // already saved on this finding stays visible (and editable) either way.
+  const showDefectType = advancedControls || defectType !== undefined;
 
   async function handleDelete() {
     if (!activePhoto || !findingId) return;
@@ -402,6 +421,26 @@ export default function Note() {
             style={fieldStyle}
           />
         </div>
+
+        {/* defect type — advanced controls */}
+        {showDefectType && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <label htmlFor="defectTypeInput" style={labelStyle}>Defect type</label>
+            <button
+              id="defectTypeInput"
+              type="button"
+              onClick={() => setPickingDefectType(true)}
+              style={{ ...fieldStyle, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, textAlign: "left", padding: defectType ? "9px 14px" : fieldStyle.padding }}
+            >
+              {defectType ? (
+                <DefectTypePill type={defectType} />
+              ) : (
+                <span style={{ color: "var(--muted-2)" }}>Tap to select (optional)</span>
+              )}
+              <IconChevronLeft size={16} color="var(--muted-2)" style={{ transform: "rotate(-90deg)", flexShrink: 0 }} />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* save bar — "Save & next finding" is the most-used action so it's
@@ -445,6 +484,51 @@ export default function Note() {
           {busy ? "Opening camera…" : "Save & next finding"}
         </button>
       </div>
+
+      {pickingDefectType && (
+        <div
+          className="sheet-backdrop"
+          style={{ position: "absolute", inset: 0, background: "rgba(10,11,13,0.6)", display: "flex", alignItems: "flex-end" }}
+          onClick={() => setPickingDefectType(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="sheet-panel"
+            style={{ width: "100%", background: "var(--panel)", borderRadius: "20px 20px 0 0", padding: "22px 20px calc(28px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 10 }}
+          >
+            <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 4 }}>Defect type</div>
+            {DEFECT_TYPES.map((t) => {
+              const active = t.value === defectType;
+              return (
+                <button
+                  key={t.value}
+                  type="button"
+                  onClick={() => handlePickDefectType(t.value)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    background: "var(--panel-2)",
+                    border: active ? "1px solid var(--accent)" : "1px solid var(--border)",
+                    borderRadius: 12,
+                    padding: "12px 14px",
+                  }}
+                >
+                  <DefectTypePill type={t.value} />
+                  {active && <IconCheck size={18} color="var(--accent)" strokeWidth={2.6} />}
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => handlePickDefectType(undefined)}
+              style={{ background: "none", border: "none", padding: "8px 0 0", fontSize: 13, fontWeight: 700, color: "var(--muted)" }}
+            >
+              {defectType ? "Clear defect type" : "Skip"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -106,7 +106,7 @@ export async function createFinding(siteId: string) {
 
 export async function updateFinding(
   findingId: string,
-  changes: Partial<Pick<Finding, "note" | "location">>,
+  changes: Partial<Pick<Finding, "note" | "location" | "defectType">>,
 ) {
   await db.findings.update(findingId, { ...changes, updatedAt: Date.now() });
 }

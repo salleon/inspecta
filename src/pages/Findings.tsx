@@ -4,6 +4,7 @@ import type { Finding, Photo, Site } from "../db/types";
 import { addPhoto, createFinding, deleteSite, getSite, listFindings, listPhotos, reorderFinding, updateSite } from "../db/db";
 import { capturePhoto } from "../lib/capture";
 import { IconChevronLeft, IconShare, IconEdit, IconGrip, IconCheck } from "../components/Icons";
+import DefectTypePill from "../components/DefectTypePill";
 import ConfirmDialog from "../components/ConfirmDialog";
 import FormActions from "../components/FormActions";
 import RoundIconButton from "../components/RoundIconButton";
@@ -659,6 +660,7 @@ function FindingRow({
         <div style={{ fontSize: 12, fontWeight: 500, color: "var(--muted)" }}>
           {formatShort(finding.createdAt)}{finding.location ? ` · ${finding.location}` : ""}
         </div>
+        <DefectTypePill type={finding.defectType} size="sm" />
       </div>
       {rowReordering ? (
         <div

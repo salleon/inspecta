@@ -9,6 +9,8 @@ import { getSite, listFindings, listPhotos } from "../db/db";
 import { IconChevronLeft, IconShare } from "../components/Icons";
 import RoundIconButton from "../components/RoundIconButton";
 import { getInitials, getInspectorName } from "../lib/profile";
+import { defectTypeStyle } from "../lib/defectTypes";
+import DefectTypePill from "../components/DefectTypePill";
 import coverBgAfss from "../assets/cover-bg-afss.jpg";
 import coverBgProjects from "../assets/cover-bg-projects.jpg";
 
@@ -371,7 +373,9 @@ export default function ExportPreview() {
       doc.setFont("helvetica", "bold");
       doc.setFontSize(12);
       const titleLines = doc.splitTextToSize(item.finding.note || "Untitled finding", textColW);
-      const textBlockH = titleLines.length * 15 + (item.finding.location ? 18 : 0);
+      const defect = defectTypeStyle(item.finding.defectType);
+      const textBlockH =
+        titleLines.length * 15 + (item.finding.location ? 18 : 0) + (defect ? PILL_H + 10 : 0);
 
       const blockH = Math.max(photosBlockH, textBlockH);
 
@@ -404,6 +408,26 @@ export default function ExportPreview() {
         doc.setFontSize(10);
         doc.setTextColor(140, 140, 140);
         doc.text(item.finding.location, textX, ty);
+      }
+
+      // defect type bubble — under the location, or where the location
+      // would be when there isn't one
+      if (defect) {
+        const pillTop = item.finding.location ? ty + 8 : ty - 10;
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        const pillW = doc.getTextWidth(defect.label) + PILL_PAD_X * 2;
+        doc.setFillColor(...defect.bgRgb);
+        if (defect.value === "note-only") {
+          // white bubble on a white page needs an outline to show up
+          doc.setDrawColor(201, 196, 184);
+          doc.setLineWidth(0.75);
+          doc.roundedRect(textX, pillTop, pillW, PILL_H, PILL_H / 2, PILL_H / 2, "FD");
+        } else {
+          doc.roundedRect(textX, pillTop, pillW, PILL_H, PILL_H / 2, PILL_H / 2, "F");
+        }
+        doc.setTextColor(...defect.textRgb);
+        doc.text(defect.label, textX + PILL_PAD_X, pillTop + PILL_H / 2, { baseline: "middle" });
       }
 
       y = rowTop + blockH + blockGap;
@@ -517,6 +541,7 @@ export default function ExportPreview() {
                 {finding.location && (
                   <div style={{ fontSize: 11, fontWeight: 600, color: "var(--muted-2)" }}>{finding.location}</div>
                 )}
+                <DefectTypePill type={finding.defectType} size="sm" onPaper />
               </div>
             </div>
           ))}
@@ -538,3 +563,7 @@ export default function ExportPreview() {
     </div>
   );
 }
+
+// PDF defect type bubble size (pt)
+const PILL_H = 14;
+const PILL_PAD_X = 7;
