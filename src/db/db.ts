@@ -140,6 +140,16 @@ export async function deleteFinding(findingId: string) {
   if (finding) await touchSite(finding.siteId);
 }
 
+// The site's cover photo for the dashboard: the first photo of its first
+// finding (in the list's order), or of the first finding that has one.
+export async function firstSitePhoto(siteId: string): Promise<Photo | undefined> {
+  for (const finding of await listFindings(siteId)) {
+    const [first] = await listPhotos(finding.id);
+    if (first) return first;
+  }
+  return undefined;
+}
+
 export async function listFindings(siteId: string) {
   const findings = await db.findings.where("siteId").equals(siteId).toArray();
   return findings.sort((a, b) => a.order - b.order);

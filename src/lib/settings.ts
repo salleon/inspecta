@@ -6,9 +6,10 @@ import { useSyncExternalStore } from "react";
 //
 // Advanced controls: when ON, screens show extra menus/dropdowns for richer
 // data entry. ON by default — only an explicit switch-off ("0") turns it
-// off, so a new install (or anyone who never touched it) starts with it on. The flag only gates the *inputs* — any advanced data already
-// saved on a finding is always displayed (and exported to the PDF) whether
-// the flag is on or off, so flipping it never hides entered information.
+// off, so a new install (or anyone who never touched it) starts with it on.
+// The flag only gates the *inputs* — any advanced data already saved on a
+// finding is always displayed (and exported to the PDF) whether the flag is
+// on or off, so flipping it never hides entered information.
 
 const ADVANCED_KEY = "inspecta.advancedControls";
 

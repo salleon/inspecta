@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Site, SiteKind } from "../db/types";
-import { createSite, deleteSite, findingCount, listSites } from "../db/db";
+import { createSite, deleteSite, findingCount, firstSitePhoto, getThumbnail, listSites } from "../db/db";
 import { IconSearch, IconBuilding, IconPlus, IconTrash, IconSettings, IconChevronRight } from "../components/Icons";
 import CountUp from "../components/CountUp";
 import ConfirmDialog from "../components/ConfirmDialog";
@@ -31,16 +31,50 @@ export default function Dashboard() {
   const [deleting, setDeleting] = useState(false);
   const advancedControls = useAdvancedControls();
 
+  // Site cover thumbnails (first finding's first photo — see
+  // firstSitePhoto), by site id. The cache remembers which photo each URL
+  // shows, so a refresh only redoes sites whose first photo changed.
+  const [thumbs, setThumbs] = useState<Record<string, string>>({});
+  const thumbCache = useRef(new Map<string, { photoId: string; url: string }>());
+
   async function refresh() {
     const list = await listSites();
     const withCounts = await Promise.all(
       list.map(async (s) => ({ ...s, findings: await findingCount(s.id) })),
     );
     setSites(withCounts);
+    await loadThumbs(withCounts.map((s) => s.id));
+  }
+
+  // one site at a time, using the small saved thumbnails, so the list
+  // shows immediately and the covers fill in
+  async function loadThumbs(siteIds: string[]) {
+    const cache = thumbCache.current;
+    for (const [id, entry] of cache) {
+      if (!siteIds.includes(id)) {
+        URL.revokeObjectURL(entry.url);
+        cache.delete(id);
+      }
+    }
+    for (const id of siteIds) {
+      const photo = await firstSitePhoto(id).catch(() => undefined);
+      const cached = cache.get(id);
+      if (cached && cached.photoId === photo?.id) continue;
+      if (cached) {
+        URL.revokeObjectURL(cached.url);
+        cache.delete(id);
+      }
+      const blob = photo ? await getThumbnail(photo).catch(() => null) : null;
+      if (photo && blob) cache.set(id, { photoId: photo.id, url: URL.createObjectURL(blob) });
+      setThumbs(Object.fromEntries([...cache].map(([k, v]) => [k, v.url])));
+    }
   }
 
   useEffect(() => {
     refresh();
+    const cache = thumbCache.current;
+    return () => cache.forEach((entry) => URL.revokeObjectURL(entry.url));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const filtered = sites.filter(
@@ -101,6 +135,7 @@ export default function Dashboard() {
           <SiteButton
             key={site.id}
             site={site}
+            thumb={thumbs[site.id]}
             index={i}
             onClick={() => navigate(`/site/${site.id}/findings`)}
             isOpen={openSwipeId === site.id}
@@ -471,6 +506,7 @@ const SWIPE_OPEN_THRESHOLD = SWIPE_REVEAL / 2;
 
 function SiteButton({
   site,
+  thumb,
   index,
   onClick,
   isOpen,
@@ -479,6 +515,7 @@ function SiteButton({
   onDelete,
 }: {
   site: SiteRow;
+  thumb?: string;
   index: number;
   onClick: () => void;
   isOpen: boolean;
@@ -612,9 +649,16 @@ function SiteButton({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
+            overflow: "hidden",
           }}
         >
-          <IconBuilding strokeWidth={1.8} />
+          {/* the site's first finding photo, or the building icon until
+              it has one */}
+          {thumb ? (
+            <img src={thumb} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+          ) : (
+            <IconBuilding strokeWidth={1.8} />
+          )}
         </div>
         <div style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
           <div style={{ fontSize: 15, fontWeight: 700 }}>{site.name}</div>
