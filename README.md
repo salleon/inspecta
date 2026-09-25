@@ -54,7 +54,7 @@ Settings → **Back up all data** saves every site, finding and photo in one `.z
 
 ## Tests
 
-`npm test` runs the unit tests (`tests/unit`: suggestions, reference numbers, report grouping, keyword storage) and then, against a production build, the browser tests (`tests/e2e`, headless Chromium via Playwright: finding screen, export and Categorise, grouped Excel/PDF, admin, backup/restore, upgrading an old database). GitHub Actions runs them on every push (`.github/workflows/tests.yml`), and the APK build only goes ahead if they pass. First time locally: `npx playwright install chromium`.
+`npm test` runs the unit tests (`tests/unit`: suggestions, reference numbers, report grouping, keyword storage) and then, against a production build, the browser tests (`tests/e2e`, headless Chromium via Playwright: finding screen, export and Categorise, grouped Excel/PDF, admin, backup/restore, upgrading an old database). GitHub Actions runs them on every push (`.github/workflows/tests.yml`), and the APK build only goes ahead if they pass — unless **Skip tests** is ticked on Actions → Build Android APK → Run workflow. First time locally: `npx playwright install chromium`.
 
 ## Planned
 

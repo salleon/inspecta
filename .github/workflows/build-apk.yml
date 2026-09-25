@@ -3,15 +3,24 @@ name: Build Android APK
 on:
   push:
     branches: [main, master]
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      skip_tests:
+        description: "Skip tests (build even if a test would fail)"
+        type: boolean
+        default: false
 
 jobs:
-  # the whole test suite first; the APK is only built if it passes
+  # the whole test suite first; the APK is only built if it passes —
+  # unless "Skip tests" was ticked on Run workflow (pushes to main always
+  # test, as they have no inputs)
   test:
+    if: ${{ !inputs.skip_tests }}
     uses: ./.github/workflows/tests.yml
 
   build:
     needs: test
+    if: ${{ !cancelled() && (needs.test.result == 'success' || needs.test.result == 'skipped') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

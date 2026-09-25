@@ -6,6 +6,9 @@ the technical detail.
 
 ## 25 September 2026
 
+- **"Skip tests" option for APK builds.** Actions → Build Android APK →
+  Run workflow now has a **Skip tests** tick box (off by default) to
+  build without waiting for, or being stopped by, the tests.
 - **Backup and restore.** Settings → **Back up all data** saves every
   site, finding and photo in one file to share (e.g. to OneDrive).
   **Restore from backup** adds the sites from a backup file, for a new
