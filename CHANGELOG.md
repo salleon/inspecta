@@ -6,6 +6,10 @@ the technical detail.
 
 ## 25 September 2026
 
+- **Keyword changes from the admin file built in.** 1.10 Wall wetting
+  sprinklers gains "sprinkler" and "bulb"; 5.6 Fire Sprinkler Systems
+  gains "bulb" and the weak hint "concealed". A phone that already has
+  these as its own changes counts them once.
 - **Master recovery code for the admin PIN.** "Forgot PIN?" now also
   accepts a master code that works on every phone with no setup, so a
   forgotten PIN no longer needs the per-phone code emailed beforehand.

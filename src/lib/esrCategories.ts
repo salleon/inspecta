@@ -49,7 +49,7 @@ export const ESR_SECTIONS: EsrSection[] = [
     item("1.7", "Smoke doors", ["smoke door", "smoke seal", "door closer", "self closing", "~closer", "~door"]),
     item("1.8", "Solid core doors", ["solid core", "sou door", "sole occupancy", "unit entry door", "apartment door", "entry door", "~door"]),
     item("1.9", "Fire hazard properties of material", ["fire hazard", "hazard properties", "floor covering", "wall lining", "ceiling lining", "flammability", "~carpet", "~lining", "~curtain"]),
-    item("1.10", "Wall wetting sprinklers", ["wall wetting", "drencher", "window sprinkler", "~drench"]),
+    item("1.10", "Wall wetting sprinklers", ["wall wetting", "drencher", "window sprinkler", "sprinkler", "bulb", "~drench"]),
   ]),
   section("2", "Means of Egress", [
     item("2.1", "Doors in required exits", ["exit door", "egress door", "required exit", "door swing", "final exit", "exit doorway", "~exit", "~door"]),
@@ -89,7 +89,7 @@ export const ESR_SECTIONS: EsrSection[] = [
       "!extinguisher", "fire extinguisher", "fire blanket", "co2", "dcp", "dry chemical", "dry powder", "wet chemical", "afff", "service tag", "ext", "~blanket", "~bracket", "~foam", "~tag",
     ]),
     item("5.6", "Fire Sprinkler Systems", [
-      "!sprinkler", "sprinkler head", "sprinkler valve", "valve set", "escutcheon", "deflector", "painted head", "flow switch", "~head", "~clearance",
+      "!sprinkler", "sprinkler head", "sprinkler valve", "valve set", "escutcheon", "deflector", "painted head", "flow switch", "bulb", "~head", "~clearance", "~concealed",
     ]),
   ]),
   section("6", "Air Handling Systems", [

@@ -80,7 +80,9 @@ export function categoryKeywords(code: string): Keyword[] {
   if (!item) return [];
   const e = edits[code];
   const builtIn = item.keywords.map(parseBuiltIn).filter((k) => !e?.removed.includes(k.text));
-  return [...builtIn.map((k) => ({ ...k, builtIn: true })), ...(e?.added ?? []).map((k) => ({ ...k, builtIn: false }))];
+  // an addition that has since been built into the app counts once
+  const added = (e?.added ?? []).filter((a) => !builtIn.some((k) => k.text === a.text));
+  return [...builtIn.map((k) => ({ ...k, builtIn: true })), ...added.map((k) => ({ ...k, builtIn: false }))];
 }
 
 export function isEdited(code: string): boolean {
