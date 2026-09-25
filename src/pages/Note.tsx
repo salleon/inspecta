@@ -20,6 +20,8 @@ import LocationSuggestions from "../components/LocationSuggestions";
 import { siteLocations, suggestLocations } from "../lib/locationSuggestions";
 import { DEFECT_TYPES } from "../lib/defectTypes";
 import { useAdvancedControls } from "../lib/settings";
+import { learnCategory, suggestCategories, type CategorySuggestion } from "../lib/esrSuggest";
+import { EsrBrowseSheet, EsrLink, EsrSelectedCard, EsrSuggestionList } from "../components/EsrCategory";
 import { useBackHandler } from "../lib/backButton";
 
 interface PhotoRect {
@@ -51,6 +53,13 @@ export default function Note() {
   // so we can say so under the field until it's changed
   const carriedLevel = (routerLocation.state as { carriedLevel?: string } | null)?.carriedLevel;
   const [pickingDefectType, setPickingDefectType] = useState(false);
+  // ESR category (advanced controls): the picked item code, the top 5
+  // suggestions for what's typed so far, and whether the suggestions are
+  // reopened over a picked one ("Change") or the full list is open
+  const [esrCategory, setEsrCategory] = useState<string | undefined>(undefined);
+  const [categorySuggestions, setCategorySuggestions] = useState<CategorySuggestion[]>([]);
+  const [changingCategory, setChangingCategory] = useState(false);
+  const [browsingCategories, setBrowsingCategories] = useState(false);
   const advancedControls = useAdvancedControls();
   const [busy, setBusy] = useState(false);
   // when a text field has focus (keyboard is up), shrink the photo so both
@@ -101,6 +110,7 @@ export default function Note() {
     setLocation(f?.location ?? "");
     setDefectType(f?.defectType);
     setLevel(f?.level);
+    setEsrCategory(f?.esrCategory);
     const p = await listPhotos(findingId);
     setPhotos(p);
     setSelected((prev) => {
@@ -165,6 +175,12 @@ export default function Note() {
     return () => cache.forEach((url) => URL.revokeObjectURL(url));
   }, []);
 
+  // re-ranked a moment after typing stops, not on every keystroke
+  useEffect(() => {
+    const t = setTimeout(() => setCategorySuggestions(suggestCategories(note, location)), 250);
+    return () => clearTimeout(t);
+  }, [note, location]);
+
   const wasCollapsedRef = useRef(false);
 
   // Android back: close the defect type picker if it's open, otherwise
@@ -184,7 +200,7 @@ export default function Note() {
 
   async function persist() {
     if (!findingId) return;
-    await updateFinding(findingId, { note, location, defectType, level });
+    await updateFinding(findingId, { note, location, defectType, level, esrCategory });
   }
 
   // Used by both the back button and "Save & close" — they're the same
@@ -269,10 +285,21 @@ export default function Note() {
     if (findingId) await updateFinding(findingId, { defectType: type });
   }
 
+  // Saved straight away, like the defect type. A pick also teaches the
+  // suggestions this note's wording (see lib/esrSuggest).
+  async function handlePickCategory(code: string | undefined) {
+    setEsrCategory(code);
+    setChangingCategory(false);
+    setBrowsingCategories(false);
+    if (code) learnCategory(note, code);
+    if (findingId) await updateFinding(findingId, { esrCategory: code });
+  }
+
   // The picker is only offered while advanced controls are on, but a type
   // already saved on this finding stays visible (and editable) either way.
   const showDefectType = advancedControls || defectType !== undefined;
   const showLevel = advancedControls || level !== undefined;
+  const showCategory = advancedControls || esrCategory !== undefined;
 
   async function handleDelete() {
     if (!activePhoto || !findingId) return;
@@ -557,6 +584,39 @@ export default function Note() {
             </button>
           </div>
         )}
+
+        {/* ESR category — advanced controls; suggested from the note as
+            it's typed, optional (none = Uncategorised) */}
+        {showCategory && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <div style={labelStyle}>ESR category</div>
+            {esrCategory && !changingCategory ? (
+              <>
+                <EsrSelectedCard code={esrCategory} onClear={() => handlePickCategory(undefined)} />
+                <div style={{ display: "flex", justifyContent: "center" }}>
+                  <EsrLink onClick={() => setChangingCategory(true)}>Change ›</EsrLink>
+                </div>
+              </>
+            ) : (
+              <>
+                {categorySuggestions.length ? (
+                  <EsrSuggestionList suggestions={categorySuggestions} current={esrCategory} onPick={handlePickCategory} />
+                ) : (
+                  <>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, border: "1px dashed var(--border-strong)", borderRadius: 11, padding: "11px 12px", fontSize: 13, fontWeight: 700, color: "var(--muted)" }}>
+                      {esrCategory ? "No suggestions for this note" : "Uncategorised"}
+                    </div>
+                    <div style={{ fontSize: 12, fontWeight: 500, color: "var(--muted-2)" }}>Suggestions appear here as you type the note.</div>
+                  </>
+                )}
+                <div style={{ display: "flex", justifyContent: "center", gap: 18 }}>
+                  <EsrLink onClick={() => setBrowsingCategories(true)}>Browse all categories ›</EsrLink>
+                  {esrCategory && <EsrLink onClick={() => setChangingCategory(false)}>Cancel</EsrLink>}
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {/* save bar — "Save & next finding" is the most-used action so it's
@@ -644,6 +704,10 @@ export default function Note() {
             </button>
           </div>
         </div>
+      )}
+
+      {browsingCategories && (
+        <EsrBrowseSheet current={esrCategory} onPick={handlePickCategory} onClose={() => setBrowsingCategories(false)} />
       )}
     </div>
   );

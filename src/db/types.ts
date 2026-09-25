@@ -24,6 +24,9 @@ export interface Finding {
   // "Ground", "Basement 2", "Mezzanine", "Roof") — see lib/levels.ts.
   // Advanced-controls field, absent unless one was entered.
   level?: string;
+  // ESR category item code ("1.6", "6.3.4", "13") — see
+  // lib/esrCategories.ts. Advanced-controls field; absent = Uncategorised.
+  esrCategory?: string;
   // manual sort position within a site's findings list — lower sorts
   // first. New findings get a very small (very negative) value so they
   // appear first, same as the old createdAt-desc default, until dragged.

@@ -1,5 +1,6 @@
 import type { Finding, Photo } from "../db/types";
 import { defectTypeStyle } from "./defectTypes";
+import { reportRows } from "./esrGrouping";
 import { EXPORT_MAX_EDGE, watermarkBlob } from "./watermark";
 // Company template (header row A1:G1 with its fills, fonts and column
 // widths). Inlined as a data URL so the export works offline — the PWA
@@ -9,6 +10,11 @@ import templateDataUrl from "../assets/findings-template.xlsx?inline";
 // Excel findings register, built on the template: one row per finding,
 // A Ref · B Location · C Description (+ photos) · D Date identified ·
 // E Risk level · F Status · G Corrective action.
+//
+// With ESR categories, findings sit under a blue row per section and a
+// grey row per item (like the company's ESR spreadsheet), Uncategorised
+// last, and Ref reads "1.6.1", "1.6.2"… (see lib/esrGrouping). Without any,
+// it's one row per finding in list order with Ref blank.
 //
 // Photos go in with the same timestamp as the PDF, scaled to at most
 // EXPORT_MAX_EDGE px (they're drawn exactly 5 cm wide underneath the note
@@ -39,6 +45,9 @@ const colWidthFor = (px: number) => (px - 5) / 7;
 const COL = { ref: 1, location: 2, description: 3, date: 4, risk: 5, status: 6, action: 7 } as const;
 
 const FONT = { name: "Arial", size: 10 };
+const SECTION_FILL = "FF99CCFF";
+const ITEM_FILL = "FFD9D9D9";
+const UNCATEGORISED_FILL = "FFBFBFBF";
 const THIN = { style: "thin" as const, color: { argb: "FF000000" } };
 
 function estimateTextPx(text: string, widthPx: number): number {
@@ -113,7 +122,30 @@ export async function buildFindingsWorkbook(
   const date = excelDate(inspectionMs);
   let rowNum = 2; // row 1 is the template's header
 
-  for (const { finding, photos } of items) {
+  // B–G merged, for heading text
+  let headingPx = 0;
+  for (let c: number = COL.location; c <= COL.action; c++) headingPx += colPx(ws.getColumn(c).width ?? 10);
+
+  for (const reportRow of reportRows(items)) {
+    if (reportRow.kind !== "finding") {
+      const text = reportRow.kind === "uncategorised" ? "Uncategorised" : reportRow.name;
+      const fill = reportRow.kind === "section" ? SECTION_FILL : reportRow.kind === "item" ? ITEM_FILL : UNCATEGORISED_FILL;
+      const row = ws.getRow(rowNum);
+      row.height = Math.min(409, Math.ceil(Math.max(20, estimateTextPx(text, headingPx) + 6) * 0.75));
+      for (let c: number = COL.ref; c <= COL.action; c++) {
+        const cell = row.getCell(c);
+        cell.font = { ...FONT, bold: true };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: fill } };
+        cell.border = { left: THIN, right: THIN, top: THIN, bottom: THIN };
+        cell.alignment = { horizontal: "left", vertical: "middle", wrapText: true };
+      }
+      row.getCell(COL.ref).value = reportRow.kind === "uncategorised" ? null : reportRow.code;
+      row.getCell(COL.location).value = text;
+      ws.mergeCells(rowNum, COL.location, rowNum, COL.action);
+      rowNum++;
+      continue;
+    }
+    const { entry: { finding, photos }, ref } = reportRow;
     const locationText = [finding.level, finding.location].filter(Boolean).join("\n");
     const noteH = estimateTextPx(finding.note, descPx);
     const locH = estimateTextPx(locationText, locPx);
@@ -180,7 +212,9 @@ export async function buildFindingsWorkbook(
     const centred = { horizontal: "center", vertical: "middle", wrapText: true } as const;
     const row = ws.getRow(first);
 
-    row.getCell(COL.ref).alignment = centred;
+    const refCell = row.getCell(COL.ref);
+    refCell.value = ref ?? null;
+    refCell.alignment = centred;
 
     const loc = row.getCell(COL.location);
     loc.value = locationText || null;

@@ -4,7 +4,7 @@ import { jsPDF } from "jspdf";
 import { Share } from "@capacitor/share";
 import { Capacitor } from "@capacitor/core";
 import type { Finding, Photo, Site } from "../db/types";
-import { getSite, listFindings, listPhotos } from "../db/db";
+import { getSite, listFindings, listPhotos, updateFinding } from "../db/db";
 import { IconChevronLeft, IconShare } from "../components/Icons";
 import RoundIconButton from "../components/RoundIconButton";
 import ProgressOverlay from "../components/ProgressOverlay";
@@ -14,6 +14,12 @@ import { EXPORT_MAX_EDGE, PREVIEW_MAX_EDGE, watermark } from "../lib/watermark";
 import { CacheFileWriter, writeBlobToCache } from "../lib/cacheFile";
 import { countPhotos, photosZipName, writePhotosZip } from "../lib/photosZip";
 import DefectTypePill from "../components/DefectTypePill";
+import CategoriseFlow from "../components/CategoriseFlow";
+import { reportRows, type ReportRow } from "../lib/esrGrouping";
+import { esrItem } from "../lib/esrCategories";
+import { learnCategory } from "../lib/esrSuggest";
+import { useAdvancedControls } from "../lib/settings";
+import { useBackHandler } from "../lib/backButton";
 import coverBgAfss from "../assets/cover-bg-afss.jpg";
 import coverBgProjects from "../assets/cover-bg-projects.jpg";
 
@@ -116,6 +122,29 @@ export default function ExportPreview() {
   // added (nearly all the time), then building the file, then handing it to
   // the share menu
   const [exportProgress, setExportProgress] = useState<{ percent: number; step: string } | null>(null);
+  // ESR categories (advanced controls): before a PDF / Excel export with
+  // Uncategorised findings, offer to categorise them first — the popup, then
+  // the Categorise screen. Asked once per visit to this screen.
+  const advancedControls = useAdvancedControls();
+  const [askCategorise, setAskCategorise] = useState<ShareKind | null>(null);
+  const [categorising, setCategorising] = useState<ShareKind | null>(null);
+  const [categoriseAsked, setCategoriseAsked] = useState(false);
+  // an export to start once the categories just picked are in `items`
+  const [pendingShare, setPendingShare] = useState<ShareKind | null>(null);
+
+  useBackHandler(() => {
+    if (!askCategorise) return false;
+    setAskCategorise(null);
+    return true;
+  });
+
+  useEffect(() => {
+    if (!pendingShare) return;
+    setPendingShare(null);
+    void handleShare(pendingShare);
+    // runs once per requested export, with that render's items
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingShare]);
 
   useEffect(() => {
     if (!siteId) return;
@@ -291,8 +320,16 @@ export default function ExportPreview() {
     let donePhotos = 0;
     onPhoto(0, totalPhotos);
 
-    for (const item of items) {
-      if (item.photos.length === 0) continue;
+    // findings under their ESR section / item headings (none if nothing is
+    // categorised). A heading is drawn with the finding after it, so it's
+    // never left alone at the bottom of a page.
+    let headings: Heading[] = [];
+    for (const row of reportRows(items.filter((i) => i.photos.length > 0))) {
+      if (row.kind !== "finding") {
+        headings.push(row);
+        continue;
+      }
+      const item = row.entry;
 
       // cropped to the tile shape from the original photo, THEN stamped, so
       // the timestamp is never trimmed off by the crop
@@ -317,11 +354,14 @@ export default function ExportPreview() {
         (defect ? PILL_H + 10 : 0);
 
       const blockH = Math.max(photosBlockH, textBlockH);
+      const headingsH = headings.reduce((h, r) => h + pdfHeadingHeight(doc, r, pageW - margin * 2), 0);
 
-      if (y + blockH > pageH - margin) {
+      if (y + headingsH + blockH > pageH - margin) {
         doc.addPage();
         y = margin;
       }
+      for (const h of headings) y = drawPdfHeading(doc, h, margin, y, pageW - margin * 2);
+      headings = [];
 
       const rowTop = y;
 
@@ -376,6 +416,20 @@ export default function ExportPreview() {
     // let the "Building PDF…" step paint before jsPDF's synchronous output
     await new Promise((r) => setTimeout(r, 30));
     return doc.output("blob");
+  }
+
+  // Share button: first offers to categorise any Uncategorised findings
+  // (PDF and Excel only — the photos zip isn't grouped).
+  function requestShare(kind: ShareKind) {
+    const uncategorised = items.some((i) => !esrItem(i.finding.esrCategory));
+    if (kind !== "photos" && advancedControls && !categoriseAsked && uncategorised) setAskCategorise(kind);
+    else void handleShare(kind);
+  }
+
+  function handleCategorisePick(finding: Finding, code: string) {
+    learnCategory(finding.note, code);
+    void updateFinding(finding.id, { esrCategory: code });
+    setItems((prev) => prev.map((i) => (i.finding.id === finding.id ? { ...i, finding: { ...i.finding, esrCategory: code } } : i)));
   }
 
   // Builds the PDF, Excel file or photos zip and hands it to the native
@@ -488,35 +542,14 @@ export default function ExportPreview() {
             </div>
           )}
 
-          {items.map(({ finding, dataUrls }, idx) => (
-            <div
-              key={finding.id}
-              style={{
-                display: "flex",
-                gap: 12,
-                borderTop: idx === 0 ? "none" : "1px solid var(--paper-border)",
-                paddingTop: idx === 0 ? 0 : 18,
-              }}
-            >
-              <div style={{ flexShrink: 0, width: 92, display: "flex", flexDirection: "column", gap: 4 }}>
-                {dataUrls.map((url) => (
-                  <img key={url} src={url} alt="" style={{ width: "100%", borderRadius: 6, display: "block" }} />
-                ))}
-              </div>
-              <div style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 6, paddingTop: 2 }}>
-                <DefectTypePill type={finding.defectType} size="sm" onPaper />
-                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--paper-text)", lineHeight: 1.35 }}>
-                  {finding.note || "Untitled finding"}
-                </div>
-                {(finding.level || finding.location) && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                    {finding.level && <div style={{ fontSize: 11, fontWeight: 600, color: "var(--muted-2)" }}>{finding.level}</div>}
-                    {finding.location && <div style={{ fontSize: 11, fontWeight: 600, color: "var(--muted-2)" }}>{finding.location}</div>}
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
+          {reportRows(items).map((row, idx, rows) =>
+            row.kind === "finding" ? (
+              // no divider line straight under a heading
+              <PreviewFinding key={row.entry.finding.id} entry={row.entry} first={idx === 0 || rows[idx - 1].kind !== "finding"} />
+            ) : (
+              <PreviewHeading key={row.kind === "uncategorised" ? "uncategorised" : `${row.kind}-${row.code}`} row={row} />
+            ),
+          )}
         </div>
       </div>
 
@@ -525,7 +558,7 @@ export default function ExportPreview() {
         {/* every photo at full resolution, stamped, zipped in a folder
             named after the site (see lib/photosZip) */}
         <button
-          onClick={() => handleShare("photos")}
+          onClick={() => requestShare("photos")}
           disabled={loading || sharing !== null || countPhotos(items) === 0}
           style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "12px 0", borderRadius: 12, background: "none", border: "1px dashed var(--border-strong)", fontSize: 14, fontWeight: 700, color: "var(--text)" }}
         >
@@ -534,7 +567,7 @@ export default function ExportPreview() {
         </button>
         <div style={{ display: "flex", gap: 10 }}>
           <button
-            onClick={() => handleShare("excel")}
+            onClick={() => requestShare("excel")}
             disabled={loading || sharing !== null || items.length === 0 || !site}
             style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, textAlign: "center", padding: "15px 0", borderRadius: 12, background: "var(--panel)", border: "1px solid var(--border)", fontSize: 14, fontWeight: 700, color: "var(--text)" }}
           >
@@ -542,7 +575,7 @@ export default function ExportPreview() {
             {sharing === "excel" ? "Preparing…" : "Share Excel"}
           </button>
           <button
-            onClick={() => handleShare("pdf")}
+            onClick={() => requestShare("pdf")}
             disabled={loading || sharing !== null || items.length === 0}
             className="glow-sweep"
             style={{ position: "relative", flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, textAlign: "center", padding: "15px 0", borderRadius: 12, background: "var(--accent)", border: "none", fontSize: 14, fontWeight: 800, color: "var(--accent-text)", overflow: "hidden" }}
@@ -553,6 +586,61 @@ export default function ExportPreview() {
         </div>
       </div>
 
+      {askCategorise && (
+        <div
+          className="sheet-backdrop"
+          onClick={() => setAskCategorise(null)}
+          style={{ position: "absolute", inset: 0, zIndex: 5, background: "rgba(3,10,18,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: 22 }}
+        >
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 360, background: "var(--panel)", border: "1px solid var(--border-strong)", borderRadius: 20, padding: "22px 20px 18px", display: "flex", flexDirection: "column", gap: 10 }}>
+            {(() => {
+              const n = items.filter((i) => !esrItem(i.finding.esrCategory)).length;
+              return (
+                <div style={{ fontSize: 18, fontWeight: 800 }}>
+                  {n} finding{n === 1 ? " is" : "s are"} uncategorised
+                </div>
+              );
+            })()}
+            <div style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.5 }}>
+              Categorise them now so they go under the right headings? Anything you skip goes under <b style={{ color: "var(--text)" }}>Uncategorised</b> at the end of the report.
+            </div>
+            <button
+              onClick={() => {
+                setCategorising(askCategorise);
+                setAskCategorise(null);
+              }}
+              style={{ marginTop: 6, padding: "14px 0", borderRadius: 14, background: "var(--accent)", border: "none", fontSize: 14, fontWeight: 800, color: "var(--accent-text)" }}
+            >
+              Categorise now
+            </button>
+            <button
+              onClick={() => {
+                const kind = askCategorise;
+                setAskCategorise(null);
+                setCategoriseAsked(true);
+                void handleShare(kind);
+              }}
+              style={{ padding: "13px 0", borderRadius: 14, background: "var(--panel)", border: "1px solid var(--border)", fontSize: 14, fontWeight: 700, color: "var(--text)" }}
+            >
+              Export anyway
+            </button>
+          </div>
+        </div>
+      )}
+
+      {categorising && (
+        <CategoriseFlow
+          entries={reportRows(items.filter((i) => !esrItem(i.finding.esrCategory))).flatMap((r) => (r.kind === "finding" ? [r.entry] : []))}
+          onPick={handleCategorisePick}
+          onExport={() => {
+            setCategoriseAsked(true);
+            setPendingShare(categorising);
+            setCategorising(null);
+          }}
+          onClose={() => setCategorising(null)}
+        />
+      )}
+
       {exportProgress && sharing && (
         <ProgressOverlay
           percent={exportProgress.percent}
@@ -562,6 +650,101 @@ export default function ExportPreview() {
       )}
     </div>
   );
+}
+
+// ---- ESR headings (see lib/esrGrouping) ----
+
+type Heading = Exclude<ReportRow<unknown>, { kind: "finding" }>;
+
+function headingText(row: Heading): string {
+  if (row.kind === "uncategorised") return "Uncategorised";
+  return row.kind === "section" ? `${row.code} · ${row.name}` : `${row.code}  ${row.name}`;
+}
+
+// Export preview: blue bar per section, underlined line per item, grey bar
+// for Uncategorised — same as the PDF.
+function PreviewHeading({ row }: { row: Heading }) {
+  if (row.kind === "item") {
+    return (
+      <div style={{ fontSize: 12, fontWeight: 800, color: "var(--paper-text)", borderBottom: "1.5px solid #99ccff", paddingBottom: 4, marginBottom: -6, lineHeight: 1.35 }}>
+        {headingText(row)}
+      </div>
+    );
+  }
+  return (
+    <div style={{ fontSize: 12, fontWeight: 800, color: "#04213a", background: row.kind === "section" ? "#99ccff" : "#d9d9d9", borderRadius: 5, padding: "7px 10px", marginBottom: -6 }}>
+      {headingText(row)}
+    </div>
+  );
+}
+
+function PreviewFinding({ entry: { finding, dataUrls }, first }: { entry: FindingImages; first: boolean }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        gap: 12,
+        borderTop: first ? "none" : "1px solid var(--paper-border)",
+        paddingTop: first ? 0 : 18,
+      }}
+    >
+      <div style={{ flexShrink: 0, width: 92, display: "flex", flexDirection: "column", gap: 4 }}>
+        {dataUrls.map((url) => (
+          <img key={url} src={url} alt="" style={{ width: "100%", borderRadius: 6, display: "block" }} />
+        ))}
+      </div>
+      <div style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 6, paddingTop: 2 }}>
+        <DefectTypePill type={finding.defectType} size="sm" onPaper />
+        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--paper-text)", lineHeight: 1.35 }}>
+          {finding.note || "Untitled finding"}
+        </div>
+        {(finding.level || finding.location) && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            {finding.level && <div style={{ fontSize: 11, fontWeight: 600, color: "var(--muted-2)" }}>{finding.level}</div>}
+            {finding.location && <div style={{ fontSize: 11, fontWeight: 600, color: "var(--muted-2)" }}>{finding.location}</div>}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// PDF: section / Uncategorised as a filled bar, item as bold text with a
+// blue rule under it.
+const BAR_H = 22;
+const ITEM_LINE_H = 13;
+
+function itemLines(doc: jsPDF, row: Heading, width: number): string[] {
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10.5);
+  return doc.splitTextToSize(headingText(row), width);
+}
+
+function pdfHeadingHeight(doc: jsPDF, row: Heading, width: number): number {
+  return row.kind === "item" ? itemLines(doc, row, width).length * ITEM_LINE_H + 16 : BAR_H + 12;
+}
+
+// draws the heading at `y` and returns where the next thing starts
+function drawPdfHeading(doc: jsPDF, row: Heading, x: number, y: number, width: number): number {
+  if (row.kind === "item") {
+    const lines = itemLines(doc, row, width);
+    doc.setTextColor(28, 30, 36);
+    doc.text(lines, x, y + 9);
+    const ruleY = y + lines.length * ITEM_LINE_H + 1;
+    doc.setDrawColor(153, 204, 255);
+    doc.setLineWidth(1.5);
+    doc.line(x, ruleY, x + width, ruleY);
+    return y + pdfHeadingHeight(doc, row, width);
+  }
+  if (row.kind === "section") doc.setFillColor(153, 204, 255);
+  else doc.setFillColor(217, 217, 217);
+  doc.rect(x, y, width, BAR_H, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.setTextColor(4, 33, 58);
+  const [line] = doc.splitTextToSize(headingText(row), width - 18);
+  doc.text(line, x + 9, y + BAR_H / 2, { baseline: "middle" });
+  return y + pdfHeadingHeight(doc, row, width);
 }
 
 // PDF defect type bubble size (pt)

@@ -6,6 +6,34 @@ the technical detail.
 
 ## 25 September 2026
 
+- **ESR categories (Advanced).** Findings can now be tagged with an ESR
+  category from the company list (13 sections, e.g. "1.6 Fire Doors").
+  - **On the finding screen**, at the bottom: as you type the note, the 5
+    most likely categories appear, grouped under their section in grey.
+    Tap one to pick it. ✕ clears it, "Change" shows the suggestions
+    again, and "Browse all categories" opens the full list with a search
+    box. It's optional: anything not picked is Uncategorised. It doesn't
+    carry over to the next finding.
+  - **Suggestions** work offline, with no AI service. They come from
+    keywords for every item ("extinguisher" → 5.5, "damper" → 6.3.4,
+    "EWIS" → 8.1…), cope with plurals and small typos, and learn from
+    your picks, so your own shorthand ranks your usual choice first.
+  - **The findings list** shows a small category number on each row.
+    The list's order doesn't change.
+  - **Before a PDF or Excel export**, if any findings are uncategorised, a
+    popup offers **Categorise now** or **Export anyway**. Categorise now
+    goes through them one at a time with their suggestions. **Skip
+    finding** leaves one for later; skipped ones come round again, in
+    yellow, until they're done or you tap **Skip to export**.
+  - **PDF, Excel and the export preview** group findings under a blue
+    heading per section and a grey one per item, in the list's order,
+    with Uncategorised last. Similar findings (e.g. "Exit sign not
+    illuminated" ×3) sit together. Excel's Ref column reads 1.6.1,
+    1.6.2… Only sections with findings appear.
+  - **Unchanged:** sites with no categories export exactly as before,
+    and the photos zip stays the same.
+  - **Android back button:** it now also closes the category list, and
+    the export popup, first.
 - **Project tidy-up before merging to main.**
   - Removed an unused leftover file (`public/icons.svg`, template social
     icons).

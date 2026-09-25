@@ -5,6 +5,7 @@ import { addPhoto, createFinding, deleteFinding, deleteSite, getSite, getThumbna
 import { capturePhoto } from "../lib/capture";
 import { IconChevronLeft, IconShare, IconEdit, IconGrip, IconCheck, IconTrash } from "../components/Icons";
 import DefectTypePill from "../components/DefectTypePill";
+import { esrItem } from "../lib/esrCategories";
 import ConfirmDialog from "../components/ConfirmDialog";
 import FormActions from "../components/FormActions";
 import RoundIconButton from "../components/RoundIconButton";
@@ -811,7 +812,16 @@ function FindingRow({
             {finding.level && <> · <b style={{ fontWeight: 700, color: "var(--text)" }}>{finding.level}</b></>}
             {finding.location ? ` · ${finding.location}` : ""}
           </div>
-          <DefectTypePill type={finding.defectType} size="sm" />
+          {(finding.defectType || esrItem(finding.esrCategory)) && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <DefectTypePill type={finding.defectType} size="sm" />
+              {esrItem(finding.esrCategory) && (
+                <span style={{ fontSize: 10, fontWeight: 800, color: "var(--muted)", border: "1px solid var(--border-strong)", borderRadius: 6, padding: "2px 6px", lineHeight: 1.2 }}>
+                  {finding.esrCategory}
+                </span>
+              )}
+            </div>
+          )}
         </div>
         {rowReordering ? (
           <div

@@ -18,15 +18,31 @@ export function parentRoute(pathname: string): string | null {
 }
 
 // Handle the back button yourself while mounted: return true to say
-// "handled" (the default navigation is then skipped).
+// "handled" (the default navigation is then skipped). The most recently
+// mounted handler gets first say, so a sheet opened over a screen closes
+// before the screen itself reacts.
+type Handler = { current: () => boolean };
+const handlers: Handler[] = [];
+
+function onBack(e: Event) {
+  for (let i = handlers.length - 1; i >= 0; i--) {
+    if (handlers[i].current()) {
+      e.preventDefault();
+      return;
+    }
+  }
+}
+
 export function useBackHandler(handler: () => boolean) {
   const latest = useRef(handler);
   latest.current = handler;
   useEffect(() => {
-    const onBack = (e: Event) => {
-      if (latest.current()) e.preventDefault();
+    const h = latest;
+    if (!handlers.length) window.addEventListener(BACK_EVENT, onBack);
+    handlers.push(h);
+    return () => {
+      handlers.splice(handlers.indexOf(h), 1);
+      if (!handlers.length) window.removeEventListener(BACK_EVENT, onBack);
     };
-    window.addEventListener(BACK_EVENT, onBack);
-    return () => window.removeEventListener(BACK_EVENT, onBack);
   }, []);
 }
