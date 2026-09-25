@@ -7,6 +7,7 @@ import {
   deletePhoto,
   getFinding,
   getThumbnail,
+  listFindings,
   listPhotos,
   updateFinding,
 } from "../db/db";
@@ -15,6 +16,8 @@ import { IconRetake, IconTrash, IconChevronLeft, IconPlus, IconCamera, IconCheck
 import RoundIconButton from "../components/RoundIconButton";
 import DefectTypePill from "../components/DefectTypePill";
 import LevelField from "../components/LevelField";
+import LocationSuggestions from "../components/LocationSuggestions";
+import { siteLocations, suggestLocations } from "../lib/locationSuggestions";
 import { DEFECT_TYPES } from "../lib/defectTypes";
 import { useAdvancedControls } from "../lib/settings";
 
@@ -37,6 +40,10 @@ export default function Note() {
   const [selected, setSelected] = useState(0);
   const [note, setNote] = useState("");
   const [location, setLocation] = useState("");
+  // locations already used on this site's other findings, most recent
+  // first, for the suggestion buttons under the Location box
+  const [siteLocs, setSiteLocs] = useState<string[]>([]);
+  const [locationFocused, setLocationFocused] = useState(false);
   const [defectType, setDefectType] = useState<DefectType | undefined>(undefined);
   const [level, setLevel] = useState<string | undefined>(undefined);
   // the level "Save & next finding" copied over from the previous finding,
@@ -100,6 +107,17 @@ export default function Note() {
       return Math.max(0, Math.min(target, p.length - 1));
     });
   }
+
+  useEffect(() => {
+    if (!siteId) return;
+    let cancelled = false;
+    listFindings(siteId).then((findings) => {
+      if (!cancelled) setSiteLocs(siteLocations(findings, findingId));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [siteId, findingId]);
 
   useEffect(() => {
     refresh(0);
@@ -460,8 +478,9 @@ export default function Note() {
           />
         </div>
 
-        {/* location */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {/* location, with suggestions from this site's other findings while
+            typing (data-keep-visible keeps the buttons above the keyboard) */}
+        <div data-keep-visible style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <label htmlFor="locationInput" style={labelStyle}>Location</label>
           <input
             id="locationInput"
@@ -469,10 +488,19 @@ export default function Note() {
             placeholder="Tap to add"
             value={location}
             onChange={(e) => setLocation(e.target.value)}
-            onFocus={() => setFieldFocused(true)}
-            onBlur={() => setFieldFocused(false)}
+            onFocus={() => {
+              setFieldFocused(true);
+              setLocationFocused(true);
+            }}
+            onBlur={() => {
+              setFieldFocused(false);
+              setLocationFocused(false);
+            }}
             style={fieldStyle}
           />
+          {locationFocused && (
+            <LocationSuggestions suggestions={suggestLocations(siteLocs, location)} onPick={setLocation} />
+          )}
         </div>
 
         {/* level — advanced controls; optional, carried to the next finding */}
