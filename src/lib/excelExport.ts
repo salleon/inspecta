@@ -15,7 +15,7 @@ import templateDataUrl from "../assets/findings-template.xlsx?inline";
 // in the Description cell, so that's still far sharper than the cell
 // needs). Built for desktop Excel.
 
-export interface ExcelFinding {
+interface ExcelFinding {
   finding: Finding;
   photos: Photo[];
 }
@@ -82,7 +82,7 @@ function excelDate(ms: number): Date {
 // row (see ExportPreview).
 // Progress for the loading screen. Stamping and adding photos is nearly
 // all of the work, so it's reported photo by photo.
-export type ExcelProgress =
+type ExcelProgress =
   | { stage: "photos"; done: number; total: number }
   | { stage: "building" };
 

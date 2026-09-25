@@ -16,7 +16,7 @@ import { ZipWriter } from "./zip";
 // stamped and written one at a time, so memory stays flat however many
 // there are.
 
-export interface ZipFinding {
+interface ZipFinding {
   finding: Finding;
   photos: Photo[];
 }

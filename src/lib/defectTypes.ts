@@ -8,7 +8,7 @@ import type { DefectType } from "../db/types";
 // white bubble, so it gets an outline anywhere it sits on a white
 // background (the PDF / export preview).
 
-export interface DefectTypeStyle {
+interface DefectTypeStyle {
   value: DefectType;
   label: string;
   bg: string;

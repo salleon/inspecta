@@ -5,7 +5,7 @@ import type { Finding } from "../db/types";
 // once per site. Built from the findings themselves (no separate list to
 // manage), so fixing or deleting a finding updates them automatically.
 
-export const MAX_SUGGESTIONS = 3;
+const MAX_SUGGESTIONS = 3;
 
 const norm = (s: string) => s.trim().replace(/\s+/g, " ").toLowerCase();
 

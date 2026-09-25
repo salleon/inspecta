@@ -6,6 +6,14 @@ the technical detail.
 
 ## 25 September 2026
 
+- **Project tidy-up before merging to main.**
+  - Removed an unused leftover file (`public/icons.svg`, template social
+    icons).
+  - Made internal-only code names private.
+  - Added a `.gitignore` so build folders (`node_modules`, `dist`) no
+    longer show up as changes.
+  - No change to how the app works: the full test run (13 areas)
+    passes.
 - **Changelog added.** This file: plain-English notes for every change
   from now on.
 - **"Save & close" button.** The finding screen's left button, which

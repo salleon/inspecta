@@ -8,9 +8,9 @@
 //
 // −/+ step one floor: … Basement 2, Basement 1, Ground, Level 1, Level 2 …
 
-export type LevelKind = "level" | "basement" | "ground" | "mezzanine" | "roof";
+type LevelKind = "level" | "basement" | "ground" | "mezzanine" | "roof";
 
-export interface ParsedLevel {
+interface ParsedLevel {
   kind: LevelKind;
   // floor number for "level"/"basement"; "" while one is still being typed
   num: string;
