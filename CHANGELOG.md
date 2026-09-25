@@ -6,6 +6,15 @@ the technical detail.
 
 ## 25 September 2026
 
+- **Findings without a photo are now in the PDF.** They used to be left
+  out; now they appear like any other finding, with a dashed "No photo"
+  box where the photos would go (the export preview shows the same).
+  The Excel file already included them.
+- **Test app ("Inspecta Test").** Every GitHub Actions build now makes a
+  second APK, `inspecta-test-apk`, next to the normal one. It installs
+  beside the real Inspecta instead of replacing it, with an orange icon
+  and the name "Inspecta Test", and keeps its own sites and findings, so
+  testing never touches real inspections. It starts empty.
 - **ESR category fixes.**
   - Long category names now wrap onto more lines instead of being cut
     off, in the suggestions, the picked category and Browse all.

@@ -323,9 +323,10 @@ export default function ExportPreview() {
 
     // findings under their ESR section / item headings (none if nothing is
     // categorised). A heading is drawn with the finding after it, so it's
-    // never left alone at the bottom of a page.
+    // never left alone at the bottom of a page. Findings without a photo
+    // are included, with a "No photo" box in the photo column.
     let headings: Heading[] = [];
-    for (const row of reportRows(items.filter((i) => i.photos.length > 0))) {
+    for (const row of reportRows(items)) {
       if (row.kind !== "finding") {
         headings.push(row);
         continue;
@@ -341,7 +342,7 @@ export default function ExportPreview() {
         onPhoto(++donePhotos, totalPhotos);
       }
       const rows = Math.ceil(tiles.length / 2);
-      const photosBlockH = rows * tileH + (rows - 1) * tileGap;
+      const photosBlockH = rows ? rows * tileH + (rows - 1) * tileGap : NO_PHOTO_H;
 
       doc.setFont("helvetica", "bold");
       doc.setFontSize(12);
@@ -366,6 +367,17 @@ export default function ExportPreview() {
 
       const rowTop = y;
 
+      if (!tiles.length) {
+        doc.setDrawColor(201, 196, 184);
+        doc.setLineWidth(0.75);
+        doc.setLineDashPattern([3, 3], 0);
+        doc.roundedRect(margin, rowTop, tileW, NO_PHOTO_H, 4, 4, "S");
+        doc.setLineDashPattern([], 0);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        doc.setTextColor(140, 140, 140);
+        doc.text("No photo", margin + tileW / 2, rowTop + NO_PHOTO_H / 2, { align: "center", baseline: "middle" });
+      }
       for (let i = 0; i < tiles.length; i++) {
         const row = Math.floor(i / 2);
         const col = i % 2;
@@ -693,6 +705,11 @@ function PreviewFinding({ entry: { finding, dataUrls }, first }: { entry: Findin
         {dataUrls.map((url) => (
           <img key={url} src={url} alt="" style={{ width: "100%", borderRadius: 6, display: "block" }} />
         ))}
+        {dataUrls.length === 0 && (
+          <div style={{ height: 46, borderRadius: 6, border: "1px dashed #c9c4b8", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 600, color: "var(--muted-2)" }}>
+            No photo
+          </div>
+        )}
       </div>
       <div style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 6, paddingTop: 2 }}>
         <DefectTypePill type={finding.defectType} size="sm" onPaper />
@@ -747,6 +764,9 @@ function drawPdfHeading(doc: jsPDF, row: Heading, x: number, y: number, width: n
   doc.text(line, x + 9, y + BAR_H / 2, { baseline: "middle" });
   return y + pdfHeadingHeight(doc, row, width);
 }
+
+// PDF: the box standing in for photos on a finding that has none (pt)
+const NO_PHOTO_H = 56;
 
 // PDF defect type bubble size (pt)
 const PILL_H = 14;

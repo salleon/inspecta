@@ -37,6 +37,8 @@ This repo has a GitHub Actions workflow (`.github/workflows/build-apk.yml`) that
    To build a branch other than `main`, open **Actions → Build Android APK → Run workflow** and pick the branch in **"Use workflow from"**.
 4. Send that `.apk` file to yourself (email, Slack, Drive — whatever's easiest) and open it **on the Android phone**. Android will ask you to allow installing from this source the first time — approve that, then install.
 
+**Test app:** the same run also produces `inspecta-test-apk` (`app-staging.apk`). It installs as a separate app called "Inspecta Test" (orange icon) with its own data, so you can try out a branch without touching the real Inspecta or its inspections.
+
 That's it — no Play Store, no hosting, just the one file. Whenever you want an updated build, push your changes and re-download the new artifact from Actions.
 
 > A **work/managed Android device** may block installing APKs from outside the Play Store via its MDM policy — if the install is blocked or greyed out, that's an IT/device-policy restriction, not something fixable from this app; check with whoever manages the device policy.

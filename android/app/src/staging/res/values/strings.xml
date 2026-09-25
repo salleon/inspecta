@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <!-- test build: shown under the icon and in the app switcher -->
+    <string name="app_name">Inspecta Test</string>
+    <string name="title_activity_main">Inspecta Test</string>
+</resources>

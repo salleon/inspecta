@@ -43,7 +43,7 @@ jobs:
         working-directory: android/app
         run: echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > release.jks
 
-      - name: Build signed release APK
+      - name: Build signed release and test APKs
         working-directory: android
         env:
           # build.gradle lives in android/app, so Gradle's file() resolves
@@ -60,10 +60,18 @@ jobs:
           CI_VERSION_CODE: ${{ github.run_number }}
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon
+          ./gradlew assembleRelease assembleStaging --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: inspecta-release-apk
           path: android/app/build/outputs/apk/release/app-release.apk
+
+      # "Inspecta Test": installs beside the real app with its own data
+      # (see the staging build type in android/app/build.gradle)
+      - name: Upload test APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: inspecta-test-apk
+          path: android/app/build/outputs/apk/staging/app-staging.apk

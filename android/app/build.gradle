@@ -53,6 +53,17 @@ android {
                 signingConfig signingConfigs.release
             }
         }
+        // Test build ("Inspecta Test"): the same app with its own ID, so it
+        // installs beside the real Inspecta instead of over it, and keeps
+        // its own sites and findings. Its name and orange icon background
+        // come from src/staging/res. Built by CI next to the release APK.
+        staging {
+            initWith release
+            applicationIdSuffix ".test"
+            versionNameSuffix "-test"
+            // Capacitor's library modules only have debug/release
+            matchingFallbacks = ['release']
+        }
     }
 }
 
