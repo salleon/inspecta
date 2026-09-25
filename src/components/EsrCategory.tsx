@@ -34,7 +34,7 @@ function CategoryButton({ item, best, active, onPick, children }: { item: EsrIte
       style={{ ...chipStyle, borderColor: best || active ? "var(--accent)" : "var(--border-strong)", background: active ? "rgba(46,196,182,0.14)" : "var(--panel-2)" }}
     >
       <CodeBadge code={item.code} />
-      <span style={{ flexGrow: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "left" }}>{children ?? item.name}</span>
+      <span style={wrapStyle}>{children ?? item.name}</span>
       {best && <span style={{ flexShrink: 0, fontSize: 9, fontWeight: 800, letterSpacing: "0.06em", color: "var(--accent)" }}>BEST</span>}
     </button>
   );
@@ -87,7 +87,7 @@ export function EsrSelectedCard({ code, onClear }: { code: string; onClear: () =
       <span style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2, textAlign: "left" }}>
         <span style={{ fontSize: 13, fontWeight: 800, lineHeight: 1.3 }}>{item.name}</span>
         {!isSectionOnly(code) && (
-          <span style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", lineHeight: 1.35 }}>
             {section.code} · {section.name}
           </span>
         )}
@@ -144,9 +144,12 @@ function Highlight({ text, query }: { text: string; query: string }) {
 export function EsrBrowseSheet({ current, onPick, onClose }: { current?: string; onPick: (code: string | undefined) => void; onClose: () => void }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState<string | undefined>(() => esrSection(current)?.code);
+  // Back closes the list AND does what back normally does on the screen
+  // underneath (e.g. save the finding and go to the list), so it never
+  // costs an extra press when you're moving fast.
   useBackHandler(() => {
     onClose();
-    return true;
+    return false;
   });
 
   const q = query.trim().toLowerCase();
@@ -204,7 +207,7 @@ export function EsrBrowseSheet({ current, onPick, onClose }: { current?: string;
                     style={{ ...chipStyle, background: "none", borderColor: open === s.code ? "var(--accent)" : "var(--border)" }}
                   >
                     <CodeBadge code={s.code} />
-                    <span style={{ flexGrow: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "left" }}>{s.name}</span>
+                    <span style={wrapStyle}>{s.name}</span>
                     <IconChevronRight size={16} color="var(--muted-2)" style={{ flexShrink: 0, transform: open === s.code ? "rotate(90deg)" : undefined, transition: "transform 150ms" }} />
                   </button>
                   {open === s.code && (
@@ -252,7 +255,9 @@ const sectionHeadingStyle: CSSProperties = {
   textTransform: "uppercase",
   color: "var(--muted-2)",
   padding: "4px 2px 0",
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  whiteSpace: "nowrap",
+  lineHeight: 1.4,
 };
+
+// long names ("6.3.3 Fire mode operation of dampers for outside air…")
+// wrap onto more lines rather than running off the screen
+const wrapStyle: CSSProperties = { flexGrow: 1, minWidth: 0, textAlign: "left", lineHeight: 1.35, overflowWrap: "anywhere" };

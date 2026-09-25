@@ -6,6 +6,13 @@ the technical detail.
 
 ## 25 September 2026
 
+- **ESR category fixes.**
+  - Long category names now wrap onto more lines instead of being cut
+    off, in the suggestions, the picked category and Browse all.
+  - The Android back button works as it did before categories: one
+    press saves the finding and goes to the list, even with the
+    category list open (it just closes). With the export popup open,
+    back goes to the findings list.
 - **ESR categories (Advanced).** Findings can now be tagged with an ESR
   category from the company list (13 sections, e.g. "1.6 Fire Doors").
   - **On the finding screen**, at the bottom: as you type the note, the 5

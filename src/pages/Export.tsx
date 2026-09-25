@@ -132,10 +132,11 @@ export default function ExportPreview() {
   // an export to start once the categories just picked are in `items`
   const [pendingShare, setPendingShare] = useState<ShareKind | null>(null);
 
+  // Back with the popup open closes it and goes back as usual (to the
+  // findings list) — no extra press.
   useBackHandler(() => {
-    if (!askCategorise) return false;
     setAskCategorise(null);
-    return true;
+    return false;
   });
 
   useEffect(() => {
