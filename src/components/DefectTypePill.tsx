@@ -29,6 +29,9 @@ export default function DefectTypePill({
         fontSize: size === "sm" ? 10 : 12,
         fontWeight: 800,
         letterSpacing: 0.1,
+        // Manrope's space is narrow; at bubble size "Note only" otherwise
+        // reads as one word
+        wordSpacing: "0.15em",
         padding: size === "sm" ? "3px 8px" : "5px 11px",
         whiteSpace: "nowrap",
         lineHeight: 1.2,

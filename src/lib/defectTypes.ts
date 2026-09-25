@@ -1,12 +1,12 @@
 import type { DefectType } from "../db/types";
 
 // Defect type options, in picker order. Fills are Excel's standard Red,
-// Gold, Green and Light Green, so the spreadsheet matches the app. `bg` /
-// `text` are the bubble's fill and label colour; `rgb` copies are for
-// jsPDF, which takes numeric channels. Gold/green/light green use dark text
-// since white isn't readable on them. "Note only" is a white bubble, so it
-// gets an outline anywhere it sits on a white background (the PDF / export
-// preview).
+// Gold, Green, Light Green and Light Blue, so the spreadsheet matches the
+// app. `bg` / `text` are the bubble's fill and label colour; `rgb` copies
+// are for jsPDF, which takes numeric channels. Gold, the greens and light
+// blue use dark text since white isn't readable on them. "Note only" is a
+// white bubble, so it gets an outline anywhere it sits on a white
+// background (the PDF / export preview).
 
 export interface DefectTypeStyle {
   value: DefectType;
@@ -23,6 +23,7 @@ export const DEFECT_TYPES: DefectTypeStyle[] = [
   { value: "non-compliance", label: "Non-compliance", bg: "#00b050", text: "#03210f", bgRgb: [0, 176, 80], textRgb: [3, 33, 15] },
   { value: "recommend", label: "Recommend", bg: "#92d050", text: "#1a2e05", bgRgb: [146, 208, 80], textRgb: [26, 46, 5] },
   { value: "note-only", label: "Note only", bg: "#ffffff", text: "#000000", bgRgb: [255, 255, 255], textRgb: [0, 0, 0] },
+  { value: "rectified", label: "Rectified", bg: "#00b0f0", text: "#022a3a", bgRgb: [0, 176, 240], textRgb: [2, 42, 58] },
 ];
 
 export function defectTypeStyle(value: DefectType | undefined): DefectTypeStyle | undefined {

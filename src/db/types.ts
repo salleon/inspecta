@@ -1,7 +1,7 @@
 export type SiteKind = "afss" | "project";
 
 // Advanced-controls field — see lib/defectTypes.ts for labels and colours.
-export type DefectType = "critical" | "non-critical" | "non-compliance" | "recommend" | "note-only";
+export type DefectType = "critical" | "non-critical" | "non-compliance" | "recommend" | "note-only" | "rectified";
 
 export interface Site {
   id: string;
