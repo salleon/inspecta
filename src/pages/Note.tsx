@@ -187,7 +187,7 @@ export default function Note() {
     await updateFinding(findingId, { note, location, defectType, level });
   }
 
-  // Used by both the back button and "View findings" — they're the same
+  // Used by both the back button and "Save & close" — they're the same
   // action (persist the note/location, then return to the list).
   async function handleBack() {
     await persist();
@@ -560,7 +560,7 @@ export default function Note() {
       </div>
 
       {/* save bar — "Save & next finding" is the most-used action so it's
-          the visually bigger button; the two sit side by side, View findings
+          the visually bigger button; the two sit side by side, Save & close
           on the left and Save & next finding on the right */}
       <div style={{ flexShrink: 0, padding: "12px 18px calc(26px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "row", gap: 10 }}>
         <button
@@ -577,7 +577,7 @@ export default function Note() {
             color: "var(--text)",
           }}
         >
-          View findings
+          Save &amp; close
         </button>
         <button
           onClick={handleSaveAndNextFinding}
