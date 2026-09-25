@@ -6,6 +6,12 @@ the technical detail.
 
 ## 25 September 2026
 
+- **Master recovery code for the admin PIN.** "Forgot PIN?" now also
+  accepts a master code that works on every phone with no setup, so a
+  forgotten PIN no longer needs the per-phone code emailed beforehand.
+  The code itself isn't in the app (only a scrambled fingerprint of it),
+  so it can't be read out; the owner keeps it. The emailed per-phone code
+  still works too.
 - **ESR category "Quick add" box.** On the finding screen the category now
   starts as one closed box, "Quick add". Tap it to drop down the
   suggestions (same as before); tap it again to fold them away. Picking

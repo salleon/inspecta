@@ -2,9 +2,9 @@
 // the admin tools, not a real security boundary — everything stays on the
 // phone. Starts as 2021; change it from the admin menu.
 //
-// Forgotten PIN: the admin menu can email a recovery code (a random code
-// made on this phone the first time Admin is opened). "Forgot PIN?" on the
-// PIN screen takes that code and sets a new PIN.
+// Forgotten PIN: "Forgot PIN?" on the PIN screen takes a recovery code and
+// sets a new PIN. Either the master code (works on any phone, below) or
+// this phone's own code, which the admin menu can email.
 
 const PIN_KEY = "inspecta.adminPin";
 const RECOVERY_KEY = "inspecta.adminRecovery";
@@ -47,11 +47,23 @@ export function recoveryCode(): string {
   return code;
 }
 
-// the code as typed (any case, dash optional)
-export function checkRecoveryCode(typed: string): boolean {
+// Master recovery code: works on every phone, with no setup — kept by
+// the app's owner, not in the app. Only its SHA-256 fingerprint is here,
+// so it can't be read out of the code or the APK.
+const MASTER_HASH = "3cd2eb2f3e73140e9377237863e07de548458c5057d3d528b403c2ba746f7a5d";
+
+async function sha256Hex(text: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+// the code as typed (any case, dashes optional): this phone's emailed code
+// or the master code
+export async function checkRecoveryCode(typed: string): Promise<boolean> {
   const norm = (s: string) => s.toUpperCase().replace(/[^A-Z0-9]/g, "");
   const stored = get(RECOVERY_KEY);
-  return !!stored && norm(typed) === norm(stored);
+  if (stored && norm(typed) === norm(stored)) return true;
+  return (await sha256Hex(`inspecta-admin:${norm(typed)}`)) === MASTER_HASH;
 }
 
 // Unlocked until the app is closed, so moving around the admin screens

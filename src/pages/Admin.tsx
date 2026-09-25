@@ -159,7 +159,7 @@ function PinScreen({ onUnlock, start = { kind: "enter" }, onDone, back = "/" }: 
         <div style={{ fontSize: 18, fontWeight: 800 }}>{heading}</div>
         {step.kind === "recovery" ? (
           <>
-            <div style={{ ...hintStyle, textAlign: "center", maxWidth: 280 }}>It's in the email you sent yourself from Admin → Email recovery code.</div>
+            <div style={{ ...hintStyle, textAlign: "center", maxWidth: 280 }}>Enter your master recovery code, or the code you emailed yourself from this phone.</div>
             <input
               value={recovery}
               onChange={(e) => {
@@ -173,11 +173,11 @@ function PinScreen({ onUnlock, start = { kind: "enter" }, onDone, back = "/" }: 
             />
             <button
               type="button"
-              onClick={() => {
-                if (checkRecoveryCode(recovery)) {
+              onClick={async () => {
+                if (await checkRecoveryCode(recovery)) {
                   setStep({ kind: "new" });
                   setRecovery("");
-                } else setMessage("That code doesn't match this phone.");
+                } else setMessage("That code isn't right.");
               }}
               style={{ ...primaryButton, width: 220 }}
             >
