@@ -215,7 +215,7 @@ export async function buildFindingsWorkbook(
 
     const refCell = row.getCell(COL.ref);
     refCell.value = ref ?? null;
-    refCell.alignment = centred;
+    refCell.alignment = topLeft;
 
     const loc = row.getCell(COL.location);
     loc.value = locationText || null;

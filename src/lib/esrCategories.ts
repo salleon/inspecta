@@ -196,6 +196,30 @@ export function esrGroup(code: string): EsrItem | undefined {
   return ALL_LINES.find((p) => code.startsWith(`${p.code}.`) && hasChildren(p.code));
 }
 
+// A reference number typed in a note, e.g. "1.8.1 still present" for a
+// defect carried over from last year's report. Read level by level to the
+// deepest pickable category: 1.8.1 → 1.8 (finding 1), 6.3.4.2 → 6.3.4,
+// 1.10.3 → 1.10 (by dots, so not 1.1), 13.2 → 13. `ref` is the whole
+// number when it goes past the category (a finding number, kept as the
+// report's Ref). To avoid "2.5mm" style numbers, it only counts at the
+// very start of the note, or anywhere with three or more parts.
+export function noteReference(note: string): { code: string; ref?: string } | undefined {
+  const candidates: string[] = [];
+  // (not a measurement: "2.4 m high", "1.5 metres")
+  const start = /^\s*(\d{1,2}(?:\.\d{1,3})+)(?![\w.])(?!\s*(?:mm|cm|m|metres?|meters?|kg|kpa|l|lt|litres?|%|x)\b)/i.exec(note);
+  if (start) candidates.push(start[1]);
+  for (const m of note.matchAll(/(?:^|[^\w.])(\d{1,2}(?:\.\d{1,3}){2,})(?![\w.])/g)) candidates.push(m[1]);
+  for (const number of candidates) {
+    const parts = number.split(".");
+    for (let k = parts.length; k >= 1; k--) {
+      const code = currentCode(parts.slice(0, k).join("."));
+      if (!esrItem(code)) continue;
+      return k < parts.length ? { code, ref: number } : { code };
+    }
+  }
+  return undefined;
+}
+
 // position in the spreadsheet's order, for sorting; unknown codes last
 export function esrOrder(code: string | undefined): number {
   return (code ? listIndex.get(code) : undefined) ?? Number.MAX_SAFE_INTEGER;

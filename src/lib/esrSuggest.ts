@@ -1,4 +1,4 @@
-import { ESR_ITEMS, currentCode } from "./esrCategories";
+import { ESR_ITEMS, currentCode, noteReference } from "./esrCategories";
 import { categoryKeywords, subscribeKeywords } from "./esrKeywords";
 
 // ESR category suggestions for a finding, worked out on the phone (offline,
@@ -36,13 +36,16 @@ function stem(word: string): string {
   return t;
 }
 
-function tokens(text: string): string[] {
+function rawWords(text: string): string[] {
   return text
     .toLowerCase()
     .replace(/['’]s\b/g, "")
     .split(/[^a-z0-9]+/)
-    .filter(Boolean)
-    .map(stem);
+    .filter(Boolean);
+}
+
+function tokens(text: string): string[] {
+  return rawWords(text).map(stem);
 }
 
 // meaningful words only: for learning and for comparing notes
@@ -113,6 +116,8 @@ function contains(text: string[], phrase: string[]): boolean {
 
 const MEMORY_KEY = "inspecta.esrMemory";
 const USAGE_KEY = "inspecta.esrUsage";
+// word as last typed, for showing learnt words (memory is keyed by stem)
+const SPELLING_KEY = "inspecta.esrMemorySpelling";
 
 type Memory = Record<string, Record<string, number>>; // word -> code -> times
 type Usage = Record<string, number>; // code -> times picked
@@ -151,17 +156,74 @@ function loadMemory(): Memory {
 
 const loadUsage = () => renameCounts(load<Usage>(USAGE_KEY));
 
+let spelling: Record<string, string> | null = null;
+
+function saveLearnt() {
+  save(MEMORY_KEY, memory);
+  save(USAGE_KEY, usage);
+  save(SPELLING_KEY, spelling);
+}
+
 // Remember a pick: the note's words now point (a little more) to `code`.
 export function learnCategory(note: string, code: string) {
   memory ??= loadMemory();
   usage ??= loadUsage();
-  for (const w of new Set(keyWords(note))) {
+  spelling ??= load<Record<string, string>>(SPELLING_KEY);
+  const seen = new Set<string>();
+  for (const raw of rawWords(note)) {
+    const w = stem(raw);
+    if (w.length < 2 || STOPWORDS.has(w) || seen.has(w)) continue;
+    seen.add(w);
     const codes = (memory[w] ??= {});
     codes[code] = (codes[code] ?? 0) + 1;
+    spelling[w] = raw;
   }
   usage[code] = (usage[code] ?? 0) + 1;
-  save(MEMORY_KEY, memory);
-  save(USAGE_KEY, usage);
+  saveLearnt();
+}
+
+// Take back a pick that was changed or cleared (a mis-tap), so it isn't
+// learnt.
+export function unlearnCategory(note: string, code: string) {
+  memory ??= loadMemory();
+  usage ??= loadUsage();
+  for (const w of new Set(keyWords(note))) {
+    const codes = memory[w];
+    if (!codes?.[code]) continue;
+    if (--codes[code] <= 0) delete codes[code];
+    if (!Object.keys(codes).length) delete memory[w];
+  }
+  if (usage[code] && --usage[code] <= 0) delete usage[code];
+  saveLearnt();
+}
+
+// For Admin → Learned keywords: every word → category this phone has
+// learnt, most-used first.
+export function learnedKeywords(): { word: string; stem: string; code: string; count: number }[] {
+  memory ??= loadMemory();
+  spelling ??= load<Record<string, string>>(SPELLING_KEY);
+  const out: { word: string; stem: string; code: string; count: number }[] = [];
+  for (const [w, codes] of Object.entries(memory)) {
+    for (const [code, count] of Object.entries(codes)) {
+      if (ESR_ITEMS.some((i) => i.code === code)) out.push({ word: spelling[w] ?? w, stem: w, code, count });
+    }
+  }
+  return out.sort((a, b) => b.count - a.count || a.word.localeCompare(b.word));
+}
+
+export function forgetLearned(stemmed: string, code: string) {
+  memory ??= loadMemory();
+  if (!memory[stemmed]) return;
+  delete memory[stemmed][code];
+  if (!Object.keys(memory[stemmed]).length) delete memory[stemmed];
+  saveLearnt();
+}
+
+export function forgetAllLearned() {
+  memory = {};
+  usage = {};
+  spelling = {};
+  saveLearnt();
 }
 
 // ---- ranking ----
@@ -187,6 +249,9 @@ export function suggestCategories(note: string, location = "", { max = MAX_SUGGE
   const add = (code: string, s: number) => scores.set(code, (scores.get(code) ?? 0) + s);
 
   for (const [code, { score }] of keywordScores(noteWords, placeWords)) add(code, score);
+  // a reference number from an old report ("1.8.1 …") names the category
+  const reference = noteReference(note);
+  if (reference) add(reference.code, 100);
 
   // learnt words: stronger the more often a word led to that category, and
   // the more it points to that one category rather than several
@@ -238,7 +303,13 @@ function keywordScores(noteWords: string[], placeWords: string[]) {
 // has learnt), with what matched and the score.
 export function explainCategories(note: string, max = MAX_SUGGESTIONS) {
   const order = new Map(ESR_ITEMS.map((i, n) => [i.code, n]));
-  return [...keywordScores(tokens(note), [])]
+  const scores = keywordScores(tokens(note), []);
+  const reference = noteReference(note);
+  if (reference) {
+    const had = scores.get(reference.code);
+    scores.set(reference.code, { score: 100 + (had?.score ?? 0), matched: [`reference ${reference.ref ?? reference.code}`, ...(had?.matched ?? [])] });
+  }
+  return [...scores]
     .sort((a, b) => b[1].score - a[1].score || order.get(a[0])! - order.get(b[0])!)
     .slice(0, max)
     .map(([code, { score, matched }]) => ({ code, score, matched }));

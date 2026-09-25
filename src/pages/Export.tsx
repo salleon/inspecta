@@ -17,7 +17,7 @@ import DefectTypePill from "../components/DefectTypePill";
 import CategoriseFlow from "../components/CategoriseFlow";
 import { reportRows, type ReportRow } from "../lib/esrGrouping";
 import { esrItem } from "../lib/esrCategories";
-import { learnCategory } from "../lib/esrSuggest";
+import { learnCategory, unlearnCategory } from "../lib/esrSuggest";
 import { useAdvancedControls } from "../lib/settings";
 import { useBackHandler } from "../lib/backButton";
 import coverBgAfss from "../assets/cover-bg-afss.jpg";
@@ -440,6 +440,10 @@ export default function ExportPreview() {
   }
 
   function handleCategorisePick(finding: Finding, code: string) {
+    // re-picking one that was already set replaces what was learnt from it
+    const previous = items.find((i) => i.finding.id === finding.id)?.finding.esrCategory;
+    if (previous === code) return;
+    if (previous) unlearnCategory(finding.note, previous);
     learnCategory(finding.note, code);
     void updateFinding(finding.id, { esrCategory: code });
     setItems((prev) => prev.map((i) => (i.finding.id === finding.id ? { ...i, finding: { ...i.finding, esrCategory: code } } : i)));

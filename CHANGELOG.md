@@ -6,6 +6,20 @@ the technical detail.
 
 ## 25 September 2026
 
+- **Old report numbers recognised.** A note like "1.8.1 still present"
+  suggests 1.8 first (read level by level: 6.3.4.2 → 6.3.4, 1.10.3 →
+  1.10, 13.2 → 13). It counts at the start of a note, or anywhere with
+  three or more parts; measurements like "2.4 m high" are ignored.
+- **Old numbers kept in the report.** In the Excel, a finding whose note
+  starts with its old number keeps it as its Ref (e.g. 1.8.3), listed
+  first; new findings in that category count on after it (1.8.4…).
+- **Excel Ref aligned top-left** in finding rows.
+- **Admin → Learned keywords.** Shows the words this phone has learned
+  from your category picks and where each points, with how many picks.
+  Remove a wrong one, turn a good one into a proper keyword ("Make
+  keyword"), or forget everything learned.
+- **Mis-taps aren't learned.** Changing or clearing a category takes back
+  what was learned from the earlier pick.
 - **6.3 shown as context when picking.** In Quick add, the Categorise
   screen and Browse all, 6.3.1–6.3.4 now sit under a light-yellow
   "6.3 Fire control operation…" label (not a button), indented, like

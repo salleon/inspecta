@@ -21,7 +21,7 @@ import {
   useKeywordVersion,
   type KeywordKind,
 } from "../lib/esrKeywords";
-import { explainCategories } from "../lib/esrSuggest";
+import { explainCategories, forgetAllLearned, forgetLearned, learnedKeywords } from "../lib/esrSuggest";
 import { checkPin, checkRecoveryCode, isAdminUnlocked, recoveryCode, setPin, unlockAdmin } from "../lib/adminPin";
 import { writeBlobToCache } from "../lib/cacheFile";
 import { useBackHandler } from "../lib/backButton";
@@ -33,6 +33,7 @@ import { useBackHandler } from "../lib/backButton";
 //   /admin/keywords        every category, searchable
 //   /admin/keywords/:code  one category's keywords, add / remove, try it
 //   /admin/test            type a note, see the top 5 and why
+//   /admin/learned         words this phone has learnt from picks
 
 export default function Admin() {
   const [unlocked, setUnlocked] = useState(isAdminUnlocked);
@@ -54,6 +55,7 @@ export default function Admin() {
   if (code && esrItem(decodeURIComponent(code))) return <KeywordDetail code={decodeURIComponent(code)} />;
   if (pathname === "/admin/keywords") return <KeywordList />;
   if (pathname === "/admin/test") return <Tester />;
+  if (pathname === "/admin/learned") return <Learned />;
   return <AdminHome />;
 }
 
@@ -278,6 +280,7 @@ function AdminHome() {
     <Screen title="Admin" back="/">
       {notice && <div style={{ fontSize: 13, fontWeight: 700, color: "var(--accent)" }}>{notice}</div>}
       <Row title="ESR keywords" hint={`Words that suggest each category. ${edited ? `${edited} edited on this phone.` : "Built-in list, no changes."}`} onClick={() => navigate("/admin/keywords")} />
+      <Row title="Learned keywords" hint="Words this phone has picked up from your category choices. Remove a wrong one, or make a good one a keyword." onClick={() => navigate("/admin/learned")} />
       <Row title="Test a note" hint="Type a note, see the top 5 and why." onClick={() => navigate("/admin/test")} />
       <Row title="Share keyword changes" hint="Send your changes as a file, to load on other phones or to have them built into the app." onClick={shareKeywords} />
       <Row title="Load keyword file" hint="Load changes shared from another phone." onClick={() => fileInput.current?.click()} />
@@ -451,6 +454,79 @@ function KeywordDetail({ code }: { code: string }) {
         <input type="text" placeholder="Type a sample note" aria-label="Sample note" value={note} onChange={(e) => setNote(e.target.value)} style={fieldStyle} />
         <Results note={note} highlight={code} />
       </div>
+    </Screen>
+  );
+}
+
+function Learned() {
+  const [query, setQuery] = useState("");
+  const [, refresh] = useState(0);
+  const [confirmClear, setConfirmClear] = useState(false);
+  const q = query.trim().toLowerCase();
+  const all = learnedKeywords();
+  const rows = all.filter((r) => !q || r.word.includes(q) || r.code === q || esrItem(r.code)?.name.toLowerCase().includes(q));
+  return (
+    <Screen title="Learned keywords" back="/admin">
+      <div style={hintStyle}>
+        Each time you pick a category, the words in that note count towards it. The more picks, the stronger. Changing or clearing a pick takes it back. Remove a word that points the wrong way, or tap <b style={{ color: "var(--text)" }}>Make keyword</b> to turn it into a proper keyword for that category.
+      </div>
+      <input type="search" placeholder="Search words or categories" aria-label="Search learned keywords" value={query} onChange={(e) => setQuery(e.target.value)} style={fieldStyle} />
+      {!all.length && <div style={hintStyle}>Nothing learned yet. Pick categories on findings and words will appear here.</div>}
+      {rows.map((r) => (
+        <div key={`${r.stem}-${r.code}`} style={{ ...rowStyle, padding: "10px 12px", gap: 10 }}>
+          <span style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
+            <span style={{ fontSize: 14, fontWeight: 800 }}>{r.word}</span>
+            <span style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
+              <Code code={r.code} />
+              <span style={{ ...hintStyle, color: "var(--text)" }}>{esrItem(r.code)?.name}</span>
+            </span>
+            <span style={hintStyle}>
+              {r.count} pick{r.count === 1 ? "" : "s"}
+            </span>
+          </span>
+          <span style={{ flexShrink: 0, display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end" }}>
+            <button
+              type="button"
+              onClick={() => {
+                addKeyword(r.code, r.word, "");
+                forgetLearned(r.stem, r.code);
+                refresh((n) => n + 1);
+              }}
+              style={{ padding: "7px 10px", borderRadius: 9, background: "none", border: "1px solid var(--accent)", color: "var(--accent)", fontSize: 12, fontWeight: 800 }}
+            >
+              Make keyword
+            </button>
+            <button
+              type="button"
+              aria-label={`Remove ${r.word}`}
+              onClick={() => {
+                forgetLearned(r.stem, r.code);
+                refresh((n) => n + 1);
+              }}
+              style={{ padding: "7px 10px", borderRadius: 9, background: "none", border: "1px solid var(--border-strong)", color: "var(--muted)", fontSize: 12, fontWeight: 700 }}
+            >
+              Remove
+            </button>
+          </span>
+        </div>
+      ))}
+      {!!all.length && (
+        <button type="button" onClick={() => setConfirmClear(true)} style={{ ...linkButton, color: "#e07a7a" }}>
+          Forget everything learned
+        </button>
+      )}
+      {confirmClear && (
+        <ConfirmDialog
+          title="Forget everything learned?"
+          message="Suggestions go back to the keywords alone. Your keyword changes stay."
+          confirmLabel="Forget"
+          onCancel={() => setConfirmClear(false)}
+          onConfirm={() => {
+            forgetAllLearned();
+            setConfirmClear(false);
+          }}
+        />
+      )}
     </Screen>
   );
 }

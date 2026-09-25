@@ -20,7 +20,7 @@ import LocationSuggestions from "../components/LocationSuggestions";
 import { siteLocations, suggestLocations } from "../lib/locationSuggestions";
 import { DEFECT_TYPES } from "../lib/defectTypes";
 import { useAdvancedControls } from "../lib/settings";
-import { learnCategory, suggestCategories, type CategorySuggestion } from "../lib/esrSuggest";
+import { learnCategory, suggestCategories, unlearnCategory, type CategorySuggestion } from "../lib/esrSuggest";
 import { EsrBrowseSheet, EsrLink, EsrSelectedCard, EsrSuggestionList } from "../components/EsrCategory";
 import { useBackHandler } from "../lib/backButton";
 
@@ -290,11 +290,13 @@ export default function Note() {
   // Saved straight away, like the defect type. A pick also teaches the
   // suggestions this note's wording (see lib/esrSuggest).
   async function handlePickCategory(code: string | undefined) {
+    // a changed or cleared pick was a mis-tap: don't keep learning from it
+    if (esrCategory && esrCategory !== code) unlearnCategory(note, esrCategory);
+    if (code && code !== esrCategory) learnCategory(note, code);
     setEsrCategory(code);
     setChangingCategory(false);
     setCategoryOpen(false);
     setBrowsingCategories(false);
-    if (code) learnCategory(note, code);
     if (findingId) await updateFinding(findingId, { esrCategory: code });
   }
 
