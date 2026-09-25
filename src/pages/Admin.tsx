@@ -317,6 +317,7 @@ function AdminHome() {
           title="Load keyword file?"
           message={`"${loaded.name}" changes ${Object.keys(loaded.edits).length} categor${Object.keys(loaded.edits).length === 1 ? "y" : "ies"}. It replaces the keyword changes on this phone.`}
           confirmLabel="Load"
+          tone="primary"
           onCancel={() => setLoaded(null)}
           onConfirm={() => {
             applyKeywordFile(loaded.edits);

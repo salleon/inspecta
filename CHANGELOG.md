@@ -6,6 +6,20 @@ the technical detail.
 
 ## 25 September 2026
 
+- **Backup and restore.** Settings → **Back up all data** saves every
+  site, finding and photo in one file to share (e.g. to OneDrive).
+  **Restore from backup** adds the sites from a backup file, for a new
+  phone or to hand a site to a coworker. Sites already on the phone are
+  never overwritten or duplicated.
+- **Storage kept safe.** The app asks Android to keep its data instead of
+  clearing it when the phone runs low on space.
+- **Build number in Settings.** "Inspecta · Build 2" at the bottom of
+  Settings (also the Android version name). It only changes when a build
+  is handed out.
+- **Automated tests in the project.** The checks run before each change
+  (suggestions, reports, Categorise, admin, backup, upgrades) now live
+  in the repo and run on GitHub on every push; the APK build only
+  happens if they pass.
 - **"‹ Previous" on the Categorise screen.** A mis-tap moves straight on,
   so you can now step back through the findings you've been through.
   The earlier finding shows "You picked …" with that category

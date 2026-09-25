@@ -12,9 +12,10 @@ android {
         // higher code than the last and Android will offer it as an update.
         // Locally (no CI_VERSION_CODE set) it just falls back to 1.
         versionCode (System.getenv("CI_VERSION_CODE") as Integer) ?: 1
-        // versionName is the human-readable version — bump this by hand in
-        // this file for real releases (e.g. "1.1", "1.2") so it's meaningful.
-        versionName "1.0"
+        // versionName is the build label handed out to the team, read from
+        // BUILD_LABEL at the repo root (also shown in the app's Settings).
+        // Changed by hand only when a build is given out.
+        versionName rootProject.file("../BUILD_LABEL").text.trim()
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

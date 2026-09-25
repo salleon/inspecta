@@ -6,7 +6,12 @@ on:
   workflow_dispatch: {}
 
 jobs:
+  # the whole test suite first; the APK is only built if it passes
+  test:
+    uses: ./.github/workflows/tests.yml
+
   build:
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

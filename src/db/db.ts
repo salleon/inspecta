@@ -224,3 +224,37 @@ export function getThumbnail(photo: Photo): Promise<Blob> {
   }
   return job;
 }
+
+// ---- backup / restore (see lib/backup.ts) ----
+
+// Everything except the photo files themselves, which are read one at a
+// time with photoBlob() so a backup never holds them all in memory.
+export async function backupRecords() {
+  const sites = await db.sites.toArray();
+  const findings = await db.findings.toArray();
+  const photos: Omit<Photo, "blob">[] = [];
+  await db.photos.each(({ blob: _blob, ...meta }) => {
+    photos.push(meta);
+  });
+  return { sites, findings, photos };
+}
+
+export async function photoBlob(photoId: string): Promise<Blob | undefined> {
+  return (await db.photos.get(photoId))?.blob;
+}
+
+export async function siteExists(siteId: string): Promise<boolean> {
+  return (await db.sites.get(siteId)) !== undefined;
+}
+
+// A restored site and its findings (photos follow one at a time).
+export async function restoreSiteRecords(site: Site, findings: Finding[]) {
+  await db.transaction("rw", db.sites, db.findings, async () => {
+    await db.sites.add(site);
+    await db.findings.bulkAdd(findings);
+  });
+}
+
+export async function restorePhoto(photo: Photo) {
+  await db.photos.add(photo);
+}

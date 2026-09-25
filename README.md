@@ -44,6 +44,25 @@ That's it — no Play Store, no hosting, just the one file. Whenever you want an
 
 > A **work/managed Android device** may block installing APKs from outside the Play Store via its MDM policy — if the install is blocked or greyed out, that's an IT/device-policy restriction, not something fixable from this app; check with whoever manages the device policy.
 
+### Build label
+
+`BUILD_LABEL` (repo root) is the build number handed out to the team, shown in Settings ("Inspecta · Build 2") and used as the Android version name. It's changed by hand only when a build is given out — not on every APK build.
+
+## Backups
+
+Settings → **Back up all data** saves every site, finding and photo in one `.zip` (records in `backup.json`, original photos in `photos/`) to share, e.g. to OneDrive. **Restore from backup** adds the sites from such a file; a site already on the phone is left exactly as it is, so nothing is overwritten (`src/lib/backup.ts`). Settings, the name, the admin PIN and keyword changes aren't included. On start the app also asks the browser to keep its storage rather than clear it when space runs low.
+
+## Tests
+
+`npm test` runs the unit tests (`tests/unit`: suggestions, reference numbers, report grouping, keyword storage) and then, against a production build, the browser tests (`tests/e2e`, headless Chromium via Playwright: finding screen, export and Categorise, grouped Excel/PDF, admin, backup/restore, upgrading an old database). GitHub Actions runs them on every push (`.github/workflows/tests.yml`), and the APK build only goes ahead if they pass. First time locally: `npx playwright install chromium`.
+
+## Planned
+
+Ideas agreed but not started yet:
+
+- **Standard corrective-action text** — a library of standard sentences per category (e.g. "Incumbent contractor to carry out annual inspection testing in accordance with AS1851…") to fill the Corrective action column with a tap.
+- **Merge last year's report** — load the previous report for a site and mark its old findings as still present or rectified, flowing into the new report (with their old numbers). How it should work is still to be decided.
+
 ## Running it as a web app instead
 
 You'll need [Node.js](https://nodejs.org) (18+) installed.

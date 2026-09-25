@@ -6,6 +6,9 @@ import { IconSearch, IconBuilding, IconPlus, IconTrash, IconSettings, IconChevro
 import CountUp from "../components/CountUp";
 import ConfirmDialog from "../components/ConfirmDialog";
 import FormActions from "../components/FormActions";
+import BackupSettings from "../components/BackupSettings";
+// the build label handed out to the team (BUILD_LABEL, changed by hand)
+import buildLabel from "../../BUILD_LABEL?raw";
 import logo from "../assets/logo.png";
 import { getInspectorName, setInspectorName } from "../lib/profile";
 import { setAdvancedControls, useAdvancedControls } from "../lib/settings";
@@ -343,7 +346,7 @@ export default function Dashboard() {
           <div
             onClick={(e) => e.stopPropagation()}
             className="sheet-panel"
-            style={{ width: "100%", background: "var(--panel)", borderRadius: "20px 20px 0 0", padding: "22px 20px calc(28px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 14 }}
+            style={{ width: "100%", maxHeight: "92%", overflowY: "auto", background: "var(--panel)", borderRadius: "20px 20px 0 0", padding: "22px 20px calc(28px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 14 }}
           >
             <div style={{ fontSize: 16, fontWeight: 800 }}>Settings</div>
             <button type="button" onClick={openEditName} style={settingsRowStyle}>
@@ -366,6 +369,7 @@ export default function Dashboard() {
               </div>
               <Switch on={advancedControls} />
             </button>
+            <BackupSettings rowStyle={settingsRowStyle} hintStyle={settingsRowHintStyle} onRestored={() => void refresh()} />
             <button type="button" onClick={() => navigate("/admin")} style={settingsRowStyle}>
               <IconLock size={18} color="var(--muted)" style={{ flexShrink: 0 }} />
               <div style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
@@ -377,10 +381,11 @@ export default function Dashboard() {
             <button
               type="button"
               onClick={() => setSettingsOpen(false)}
-              style={{ textAlign: "center", padding: "14px 0", borderRadius: 12, background: "var(--panel-2)", border: "1px solid var(--border)", fontSize: 14, fontWeight: 700, color: "var(--text)", marginTop: 4 }}
+              style={{ textAlign: "center", padding: "14px 0", borderRadius: 12, background: "var(--panel-2)", border: "1px solid var(--border)", fontSize: 14, fontWeight: 700, color: "var(--text)", marginTop: 4, flexShrink: 0 }}
             >
               Done
             </button>
+            <div style={{ flexShrink: 0, textAlign: "center", fontSize: 12, fontWeight: 600, color: "var(--muted-2)" }}>Inspecta · Build {buildLabel.trim()}</div>
           </div>
         </div>
       )}
@@ -433,6 +438,8 @@ const inputStyle: CSSProperties = {
 };
 
 const settingsRowStyle: CSSProperties = {
+  // the sheet scrolls on short screens; rows keep their size
+  flexShrink: 0,
   display: "flex",
   alignItems: "center",
   gap: 12,

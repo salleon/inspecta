@@ -10,6 +10,8 @@ export default function ConfirmDialog({
   confirmingLabel = "Deleting…",
   onCancel,
   onConfirm,
+  tone = "danger",
+  infoOnly = false,
 }: {
   title: string;
   message: string;
@@ -18,6 +20,10 @@ export default function ConfirmDialog({
   confirmingLabel?: string;
   onCancel: () => void;
   onConfirm: () => void;
+  // "primary" (teal) for a non-destructive confirm, e.g. restoring a backup
+  tone?: "danger" | "primary";
+  // just a message with one button (no Cancel)
+  infoOnly?: boolean;
 }) {
   return (
     <div
@@ -33,18 +39,20 @@ export default function ConfirmDialog({
           {message}
         </div>
         <div style={{ display: "flex", gap: 10 }}>
-          <button
-            type="button"
-            onClick={onCancel}
-            style={{ flex: 1, textAlign: "center", padding: "13px 0", borderRadius: 12, background: "var(--panel-2)", border: "1px solid var(--border)", fontSize: 14, fontWeight: 700, color: "var(--text)" }}
-          >
-            Cancel
-          </button>
+          {!infoOnly && (
+            <button
+              type="button"
+              onClick={onCancel}
+              style={{ flex: 1, textAlign: "center", padding: "13px 0", borderRadius: 12, background: "var(--panel-2)", border: "1px solid var(--border)", fontSize: 14, fontWeight: 700, color: "var(--text)" }}
+            >
+              Cancel
+            </button>
+          )}
           <button
             type="button"
             onClick={onConfirm}
             disabled={busy}
-            style={{ flex: 1, textAlign: "center", padding: "13px 0", borderRadius: 12, background: "#ff6b6b", border: "none", fontSize: 14, fontWeight: 800, color: "#2a0808" }}
+            style={{ flex: 1, textAlign: "center", padding: "13px 0", borderRadius: 12, background: tone === "danger" ? "#ff6b6b" : "var(--accent)", border: "none", fontSize: 14, fontWeight: 800, color: tone === "danger" ? "#2a0808" : "var(--accent-text)" }}
           >
             {busy ? confirmingLabel : confirmLabel}
           </button>
