@@ -6,6 +6,11 @@ the technical detail.
 
 ## 25 September 2026
 
+- **6.3 shown as context when picking.** In Quick add, the Categorise
+  screen and Browse all, 6.3.1–6.3.4 now sit under a light-yellow
+  "6.3 Fire control operation…" label (not a button), indented, like
+  the yellow row in the reports. The picked category card also shows
+  the 6.3 line in yellow under the section.
 - **1.4 full name.** "Penetrations to fire resisting elements" now reads
   in full as on the company ESR list ("…(includes fire walls; smoke
   walls; …access panels and control joints)"), in the app and reports.

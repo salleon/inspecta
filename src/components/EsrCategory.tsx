@@ -1,5 +1,5 @@
 import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
-import { ESR_SECTIONS, esrItem, esrSection, isEsrHeading, isSectionOnly, sectionItems, type EsrItem } from "../lib/esrCategories";
+import { ESR_SECTIONS, esrGroup, esrItem, esrSection, isSectionOnly, sectionItems, type EsrItem } from "../lib/esrCategories";
 import type { CategorySuggestion } from "../lib/esrSuggest";
 import { useBackHandler } from "../lib/backButton";
 import { categoryKeywords } from "../lib/esrKeywords";
@@ -45,6 +45,43 @@ function SectionHeading({ children }: { children: ReactNode }) {
   return <div style={sectionHeadingStyle}>{children}</div>;
 }
 
+// 6.3 over 6.3.1–6.3.4: a yellow label (like its yellow row in the
+// reports), text only — 6.3 itself can't be picked.
+function GroupLabel({ item }: { item: EsrItem }) {
+  return (
+    <div style={{ display: "flex", alignItems: "flex-start", gap: 8, background: "rgba(255,255,204,0.10)", border: "1px solid rgba(255,255,204,0.28)", borderRadius: 9, padding: "7px 10px", fontSize: 12, fontWeight: 700, color: "#efe6a6", lineHeight: 1.35 }}>
+      <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 800, color: "#3a3200", background: "#ffffcc", borderRadius: 6, padding: "2px 6px" }}>{item.code}</span>
+      <span>{item.name}</span>
+    </div>
+  );
+}
+
+// Lists items with any that sit under a heading (6.3.x) gathered where
+// the first of them appears, under that heading's yellow label and
+// indented; everything else stays in the order given.
+function WithGroupLabels<T>({ items, code, render }: { items: T[]; code: (t: T) => string; render: (t: T) => ReactNode }) {
+  const out: ReactNode[] = [];
+  const done = new Set<T>();
+  for (const it of items) {
+    if (done.has(it)) continue;
+    const group = esrGroup(code(it));
+    if (!group) {
+      done.add(it);
+      out.push(render(it));
+      continue;
+    }
+    const members = items.filter((m) => !done.has(m) && esrGroup(code(m))?.code === group.code);
+    members.forEach((m) => done.add(m));
+    out.push(
+      <div key={`group-${group.code}`} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <GroupLabel item={group} />
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, paddingLeft: 12 }}>{members.map(render)}</div>
+      </div>,
+    );
+  }
+  return <>{out}</>;
+}
+
 // Suggestions laid out like the Browse sheet: each section's name in grey
 // with its suggested items under it. The section holding the best match
 // comes first; items keep their ranking within a section. Items that are
@@ -68,19 +105,23 @@ export function EsrSuggestionList({ suggestions, current, onPick }: { suggestion
       {groups.map((g) => (
         <div key={g.key} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <SectionHeading>{g.heading}</SectionHeading>
-          {g.items.map((s) => (
-            <CategoryButton key={s.code} item={esrItem(s.code)!} best={s.code === best} active={s.code === current} onPick={onPick} />
-          ))}
+          <WithGroupLabels
+            items={g.items}
+            code={(s) => s.code}
+            render={(s) => <CategoryButton key={s.code} item={esrItem(s.code)!} best={s.code === best} active={s.code === current} onPick={onPick} />}
+          />
         </div>
       ))}
     </div>
   );
 }
 
-// The picked category: code, name and its section, ✕ to clear.
+// The picked category: code, name, its section and (for 6.3.x, in
+// yellow) 6.3; ✕ to clear.
 export function EsrSelectedCard({ code, onClear }: { code: string; onClear: () => void }) {
   const item = esrItem(code);
   const section = esrSection(code);
+  const group = esrGroup(code);
   if (!item || !section) return null;
   return (
     <div style={{ ...chipStyle, background: "rgba(46,196,182,0.14)", borderColor: "var(--accent)", padding: "10px 10px 10px 12px", cursor: "default" }}>
@@ -90,6 +131,11 @@ export function EsrSelectedCard({ code, onClear }: { code: string; onClear: () =
         {!isSectionOnly(code) && (
           <span style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", lineHeight: 1.35 }}>
             {section.code} · {section.name}
+          </span>
+        )}
+        {group && (
+          <span style={{ fontSize: 11, fontWeight: 600, color: "#e8dc8f", lineHeight: 1.35 }}>
+            {group.code} · {group.name}
           </span>
         )}
       </span>
@@ -188,11 +234,15 @@ export function EsrBrowseSheet({ current, onPick, onClose }: { current?: string;
                   <SectionHeading>
                     {section.code} · {section.name}
                   </SectionHeading>
-                  {items.map((i) => (
-                    <CategoryButton key={i.code} item={i} active={i.code === current} onPick={onPick}>
-                      <Highlight text={i.name} query={q} />
-                    </CategoryButton>
-                  ))}
+                  <WithGroupLabels
+                    items={items}
+                    code={(i) => i.code}
+                    render={(i) => (
+                      <CategoryButton key={i.code} item={i} active={i.code === current} onPick={onPick}>
+                        <Highlight text={i.name} query={q} />
+                      </CategoryButton>
+                    )}
+                  />
                 </div>
               ))
             ) : (
@@ -213,16 +263,11 @@ export function EsrBrowseSheet({ current, onPick, onClose }: { current?: string;
                   </button>
                   {open === s.code && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 6, paddingLeft: 14 }}>
-                      {s.items.map((i) =>
-                        // 6.3: a heading over 6.3.1–6.3.4, not pickable
-                        isEsrHeading(i.code) ? (
-                          <div key={i.code} style={{ ...sectionHeadingStyle, textTransform: "none", letterSpacing: 0, fontSize: 12 }}>
-                            {i.code} · {i.name}
-                          </div>
-                        ) : (
-                          <CategoryButton key={i.code} item={i} active={i.code === current} onPick={onPick} />
-                        ),
-                      )}
+                      <WithGroupLabels
+                        items={sectionItems(s)}
+                        code={(i) => i.code}
+                        render={(i) => <CategoryButton key={i.code} item={i} active={i.code === current} onPick={onPick} />}
+                      />
                     </div>
                   )}
                 </div>

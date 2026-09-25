@@ -159,9 +159,6 @@ const ALL_LINES: EsrItem[] = ESR_SECTIONS.flatMap((s) => (s.items.length ? s.ite
 
 const hasChildren = (code: string) => ALL_LINES.some((i) => i.code.startsWith(`${code}.`));
 
-// a heading like 6.3, shown but not pickable
-export const isEsrHeading = hasChildren;
-
 // Every pickable item, in list order (not headings like 6.3).
 export const ESR_ITEMS: EsrItem[] = ALL_LINES.filter((i) => !hasChildren(i.code));
 
