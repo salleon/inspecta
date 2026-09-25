@@ -685,7 +685,7 @@ function PreviewHeading({ row }: { row: Heading }) {
     );
   }
   return (
-    <div style={{ fontSize: 12, fontWeight: 800, color: "#04213a", background: row.kind === "section" ? "#99ccff" : "#d9d9d9", borderRadius: 5, padding: "7px 10px", marginBottom: -6 }}>
+    <div style={{ fontSize: 12, fontWeight: 800, color: "#04213a", background: BAR_FILL[row.kind], borderRadius: 5, padding: "7px 10px", marginBottom: -6, lineHeight: 1.35 }}>
       {headingText(row)}
     </div>
   );
@@ -727,9 +727,11 @@ function PreviewFinding({ entry: { finding, dataUrls }, first }: { entry: Findin
   );
 }
 
-// PDF: section / Uncategorised as a filled bar, item as bold text with a
-// blue rule under it.
-const BAR_H = 22;
+// PDF: section (blue), group (yellow, 6.3) and Uncategorised (grey) as a
+// filled bar, item as bold text with a blue rule under it.
+const BAR_FILL = { section: "#99ccff", group: "#ffffcc", uncategorised: "#d9d9d9" } as const;
+const BAR_RGB: Record<keyof typeof BAR_FILL, [number, number, number]> = { section: [153, 204, 255], group: [255, 255, 204], uncategorised: [217, 217, 217] };
+const BAR_PAD = 5.5;
 const ITEM_LINE_H = 13;
 
 function itemLines(doc: jsPDF, row: Heading, width: number): string[] {
@@ -738,8 +740,15 @@ function itemLines(doc: jsPDF, row: Heading, width: number): string[] {
   return doc.splitTextToSize(headingText(row), width);
 }
 
+// long names (6.3's) wrap inside the bar
+function barLines(doc: jsPDF, row: Heading, width: number): string[] {
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  return doc.splitTextToSize(headingText(row), width - 18);
+}
+
 function pdfHeadingHeight(doc: jsPDF, row: Heading, width: number): number {
-  return row.kind === "item" ? itemLines(doc, row, width).length * ITEM_LINE_H + 16 : BAR_H + 12;
+  return row.kind === "item" ? itemLines(doc, row, width).length * ITEM_LINE_H + 16 : barLines(doc, row, width).length * ITEM_LINE_H + BAR_PAD * 2 + 12;
 }
 
 // draws the heading at `y` and returns where the next thing starts
@@ -754,14 +763,11 @@ function drawPdfHeading(doc: jsPDF, row: Heading, x: number, y: number, width: n
     doc.line(x, ruleY, x + width, ruleY);
     return y + pdfHeadingHeight(doc, row, width);
   }
-  if (row.kind === "section") doc.setFillColor(153, 204, 255);
-  else doc.setFillColor(217, 217, 217);
-  doc.rect(x, y, width, BAR_H, "F");
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
+  const lines = barLines(doc, row, width);
+  doc.setFillColor(...BAR_RGB[row.kind]);
+  doc.rect(x, y, width, lines.length * ITEM_LINE_H + BAR_PAD * 2, "F");
   doc.setTextColor(4, 33, 58);
-  const [line] = doc.splitTextToSize(headingText(row), width - 18);
-  doc.text(line, x + 9, y + BAR_H / 2, { baseline: "middle" });
+  doc.text(lines, x + 9, y + BAR_PAD + 9.5);
   return y + pdfHeadingHeight(doc, row, width);
 }
 

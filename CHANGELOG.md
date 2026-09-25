@@ -6,6 +6,15 @@ the technical detail.
 
 ## 25 September 2026
 
+- **Yellow 6.3 row in reports.** Like the company spreadsheet, findings in
+  6.3.1–6.3.4 now sit under a light yellow "6.3 Fire control operation…"
+  row between the blue 6 and the grey sub-categories, in Excel, the PDF
+  and the export preview.
+- **6.3 is a heading only.** It can't be picked any more (it only holds
+  6.3.1–6.3.4); in Browse all it shows as a label above them. Its
+  keywords ("fire mode", "HVAC", "air conditioning"…) now suggest 6.3.1
+  (and 6.3.2 weakly). The rule throughout: findings go under grey rows,
+  or straight under a blue row that has no grey rows (4, 12, 13).
 - **"4.1 General" removed.** Emergency Lighting has no sub-categories
   now: its findings go straight under the blue "4 Emergency Lighting"
   row, like 12 and 13. Findings already tagged 4.1 move to 4

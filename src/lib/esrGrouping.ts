@@ -1,11 +1,12 @@
 import type { Finding } from "../db/types";
-import { esrItem, esrOrder, esrSection, isSectionOnly } from "./esrCategories";
+import { esrGroup, esrItem, esrOrder, esrSection, isSectionOnly } from "./esrCategories";
 import { noteSimilarity } from "./esrSuggest";
 
 // Report order for the PDF, Excel and export preview once findings have
 // ESR categories: a heading per section (blue in Excel), one per item (grey)
-// and the findings under it, in the spreadsheet's order, Uncategorised
-// last. Within an item, findings with the same or near-same note sit
+// — with a yellow one above items that sit inside another (6.3 over
+// 6.3.1–6.3.4) — and the findings under it, in the spreadsheet's order,
+// Uncategorised last. Within an item, findings with the same or near-same note sit
 // together (keeping the order they were in otherwise), and each gets a Ref
 // like "1.6.1", "1.6.2".
 //
@@ -14,6 +15,7 @@ import { noteSimilarity } from "./esrSuggest";
 
 export type ReportRow<T> =
   | { kind: "section"; code: string; name: string }
+  | { kind: "group"; code: string; name: string }
   | { kind: "item"; code: string; name: string }
   | { kind: "uncategorised" }
   | { kind: "finding"; entry: T; ref?: string };
@@ -59,15 +61,23 @@ export function reportRows<T extends { finding: Finding }>(entries: T[]): Report
 
   const rows: ReportRow<T>[] = [];
   let lastSection: string | undefined;
+  let lastGroup: string | undefined;
   for (const code of [...byCode.keys()].sort((a, b) => esrOrder(a) - esrOrder(b))) {
     const section = esrSection(code)!;
     if (section.code !== lastSection) {
       rows.push({ kind: "section", code: section.code, name: section.name });
       lastSection = section.code;
+      lastGroup = undefined;
     }
-    // "12 Emergency evacuation procedures" has no items: its findings go
-    // straight under the section heading
-    if (!isSectionOnly(code)) rows.push({ kind: "item", code, name: esrItem(code)!.name });
+    const group = esrGroup(code);
+    if (group && group.code !== lastGroup) {
+      rows.push({ kind: "group", code: group.code, name: group.name });
+      lastGroup = group.code;
+    }
+    // "12 Emergency evacuation procedures" has no items, and findings
+    // tagged "6.3" itself belong to its yellow row: either way they go
+    // straight under the heading already shown
+    if (!isSectionOnly(code) && code !== group?.code) rows.push({ kind: "item", code, name: esrItem(code)!.name });
     clusterSimilar(byCode.get(code)!).forEach((entry, n) => rows.push({ kind: "finding", entry, ref: `${code}.${n + 1}` }));
   }
   if (uncategorised.length) {

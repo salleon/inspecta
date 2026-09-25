@@ -5,7 +5,7 @@ import { Capacitor } from "@capacitor/core";
 import RoundIconButton from "../components/RoundIconButton";
 import ConfirmDialog from "../components/ConfirmDialog";
 import { IconChevronLeft, IconChevronRight } from "../components/Icons";
-import { ESR_SECTIONS, esrItem } from "../lib/esrCategories";
+import { ESR_SECTIONS, esrItem, sectionItems } from "../lib/esrCategories";
 import {
   addKeyword,
   applyKeywordFile,
@@ -336,7 +336,7 @@ function KeywordList() {
     <Screen title="ESR keywords" back="/admin">
       <input type="search" placeholder="Search categories or keywords" aria-label="Search categories or keywords" value={query} onChange={(e) => setQuery(e.target.value)} style={fieldStyle} />
       {ESR_SECTIONS.map((s) => {
-        const items = (s.items.length ? s.items : [s]).filter(
+        const items = sectionItems(s).filter(
           (i) => !q || i.code === q || i.code.startsWith(`${q}.`) || i.name.toLowerCase().includes(q) || categoryKeywords(i.code).some((k) => k.text.includes(q)),
         );
         if (!items.length) return null;

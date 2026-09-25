@@ -11,8 +11,8 @@ import templateDataUrl from "../assets/findings-template.xlsx?inline";
 // A Ref · B Location · C Description (+ photos) · D Date identified ·
 // E Risk level · F Status · G Corrective action.
 //
-// With ESR categories, findings sit under a blue row per section and a
-// grey row per item (like the company's ESR spreadsheet), Uncategorised
+// With ESR categories, findings sit under a blue row per section, a yellow
+// row for an item holding others (6.3), and a grey row per item (like the company's ESR spreadsheet), Uncategorised
 // last, and Ref reads "1.6.1", "1.6.2"… (see lib/esrGrouping). Without any,
 // it's one row per finding in list order with Ref blank.
 //
@@ -47,6 +47,7 @@ const COL = { ref: 1, location: 2, description: 3, date: 4, risk: 5, status: 6, 
 const FONT = { name: "Arial", size: 10 };
 const SECTION_FILL = "FF99CCFF";
 const ITEM_FILL = "FFD9D9D9";
+const GROUP_FILL = "FFFFFFCC";
 const UNCATEGORISED_FILL = "FFBFBFBF";
 const THIN = { style: "thin" as const, color: { argb: "FF000000" } };
 
@@ -129,7 +130,7 @@ export async function buildFindingsWorkbook(
   for (const reportRow of reportRows(items)) {
     if (reportRow.kind !== "finding") {
       const text = reportRow.kind === "uncategorised" ? "Uncategorised" : reportRow.name;
-      const fill = reportRow.kind === "section" ? SECTION_FILL : reportRow.kind === "item" ? ITEM_FILL : UNCATEGORISED_FILL;
+      const fill = { section: SECTION_FILL, group: GROUP_FILL, item: ITEM_FILL, uncategorised: UNCATEGORISED_FILL }[reportRow.kind];
       const row = ws.getRow(rowNum);
       row.height = Math.min(409, Math.ceil(Math.max(20, estimateTextPx(text, headingPx) + 6) * 0.75));
       for (let c: number = COL.ref; c <= COL.action; c++) {

@@ -97,11 +97,12 @@ export const ESR_SECTIONS: EsrSection[] = [
       "fan", "fan motor", "exhaust fan", "supply fan", "smoke exhaust", "car park exhaust", "carpark exhaust", "ventilation", "vsd", "~exhaust", "~motor",
     ]),
     item("6.2", "Smoke Detectors (not forming part of an AS1670 system)", ["duct detector", "duct smoke detector", "air handling detector", "~smoke detector", "~detector"]),
-    item("6.3", "Fire control operation associated with mechanical ventilation of air conditioning systems", [
-      "fire mode", "fire control operation", "mechanical ventilation", "air conditioning", "hvac", "~mechanical", "~ahu",
+    // a heading only (yellow in reports): findings go under 6.3.1–6.3.4
+    item("6.3", "Fire control operation associated with mechanical ventilation of air conditioning systems"),
+    item("6.3.1", "Fire alarm shut down of equipment", [
+      "shut down", "shutdown", "plant shutdown", "ahu shutdown", "fire trip", "fire mode", "fire control operation", "mechanical ventilation", "air conditioning", "hvac", "~shut", "~mechanical", "~ahu",
     ]),
-    item("6.3.1", "Fire alarm shut down of equipment", ["shut down", "shutdown", "plant shutdown", "ahu shutdown", "fire trip", "~shut"]),
-    item("6.3.2", "Control of supply and or return air", ["supply air", "return air", "outside air", "relief air", "~supply", "~return"]),
+    item("6.3.2", "Control of supply and or return air", ["supply air", "return air", "outside air", "relief air", "~supply", "~return", "~air conditioning", "~hvac"]),
     item("6.3.3", "Fire mode operation of dampers for outside air, recycled air, relief air, zone control dampers for supply and return air including motorized fire/smoke/combination dampers", [
       "motorised damper", "motorized damper", "smoke damper", "combination damper", "zone damper", "relief damper", "damper actuator", "actuator", "~damper",
     ]),
@@ -152,8 +153,22 @@ export function currentCode(code: string): string {
   return RENAMED_CODES[code] ?? code;
 }
 
-// Every pickable item, in list order.
-export const ESR_ITEMS: EsrItem[] = ESR_SECTIONS.flatMap((s) => (s.items.length ? s.items : [s]));
+// Every line of the list, in order — including headings like 6.3 that
+// hold other items
+const ALL_LINES: EsrItem[] = ESR_SECTIONS.flatMap((s) => (s.items.length ? s.items : [s]));
+
+const hasChildren = (code: string) => ALL_LINES.some((i) => i.code.startsWith(`${code}.`));
+
+// a heading like 6.3, shown but not pickable
+export const isEsrHeading = hasChildren;
+
+// Every pickable item, in list order (not headings like 6.3).
+export const ESR_ITEMS: EsrItem[] = ALL_LINES.filter((i) => !hasChildren(i.code));
+
+// a section's pickable items; a section with none is picked itself ("13")
+export function sectionItems(s: EsrSection): EsrItem[] {
+  return s.items.length ? s.items.filter((i) => !hasChildren(i.code)) : [s];
+}
 
 const byCode = new Map(ESR_ITEMS.map((i) => [i.code, i]));
 const sectionByCode = new Map<string, EsrSection>();
@@ -161,7 +176,7 @@ for (const s of ESR_SECTIONS) {
   sectionByCode.set(s.code, s);
   for (const i of s.items) sectionByCode.set(i.code, s);
 }
-const listIndex = new Map(ESR_ITEMS.map((i, n) => [i.code, n]));
+const listIndex = new Map(ALL_LINES.map((i, n) => [i.code, n]));
 
 export function esrItem(code: string | undefined): EsrItem | undefined {
   return code ? byCode.get(code) : undefined;
@@ -175,6 +190,13 @@ export function esrSection(code: string | undefined): EsrSection | undefined {
 // an item with no items of its own under a section ("12", "13")
 export function isSectionOnly(code: string): boolean {
   return sectionByCode.get(code)?.code === code;
+}
+
+// A heading inside a section holding items of its own ("6.3" over
+// 6.3.1–6.3.4): reports show it as a yellow row between the blue section
+// and the grey items. Returns it for a code under it.
+export function esrGroup(code: string): EsrItem | undefined {
+  return ALL_LINES.find((p) => code.startsWith(`${p.code}.`) && hasChildren(p.code));
 }
 
 // position in the spreadsheet's order, for sorting; unknown codes last

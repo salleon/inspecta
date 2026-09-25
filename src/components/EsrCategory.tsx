@@ -1,5 +1,5 @@
 import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
-import { ESR_SECTIONS, esrItem, esrSection, isSectionOnly, type EsrItem } from "../lib/esrCategories";
+import { ESR_SECTIONS, esrItem, esrSection, isEsrHeading, isSectionOnly, sectionItems, type EsrItem } from "../lib/esrCategories";
 import type { CategorySuggestion } from "../lib/esrSuggest";
 import { useBackHandler } from "../lib/backButton";
 import { categoryKeywords } from "../lib/esrKeywords";
@@ -159,7 +159,7 @@ export function EsrBrowseSheet({ current, onPick, onClose }: { current?: string;
     const nq = norm(q);
     return ESR_SECTIONS.map((s) => ({
       section: s,
-      items: (s.items.length ? s.items : [s]).filter(
+      items: sectionItems(s).filter(
         (i) => i.code === q || i.code.startsWith(`${q}.`) || i.name.toLowerCase().includes(q) || categoryKeywords(i.code).some((k) => norm(k.text).includes(nq)),
       ),
     })).filter((r) => r.items.length);
@@ -213,9 +213,16 @@ export function EsrBrowseSheet({ current, onPick, onClose }: { current?: string;
                   </button>
                   {open === s.code && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 6, paddingLeft: 14 }}>
-                      {s.items.map((i) => (
-                        <CategoryButton key={i.code} item={i} active={i.code === current} onPick={onPick} />
-                      ))}
+                      {s.items.map((i) =>
+                        // 6.3: a heading over 6.3.1–6.3.4, not pickable
+                        isEsrHeading(i.code) ? (
+                          <div key={i.code} style={{ ...sectionHeadingStyle, textTransform: "none", letterSpacing: 0, fontSize: 12 }}>
+                            {i.code} · {i.name}
+                          </div>
+                        ) : (
+                          <CategoryButton key={i.code} item={i} active={i.code === current} onPick={onPick} />
+                        ),
+                      )}
                     </div>
                   )}
                 </div>
