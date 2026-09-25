@@ -1,4 +1,3 @@
-@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap");
 
 :root {
   --bg: #071b2c;
@@ -30,7 +29,7 @@ body,
 
 body {
   margin: 0;
-  font-family: "Manrope", system-ui, sans-serif;
+  font-family: "Manrope Variable", system-ui, sans-serif;
   background: var(--bg);
   color: var(--text);
   overscroll-behavior: none;
@@ -195,6 +194,14 @@ button:active:not(:disabled) {
     opacity: 1;
     transform: translateX(0);
   }
+}
+
+/* Finding screen's scrolling column: nothing in it may shrink to fit —
+   the column scrolls instead. Without this, adding fields squashed the
+   photo thumbnail strip (a horizontal scroller shrinks to ~0 in a flex
+   column). */
+.finding-scroll > * {
+  flex-shrink: 0;
 }
 
 /* bottom sheet + its backdrop (Dashboard "new site") */

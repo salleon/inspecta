@@ -1,14 +1,19 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { jsPDF } from "jspdf";
-import { Directory, Filesystem } from "@capacitor/filesystem";
 import { Share } from "@capacitor/share";
 import { Capacitor } from "@capacitor/core";
-import type { Finding, Site } from "../db/types";
+import type { Finding, Photo, Site } from "../db/types";
 import { getSite, listFindings, listPhotos } from "../db/db";
 import { IconChevronLeft, IconShare } from "../components/Icons";
 import RoundIconButton from "../components/RoundIconButton";
+import ProgressOverlay from "../components/ProgressOverlay";
 import { getInitials, getInspectorName } from "../lib/profile";
+import { defectTypeStyle } from "../lib/defectTypes";
+import { EXPORT_MAX_EDGE, PREVIEW_MAX_EDGE, watermark } from "../lib/watermark";
+import { CacheFileWriter, writeBlobToCache } from "../lib/cacheFile";
+import { countPhotos, photosZipName, writePhotosZip } from "../lib/photosZip";
+import DefectTypePill from "../components/DefectTypePill";
 import coverBgAfss from "../assets/cover-bg-afss.jpg";
 import coverBgProjects from "../assets/cover-bg-projects.jpg";
 
@@ -26,22 +31,15 @@ function blobToBase64(blob: Blob): Promise<string> {
   });
 }
 
+type ShareKind = "pdf" | "excel" | "photos";
+const SHARE_LABEL: Record<ShareKind, string> = { pdf: "PDF", excel: "Excel file", photos: "photos" };
+
 interface FindingImages {
   finding: Finding;
-  dataUrls: string[];
+  dataUrls: string[]; // watermarked, for the on-screen preview
+  photos: Photo[]; // originals — the Excel export stamps its own full-res copies
 }
 
-function formatTimestamp(ms: number) {
-  const d = new Date(ms);
-  const dd = String(d.getDate()).padStart(2, "0");
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const yy = String(d.getFullYear()).slice(-2);
-  let h = d.getHours();
-  const min = String(d.getMinutes()).padStart(2, "0");
-  const ampm = h >= 12 ? "PM" : "AM";
-  h = h % 12 || 12;
-  return `${dd}/${mm}/${yy} - ${String(h).padStart(2, "0")}:${min} ${ampm}`;
-}
 
 function formatDate(ms: number) {
   const d = new Date(ms);
@@ -73,10 +71,10 @@ function reportTitle(siteName: string | undefined, inspectorName: string) {
 // "harbourline-apartments-LS.pdf" — site name slugified, plus the
 // inspector's capitalised initials, so reports from different team members
 // never collide or get mixed up once they're all sitting in one inbox.
-function reportFilename(siteName: string | undefined, inspectorName: string) {
+function reportFilename(siteName: string | undefined, inspectorName: string, ext: "pdf" | "xlsx" = "pdf") {
   const slug = (siteName ?? "inspection").replace(/[^a-z0-9]+/gi, "-").toLowerCase();
   const initials = getInitials(inspectorName);
-  return initials ? `${slug}-${initials}.pdf` : `${slug}.pdf`;
+  return initials ? `${slug}-${initials}.${ext}` : `${slug}.${ext}`;
 }
 
 function loadImage(src: string): Promise<HTMLImageElement> {
@@ -107,100 +105,17 @@ async function loadAssetAsDataUrl(src: string): Promise<{ dataUrl: string; natur
   return { dataUrl, naturalWidth: img.naturalWidth, naturalHeight: img.naturalHeight };
 }
 
-// Crops a (data URL) image to fill a fixed width:height box exactly —
-// "cover" behaviour, like CSS object-fit: cover — by cutting off whichever
-// dimension has extra, rather than letterboxing or stretching. Used so
-// every photo tile in the report reads as the same uniform rectangle
-// regardless of the source photo's own orientation/aspect ratio. Crops at
-// the source photo's native resolution (no downscaling), so the cropped
-// region keeps as much of its original detail as possible for anyone
-// zooming in or clipping it back out of the PDF.
-function cropToBox(dataUrl: string, targetAspect: number): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
-      const srcW = img.naturalWidth;
-      const srcH = img.naturalHeight;
-      const srcAspect = srcH / srcW;
-
-      let cropW = srcW;
-      let cropH = srcH;
-      if (srcAspect > targetAspect) {
-        // source is relatively taller than the box -- crop top/bottom
-        cropH = srcW * targetAspect;
-      } else {
-        // source is relatively wider than the box -- crop left/right
-        cropW = srcH / targetAspect;
-      }
-      const cropX = (srcW - cropW) / 2;
-      const cropY = (srcH - cropH) / 2;
-
-      const canvas = document.createElement("canvas");
-      canvas.width = cropW;
-      canvas.height = cropH;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        reject(new Error("no canvas context"));
-        return;
-      }
-      ctx.drawImage(img, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
-      resolve(canvas.toDataURL("image/jpeg", 0.9));
-    };
-    img.onerror = reject;
-    img.src = dataUrl;
-  });
-}
-
-// draws the photo onto a canvas with a burned-in bottom-right timestamp watermark
-function watermark(blob: Blob, timestampMs: number): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const url = URL.createObjectURL(blob);
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = img.naturalWidth;
-      canvas.height = img.naturalHeight;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        URL.revokeObjectURL(url);
-        reject(new Error("no canvas context"));
-        return;
-      }
-      ctx.drawImage(img, 0, 0);
-
-      const text = formatTimestamp(timestampMs);
-      const fontSize = Math.max(30, Math.round(canvas.width * 0.045));
-      ctx.font = `700 ${fontSize}px Manrope, system-ui, sans-serif`;
-      ctx.textAlign = "right";
-      ctx.textBaseline = "alphabetic";
-      const x = canvas.width - fontSize * 0.7;
-      const y = canvas.height - fontSize * 0.7;
-
-      ctx.lineWidth = Math.max(2, fontSize * 0.18);
-      ctx.strokeStyle = "#000000";
-      ctx.lineJoin = "round";
-      ctx.strokeText(text, x, y);
-      ctx.fillStyle = "#ffffff";
-      ctx.fillText(text, x, y);
-
-      URL.revokeObjectURL(url);
-      resolve(canvas.toDataURL("image/jpeg", 0.88));
-    };
-    img.onerror = (err) => {
-      URL.revokeObjectURL(url);
-      reject(err);
-    };
-    img.src = url;
-  });
-}
-
 export default function ExportPreview() {
   const { siteId } = useParams<{ siteId: string }>();
   const navigate = useNavigate();
   const [site, setSite] = useState<Site | null>(null);
   const [items, setItems] = useState<FindingImages[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sharing, setSharing] = useState(false);
+  const [sharing, setSharing] = useState<ShareKind | null>(null);
+  // Loading screen for both exports: 0–85% while photos are stamped and
+  // added (nearly all the time), then building the file, then handing it to
+  // the share menu
+  const [exportProgress, setExportProgress] = useState<{ percent: number; step: string } | null>(null);
 
   useEffect(() => {
     if (!siteId) return;
@@ -213,8 +128,11 @@ export default function ExportPreview() {
       const built: FindingImages[] = [];
       for (const finding of findings) {
         const photos = await listPhotos(finding.id);
-        const dataUrls = await Promise.all(photos.map((p) => watermark(p.blob, p.takenAt)));
-        built.push({ finding, dataUrls });
+        // small stamped copies — the preview shows them ~90 px wide; full
+        // photos are only processed when a file is actually exported
+        const dataUrls: string[] = [];
+        for (const p of photos) dataUrls.push(await watermark(p.blob, p.takenAt, { maxEdge: PREVIEW_MAX_EDGE }));
+        built.push({ finding, dataUrls, photos });
       }
       if (!cancelled) {
         setSite(s ?? null);
@@ -229,6 +147,14 @@ export default function ExportPreview() {
   }, [siteId]);
 
   if (!siteId) return null;
+
+  // The inspection date on every report (PDF cover, preview, Excel "Date
+  // identified"): the day the findings were entered — a site visit happens
+  // on one day, so the earliest finding's date stands for all of them. Not
+  // the export date, since reports are often sent days later.
+  const inspectionMs = items.length
+    ? Math.min(...items.map((i) => i.finding.createdAt))
+    : (site?.createdAt ?? Date.now());
 
   // Full-bleed cover page. The gradient wash, EnFact masthead wordmark AND
   // the classification watermark (AFSS or Projects) are all baked ahead of
@@ -295,7 +221,7 @@ export default function ExportPreview() {
     // inspector name as translucent white pills
     type Badge = { text: string; solid: [number, number, number] | null };
     const badges: Badge[] = [
-      { text: formatFullDate(Date.now()), solid: [46, 196, 182] },
+      { text: formatFullDate(inspectionMs), solid: [46, 196, 182] },
       { text: `${findingsCount} finding${findingsCount === 1 ? "" : "s"}`, solid: null },
     ];
     const inspectorName = getInspectorName();
@@ -329,7 +255,7 @@ export default function ExportPreview() {
     }
   }
 
-  async function buildPdf(): Promise<Blob> {
+  async function buildPdf(onPhoto: (done: number, total: number) => void): Promise<Blob> {
     const doc = new jsPDF({ unit: "pt", format: "a4" });
     const pageW = doc.internal.pageSize.getWidth();
     const pageH = doc.internal.pageSize.getHeight();
@@ -361,17 +287,34 @@ export default function ExportPreview() {
     doc.addPage();
     let y = margin;
 
-    for (const item of items) {
-      if (item.dataUrls.length === 0) continue;
+    const totalPhotos = items.reduce((n, i) => n + i.photos.length, 0);
+    let donePhotos = 0;
+    onPhoto(0, totalPhotos);
 
-      const tiles = await Promise.all(item.dataUrls.map((u) => cropToBox(u, tileAspect)));
+    for (const item of items) {
+      if (item.photos.length === 0) continue;
+
+      // cropped to the tile shape from the original photo, THEN stamped, so
+      // the timestamp is never trimmed off by the crop
+      // one photo at a time, so only one full-size photo is ever decoded
+      const tiles: string[] = [];
+      for (const p of item.photos) {
+        tiles.push(await watermark(p.blob, p.takenAt, { cropAspect: tileAspect, maxEdge: EXPORT_MAX_EDGE }));
+        onPhoto(++donePhotos, totalPhotos);
+      }
       const rows = Math.ceil(tiles.length / 2);
       const photosBlockH = rows * tileH + (rows - 1) * tileGap;
 
       doc.setFont("helvetica", "bold");
       doc.setFontSize(12);
       const titleLines = doc.splitTextToSize(item.finding.note || "Untitled finding", textColW);
-      const textBlockH = titleLines.length * 15 + (item.finding.location ? 18 : 0);
+      const defect = defectTypeStyle(item.finding.defectType);
+      // level (as a subheading) and location, each on its own grey line
+      const placeLines = [item.finding.level, item.finding.location].filter((t): t is string => !!t);
+      const textBlockH =
+        titleLines.length * 15 +
+        (placeLines.length ? 18 + (placeLines.length - 1) * 13 : 0) +
+        (defect ? PILL_H + 10 : 0);
 
       const blockH = Math.max(photosBlockH, textBlockH);
 
@@ -390,53 +333,101 @@ export default function ExportPreview() {
         doc.addImage(tiles[i], "JPEG", tx, ty, tileW, tileH);
       }
 
-      // title + location, once per finding regardless of photo count,
-      // always anchored to the shared centerline column
+      // defect type bubble — above the title, when the finding has one
       let ty = rowTop + 14;
+      if (defect) {
+        const pillTop = rowTop + 2;
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        const pillW = doc.getTextWidth(defect.label) + PILL_PAD_X * 2;
+        doc.setFillColor(...defect.bgRgb);
+        if (defect.value === "note-only") {
+          // white bubble on a white page needs an outline to show up
+          doc.setDrawColor(201, 196, 184);
+          doc.setLineWidth(0.75);
+          doc.roundedRect(textX, pillTop, pillW, PILL_H, PILL_H / 2, PILL_H / 2, "FD");
+        } else {
+          doc.roundedRect(textX, pillTop, pillW, PILL_H, PILL_H / 2, PILL_H / 2, "F");
+        }
+        doc.setTextColor(...defect.textRgb);
+        doc.text(defect.label, textX + PILL_PAD_X, pillTop + PILL_H / 2, { baseline: "middle" });
+        ty += PILL_H + 10;
+      }
+
+      // title + level + location, once per finding regardless of photo count,
+      // always anchored to the shared centerline column
       doc.setFont("helvetica", "bold");
       doc.setFontSize(12);
       doc.setTextColor(28, 30, 36);
       doc.text(titleLines, textX, ty);
       ty += titleLines.length * 15 + 8;
 
-      if (item.finding.location) {
+      if (placeLines.length) {
         doc.setFont("helvetica", "normal");
         doc.setFontSize(10);
         doc.setTextColor(140, 140, 140);
-        doc.text(item.finding.location, textX, ty);
+        placeLines.forEach((line, i) => doc.text(line, textX, ty + i * 13));
       }
 
       y = rowTop + blockH + blockGap;
     }
 
+    setExportProgress({ percent: 88, step: "Building PDF…" });
+    // let the "Building PDF…" step paint before jsPDF's synchronous output
+    await new Promise((r) => setTimeout(r, 30));
     return doc.output("blob");
   }
 
-  async function handleShare() {
-    setSharing(true);
+  // Builds the PDF, Excel file or photos zip and hands it to the native
+  // share sheet (or a download, on desktop web).
+  async function handleShare(kind: ShareKind) {
+    setSharing(kind);
+    setExportProgress({ percent: 0, step: "Getting ready…" });
+    const photoProgress = (done: number, total: number, upTo = 85) =>
+      setExportProgress({ percent: total ? (upTo * done) / total : 0, step: `Adding photos: ${done} of ${total}` });
+    const native = Capacitor.isNativePlatform();
+    const inspectorName = getInspectorName();
+    const title = reportTitle(site?.name, inspectorName);
     try {
-      const blob = await buildPdf();
-      const inspectorName = getInspectorName();
-      const filename = reportFilename(site?.name, inspectorName);
-      const title = reportTitle(site?.name, inspectorName);
-
-      if (Capacitor.isNativePlatform()) {
-        // navigator.share() doesn't work for files inside an Android
-        // WebView — write the PDF to the app's cache and hand THAT file
-        // URI to the native share sheet instead.
-        const base64 = await blobToBase64(blob);
-        const written = await Filesystem.writeFile({
-          path: filename,
-          data: base64,
-          directory: Directory.Cache,
-        });
-        await Share.share({
-          title,
-          url: written.uri,
-        });
+      let filename: string;
+      let blob: Blob | null = null; // web: the file to share / download
+      let uri: string | null = null; // Android: the file written to the cache
+      if (kind === "photos") {
+        // streamed straight into the file one photo at a time — never
+        // held in memory as a whole
+        filename = photosZipName(site?.name);
+        const onPhoto = (done: number, total: number) => photoProgress(done, total, 95);
+        if (native) {
+          const out = new CacheFileWriter(filename);
+          await writePhotosZip(items, site?.name, (b) => out.write(b), onPhoto);
+          uri = await out.close();
+        } else {
+          const parts: Uint8Array[] = [];
+          await writePhotosZip(items, site?.name, async (b) => void parts.push(b), onPhoto);
+          blob = new Blob(parts as BlobPart[], { type: "application/zip" });
+        }
       } else {
+        filename = reportFilename(site?.name, inspectorName, kind === "pdf" ? "pdf" : "xlsx");
+        if (kind === "pdf") {
+          blob = await buildPdf(photoProgress);
+        } else {
+          const { buildFindingsWorkbook } = await import("../lib/excelExport");
+          blob = await buildFindingsWorkbook(items, inspectionMs, (p) =>
+            p.stage === "photos" ? photoProgress(p.done, p.total) : setExportProgress({ percent: 88, step: "Building spreadsheet…" }),
+          );
+        }
+        setExportProgress({ percent: 97, step: "Opening share menu…" });
+        if (native) uri = await writeBlobToCache(blob, filename);
+      }
+      setExportProgress(null); // the share menu takes over from here
+
+      if (uri) {
+        // navigator.share() doesn't work for files inside an Android
+        // WebView, so hand the native share sheet the cached file's URI
+        await Share.share({ title, url: uri });
+      } else if (blob) {
         // plain web fallback (e.g. previewing in a desktop browser)
-        const file = new File([blob], filename, { type: "application/pdf" });
+        const file = new File([blob], filename, { type: blob.type || "application/octet-stream" });
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
           await navigator.share({ files: [file], title });
         } else {
@@ -454,16 +445,18 @@ export default function ExportPreview() {
       // a genuine failure (not the user cancelling the share sheet) —
       // surface it instead of silently doing nothing
       if (!(err instanceof Error) || !/cancell?ed/i.test(err.message)) {
-        console.error("PDF share failed", err);
-        alert("Couldn't share the PDF. Please try again.");
+        console.error(`${kind} share failed`, err);
+        alert(`Couldn't share the ${SHARE_LABEL[kind]}. Please try again.`);
       }
     } finally {
-      setSharing(false);
+      setSharing(null);
+      setExportProgress(null);
     }
   }
 
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
       {/* top bar */}
       <div style={{ flexShrink: 0, height: 64, padding: "0 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <RoundIconButton ariaLabel="Back to findings" onClick={() => navigate(`/site/${siteId}/findings`)}>
@@ -479,7 +472,7 @@ export default function ExportPreview() {
           <div style={{ display: "flex", flexDirection: "column", gap: 2, borderBottom: "1px solid var(--paper-border)", paddingBottom: 14 }}>
             <div style={{ fontSize: 16, fontWeight: 800, color: "var(--paper-text)" }}>{reportTitle(site?.name, getInspectorName())}</div>
             <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted-2)" }}>
-              {site?.address ? `${site.address} · ` : ""}Inspected {formatDate(Date.now())}
+              {site?.address ? `${site.address} · ` : ""}Inspected {formatDate(inspectionMs)}
             </div>
           </div>
 
@@ -511,11 +504,15 @@ export default function ExportPreview() {
                 ))}
               </div>
               <div style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 6, paddingTop: 2 }}>
+                <DefectTypePill type={finding.defectType} size="sm" onPaper />
                 <div style={{ fontSize: 13, fontWeight: 700, color: "var(--paper-text)", lineHeight: 1.35 }}>
                   {finding.note || "Untitled finding"}
                 </div>
-                {finding.location && (
-                  <div style={{ fontSize: 11, fontWeight: 600, color: "var(--muted-2)" }}>{finding.location}</div>
+                {(finding.level || finding.location) && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                    {finding.level && <div style={{ fontSize: 11, fontWeight: 600, color: "var(--muted-2)" }}>{finding.level}</div>}
+                    {finding.location && <div style={{ fontSize: 11, fontWeight: 600, color: "var(--muted-2)" }}>{finding.location}</div>}
+                  </div>
                 )}
               </div>
             </div>
@@ -524,17 +521,49 @@ export default function ExportPreview() {
       </div>
 
       {/* share bar */}
-      <div style={{ flexShrink: 0, padding: "12px 16px calc(28px + env(safe-area-inset-bottom))", borderTop: "1px solid var(--border)" }}>
+      <div style={{ flexShrink: 0, padding: "12px 16px calc(28px + env(safe-area-inset-bottom))", borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 10 }}>
+        {/* every photo at full resolution, stamped, zipped in a folder
+            named after the site (see lib/photosZip) */}
         <button
-          onClick={handleShare}
-          disabled={loading || sharing || items.length === 0}
-          className="glow-sweep"
-          style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", textAlign: "center", padding: "15px 0", borderRadius: 12, background: "var(--accent)", border: "none", fontSize: 14, fontWeight: 800, color: "var(--accent-text)", overflow: "hidden" }}
+          onClick={() => handleShare("photos")}
+          disabled={loading || sharing !== null || countPhotos(items) === 0}
+          style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "12px 0", borderRadius: 12, background: "none", border: "1px dashed var(--border-strong)", fontSize: 14, fontWeight: 700, color: "var(--text)" }}
         >
           <IconShare size={16} />
-          {sharing ? "Preparing…" : "Share PDF"}
+          Send Photos Only
         </button>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button
+            onClick={() => handleShare("excel")}
+            disabled={loading || sharing !== null || items.length === 0 || !site}
+            style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, textAlign: "center", padding: "15px 0", borderRadius: 12, background: "var(--panel)", border: "1px solid var(--border)", fontSize: 14, fontWeight: 700, color: "var(--text)" }}
+          >
+            <IconShare size={16} />
+            {sharing === "excel" ? "Preparing…" : "Share Excel"}
+          </button>
+          <button
+            onClick={() => handleShare("pdf")}
+            disabled={loading || sharing !== null || items.length === 0}
+            className="glow-sweep"
+            style={{ position: "relative", flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, textAlign: "center", padding: "15px 0", borderRadius: 12, background: "var(--accent)", border: "none", fontSize: 14, fontWeight: 800, color: "var(--accent-text)", overflow: "hidden" }}
+          >
+            <IconShare size={16} />
+            {sharing === "pdf" ? "Preparing…" : "Share PDF"}
+          </button>
+        </div>
       </div>
+
+      {exportProgress && sharing && (
+        <ProgressOverlay
+          percent={exportProgress.percent}
+          title={sharing === "pdf" ? "Preparing PDF" : sharing === "excel" ? "Preparing Excel" : "Preparing photos"}
+          step={exportProgress.step}
+        />
+      )}
     </div>
   );
 }
+
+// PDF defect type bubble size (pt)
+const PILL_H = 14;
+const PILL_PAD_X = 7;

@@ -2,8 +2,8 @@
 	"appId": "au.com.inspecta.app",
 	"appName": "Inspecta",
 	"webDir": "dist",
-	"backgroundColor": "#14161a",
+	"backgroundColor": "#071b2c",
 	"android": {
-		"backgroundColor": "#14161a"
+		"backgroundColor": "#071b2c"
 	}
 }

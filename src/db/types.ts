@@ -1,5 +1,8 @@
 export type SiteKind = "afss" | "project";
 
+// Advanced-controls field — see lib/defectTypes.ts for labels and colours.
+export type DefectType = "critical" | "non-critical" | "non-compliance" | "recommend" | "note-only" | "rectified";
+
 export interface Site {
   id: string;
   name: string;
@@ -14,6 +17,13 @@ export interface Finding {
   siteId: string;
   note: string;
   location: string;
+  // Optional, only offered while advanced controls are on. Absent on
+  // findings that never had one set (including every pre-existing finding).
+  defectType?: DefectType;
+  // Optional building level, stored as its display text ("Level 25",
+  // "Ground", "Basement 2", "Mezzanine", "Roof") — see lib/levels.ts.
+  // Advanced-controls field, absent unless one was entered.
+  level?: string;
   // manual sort position within a site's findings list — lower sorts
   // first. New findings get a very small (very negative) value so they
   // appear first, same as the old createdAt-desc default, until dragged.
@@ -29,4 +39,11 @@ export interface Photo {
   blob: Blob;
   takenAt: number;
   order: number;
+}
+
+// small JPEG of a photo for list thumbnails (see lib/thumbnail)
+export interface Thumbnail {
+  photoId: string;
+  siteId: string;
+  blob: Blob;
 }

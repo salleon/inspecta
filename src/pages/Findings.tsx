@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import type { Finding, Photo, Site } from "../db/types";
-import { addPhoto, createFinding, deleteSite, getSite, listFindings, listPhotos, reorderFinding, updateSite } from "../db/db";
+import { addPhoto, createFinding, deleteFinding, deleteSite, getSite, getThumbnail, listFindings, listPhotos, reorderFinding, updateSite } from "../db/db";
 import { capturePhoto } from "../lib/capture";
-import { IconChevronLeft, IconShare, IconEdit, IconGrip, IconCheck } from "../components/Icons";
+import { IconChevronLeft, IconShare, IconEdit, IconGrip, IconCheck, IconTrash } from "../components/Icons";
+import DefectTypePill from "../components/DefectTypePill";
 import ConfirmDialog from "../components/ConfirmDialog";
 import FormActions from "../components/FormActions";
 import RoundIconButton from "../components/RoundIconButton";
@@ -58,6 +59,10 @@ export default function Findings() {
   const [editAddress, setEditAddress] = useState("");
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  // swipe-to-delete on finding rows: which row is swiped open (one at a
+  // time), and which finding is awaiting delete confirmation
+  const [openSwipeId, setOpenSwipeId] = useState<string | null>(null);
+  const [confirmDeleteRow, setConfirmDeleteRow] = useState<Row | null>(null);
 
   // reorder mode — entered by holding any row for LONG_PRESS_MS
   const [reordering, setReordering] = useState(false);
@@ -79,7 +84,7 @@ export default function Findings() {
   const [ghostTop, setGhostTop] = useState(0);
 
   const listRef = useRef<HTMLDivElement>(null);
-  const rowElsRef = useRef(new Map<string, HTMLButtonElement>());
+  const rowElsRef = useRef(new Map<string, HTMLElement>());
   const dragMetaRef = useRef<DragMeta | null>(null);
   const lastClientYRef = useRef(0);
   const rafIdRef = useRef<number | null>(null);
@@ -93,16 +98,26 @@ export default function Findings() {
       const s = await getSite(siteId!);
       const findings = await listFindings(siteId!);
       const built: Row[] = [];
+      const firstPhotos: Photo[] = [];
       for (const finding of findings) {
         const photos: Photo[] = await listPhotos(finding.id);
-        const first = photos[0];
-        const url = first ? URL.createObjectURL(first.blob) : null;
-        if (url) urls.push(url);
-        built.push({ finding, thumb: url, photoCount: photos.length });
+        if (photos[0]) firstPhotos.push(photos[0]);
+        built.push({ finding, thumb: null, photoCount: photos.length });
       }
-      if (!cancelled) {
-        setSite(s ?? null);
-        setRows(built);
+      if (cancelled) return;
+      setSite(s ?? null);
+      setRows(built);
+
+      // Then the thumbnails, one at a time (small saved copies — see
+      // lib/thumbnail; older photos get theirs made here on first view,
+      // one by one so the phone never decodes a pile of full photos at once)
+      for (const photo of firstPhotos) {
+        const thumb = await getThumbnail(photo).catch(() => null);
+        if (cancelled) return;
+        if (!thumb) continue;
+        const url = URL.createObjectURL(thumb);
+        urls.push(url);
+        setRows((prev) => prev.map((r) => (r.finding.id === photo.findingId ? { ...r, thumb: url } : r)));
       }
     }
     load();
@@ -143,6 +158,21 @@ export default function Findings() {
     try {
       await deleteSite(siteId);
       navigate("/");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  async function handleDeleteFinding() {
+    const row = confirmDeleteRow;
+    if (!row || deleting) return;
+    setDeleting(true);
+    try {
+      await deleteFinding(row.finding.id);
+      setRows((prev) => prev.filter((r) => r.finding.id !== row.finding.id));
+      if (row.thumb) URL.revokeObjectURL(row.thumb);
+      setOpenSwipeId(null);
+      setConfirmDeleteRow(null);
     } finally {
       setDeleting(false);
     }
@@ -381,7 +411,14 @@ export default function Findings() {
                 else rowElsRef.current.delete(finding.id);
               }}
               onOpen={(thumbEl) => openFinding(finding, thumbEl)}
-              onEnterReorder={() => setReordering(true)}
+              onEnterReorder={() => {
+                setOpenSwipeId(null);
+                setReordering(true);
+              }}
+              swipeOpen={openSwipeId === finding.id}
+              onSwipeOpen={() => setOpenSwipeId(finding.id)}
+              onSwipeClose={() => setOpenSwipeId((id) => (id === finding.id ? null : id))}
+              onDelete={() => setConfirmDeleteRow(rows[i])}
               onGripDown={(e) => handleGripDown(i, e)}
               onGripMove={handleGripMove}
               onGripUp={handleGripUp}
@@ -533,6 +570,16 @@ export default function Findings() {
         </div>
       )}
 
+      {confirmDeleteRow && (
+        <ConfirmDialog
+          title="Delete this finding?"
+          message={`"${confirmDeleteRow.finding.note || "Untitled finding"}"${confirmDeleteRow.photoCount ? ` and its ${confirmDeleteRow.photoCount === 1 ? "photo" : `${confirmDeleteRow.photoCount} photos`}` : ""} will be permanently deleted. This can't be undone.`}
+          busy={deleting}
+          onCancel={() => setConfirmDeleteRow(null)}
+          onConfirm={handleDeleteFinding}
+        />
+      )}
+
       {confirmingDelete && (
         <ConfirmDialog
           title="Are you sure?"
@@ -556,6 +603,15 @@ export default function Findings() {
 // animation, producing a fade/scale glitch instead of a smooth drag. Keeping
 // this at module scope gives it a stable identity across renders, so React
 // only updates props on the existing DOM nodes instead of recreating them.
+// Swipe-to-delete, same feel as the dashboard's site rows: distance (px)
+// the row slides left to reveal the delete button, and how far a swipe
+// must go to snap open on release.
+const SWIPE_REVEAL = 84;
+const SWIPE_OPEN_THRESHOLD = SWIPE_REVEAL / 2;
+// A mostly-horizontal move past this many px starts a swipe (rather than
+// a scroll or a hold).
+const SWIPE_START_PX = 8;
+
 function FindingRow({
   finding,
   thumb,
@@ -570,6 +626,10 @@ function FindingRow({
   onGripDown,
   onGripMove,
   onGripUp,
+  swipeOpen,
+  onSwipeOpen,
+  onSwipeClose,
+  onDelete,
 }: {
   finding: Finding;
   thumb: string | null;
@@ -578,15 +638,29 @@ function FindingRow({
   reordering: boolean;
   isDragged: boolean;
   offsetY: number;
-  setRowEl: (el: HTMLButtonElement | null) => void;
+  setRowEl: (el: HTMLDivElement | null) => void;
   onOpen: (thumbEl: HTMLElement | null) => void;
   onEnterReorder: () => void;
   onGripDown: (e: ReactPointerEvent<HTMLDivElement>) => void;
   onGripMove: (e: ReactPointerEvent<HTMLDivElement>) => void;
   onGripUp: (e: ReactPointerEvent<HTMLDivElement>) => void;
+  swipeOpen: boolean;
+  onSwipeOpen: () => void;
+  onSwipeClose: () => void;
+  onDelete: () => void;
 }) {
   const holdTimer = useRef<number | null>(null);
   const startPos = useRef({ x: 0, y: 0 });
+  // swipe: the row's live horizontal offset, 0 (resting) to -SWIPE_REVEAL
+  const [dragX, setDragX] = useState(0);
+  const [swiping, setSwiping] = useState(false);
+  const swipeStartOffset = useRef(0);
+  // this gesture moved the row, so the click that ends it isn't a tap
+  const draggedFar = useRef(false);
+
+  useEffect(() => {
+    setDragX(swipeOpen ? -SWIPE_REVEAL : 0);
+  }, [swipeOpen]);
 
   function cancelHold() {
     if (holdTimer.current !== null) {
@@ -598,6 +672,9 @@ function FindingRow({
   function handlePointerDown(e: ReactPointerEvent<HTMLButtonElement>) {
     if (rowReordering) return; // already in reorder mode — nothing new to start
     startPos.current = { x: e.clientX, y: e.clientY };
+    swipeStartOffset.current = swipeOpen ? -SWIPE_REVEAL : 0;
+    draggedFar.current = false;
+    if (swipeOpen) return; // a tap/swipe on an open row just closes it
     holdTimer.current = window.setTimeout(() => {
       holdTimer.current = null;
       onEnterReorder();
@@ -605,36 +682,51 @@ function FindingRow({
   }
 
   function handlePointerMove(e: ReactPointerEvent<HTMLButtonElement>) {
-    if (holdTimer.current === null) return;
+    if (rowReordering) return;
     const dx = e.clientX - startPos.current.x;
     const dy = e.clientY - startPos.current.y;
-    if (Math.hypot(dx, dy) > MOVE_CANCEL_PX) cancelHold();
+    if (!swiping) {
+      if (Math.abs(dx) > SWIPE_START_PX && Math.abs(dx) > Math.abs(dy) * 1.2) {
+        // sideways: this is a swipe, not a hold or a scroll
+        cancelHold();
+        setSwiping(true);
+        e.currentTarget.setPointerCapture(e.pointerId);
+      } else {
+        if (Math.hypot(dx, dy) > MOVE_CANCEL_PX) cancelHold();
+        return;
+      }
+    }
+    draggedFar.current = true;
+    setDragX(Math.min(0, Math.max(-SWIPE_REVEAL, swipeStartOffset.current + dx)));
   }
 
+  function handlePointerEnd() {
+    cancelHold();
+    if (!swiping) return;
+    setSwiping(false);
+    setDragX((current) => {
+      if (current <= -SWIPE_OPEN_THRESHOLD) {
+        onSwipeOpen();
+        return -SWIPE_REVEAL;
+      }
+      onSwipeClose();
+      return 0;
+    });
+  }
+
+  const revealed = dragX < 0 || swipeOpen;
+
   return (
-    <button
+    // The wrapper is what the reorder code measures and shifts (it sits in
+    // the list exactly where the row does); it also clips the row as it
+    // slides left over the delete panel.
+    <div
       ref={setRowEl}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={cancelHold}
-      onPointerCancel={cancelHold}
-      onClick={(e) => {
-        if (rowReordering) return;
-        const thumbEl = e.currentTarget.querySelector<HTMLElement>("[data-thumb]");
-        onOpen(thumbEl);
-      }}
       className="pop-in"
       style={{
-        display: "flex",
-        gap: 12,
-        alignItems: "flex-start",
-        padding: "14px 0",
-        background: "none",
-        border: "none",
-        borderBottom: "1px solid var(--border)",
-        textAlign: "left",
-        color: "inherit",
         position: "relative",
+        overflow: "hidden",
+        flexShrink: 0,
         // The dragged row stays in its normal flow slot the whole gesture
         // (see handleGripDown for why) and just turns invisible — the
         // visible "lifted" card is a separate fixed-position ghost overlay.
@@ -644,37 +736,99 @@ function FindingRow({
         animationDelay: `${Math.min(index, 8) * 35}ms`,
       }}
     >
-      <div data-thumb style={{ flexShrink: 0, width: 56, height: 56, borderRadius: 10, background: "var(--panel-2)", overflow: "hidden", position: "relative" }}>
-        {thumb && <img src={thumb} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
-        {photoCount > 1 && (
-          <div style={{ position: "absolute", bottom: 2, right: 2, background: "rgba(7,27,44,0.85)", borderRadius: 4, padding: "1px 4px", fontSize: 9, fontWeight: 800 }}>
-            +{photoCount - 1}
-          </div>
-        )}
-      </div>
-      <div style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {finding.note || "Untitled finding"}
-        </div>
-        <div style={{ fontSize: 12, fontWeight: 500, color: "var(--muted)" }}>
-          {formatShort(finding.createdAt)}{finding.location ? ` · ${finding.location}` : ""}
-        </div>
-      </div>
-      {rowReordering ? (
-        <div
-          className="grip-in"
-          onPointerDown={onGripDown}
-          onPointerMove={onGripMove}
-          onPointerUp={onGripUp}
-          onPointerCancel={onGripUp}
-          style={{ flexShrink: 0, alignSelf: "stretch", width: 26, display: "flex", alignItems: "center", justifyContent: "center", touchAction: "none" }}
+      {/* delete panel behind the row: slightly inset, and only shown once
+          a swipe starts, so it never peeks out (e.g. during the pop-in) */}
+      <div
+        style={{
+          position: "absolute",
+          inset: "3px 0",
+          borderRadius: 12,
+          background: "#ff6b6b",
+          display: "flex",
+          justifyContent: "flex-end",
+          opacity: revealed ? 1 : 0,
+          // hide only once the row has finished sliding back over it
+          transition: revealed ? "none" : "opacity 0s linear 0.22s",
+        }}
+      >
+        <button
+          type="button"
+          aria-label={`Delete finding ${finding.note || "Untitled finding"}`}
+          onClick={onDelete}
+          tabIndex={revealed ? 0 : -1}
+          style={{ width: SWIPE_REVEAL, height: "100%", background: "none", border: "none", display: "flex", alignItems: "center", justifyContent: "center" }}
         >
-          <IconGrip size={20} color={isDragged ? "var(--accent)" : "var(--muted-2)"} />
+          <IconTrash size={22} strokeWidth={2} color="#2a0808" />
+        </button>
+      </div>
+
+      <button
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerEnd}
+        onPointerCancel={handlePointerEnd}
+        onClick={(e) => {
+          if (draggedFar.current) return; // this click ended a swipe, not a tap
+          if (swipeOpen) {
+            onSwipeClose();
+            return;
+          }
+          if (rowReordering) return;
+          const thumbEl = e.currentTarget.querySelector<HTMLElement>("[data-thumb]");
+          onOpen(thumbEl);
+        }}
+        style={{
+          display: "flex",
+          gap: 12,
+          alignItems: "flex-start",
+          width: "100%",
+          padding: "14px 0",
+          background: "var(--bg)",
+          border: "none",
+          borderBottom: "1px solid var(--border)",
+          textAlign: "left",
+          color: "inherit",
+          position: "relative",
+          touchAction: "pan-y",
+          transform: `translateX(${dragX}px)`,
+          transition: swiping ? "none" : "transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1)",
+        }}
+      >
+        <div data-thumb style={{ flexShrink: 0, width: 56, height: 56, borderRadius: 10, background: "var(--panel-2)", overflow: "hidden", position: "relative" }}>
+          {thumb && <img src={thumb} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+          {photoCount > 1 && (
+            <div style={{ position: "absolute", bottom: 2, right: 2, background: "rgba(7,27,44,0.85)", borderRadius: 4, padding: "1px 4px", fontSize: 9, fontWeight: 800 }}>
+              +{photoCount - 1}
+            </div>
+          )}
         </div>
-      ) : (
-        <IconEdit style={{ flexShrink: 0, marginTop: 2 }} color="var(--muted-2)" />
-      )}
-    </button>
+        <div style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {finding.note || "Untitled finding"}
+          </div>
+          <div style={{ fontSize: 12, fontWeight: 500, color: "var(--muted)" }}>
+            {formatShort(finding.createdAt)}
+            {finding.level && <> · <b style={{ fontWeight: 700, color: "var(--text)" }}>{finding.level}</b></>}
+            {finding.location ? ` · ${finding.location}` : ""}
+          </div>
+          <DefectTypePill type={finding.defectType} size="sm" />
+        </div>
+        {rowReordering ? (
+          <div
+            className="grip-in"
+            onPointerDown={onGripDown}
+            onPointerMove={onGripMove}
+            onPointerUp={onGripUp}
+            onPointerCancel={onGripUp}
+            style={{ flexShrink: 0, alignSelf: "stretch", width: 26, display: "flex", alignItems: "center", justifyContent: "center", touchAction: "none" }}
+          >
+            <IconGrip size={20} color={isDragged ? "var(--accent)" : "var(--muted-2)"} />
+          </div>
+        ) : (
+          <IconEdit style={{ flexShrink: 0, marginTop: 2 }} color="var(--muted-2)" />
+        )}
+      </button>
+    </div>
   );
 }
 

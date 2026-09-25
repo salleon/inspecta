@@ -1,17 +1,26 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { useNavigate, useParams, useLocation as useRouterLocation } from "react-router-dom";
-import type { Photo } from "../db/types";
+import type { DefectType, Photo } from "../db/types";
 import {
   addPhoto,
   createFinding,
   deletePhoto,
   getFinding,
+  getThumbnail,
+  listFindings,
   listPhotos,
   updateFinding,
 } from "../db/db";
 import { capturePhoto } from "../lib/capture";
-import { IconRetake, IconTrash, IconChevronLeft, IconPlus, IconCamera } from "../components/Icons";
+import { IconRetake, IconTrash, IconChevronLeft, IconPlus, IconCamera, IconCheck } from "../components/Icons";
 import RoundIconButton from "../components/RoundIconButton";
+import DefectTypePill from "../components/DefectTypePill";
+import LevelField from "../components/LevelField";
+import LocationSuggestions from "../components/LocationSuggestions";
+import { siteLocations, suggestLocations } from "../lib/locationSuggestions";
+import { DEFECT_TYPES } from "../lib/defectTypes";
+import { useAdvancedControls } from "../lib/settings";
+import { useBackHandler } from "../lib/backButton";
 
 interface PhotoRect {
   top: number;
@@ -27,9 +36,22 @@ export default function Note() {
 
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
+  // small copies for the thumbnail strip (see lib/thumbnail), by photo id
+  const [thumbUrls, setThumbUrls] = useState<Record<string, string>>({});
   const [selected, setSelected] = useState(0);
   const [note, setNote] = useState("");
   const [location, setLocation] = useState("");
+  // locations already used on this site's other findings, most recent
+  // first, for the suggestion buttons under the Location box
+  const [siteLocs, setSiteLocs] = useState<string[]>([]);
+  const [locationFocused, setLocationFocused] = useState(false);
+  const [defectType, setDefectType] = useState<DefectType | undefined>(undefined);
+  const [level, setLevel] = useState<string | undefined>(undefined);
+  // the level "Save & next finding" copied over from the previous finding,
+  // so we can say so under the field until it's changed
+  const carriedLevel = (routerLocation.state as { carriedLevel?: string } | null)?.carriedLevel;
+  const [pickingDefectType, setPickingDefectType] = useState(false);
+  const advancedControls = useAdvancedControls();
   const [busy, setBusy] = useState(false);
   // when a text field has focus (keyboard is up), shrink the photo so both
   // Note and Location stay visible above the keyboard without scrolling
@@ -77,6 +99,8 @@ export default function Note() {
     const f = await getFinding(findingId);
     setNote(f?.note ?? "");
     setLocation(f?.location ?? "");
+    setDefectType(f?.defectType);
+    setLevel(f?.level);
     const p = await listPhotos(findingId);
     setPhotos(p);
     setSelected((prev) => {
@@ -84,6 +108,17 @@ export default function Note() {
       return Math.max(0, Math.min(target, p.length - 1));
     });
   }
+
+  useEffect(() => {
+    if (!siteId) return;
+    let cancelled = false;
+    listFindings(siteId).then((findings) => {
+      if (!cancelled) setSiteLocs(siteLocations(findings, findingId));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [siteId, findingId]);
 
   useEffect(() => {
     refresh(0);
@@ -96,7 +131,51 @@ export default function Note() {
     return () => urls.forEach((u) => URL.revokeObjectURL(u));
   }, [photos]);
 
+  // Thumbnail URLs live in a ref keyed by photo id, so a refresh (e.g.
+  // after adding a photo) only makes the new ones and drops removed ones —
+  // existing thumbnails never flicker.
+  const thumbCache = useRef(new Map<string, string>());
+  useEffect(() => {
+    let cancelled = false;
+    const cache = thumbCache.current;
+    const ids = new Set(photos.map((p) => p.id));
+    for (const [id, url] of cache) {
+      if (!ids.has(id)) {
+        URL.revokeObjectURL(url);
+        cache.delete(id);
+      }
+    }
+    setThumbUrls(Object.fromEntries(cache));
+    (async () => {
+      for (const p of photos) {
+        if (cache.has(p.id)) continue;
+        const thumb = await getThumbnail(p).catch(() => null);
+        if (cancelled) return;
+        if (!thumb) continue;
+        cache.set(p.id, URL.createObjectURL(thumb));
+        setThumbUrls(Object.fromEntries(cache));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [photos]);
+  useEffect(() => {
+    const cache = thumbCache.current;
+    return () => cache.forEach((url) => URL.revokeObjectURL(url));
+  }, []);
+
   const wasCollapsedRef = useRef(false);
+
+  // Android back: close the defect type picker if it's open, otherwise
+  // save and go to the findings list — same as the on-screen back arrow
+  // (without this, back left the screen without saving what was typed).
+  // Called before the early return below — hooks must always run.
+  useBackHandler(() => {
+    if (pickingDefectType) setPickingDefectType(false);
+    else if (!busy) void handleBack();
+    return true;
+  });
 
   if (!siteId || !findingId) return null;
 
@@ -105,10 +184,10 @@ export default function Note() {
 
   async function persist() {
     if (!findingId) return;
-    await updateFinding(findingId, { note, location });
+    await updateFinding(findingId, { note, location, defectType, level });
   }
 
-  // Used by both the back button and "View findings" — they're the same
+  // Used by both the back button and "Save & close" — they're the same
   // action (persist the note/location, then return to the list).
   async function handleBack() {
     await persist();
@@ -128,9 +207,12 @@ export default function Note() {
         navigate(`/site/${siteId}/findings`);
         return;
       }
-      const finding = await createFinding(siteId);
+      // carry the level over to the next finding (advanced controls) — a
+      // cleared level carries nothing, so the next one starts empty too
+      const carry = advancedControls && level ? level : undefined;
+      const finding = await createFinding(siteId, carry ? { level: carry } : {});
       await addPhoto(finding.id, siteId, blob);
-      navigate(`/site/${siteId}/finding/${finding.id}/note`);
+      navigate(`/site/${siteId}/finding/${finding.id}/note`, carry ? { state: { carriedLevel: carry } } : undefined);
     } finally {
       setBusy(false);
     }
@@ -179,6 +261,19 @@ export default function Note() {
     handleAddPhoto();
   }
 
+  // Saved straight away (not just on leaving the screen) so a picked type
+  // is never lost. Picking is always optional — undefined clears it.
+  async function handlePickDefectType(type: DefectType | undefined) {
+    setDefectType(type);
+    setPickingDefectType(false);
+    if (findingId) await updateFinding(findingId, { defectType: type });
+  }
+
+  // The picker is only offered while advanced controls are on, but a type
+  // already saved on this finding stays visible (and editable) either way.
+  const showDefectType = advancedControls || defectType !== undefined;
+  const showLevel = advancedControls || level !== undefined;
+
   async function handleDelete() {
     if (!activePhoto || !findingId) return;
     await deletePhoto(activePhoto.id);
@@ -202,7 +297,9 @@ export default function Note() {
         <div style={{ fontSize: 15, fontWeight: 800 }}>Finding</div>
       </div>
 
-      <div style={{ flexGrow: 1, overflowY: "auto", padding: "4px 18px 18px", display: "flex", flexDirection: "column", gap: fieldFocused ? 10 : 16 }}>
+      {/* .finding-scroll stops every section in here from shrinking — the
+          column scrolls instead, however many fields get added below */}
+      <div className="finding-scroll" style={{ flexGrow: 1, overflowY: "auto", padding: "4px 18px 18px", display: "flex", flexDirection: "column", gap: fieldFocused ? 10 : 16 }}>
         {/* photo — collapses when a text field is focused so Note and
             Location stay visible above the keyboard without scrolling.
             Grows in from the tapped thumbnail's position on first mount
@@ -328,7 +425,11 @@ export default function Note() {
             just the latest; hidden while typing to leave Note + Location
             both visible above the keyboard */}
         {photos.length > 0 && !fieldFocused && (
-          <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 2 }}>
+          // Fixed height (thumbnail + scrollbar room) as well as the
+          // .finding-scroll no-shrink rule: a horizontal scroller in a flex
+          // column is otherwise the first thing squashed when the screen
+          // gets taller than the phone.
+          <div style={{ flexShrink: 0, height: THUMB_SIZE + 4, minHeight: THUMB_SIZE + 4, display: "flex", gap: 8, overflowX: "auto", overflowY: "hidden", paddingBottom: 2 }}>
             {photos.map((p, i) => (
               <button
                 key={p.id}
@@ -337,8 +438,8 @@ export default function Note() {
                 className="thumb-in"
                 style={{
                   flexShrink: 0,
-                  width: 56,
-                  height: 56,
+                  width: THUMB_SIZE,
+                  height: THUMB_SIZE,
                   borderRadius: 10,
                   overflow: "hidden",
                   padding: 0,
@@ -346,8 +447,8 @@ export default function Note() {
                   border: i === selected ? "2px solid var(--accent)" : "1px solid var(--border-strong)",
                 }}
               >
-                {photoUrls[i] && (
-                  <img src={photoUrls[i]} alt="" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
+                {thumbUrls[p.id] && (
+                  <img src={thumbUrls[p.id]} alt="" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
                 )}
               </button>
             ))}
@@ -357,8 +458,8 @@ export default function Note() {
               disabled={busy}
               style={{
                 flexShrink: 0,
-                width: 56,
-                height: 56,
+                width: THUMB_SIZE,
+                height: THUMB_SIZE,
                 borderRadius: 10,
                 border: "1.5px dashed var(--border-strong)",
                 background: "none",
@@ -388,8 +489,9 @@ export default function Note() {
           />
         </div>
 
-        {/* location */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {/* location, with suggestions from this site's other findings while
+            typing (data-keep-visible keeps the buttons above the keyboard) */}
+        <div data-keep-visible style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <label htmlFor="locationInput" style={labelStyle}>Location</label>
           <input
             id="locationInput"
@@ -397,15 +499,68 @@ export default function Note() {
             placeholder="Tap to add"
             value={location}
             onChange={(e) => setLocation(e.target.value)}
-            onFocus={() => setFieldFocused(true)}
-            onBlur={() => setFieldFocused(false)}
+            onFocus={() => {
+              setFieldFocused(true);
+              setLocationFocused(true);
+            }}
+            onBlur={() => {
+              setFieldFocused(false);
+              setLocationFocused(false);
+            }}
             style={fieldStyle}
           />
+          {locationFocused && (
+            <LocationSuggestions suggestions={suggestLocations(siteLocs, location)} onPick={setLocation} />
+          )}
         </div>
+
+        {/* level — advanced controls; optional, carried to the next finding */}
+        {showLevel && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <label htmlFor="levelInput" style={labelStyle}>Level</label>
+            <LevelField
+              value={level}
+              onChange={setLevel}
+              onFocus={() => setFieldFocused(true)}
+              onBlur={() => setFieldFocused(false)}
+              fieldStyle={fieldStyle}
+            />
+            {carriedLevel && level === carriedLevel && (
+              <div style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)" }}>Same level as your last finding</div>
+            )}
+          </div>
+        )}
+
+        {/* defect type — advanced controls */}
+        {showDefectType && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <label htmlFor="defectTypeInput" style={labelStyle}>Defect type</label>
+            <button
+              id="defectTypeInput"
+              type="button"
+              // Don't let this tap blur a focused Note/Location first: the
+              // blur re-expands the photo, shoving this button down so the
+              // tap misses it (it'd take a second tap to open).
+              onPointerDown={(e) => e.preventDefault()}
+              onClick={() => {
+                (document.activeElement as HTMLElement | null)?.blur();
+                setPickingDefectType(true);
+              }}
+              style={{ ...fieldStyle, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, textAlign: "left", padding: defectType ? "9px 14px" : fieldStyle.padding }}
+            >
+              {defectType ? (
+                <DefectTypePill type={defectType} />
+              ) : (
+                <span style={{ color: "var(--muted-2)" }}>Tap to select (optional)</span>
+              )}
+              <IconChevronLeft size={16} color="var(--muted-2)" style={{ transform: "rotate(-90deg)", flexShrink: 0 }} />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* save bar — "Save & next finding" is the most-used action so it's
-          the visually bigger button; the two sit side by side, View findings
+          the visually bigger button; the two sit side by side, Save & close
           on the left and Save & next finding on the right */}
       <div style={{ flexShrink: 0, padding: "12px 18px calc(26px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "row", gap: 10 }}>
         <button
@@ -422,7 +577,7 @@ export default function Note() {
             color: "var(--text)",
           }}
         >
-          View findings
+          Save &amp; close
         </button>
         <button
           onClick={handleSaveAndNextFinding}
@@ -445,9 +600,57 @@ export default function Note() {
           {busy ? "Opening camera…" : "Save & next finding"}
         </button>
       </div>
+
+      {pickingDefectType && (
+        <div
+          className="sheet-backdrop"
+          style={{ position: "absolute", inset: 0, background: "rgba(10,11,13,0.6)", display: "flex", alignItems: "flex-end" }}
+          onClick={() => setPickingDefectType(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="sheet-panel"
+            style={{ width: "100%", background: "var(--panel)", borderRadius: "20px 20px 0 0", padding: "22px 20px calc(28px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 10 }}
+          >
+            <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 4 }}>Defect type</div>
+            {DEFECT_TYPES.map((t) => {
+              const active = t.value === defectType;
+              return (
+                <button
+                  key={t.value}
+                  type="button"
+                  onClick={() => handlePickDefectType(t.value)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    background: "var(--panel-2)",
+                    border: active ? "1px solid var(--accent)" : "1px solid var(--border)",
+                    borderRadius: 12,
+                    padding: "12px 14px",
+                  }}
+                >
+                  <DefectTypePill type={t.value} />
+                  {active && <IconCheck size={18} color="var(--accent)" strokeWidth={2.6} />}
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => handlePickDefectType(undefined)}
+              style={{ background: "none", border: "none", padding: "8px 0 0", fontSize: 13, fontWeight: 700, color: "var(--muted)" }}
+            >
+              {defectType ? "Clear defect type" : "Skip"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+// photo thumbnail strip under the main photo
+const THUMB_SIZE = 56;
 
 const labelStyle: CSSProperties = {
   fontSize: 12,

@@ -25,10 +25,13 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ["**/*.{js,css,html,png,svg,ico}"],
+        // woff2: the bundled Manrope font, so it's there offline
+        globPatterns: ["**/*.{js,css,html,png,svg,ico,woff2}"],
       },
     }),
   ],
+  // the Excel export's company template (inlined into the export chunk)
+  assetsInclude: ["**/*.xlsx"],
   server: {
     host: true,
   },

@@ -1,7 +1,7 @@
 // The inspector's name, entered once on first launch (see Onboarding.tsx)
 // and stored locally — this app has no login, so this is the only "who is
-// using this device" signal it has. Used for the dashboard avatar initials
-// and to label generated PDF reports.
+// using this device" signal it has. Used to label generated reports (title
+// and file name).
 
 const NAME_KEY = "inspecta.inspectorName";
 
@@ -25,8 +25,8 @@ export function hasInspectorName(): boolean {
   return getInspectorName().trim().length > 0;
 }
 
-// "Leon Salvaggio" -> "LS"; a single-word name falls back to its first two
-// letters so the avatar never ends up empty.
+// "Leon Salvaggio" -> "LS" (report file names); a single-word name falls
+// back to its first two letters so it never ends up empty.
 export function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return "";

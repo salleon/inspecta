@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState, type FormEvent, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Site, SiteKind } from "../db/types";
-import { createSite, deleteSite, findingCount, listSites } from "../db/db";
-import { IconSearch, IconBuilding, IconPlus, IconEdit, IconTrash } from "../components/Icons";
+import { createSite, deleteSite, findingCount, firstSitePhoto, getThumbnail, listSites } from "../db/db";
+import { IconSearch, IconBuilding, IconPlus, IconTrash, IconSettings, IconChevronRight } from "../components/Icons";
 import CountUp from "../components/CountUp";
 import ConfirmDialog from "../components/ConfirmDialog";
 import FormActions from "../components/FormActions";
 import logo from "../assets/logo.png";
-import { getInitials, getInspectorName, setInspectorName } from "../lib/profile";
+import { getInspectorName, setInspectorName } from "../lib/profile";
+import { setAdvancedControls, useAdvancedControls } from "../lib/settings";
 
 interface SiteRow extends Site {
   findings: number;
@@ -22,11 +23,19 @@ export default function Dashboard() {
   const [address, setAddress] = useState("");
   const [kind, setKind] = useState<SiteKind>("afss");
   const [inspectorName, setInspectorNameState] = useState(() => getInspectorName());
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
   const [openSwipeId, setOpenSwipeId] = useState<string | null>(null);
   const [confirmDeleteSite, setConfirmDeleteSite] = useState<SiteRow | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const advancedControls = useAdvancedControls();
+
+  // Site cover thumbnails (first finding's first photo — see
+  // firstSitePhoto), by site id. The cache remembers which photo each URL
+  // shows, so a refresh only redoes sites whose first photo changed.
+  const [thumbs, setThumbs] = useState<Record<string, string>>({});
+  const thumbCache = useRef(new Map<string, { photoId: string; url: string }>());
 
   async function refresh() {
     const list = await listSites();
@@ -34,10 +43,38 @@ export default function Dashboard() {
       list.map(async (s) => ({ ...s, findings: await findingCount(s.id) })),
     );
     setSites(withCounts);
+    await loadThumbs(withCounts.map((s) => s.id));
+  }
+
+  // one site at a time, using the small saved thumbnails, so the list
+  // shows immediately and the covers fill in
+  async function loadThumbs(siteIds: string[]) {
+    const cache = thumbCache.current;
+    for (const [id, entry] of cache) {
+      if (!siteIds.includes(id)) {
+        URL.revokeObjectURL(entry.url);
+        cache.delete(id);
+      }
+    }
+    for (const id of siteIds) {
+      const photo = await firstSitePhoto(id).catch(() => undefined);
+      const cached = cache.get(id);
+      if (cached && cached.photoId === photo?.id) continue;
+      if (cached) {
+        URL.revokeObjectURL(cached.url);
+        cache.delete(id);
+      }
+      const blob = photo ? await getThumbnail(photo).catch(() => null) : null;
+      if (photo && blob) cache.set(id, { photoId: photo.id, url: URL.createObjectURL(blob) });
+      setThumbs(Object.fromEntries([...cache].map(([k, v]) => [k, v.url])));
+    }
   }
 
   useEffect(() => {
     refresh();
+    const cache = thumbCache.current;
+    return () => cache.forEach((entry) => URL.revokeObjectURL(entry.url));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const filtered = sites.filter(
@@ -49,6 +86,7 @@ export default function Dashboard() {
   const projectSites = filtered.filter((s) => s.kind === "project");
 
   function openEditName() {
+    setSettingsOpen(false);
     setNameDraft(inspectorName);
     setEditingName(true);
   }
@@ -97,6 +135,7 @@ export default function Dashboard() {
           <SiteButton
             key={site.id}
             site={site}
+            thumb={thumbs[site.id]}
             index={i}
             onClick={() => navigate(`/site/${site.id}/findings`)}
             isOpen={openSwipeId === site.id}
@@ -115,14 +154,21 @@ export default function Dashboard() {
       <div style={{ flexShrink: 0, padding: "20px 20px 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <img src={logo} alt="Inspecta by EnFact" style={{ width: 34, height: 34, borderRadius: 9, display: "block" }} />
-          <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.1 }}>
-            <span style={{ fontSize: 17, fontWeight: 800, letterSpacing: -0.2 }}>Inspecta</span>
+          {/* "Inspecta" sized so its letters (top of the I to the bottom of
+              the p: 0.96em in the bundled Manrope) are as tall as the 34 px
+              icon. Positioned so the main body of the word (the capital-
+              height part, ignoring the p's tail) is centred on the icon:
+              Manrope's line metrics sit it 0.145em low, less 0.12em (half
+              the descender) to centre the body rather than the whole word.
+              "BY ENFACT" follows on the same baseline. */}
+          <div style={{ display: "flex", alignItems: "baseline", gap: 6, fontSize: 34 / 0.96, lineHeight: 1, transform: "translateY(-0.025em)", whiteSpace: "nowrap" }}>
+            <span style={{ fontWeight: 800, letterSpacing: -0.6 }}>Inspecta</span>
             <span style={{ fontSize: 10, fontWeight: 700, color: "var(--accent)", letterSpacing: 0.4 }}>BY ENFACT</span>
           </div>
         </div>
         <button
-          aria-label="Edit your name"
-          onClick={openEditName}
+          aria-label="Settings"
+          onClick={() => setSettingsOpen(true)}
           style={{ position: "relative", width: 38, height: 38, background: "none", border: "none", padding: 0 }}
         >
           <div
@@ -135,28 +181,9 @@ export default function Dashboard() {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: 13,
-              fontWeight: 800,
             }}
           >
-            {initials()}
-          </div>
-          <div
-            style={{
-              position: "absolute",
-              bottom: -3,
-              right: -3,
-              width: 16,
-              height: 16,
-              borderRadius: "50%",
-              background: "var(--accent)",
-              border: "2px solid var(--bg)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <IconEdit size={8} strokeWidth={3} color="var(--accent-text)" />
+            <IconSettings size={19} strokeWidth={2} color="var(--text)" />
           </div>
         </button>
       </div>
@@ -307,6 +334,49 @@ export default function Dashboard() {
         </div>
       )}
 
+      {settingsOpen && (
+        <div
+          className="sheet-backdrop"
+          style={{ position: "absolute", inset: 0, background: "rgba(10,11,13,0.6)", display: "flex", alignItems: "flex-end" }}
+          onClick={() => setSettingsOpen(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="sheet-panel"
+            style={{ width: "100%", background: "var(--panel)", borderRadius: "20px 20px 0 0", padding: "22px 20px calc(28px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 14 }}
+          >
+            <div style={{ fontSize: 16, fontWeight: 800 }}>Settings</div>
+            <button type="button" onClick={openEditName} style={settingsRowStyle}>
+              <div style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
+                <span style={{ fontSize: 14, fontWeight: 700 }}>Your name</span>
+                <span style={settingsRowHintStyle}>{inspectorName || "Not set"}</span>
+              </div>
+              <IconChevronRight color="var(--muted)" />
+            </button>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={advancedControls}
+              onClick={() => setAdvancedControls(!advancedControls)}
+              style={settingsRowStyle}
+            >
+              <div style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
+                <span style={{ fontSize: 14, fontWeight: 700 }}>Advanced controls</span>
+                <span style={settingsRowHintStyle}>Show extra menus for more detailed data entry.</span>
+              </div>
+              <Switch on={advancedControls} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setSettingsOpen(false)}
+              style={{ textAlign: "center", padding: "14px 0", borderRadius: 12, background: "var(--panel-2)", border: "1px solid var(--border)", fontSize: 14, fontWeight: 700, color: "var(--text)", marginTop: 4 }}
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
+
       {editingName && (
         <div
           className="sheet-backdrop"
@@ -321,7 +391,7 @@ export default function Dashboard() {
           >
             <div style={{ fontSize: 16, fontWeight: 800 }}>Your name</div>
             <div style={{ fontSize: 13, fontWeight: 500, color: "var(--muted)", lineHeight: 1.5, marginTop: -8 }}>
-              Used for the avatar above and to label your PDF reports.
+              Used to label your reports.
             </div>
             <input autoFocus value={nameDraft} onChange={(e) => setNameDraft(e.target.value)} style={inputStyle} />
             <FormActions onCancel={() => setEditingName(false)} />
@@ -341,9 +411,6 @@ export default function Dashboard() {
     </div>
   );
 
-  function initials() {
-    return getInitials(inspectorName) || "?";
-  }
 }
 
 const inputStyle: CSSProperties = {
@@ -356,6 +423,57 @@ const inputStyle: CSSProperties = {
   fontWeight: 500,
   outline: "none",
 };
+
+const settingsRowStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 12,
+  width: "100%",
+  background: "var(--panel-2)",
+  border: "1px solid var(--border)",
+  borderRadius: 12,
+  padding: "13px 14px",
+  textAlign: "left",
+  color: "var(--text)",
+};
+
+const settingsRowHintStyle: CSSProperties = {
+  fontSize: 12,
+  fontWeight: 500,
+  color: "var(--muted)",
+  lineHeight: 1.4,
+};
+
+// Visual-only on/off pill — the row it sits in is the actual switch button.
+function Switch({ on }: { on: boolean }) {
+  return (
+    <div
+      style={{
+        flexShrink: 0,
+        position: "relative",
+        width: 44,
+        height: 26,
+        borderRadius: 13,
+        background: on ? "var(--accent)" : "var(--muted-2)",
+        transition: "background 0.18s ease",
+      }}
+    >
+      <div
+        style={{
+          position: "absolute",
+          top: 3,
+          left: 3,
+          width: 20,
+          height: 20,
+          borderRadius: "50%",
+          background: on ? "var(--accent-text)" : "var(--text)",
+          transform: `translateX(${on ? 18 : 0}px)`,
+          transition: "transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.18s ease",
+        }}
+      />
+    </div>
+  );
+}
 
 const sectionHeaderStyle: CSSProperties = {
   fontSize: 12,
@@ -388,6 +506,7 @@ const SWIPE_OPEN_THRESHOLD = SWIPE_REVEAL / 2;
 
 function SiteButton({
   site,
+  thumb,
   index,
   onClick,
   isOpen,
@@ -396,6 +515,7 @@ function SiteButton({
   onDelete,
 }: {
   site: SiteRow;
+  thumb?: string;
   index: number;
   onClick: () => void;
   isOpen: boolean;
@@ -458,11 +578,18 @@ function SiteButton({
 
   return (
     <div style={{ position: "relative", borderRadius: 14, overflow: "hidden" }}>
-      {/* delete panel, revealed as the row above slides left */}
+      {/* delete panel, revealed as the row above slides left. Slightly
+          inset top and bottom, and only shown once a swipe starts: the
+          rows "pop in" from 94% scale, which otherwise let the red peek
+          out around every row's edge for a moment. */}
       <div
         style={{
           position: "absolute",
-          inset: 0,
+          inset: "2px 0",
+          borderRadius: 12,
+          opacity: dragX < 0 || isOpen ? 1 : 0,
+          // hide only once the row has finished sliding back over it
+          transition: dragX < 0 || isOpen ? "none" : "opacity 0s linear 0.22s",
           background: "#ff6b6b",
           display: "flex",
           alignItems: "center",
@@ -522,9 +649,16 @@ function SiteButton({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
+            overflow: "hidden",
           }}
         >
-          <IconBuilding strokeWidth={1.8} />
+          {/* the site's first finding photo, or the building icon until
+              it has one */}
+          {thumb ? (
+            <img src={thumb} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+          ) : (
+            <IconBuilding strokeWidth={1.8} />
+          )}
         </div>
         <div style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
           <div style={{ fontSize: 15, fontWeight: 700 }}>{site.name}</div>

@@ -10,7 +10,11 @@ A fast, offline-first app for on-site fire safety inspection capture — built t
 - **Retake / delete** — fix a bad shot without leaving the note screen.
 - **Saves straight to your gallery** — on the Android app, every photo is also saved to your phone's normal photo gallery via the native camera, independent of the app.
 - **Everything stored offline** — findings, notes, locations and full-resolution photos are saved to the device (IndexedDB) as you go, no signal required. Nothing is lost if you close the app or lose connection.
-- **PDF export** — generates a report with every photo (burned-in date/time watermark), timestamp, location and note, ready to share.
+- **PDF export** — generates a report with every photo (burned-in time/date stamp), location and note, ready to share.
+- **Excel export** — fills the company findings-register template (`src/assets/findings-template.xlsx`): one row per finding with location, description, full-resolution stamped photos (5 cm wide), date identified, risk level (colour-filled) and status. Built for desktop Excel.
+- **Send Photos Only** — every photo on the site at full camera resolution, with the time/date stamp, in one zip (e.g. `Harbour Tower.zip`) holding a folder named after the site. Files are named `01 - Level 25 - Back of house kitchen.jpg` in the same finding order as the PDF and Excel. Share it to OneDrive, then *Extract All* on the laptop.
+- **Location suggestions** — while typing a location, up to 3 buttons suggest locations already used on *this site* (most recent first, filtered as you type). Tap one to fill it in.
+- **Advanced controls** — a switch in the settings menu (the gear on the dashboard), on by default. When on, findings get extra optional fields: **Defect type** (Critical / Non-critical / Non-compliance / Recommend / Note only / Rectified, colour-coded) and **Level** (type `25` for "Level 25", quick buttons for Ground / Basement / Mezzanine / Roof, carried over to the next finding). Anything entered always shows in the app and in exports, even if the switch is later turned off.
 
 ## Getting the Android APK (recommended for your team)
 
@@ -27,7 +31,9 @@ This repo has a GitHub Actions workflow (`.github/workflows/build-apk.yml`) that
    git push -u origin main
    ```
 2. On GitHub, open the repo's **Actions** tab. The "Build Android APK" workflow runs automatically on that push (takes a few minutes — it's downloading the Android SDK).
-3. Once it finishes (green check), click into the run → scroll to **Artifacts** → download `inspecta-debug-apk`. Unzip it to get `app-debug.apk`.
+3. Once it finishes (green check), click into the run → scroll to **Artifacts** → download `inspecta-release-apk`. Unzip it to get `app-release.apk`. (The workflow signs it with the release key from the repo's Actions secrets, so each build installs as an update over the last.)
+
+   To build a branch other than `main`, open **Actions → Build Android APK → Run workflow** and pick the branch in **"Use workflow from"**.
 4. Send that `.apk` file to yourself (email, Slack, Drive — whatever's easiest) and open it **on the Android phone**. Android will ask you to allow installing from this source the first time — approve that, then install.
 
 That's it — no Play Store, no hosting, just the one file. Whenever you want an updated build, push your changes and re-download the new artifact from Actions.
