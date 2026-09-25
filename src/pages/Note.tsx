@@ -20,6 +20,7 @@ import LocationSuggestions from "../components/LocationSuggestions";
 import { siteLocations, suggestLocations } from "../lib/locationSuggestions";
 import { DEFECT_TYPES } from "../lib/defectTypes";
 import { useAdvancedControls } from "../lib/settings";
+import { useBackHandler } from "../lib/backButton";
 
 interface PhotoRect {
   top: number;
@@ -165,6 +166,16 @@ export default function Note() {
   }, []);
 
   const wasCollapsedRef = useRef(false);
+
+  // Android back: close the defect type picker if it's open, otherwise
+  // save and go to the findings list — same as the on-screen back arrow
+  // (without this, back left the screen without saving what was typed).
+  // Called before the early return below — hooks must always run.
+  useBackHandler(() => {
+    if (pickingDefectType) setPickingDefectType(false);
+    else if (!busy) void handleBack();
+    return true;
+  });
 
   if (!siteId || !findingId) return null;
 

@@ -1,5 +1,5 @@
-import { lazy, Suspense, useEffect, useState } from "react";
-import { HashRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { HashRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { App as CapacitorApp } from "@capacitor/app";
 import Dashboard from "./pages/Dashboard";
 import Note from "./pages/Note";
@@ -8,6 +8,7 @@ import Onboarding from "./pages/Onboarding";
 import Splash from "./components/Splash";
 import { hasInspectorName } from "./lib/profile";
 import { useKeepFocusedFieldVisible } from "./lib/keepFocusedVisible";
+import { BACK_EVENT, parentRoute } from "./lib/backButton";
 
 // The Export screen carries the PDF library (and loads the Excel one), so
 // it's only fetched when first opened rather than parsed at every app
@@ -44,29 +45,13 @@ function App() {
     };
   }, []);
 
-  useEffect(() => {
-    // Android hardware/gesture back button: step back through in-app screens
-    // instead of dropping straight out to the home screen. The webview's own
-    // navigation history (built up by HashRouter) tells us whether there's
-    // somewhere to go back to.
-    const listenerPromise = CapacitorApp.addListener("backButton", ({ canGoBack }) => {
-      if (canGoBack) {
-        window.history.back();
-      } else {
-        CapacitorApp.exitApp();
-      }
-    });
-    return () => {
-      listenerPromise.then((listener) => listener.remove());
-    };
-  }, []);
-
   return (
     <div className="app-shell">
       {needsOnboarding ? (
         <Onboarding onDone={() => setNeedsOnboarding(false)} />
       ) : (
         <HashRouter>
+          <BackButton />
           <AnimatedRoutes />
         </HashRouter>
       )}
@@ -83,6 +68,31 @@ function routeDepth(pathname: string): number {
   if (pathname.endsWith("/findings")) return 1;
   // Note and Export are both one level below Findings
   return 2;
+}
+
+// Android hardware/gesture back button: up the app's structure, not back
+// through history (see lib/backButton). The open screen gets first say
+// (the finding screen saves before leaving); otherwise go to the parent
+// screen, or close the app from the dashboard.
+function BackButton() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const pathname = useRef(location.pathname);
+  pathname.current = location.pathname;
+  useEffect(() => {
+    const listenerPromise = CapacitorApp.addListener("backButton", () => {
+      const event = new Event(BACK_EVENT, { cancelable: true });
+      window.dispatchEvent(event);
+      if (event.defaultPrevented) return; // the screen handled it
+      const parent = parentRoute(pathname.current);
+      if (parent === null) CapacitorApp.exitApp();
+      else navigate(parent, { replace: true });
+    });
+    return () => {
+      listenerPromise.then((listener) => listener.remove());
+    };
+  }, [navigate]);
+  return null;
 }
 
 function AnimatedRoutes() {
