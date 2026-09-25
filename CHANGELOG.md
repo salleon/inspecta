@@ -6,6 +6,12 @@ the technical detail.
 
 ## 25 September 2026
 
+- **"‹ Previous" on the Categorise screen.** A mis-tap moves straight on,
+  so you can now step back through the findings you've been through.
+  The earlier finding shows "You picked …" with that category
+  highlighted: tap another to change it (what was learnt from the wrong
+  pick is taken back), or "Keep & next". A skipped one says so and can
+  be picked or skipped again.
 - **Old numbers tinted purple in Excel.** A Ref kept from an old report
   (e.g. 1.8.3 from a note "1.8.3 still present") has its cell filled
   pale purple, so carried-over defects stand out.

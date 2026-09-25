@@ -128,6 +128,9 @@ export default function ExportPreview() {
   const advancedControls = useAdvancedControls();
   const [askCategorise, setAskCategorise] = useState<ShareKind | null>(null);
   const [categorising, setCategorising] = useState<ShareKind | null>(null);
+  // the findings the Categorise screen goes through, fixed when it opens
+  // (so "‹ Previous" can return to ones categorised since)
+  const [categoriseIds, setCategoriseIds] = useState<string[]>([]);
   const [categoriseAsked, setCategoriseAsked] = useState(false);
   // an export to start once the categories just picked are in `items`
   const [pendingShare, setPendingShare] = useState<ShareKind | null>(null);
@@ -623,6 +626,9 @@ export default function ExportPreview() {
             </div>
             <button
               onClick={() => {
+                setCategoriseIds(
+                  reportRows(items.filter((i) => !esrItem(i.finding.esrCategory))).flatMap((r) => (r.kind === "finding" ? [r.entry.finding.id] : [])),
+                );
                 setCategorising(askCategorise);
                 setAskCategorise(null);
               }}
@@ -647,7 +653,7 @@ export default function ExportPreview() {
 
       {categorising && (
         <CategoriseFlow
-          entries={reportRows(items.filter((i) => !esrItem(i.finding.esrCategory))).flatMap((r) => (r.kind === "finding" ? [r.entry] : []))}
+          entries={categoriseIds.flatMap((id) => items.filter((i) => i.finding.id === id))}
           onPick={handleCategorisePick}
           onExport={() => {
             setCategoriseAsked(true);
