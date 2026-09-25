@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { esrItem } from "./esrCategories";
+import { currentCode, esrItem } from "./esrCategories";
 
 // Admin keyword tuning: changes to the built-in ESR keywords
 // (esrCategories.ts), made on this phone from Settings → Admin. Stored as
@@ -53,7 +53,8 @@ function save(next: Edits) {
 function sanitise(raw: unknown): Edits {
   const out: Edits = {};
   if (!raw || typeof raw !== "object") return out;
-  for (const [code, value] of Object.entries(raw as Record<string, unknown>)) {
+  for (const [oldCode, value] of Object.entries(raw as Record<string, unknown>)) {
+    const code = currentCode(oldCode);
     if (!esrItem(code) || !value || typeof value !== "object") continue;
     const v = value as { added?: unknown; removed?: unknown };
     const added = (Array.isArray(v.added) ? v.added : [])
@@ -66,7 +67,11 @@ function sanitise(raw: unknown): Edits {
   return out;
 }
 
-const clean = (text: string) => text.trim().toLowerCase().replace(/\s+/g, " ").slice(0, 60);
+// a function declaration, not a const: load() runs while this module is
+// still initialising and needs it already defined
+function clean(text: string): string {
+  return text.trim().toLowerCase().replace(/\s+/g, " ").slice(0, 60);
+}
 
 function parseBuiltIn(k: string): { text: string; kind: KeywordKind } {
   const kind = k[0] === "~" || k[0] === "!" ? (k[0] as KeywordKind) : "";

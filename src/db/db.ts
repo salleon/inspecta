@@ -1,6 +1,7 @@
 import Dexie, { type Table } from "dexie";
 import type { Site, Finding, Photo, SiteKind, Thumbnail } from "./types";
 import { makeThumbnail } from "../lib/thumbnail";
+import { RENAMED_CODES } from "../lib/esrCategories";
 
 class InspectaDB extends Dexie {
   sites!: Table<Site, string>;
@@ -46,6 +47,18 @@ class InspectaDB extends Dexie {
       photos: "id, findingId, siteId, order",
       thumbnails: "photoId, siteId",
     });
+    // v5: ESR item codes that were removed (4.1 General → 4 Emergency
+    // Lighting) move to what replaced them. Schema unchanged.
+    this.version(5)
+      .stores({
+        sites: "id, updatedAt, kind",
+        findings: "id, siteId, createdAt, order",
+        photos: "id, findingId, siteId, order",
+        thumbnails: "photoId, siteId",
+      })
+      .upgrade((tx) => tx.table("findings").toCollection().modify((f) => {
+        if (f.esrCategory && RENAMED_CODES[f.esrCategory]) f.esrCategory = RENAMED_CODES[f.esrCategory];
+      }));
   }
 }
 

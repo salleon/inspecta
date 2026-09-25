@@ -1,4 +1,4 @@
-import { ESR_ITEMS } from "./esrCategories";
+import { ESR_ITEMS, currentCode } from "./esrCategories";
 import { categoryKeywords, subscribeKeywords } from "./esrKeywords";
 
 // ESR category suggestions for a finding, worked out on the phone (offline,
@@ -136,10 +136,25 @@ function save(key: string, value: unknown) {
 let memory: Memory | null = null;
 let usage: Usage | null = null;
 
+// counts saved against a removed code (e.g. 4.1) count for its replacement
+function renameCounts(counts: Record<string, number>): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const [code, n] of Object.entries(counts)) out[currentCode(code)] = (out[currentCode(code)] ?? 0) + n;
+  return out;
+}
+
+function loadMemory(): Memory {
+  const m = load<Memory>(MEMORY_KEY);
+  for (const w of Object.keys(m)) m[w] = renameCounts(m[w]);
+  return m;
+}
+
+const loadUsage = () => renameCounts(load<Usage>(USAGE_KEY));
+
 // Remember a pick: the note's words now point (a little more) to `code`.
 export function learnCategory(note: string, code: string) {
-  memory ??= load<Memory>(MEMORY_KEY);
-  usage ??= load<Usage>(USAGE_KEY);
+  memory ??= loadMemory();
+  usage ??= loadUsage();
   for (const w of new Set(keyWords(note))) {
     const codes = (memory[w] ??= {});
     codes[code] = (codes[code] ?? 0) + 1;
@@ -157,7 +172,7 @@ export interface CategorySuggestion {
   matched: boolean;
 }
 
-const FALLBACK = ["1.6", "1.4", "3.1", "4.1", "5.5", "7.2", "2.4", "13"];
+const FALLBACK = ["1.6", "1.4", "3.1", "4", "5.5", "7.2", "2.4", "13"];
 
 // Nothing typed in the note gives no suggestions, unless `padIfEmpty`
 // (the Categorise screen, which always offers the most-used ones).
@@ -165,8 +180,8 @@ export function suggestCategories(note: string, location = "", { max = MAX_SUGGE
   const noteWords = tokens(note);
   if (!padIfEmpty && !noteWords.some((w) => !STOPWORDS.has(w))) return [];
   const placeWords = tokens(location);
-  memory ??= load<Memory>(MEMORY_KEY);
-  usage ??= load<Usage>(USAGE_KEY);
+  memory ??= loadMemory();
+  usage ??= loadUsage();
 
   const scores = new Map<string, number>();
   const add = (code: string, s: number) => scores.set(code, (scores.get(code) ?? 0) + s);

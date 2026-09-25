@@ -73,10 +73,10 @@ export const ESR_SECTIONS: EsrSection[] = [
       "fire door sign", "smoke door sign", "door sign", "!re entry", "!reentry", "fire safety door", "do not obstruct", "offence sign", "warning sign", "~signage", "~sign",
     ]),
   ]),
-  section("4", "Emergency Lighting", [
-    item("4.1", "General", [
-      "!emergency light", "emergency lighting", "!eel", "emergency exit lighting", "decal", "emergency lamp", "emergency luminaire", "el", "spitfire", "twin spot", "discharge test", "emerg light", "~battery", "~batten", "~emerg",
-    ]),
+  // no sub-items: findings go straight under the section (4.1 General was
+  // removed — see RENAMED_CODES)
+  section("4", "Emergency Lighting", [], [
+    "!emergency light", "emergency lighting", "!eel", "emergency exit lighting", "decal", "emergency lamp", "emergency luminaire", "el", "spitfire", "twin spot", "discharge test", "emerg light", "~battery", "~batten", "~emerg",
   ]),
   section("5", "Fire-fighting Services and Equipment", [
     item("5.1", "Fire main, booster, static water supply and associated water supply equipment", [
@@ -142,6 +142,15 @@ export const ESR_SECTIONS: EsrSection[] = [
   ]),
   section("13", "Miscellaneous", [], ["logbook", "log book", "~records", "~certificate", "~miscellaneous"]),
 ];
+
+// Codes that have been removed from the list, and what they became.
+// Saved findings are moved over by a database upgrade (db.ts); keyword
+// changes and learnt picks are moved as they're read.
+export const RENAMED_CODES: Record<string, string> = { "4.1": "4" };
+
+export function currentCode(code: string): string {
+  return RENAMED_CODES[code] ?? code;
+}
 
 // Every pickable item, in list order.
 export const ESR_ITEMS: EsrItem[] = ESR_SECTIONS.flatMap((s) => (s.items.length ? s.items : [s]));

@@ -6,6 +6,13 @@ the technical detail.
 
 ## 25 September 2026
 
+- **"4.1 General" removed.** Emergency Lighting has no sub-categories
+  now: its findings go straight under the blue "4 Emergency Lighting"
+  row, like 12 and 13. Findings already tagged 4.1 move to 4
+  automatically when the app updates, and so do keyword changes and what
+  the phone has learnt.
+- **Fix: admin keyword changes now survive closing the app.** They were
+  being lost on every restart (only the current session kept them).
 - **Sprinkler suggestions favour 5.6.** "Sprinkler" and "bulb" are now
   only weak hints for 1.10 Wall wetting sprinklers, so 5.6 Fire
   Sprinkler Systems comes first. Notes that say "wall wetting" (or
