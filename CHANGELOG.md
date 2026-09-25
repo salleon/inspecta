@@ -6,6 +6,10 @@ the technical detail.
 
 ## 25 September 2026
 
+- **Sprinkler suggestions favour 5.6.** "Sprinkler" and "bulb" are now
+  only weak hints for 1.10 Wall wetting sprinklers, so 5.6 Fire
+  Sprinkler Systems comes first. Notes that say "wall wetting" (or
+  "drencher") still suggest 1.10 first.
 - **Keyword changes from the admin file built in.** 1.10 Wall wetting
   sprinklers gains "sprinkler" and "bulb"; 5.6 Fire Sprinkler Systems
   gains "bulb" and the weak hint "concealed". A phone that already has
