@@ -67,7 +67,7 @@ export const ESR_SECTIONS: EsrSection[] = [
     item("2.6", "Artificial lighting required for egress", ["artificial light", "artificial lighting", "general lighting", "normal lighting", "lux", "~dark", "~lighting", "~light"]),
   ]),
   section("3", "Signs", [
-    item("3.1", "Illuminated exit signs", ["!exit sign", "exit light", "running man", "directional exit", "emergency exit sign", "illuminated exit", "~exit", "~pictogram", "~illuminated"]),
+    item("3.1", "Illuminated exit signs", ["!exit sign", "exit light", "eel", "running man", "directional exit", "emergency exit sign", "illuminated exit", "~exit", "~pictogram", "~illuminated"]),
     item("3.2", "Signs concerning use of lifts in the event of fire", ["lift sign", "do not use lift", "lift fire sign", "in case of fire", "~lift", "~sign"]),
     item("3.3", "Signs on fire doors and smoke doors including re-entry from fire stairs and signs on egress doors leading from fire-isolated passageways", [
       "fire door sign", "smoke door sign", "door sign", "!re entry", "!reentry", "fire safety door", "do not obstruct", "offence sign", "warning sign", "~signage", "~sign",
@@ -75,7 +75,7 @@ export const ESR_SECTIONS: EsrSection[] = [
   ]),
   section("4", "Emergency Lighting", [
     item("4.1", "General", [
-      "!emergency light", "emergency lighting", "emergency lamp", "emergency luminaire", "el", "spitfire", "twin spot", "discharge test", "emerg light", "~battery", "~batten", "~emerg",
+      "!emergency light", "emergency lighting", "!eel", "emergency exit lighting", "emergency lamp", "emergency luminaire", "el", "spitfire", "twin spot", "discharge test", "emerg light", "~battery", "~batten", "~emerg",
     ]),
   ]),
   section("5", "Fire-fighting Services and Equipment", [
@@ -84,7 +84,7 @@ export const ESR_SECTIONS: EsrSection[] = [
     ]),
     item("5.2", "Fire hydrant system", ["!hydrant", "fire hydrant", "landing valve", "hydrant valve", "storz", "blank cap", "~coupling", "~valve"]),
     item("5.3", "Fire control room", ["fire control room", "fire control centre", "fire control center", "fcr", "fcc", "control room"]),
-    item("5.4", "Fire hose reel systems", ["!hose reel", "hosereel", "fhr", "~hose", "~nozzle", "~reel"]),
+    item("5.4", "Fire hose reel systems", ["!hose reel", "hosereel", "!fhr", "!hr", "~hose", "~nozzle", "~reel"]),
     item("5.5", "Portable fire extinguishers", [
       "!extinguisher", "fire extinguisher", "fire blanket", "co2", "dcp", "dry chemical", "dry powder", "wet chemical", "afff", "service tag", "ext", "~blanket", "~bracket", "~foam", "~tag",
     ]),

@@ -6,6 +6,9 @@ the technical detail.
 
 ## 25 September 2026
 
+- **More ESR shorthand.** "FHR" and "HR" now suggest 5.4 Fire hose reel
+  systems first. "EEL" (emergency exit lighting) suggests 4.1 Emergency
+  Lighting first, then 3.1 Illuminated exit signs.
 - **Findings without a photo are now in the PDF.** They used to be left
   out; now they appear like any other finding, with a dashed "No photo"
   box where the photos would go (the export preview shows the same).
