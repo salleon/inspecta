@@ -48,6 +48,8 @@ const FONT = { name: "Arial", size: 10 };
 const SECTION_FILL = "FF99CCFF";
 const ITEM_FILL = "FFD9D9D9";
 const GROUP_FILL = "FFFFFFCC";
+// Ref of a finding carried over from an old report (its old number)
+const KEPT_REF_FILL = "FFB1A0C7";
 const UNCATEGORISED_FILL = "FFBFBFBF";
 const THIN = { style: "thin" as const, color: { argb: "FF000000" } };
 
@@ -146,7 +148,7 @@ export async function buildFindingsWorkbook(
       rowNum++;
       continue;
     }
-    const { entry: { finding, photos }, ref } = reportRow;
+    const { entry: { finding, photos }, ref, kept } = reportRow;
     const locationText = [finding.level, finding.location].filter(Boolean).join("\n");
     const noteH = estimateTextPx(finding.note, descPx);
     const locH = estimateTextPx(locationText, locPx);
@@ -216,6 +218,7 @@ export async function buildFindingsWorkbook(
     const refCell = row.getCell(COL.ref);
     refCell.value = ref ?? null;
     refCell.alignment = topLeft;
+    if (kept) refCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: KEPT_REF_FILL } };
 
     const loc = row.getCell(COL.location);
     loc.value = locationText || null;

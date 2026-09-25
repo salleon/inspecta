@@ -6,6 +6,9 @@ the technical detail.
 
 ## 25 September 2026
 
+- **Old numbers tinted purple in Excel.** A Ref kept from an old report
+  (e.g. 1.8.3 from a note "1.8.3 still present") has its cell filled
+  pale purple, so carried-over defects stand out.
 - **Old report numbers recognised.** A note like "1.8.1 still present"
   suggests 1.8 first (read level by level: 6.3.4.2 → 6.3.4, 1.10.3 →
   1.10, 13.2 → 13). It counts at the start of a note, or anywhere with

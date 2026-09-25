@@ -18,7 +18,8 @@ export type ReportRow<T> =
   | { kind: "group"; code: string; name: string }
   | { kind: "item"; code: string; name: string }
   | { kind: "uncategorised" }
-  | { kind: "finding"; entry: T; ref?: string };
+  // `kept`: the Ref is the finding's number from an old report
+  | { kind: "finding"; entry: T; ref?: string; kept?: boolean };
 
 // notes at least this alike are put next to each other
 const SIMILAR = 0.5;
@@ -89,7 +90,7 @@ export function reportRows<T extends { finding: Finding }>(entries: T[]): Report
     const kept = byCode.get(code)!.filter(oldRef).sort((a, b) => lastPart(oldRef(a)!) - lastPart(oldRef(b)!));
     const rest = clusterSimilar(byCode.get(code)!.filter((e) => !oldRef(e)));
     const start = Math.max(0, ...kept.map((e) => (oldRef(e)!.split(".").length === code.split(".").length + 1 ? lastPart(oldRef(e)!) : 0)));
-    kept.forEach((entry) => rows.push({ kind: "finding", entry, ref: oldRef(entry) }));
+    kept.forEach((entry) => rows.push({ kind: "finding", entry, ref: oldRef(entry), kept: true }));
     rest.forEach((entry, n) => rows.push({ kind: "finding", entry, ref: `${code}.${start + n + 1}` }));
   }
   if (uncategorised.length) {
