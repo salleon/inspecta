@@ -6,6 +6,9 @@ the technical detail.
 
 ## 25 September 2026
 
+- **1.4 full name.** "Penetrations to fire resisting elements" now reads
+  in full as on the company ESR list ("…(includes fire walls; smoke
+  walls; …access panels and control joints)"), in the app and reports.
 - **Yellow 6.3 row in reports.** Like the company spreadsheet, findings in
   6.3.1–6.3.4 now sit under a light yellow "6.3 Fire control operation…"
   row between the blue 6 and the grey sub-categories, in Excel, the PDF

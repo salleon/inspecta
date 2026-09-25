@@ -35,7 +35,7 @@ export const ESR_SECTIONS: EsrSection[] = [
     item("1.3", "Required non-combustible elements", [
       "non combustible", "noncombustible", "combustible", "aluminium composite", "acp", "~cladding", "~timber",
     ]),
-    item("1.4", "Penetrations to fire resisting elements", [
+    item("1.4", "Penetrations to fire resisting elements (includes fire walls; smoke walls; and fire resistant elements such as walls, floors, ceilings, protective coverings, access panels and control joints)", [
       "!penetration", "unsealed", "fire collar", "collar", "fire sealant", "sealant", "mastic", "fire batt", "batt", "fire pillow", "fire wrap", "access panel", "control joint",
       "~pipe", "~cable", "~conduit", "~hole", "~gap", "~void", "~seal", "~mortar",
     ]),
