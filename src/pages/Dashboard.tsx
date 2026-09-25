@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent, type CSSProperties, type P
 import { useNavigate } from "react-router-dom";
 import type { Site, SiteKind } from "../db/types";
 import { createSite, deleteSite, findingCount, firstSitePhoto, getThumbnail, listSites } from "../db/db";
-import { IconSearch, IconBuilding, IconPlus, IconTrash, IconSettings, IconChevronRight } from "../components/Icons";
+import { IconSearch, IconBuilding, IconPlus, IconTrash, IconSettings, IconChevronRight, IconLock } from "../components/Icons";
 import CountUp from "../components/CountUp";
 import ConfirmDialog from "../components/ConfirmDialog";
 import FormActions from "../components/FormActions";
@@ -365,6 +365,14 @@ export default function Dashboard() {
                 <span style={settingsRowHintStyle}>Show extra menus for more detailed data entry.</span>
               </div>
               <Switch on={advancedControls} />
+            </button>
+            <button type="button" onClick={() => navigate("/admin")} style={settingsRowStyle}>
+              <IconLock size={18} color="var(--muted)" style={{ flexShrink: 0 }} />
+              <div style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
+                <span style={{ fontSize: 14, fontWeight: 700 }}>Admin</span>
+                <span style={settingsRowHintStyle}>ESR keywords. PIN protected.</span>
+              </div>
+              <IconChevronRight color="var(--muted)" />
             </button>
             <button
               type="button"

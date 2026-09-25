@@ -143,3 +143,12 @@ export function IconGrip({ size = 20, ...p }: IconProps) {
     </svg>
   );
 }
+
+export function IconLock({ size = 18, ...p }: IconProps) {
+  return (
+    <svg {...base(size)} {...p}>
+      <rect x="4" y="11" width="16" height="10" rx="2"></rect>
+      <path d="M8 11V7a4 4 0 0 1 8 0v4"></path>
+    </svg>
+  );
+}

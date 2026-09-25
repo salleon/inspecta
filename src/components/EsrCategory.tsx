@@ -2,6 +2,7 @@ import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { ESR_SECTIONS, esrItem, esrSection, isSectionOnly, type EsrItem } from "../lib/esrCategories";
 import type { CategorySuggestion } from "../lib/esrSuggest";
 import { useBackHandler } from "../lib/backButton";
+import { categoryKeywords } from "../lib/esrKeywords";
 import { IconChevronRight } from "./Icons";
 
 // ESR category pieces shared by the finding screen and the Categorise
@@ -159,7 +160,7 @@ export function EsrBrowseSheet({ current, onPick, onClose }: { current?: string;
     return ESR_SECTIONS.map((s) => ({
       section: s,
       items: (s.items.length ? s.items : [s]).filter(
-        (i) => i.code === q || i.code.startsWith(`${q}.`) || i.name.toLowerCase().includes(q) || i.keywords.some((k) => norm(k.replace(/^[~!]/, "")).includes(nq)),
+        (i) => i.code === q || i.code.startsWith(`${q}.`) || i.name.toLowerCase().includes(q) || categoryKeywords(i.code).some((k) => norm(k.text).includes(nq)),
       ),
     })).filter((r) => r.items.length);
   }, [q]);

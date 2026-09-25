@@ -14,6 +14,7 @@ import { BACK_EVENT, parentRoute } from "./lib/backButton";
 // it's only fetched when first opened rather than parsed at every app
 // launch. It's bundled locally, so this works offline.
 const ExportPreview = lazy(() => import("./pages/Export"));
+const Admin = lazy(() => import("./pages/Admin"));
 
 // How long the splash sits fully visible before it starts fading, and how
 // long the fade itself takes (kept in sync with .splash-leaving's CSS
@@ -65,6 +66,7 @@ function App() {
 // right way instead of just fading.
 function routeDepth(pathname: string): number {
   if (pathname === "/") return 0;
+  if (pathname.startsWith("/admin")) return pathname.split("/").length - 1;
   if (pathname.endsWith("/findings")) return 1;
   // Note and Export are both one level below Findings
   return 2;
@@ -119,6 +121,7 @@ function AnimatedRoutes() {
           <Route path="/site/:siteId/finding/:findingId/note" element={<Note />} />
           <Route path="/site/:siteId/findings" element={<Findings />} />
           <Route path="/site/:siteId/export" element={<ExportPreview />} />
+          <Route path="/admin/*" element={<Admin />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>

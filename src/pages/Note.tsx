@@ -59,6 +59,8 @@ export default function Note() {
   const [esrCategory, setEsrCategory] = useState<string | undefined>(undefined);
   const [categorySuggestions, setCategorySuggestions] = useState<CategorySuggestion[]>([]);
   const [changingCategory, setChangingCategory] = useState(false);
+  // the "Quick add" box starts closed; tapping it drops the suggestions down
+  const [categoryOpen, setCategoryOpen] = useState(false);
   const [browsingCategories, setBrowsingCategories] = useState(false);
   const advancedControls = useAdvancedControls();
   const [busy, setBusy] = useState(false);
@@ -290,6 +292,7 @@ export default function Note() {
   async function handlePickCategory(code: string | undefined) {
     setEsrCategory(code);
     setChangingCategory(false);
+    setCategoryOpen(false);
     setBrowsingCategories(false);
     if (code) learnCategory(note, code);
     if (findingId) await updateFinding(findingId, { esrCategory: code });
@@ -597,21 +600,25 @@ export default function Note() {
                   <EsrLink onClick={() => setChangingCategory(true)}>Change ›</EsrLink>
                 </div>
               </>
+            ) : !categoryOpen && !changingCategory ? (
+              <CategoryBoxButton label="Quick add" open={false} onClick={() => setCategoryOpen(true)} />
             ) : (
               <>
+                <CategoryBoxButton
+                  label={changingCategory ? "Change category" : "Quick add"}
+                  open
+                  onClick={() => {
+                    setCategoryOpen(false);
+                    setChangingCategory(false);
+                  }}
+                />
                 {categorySuggestions.length ? (
                   <EsrSuggestionList suggestions={categorySuggestions} current={esrCategory} onPick={handlePickCategory} />
                 ) : (
-                  <>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, border: "1px dashed var(--border-strong)", borderRadius: 11, padding: "11px 12px", fontSize: 13, fontWeight: 700, color: "var(--muted)" }}>
-                      {esrCategory ? "No suggestions for this note" : "Uncategorised"}
-                    </div>
-                    <div style={{ fontSize: 12, fontWeight: 500, color: "var(--muted-2)" }}>Suggestions appear here as you type the note.</div>
-                  </>
+                  <div style={{ fontSize: 12, fontWeight: 500, color: "var(--muted-2)", padding: "2px 2px 0" }}>Suggestions appear here as you type the note.</div>
                 )}
-                <div style={{ display: "flex", justifyContent: "center", gap: 18 }}>
+                <div style={{ display: "flex", justifyContent: "center" }}>
                   <EsrLink onClick={() => setBrowsingCategories(true)}>Browse all categories ›</EsrLink>
-                  {esrCategory && <EsrLink onClick={() => setChangingCategory(false)}>Cancel</EsrLink>}
                 </div>
               </>
             )}
@@ -747,3 +754,25 @@ const overlayIconButtonStyle: CSSProperties = {
   justifyContent: "center",
   padding: 0,
 };
+
+// The ESR category box: closed it reads "Quick add ⌄"; open, it heads the
+// suggestions (teal, ⌃) and tapping it folds them away again.
+function CategoryBoxButton({ label, open, onClick }: { label: string; open: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      aria-expanded={open}
+      // same as the defect type button: don't let the blur of a focused
+      // field shift the layout under the tap
+      onPointerDown={(e) => e.preventDefault()}
+      onClick={() => {
+        (document.activeElement as HTMLElement | null)?.blur();
+        onClick();
+      }}
+      style={{ ...fieldStyle, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, textAlign: "left", borderColor: open ? "var(--accent)" : "rgba(46,196,182,0.28)" }}
+    >
+      <span style={{ color: open ? "var(--muted)" : "var(--muted-2)" }}>{label}</span>
+      <IconChevronLeft size={16} color={open ? "var(--accent)" : "var(--muted-2)"} style={{ transform: open ? "rotate(90deg)" : "rotate(-90deg)", flexShrink: 0 }} />
+    </button>
+  );
+}

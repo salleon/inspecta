@@ -1,4 +1,5 @@
 import { ESR_ITEMS } from "./esrCategories";
+import { categoryKeywords, subscribeKeywords } from "./esrKeywords";
 
 // ESR category suggestions for a finding, worked out on the phone (offline,
 // no AI service) from what's typed in the note, and a little from the
@@ -75,21 +76,30 @@ function nearlyEqual(a: string, b: string): boolean {
 }
 
 interface Keyword {
+  text: string; // as shown in Admin, e.g. "hose reel"
   words: string[];
   weight: number;
 }
 
 // "~" = weak hint, "!" = near-certain. Longer phrases are more specific,
-// so count for more.
-const KEYWORDS: { code: string; keywords: Keyword[] }[] = ESR_ITEMS.map((i) => ({
-  code: i.code,
-  keywords: i.keywords.map((k) => {
-    const mark = k[0] === "~" || k[0] === "!" ? k[0] : "";
-    const words = tokens(k.slice(mark.length));
-    const weight = mark === "~" ? 0.6 : (2 + 1.5 * (words.length - 1)) * (mark === "!" ? 2 : 1);
-    return { words, weight };
-  }),
-}));
+// so count for more. Built from the built-in keywords plus any Admin
+// changes on this phone, and rebuilt when those change.
+let keywordTable: { code: string; keywords: Keyword[] }[] | null = null;
+subscribeKeywords(() => {
+  keywordTable = null;
+});
+
+function keywordsTable() {
+  keywordTable ??= ESR_ITEMS.map((i) => ({
+    code: i.code,
+    keywords: categoryKeywords(i.code).map((k) => {
+      const words = tokens(k.text);
+      const weight = k.kind === "~" ? 0.6 : (2 + 1.5 * (words.length - 1)) * (k.kind === "!" ? 2 : 1);
+      return { text: `${k.kind}${k.text}`, words, weight };
+    }),
+  }));
+  return keywordTable;
+}
 
 function contains(text: string[], phrase: string[]): boolean {
   outer: for (let i = 0; i + phrase.length <= text.length; i++) {
@@ -161,19 +171,7 @@ export function suggestCategories(note: string, location = "", { max = MAX_SUGGE
   const scores = new Map<string, number>();
   const add = (code: string, s: number) => scores.set(code, (scores.get(code) ?? 0) + s);
 
-  // Per item: its strongest keyword counts in full, any others at half —
-  // "fire rated wall" also matching "wall" shouldn't outweigh a clear
-  // "penetration".
-  for (const { code, keywords } of KEYWORDS) {
-    const hits: number[] = [];
-    for (const k of keywords) {
-      if (contains(noteWords, k.words)) hits.push(k.weight);
-      else if (placeWords.length && contains(placeWords, k.words)) hits.push(k.weight * 0.4);
-    }
-    if (!hits.length) continue;
-    hits.sort((x, y) => y - x);
-    add(code, hits[0] + 0.5 * hits.slice(1).reduce((x, y) => x + y, 0));
-  }
+  for (const [code, { score }] of keywordScores(noteWords, placeWords)) add(code, score);
 
   // learnt words: stronger the more often a word led to that category, and
   // the more it points to that one category rather than several
@@ -200,6 +198,35 @@ export function suggestCategories(note: string, location = "", { max = MAX_SUGGE
     if (known(code) && !ranked.some((r) => r.code === code)) ranked.push({ code, matched: false });
   }
   return ranked;
+}
+
+// Per item: its strongest keyword counts in full, any others at half —
+// "fire rated wall" also matching "wall" shouldn't outweigh a clear
+// "penetration". Location matches count at 40%.
+function keywordScores(noteWords: string[], placeWords: string[]) {
+  const out = new Map<string, { score: number; matched: string[] }>();
+  for (const { code, keywords } of keywordsTable()) {
+    const hits: { weight: number; text: string }[] = [];
+    for (const k of keywords) {
+      if (!k.words.length) continue;
+      if (contains(noteWords, k.words)) hits.push({ weight: k.weight, text: k.text });
+      else if (placeWords.length && contains(placeWords, k.words)) hits.push({ weight: k.weight * 0.4, text: `${k.text} (location)` });
+    }
+    if (!hits.length) continue;
+    hits.sort((x, y) => y.weight - x.weight);
+    out.set(code, { score: hits[0].weight + 0.5 * hits.slice(1).reduce((x, y) => x + y.weight, 0), matched: hits.map((h) => h.text) });
+  }
+  return out;
+}
+
+// Admin "Test a note": the top 5 from keywords alone (not what this phone
+// has learnt), with what matched and the score.
+export function explainCategories(note: string, max = MAX_SUGGESTIONS) {
+  const order = new Map(ESR_ITEMS.map((i, n) => [i.code, n]));
+  return [...keywordScores(tokens(note), [])]
+    .sort((a, b) => b[1].score - a[1].score || order.get(a[0])! - order.get(b[0])!)
+    .slice(0, max)
+    .map(([code, { score, matched }]) => ({ code, score, matched }));
 }
 
 // How alike two notes are (0–1), for putting similar findings next to

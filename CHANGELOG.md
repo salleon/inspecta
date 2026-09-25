@@ -6,6 +6,30 @@ the technical detail.
 
 ## 25 September 2026
 
+- **ESR category "Quick add" box.** On the finding screen the category now
+  starts as one closed box, "Quick add". Tap it to drop down the
+  suggestions (same as before); tap it again to fold them away. Picking
+  closes it and shows the picked category; "Change" opens the list with
+  the box reading "Change category" (tap it to cancel). The Categorise
+  screen at export is unchanged.
+- **"Decal" keyword.** Suggests 3.1 Illuminated exit signs first, then
+  4.1 Emergency Lighting.
+- **Admin menu (Settings → Admin).** PIN protected (starts as 2021).
+  - **ESR keywords:** every category with its keywords, searchable. Add
+    a keyword as near-certain, normal or a weak hint, or remove one;
+    your changes show in teal and the category is marked EDITED. "Try
+    it" shows the top 5 for a sample note as you edit.
+  - **Test a note:** the top 5 for any note, with the keywords that
+    matched and their scores.
+  - **Share keyword changes / Load keyword file:** send your changes as
+    a small file and load it on another phone (it replaces that phone's
+    changes), or send it to have them built into the app.
+  - **Change PIN.** **Email recovery code:** sends yourself a code (via
+    the share menu); "Forgot PIN?" on the PIN screen takes it and lets
+    you choose a new PIN. Email it to yourself once on each phone.
+  - **Reset keywords:** back to the built-in list.
+  - Keyword changes apply to that phone only, on top of what each phone
+    learns from its own picks.
 - **More ESR shorthand.** "FHR" and "HR" now suggest 5.4 Fire hose reel
   systems first. "EEL" (emergency exit lighting) suggests 4.1 Emergency
   Lighting first, then 3.1 Illuminated exit signs.
