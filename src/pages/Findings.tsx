@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import type { Finding, Photo, Site } from "../db/types";
 import { addPhoto, createFinding, deleteFinding, deleteSite, getSite, getThumbnail, listFindings, listPhotos, reorderFinding, updateSite } from "../db/db";
 import { capturePhoto } from "../lib/capture";
-import { IconChevronLeft, IconShare, IconEdit, IconGrip, IconCheck, IconTrash, IconPen, IconCamera } from "../components/Icons";
+import { IconChevronLeft, IconShare, IconEdit, IconGrip, IconCheck, IconTrash, IconPen, IconCamera, IconNotepad } from "../components/Icons";
 import DefectTypePill from "../components/DefectTypePill";
 import { esrItem } from "../lib/esrCategories";
 import ConfirmDialog from "../components/ConfirmDialog";
@@ -403,6 +403,8 @@ export default function Findings() {
 
       {/* list */}
       <div ref={listRef} style={{ flexGrow: 1, overflowY: "auto", padding: "4px 16px 12px", display: "flex", flexDirection: "column", position: "relative" }}>
+        <NotepadRow site={site} disabled={reordering} onOpen={() => navigate(`/site/${siteId}/notes`)} />
+
         {rows.length === 0 && (
           <div style={{ padding: "40px 8px", textAlign: "center", color: "var(--muted-2)", fontSize: 14, fontWeight: 500 }}>
             No findings yet — tap New finding to log your first one, or the pen for one without a photo.
@@ -886,3 +888,55 @@ const inputStyle = {
   fontWeight: 600,
   outline: "none",
 } as const;
+
+// The site's Notepad, pinned above the findings: the start of what's
+// written (or a hint while empty). Not a finding: never numbered, moved or
+// exported.
+function NotepadRow({ site, disabled, onOpen }: { site: Site | null; disabled: boolean; onOpen: () => void }) {
+  const notes = site?.notes?.trim() ?? "";
+  const edited = notes && site?.notesUpdatedAt ? new Date(site.notesUpdatedAt) : null;
+  const when = edited
+    ? edited.toDateString() === new Date().toDateString()
+      ? edited.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+      : edited.toLocaleDateString([], { day: "numeric", month: "short" })
+    : null;
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      disabled={disabled}
+      aria-label="Open notepad"
+      style={{
+        flexShrink: 0,
+        display: "flex",
+        gap: 12,
+        alignItems: "center",
+        textAlign: "left",
+        width: "100%",
+        margin: "4px 0 6px",
+        padding: 12,
+        borderRadius: 14,
+        background: "var(--panel)",
+        border: "1px solid rgba(46,196,182,0.28)",
+        color: "inherit",
+        opacity: disabled ? 0.45 : 1,
+        transition: "opacity 200ms",
+      }}
+    >
+      <span style={{ flexShrink: 0, width: 56, height: 56, borderRadius: 10, background: "var(--panel-2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <IconNotepad size={26} color="var(--accent)" strokeWidth={1.9} />
+      </span>
+      <span style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
+        <span style={{ fontSize: 14, fontWeight: 800 }}>Notepad</span>
+        {notes ? (
+          <span style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.4, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", whiteSpace: "pre-line" }}>
+            {notes}
+          </span>
+        ) : (
+          <span style={{ fontSize: 12, color: "var(--muted-2)", fontStyle: "italic" }}>General notes for this site. Not included in reports</span>
+        )}
+      </span>
+      {when && <span style={{ flexShrink: 0, alignSelf: "flex-start", paddingTop: 2, fontSize: 11, color: "var(--muted-2)" }}>{when}</span>}
+    </button>
+  );
+}

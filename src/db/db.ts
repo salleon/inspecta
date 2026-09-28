@@ -98,6 +98,12 @@ export async function updateSite(
   await db.sites.update(siteId, changes);
 }
 
+// the site's Notepad (not a change to the site itself, so updatedAt and the
+// dashboard order are left alone)
+export async function updateSiteNotes(siteId: string, notes: string) {
+  await db.sites.update(siteId, { notes, notesUpdatedAt: Date.now() });
+}
+
 async function touchSite(siteId: string) {
   await db.sites.update(siteId, { updatedAt: Date.now() });
 }

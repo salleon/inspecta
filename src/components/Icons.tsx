@@ -108,6 +108,18 @@ export function IconEdit({ size = 15, ...p }: IconProps) {
   );
 }
 
+// notepad: the site's own notes
+export function IconNotepad({ size = 26, ...p }: IconProps) {
+  return (
+    <svg {...base(size)} {...p}>
+      <rect x="5" y="3" width="14" height="18" rx="2"></rect>
+      <line x1="9" y1="8" x2="15" y2="8"></line>
+      <line x1="9" y1="12" x2="15" y2="12"></line>
+      <line x1="9" y1="16" x2="13" y2="16"></line>
+    </svg>
+  );
+}
+
 // picture: photos from the gallery
 export function IconGallery({ size = 20, ...p }: IconProps) {
   return (

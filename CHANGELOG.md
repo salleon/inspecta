@@ -6,6 +6,10 @@ the technical detail.
 
 ## 28 September 2026
 
+- **Notepad for each site.** A Notepad row sits at the top of every site's
+  findings. It opens a blank page for your own jottings (things to check
+  later, FER notes), saved as you type. It's never in the PDF, Excel or
+  photos zip, but it is kept in backups with the site.
 - **Build 3.** The first build sent to coworkers through Google Play
   (Settings shows "Inspecta · Build 3").
 - **Google Play set-up (for automatic updates).** The APK build now also
