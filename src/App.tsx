@@ -7,6 +7,7 @@ import Findings from "./pages/Findings";
 import SiteNotes from "./pages/SiteNotes";
 import Onboarding from "./pages/Onboarding";
 import Splash from "./components/Splash";
+import UpdatePrompt from "./components/UpdatePrompt";
 import { hasInspectorName } from "./lib/profile";
 import { useKeepFocusedFieldVisible } from "./lib/keepFocusedVisible";
 import { BACK_EVENT, parentRoute } from "./lib/backButton";
@@ -58,6 +59,7 @@ function App() {
         </HashRouter>
       )}
       {splashVisible && <Splash leaving={splashLeaving} />}
+      <UpdatePrompt ready={!splashVisible && !needsOnboarding} />
     </div>
   );
 }

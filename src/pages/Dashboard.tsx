@@ -7,6 +7,7 @@ import CountUp from "../components/CountUp";
 import ConfirmDialog from "../components/ConfirmDialog";
 import FormActions from "../components/FormActions";
 import BackupSettings from "../components/BackupSettings";
+import { UpdateSettingsRow } from "../components/UpdatePrompt";
 // the build label handed out to the team (BUILD_LABEL, changed by hand)
 import buildLabel from "../../BUILD_LABEL?raw";
 import logo from "../assets/logo.png";
@@ -370,6 +371,7 @@ export default function Dashboard() {
               <Switch on={advancedControls} />
             </button>
             <BackupSettings rowStyle={settingsRowStyle} hintStyle={settingsRowHintStyle} onRestored={() => void refresh()} />
+            <UpdateSettingsRow rowStyle={settingsRowStyle} hintStyle={settingsRowHintStyle} onAction={() => setSettingsOpen(false)} />
             <button type="button" onClick={() => navigate("/admin")} style={settingsRowStyle}>
               <IconLock size={18} color="var(--muted)" style={{ flexShrink: 0 }} />
               <div style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>

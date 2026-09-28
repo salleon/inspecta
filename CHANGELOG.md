@@ -6,6 +6,13 @@ the technical detail.
 
 ## 28 September 2026
 
+- **Update popup.** When a new version is out on Google Play, Inspecta
+  says so when it opens: **Update now** downloads it in the background
+  (a small bar shows progress, keep working), then **Restart** switches to
+  it in a few seconds. **Later** asks again next time the app opens.
+  Settings has a **Check for updates** row too. Only in the app installed
+  from Play. This version itself still arrives the old way, through the
+  Play Store.
 - **Notepad for each site.** A Notepad row sits at the top of every site's
   findings. It opens a blank page for your own jottings (things to check
   later, FER notes), saved as you type. It's never in the PDF, Excel or
