@@ -4,6 +4,16 @@ Plain-English notes on what changed in the app, newest first. Each entry
 matches a commit on the `advanced_controls` branch; the commit itself has
 the technical detail.
 
+## 28 September 2026
+
+- **Full-screen photos.** On a finding, tap the big photo to see it full
+  screen on black, with the note and location. Swipe sideways for the
+  finding's other photos, pinch or double-tap to zoom, tap once to hide
+  the buttons. Drag it down (or up), tap ✕ or press Android back to close
+  it; it shrinks back into its spot. Adding another photo is now only the
+  dashed **+** tile (a finding with no photo still opens the camera from
+  the photo area).
+
 ## 25 September 2026
 
 - **"Skip tests" option for APK builds.** Actions → Build Android APK →

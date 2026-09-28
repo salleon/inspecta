@@ -23,6 +23,7 @@ import { useAdvancedControls } from "../lib/settings";
 import { learnCategory, suggestCategories, unlearnCategory, type CategorySuggestion } from "../lib/esrSuggest";
 import { EsrBrowseSheet, EsrLink, EsrSelectedCard, EsrSuggestionList } from "../components/EsrCategory";
 import { useBackHandler } from "../lib/backButton";
+import PhotoViewer from "../components/PhotoViewer";
 
 interface PhotoRect {
   top: number;
@@ -184,6 +185,8 @@ export default function Note() {
   }, [note, location]);
 
   const wasCollapsedRef = useRef(false);
+  // the full-screen photo viewer, and where the photo sat when it opened
+  const [viewing, setViewing] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
 
   // Android back: close the defect type picker if it's open, otherwise
   // save and go to the findings list — same as the on-screen back arrow
@@ -274,9 +277,17 @@ export default function Note() {
   function handlePhotoPointerDown() {
     wasCollapsedRef.current = fieldFocused;
   }
+  // with a photo: open it full screen; without one: open the camera (more
+  // photos are added with the dashed "+" tile)
   function handlePhotoTap() {
     if (wasCollapsedRef.current) return; // this tap just re-expanded it
-    handleAddPhoto();
+    const box = photoBoxRef.current;
+    if (!activeUrl || !box) {
+      handleAddPhoto();
+      return;
+    }
+    const r = box.getBoundingClientRect();
+    setViewing({ x: r.left, y: r.top, w: r.width, h: r.height });
   }
 
   // Saved straight away (not just on leaving the screen) so a picked type
@@ -351,12 +362,11 @@ export default function Note() {
             transition: "height 180ms ease",
           }}
         >
-          {/* tapping the photo opens the camera to add another shot to
-              this finding — same action as the dashed "+" thumbnail. If a
-              text field currently has focus, this first tap just re-expands
-              the collapsed photo instead of jumping straight to the camera. */}
+          {/* tapping the photo opens it full screen (the camera when there's
+              no photo yet). If a text field currently has focus, this first
+              tap just re-expands the collapsed photo instead. */}
           <button
-            aria-label="Add another photo to this finding"
+            aria-label={activeUrl ? "View photo full screen" : "Take a photo for this finding"}
             onPointerDown={handlePhotoPointerDown}
             onClick={handlePhotoTap}
             disabled={busy}
@@ -376,7 +386,8 @@ export default function Note() {
                 src={activeUrl}
                 alt=""
                 className="photo-fade"
-                style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                // hidden while the viewer shows it, so it looks like it lifted out
+                style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", opacity: viewing ? 0 : 1 }}
               />
             ) : (
               <div
@@ -717,6 +728,21 @@ export default function Note() {
 
       {browsingCategories && (
         <EsrBrowseSheet current={esrCategory} onPick={handlePickCategory} onClose={() => setBrowsingCategories(false)} />
+      )}
+
+      {viewing && (
+        <PhotoViewer
+          urls={photoUrls}
+          startIndex={selected}
+          source={viewing}
+          radius={16}
+          note={note.trim() || undefined}
+          place={[location.trim(), level].filter(Boolean).join(" · ") || undefined}
+          onClose={(i) => {
+            setSelected(i);
+            setViewing(null);
+          }}
+        />
       )}
     </div>
   );

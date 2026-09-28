@@ -7,6 +7,7 @@ A fast, offline-first app for on-site fire safety inspection capture — built t
 - **Sites dashboard** — list of sites/inspections, split into AFSS and Project work sections, tap to jump straight into the camera for that site, or start a new one.
 - **Camera-first capture** — the shutter is always one tap away. Capturing a photo creates a new finding and drops you straight into a note screen; saving returns you to the camera immediately (no menus, no dashboards in between).
 - **Multi-photo findings** — if one angle isn't enough, add extra photos to the finding you're currently on right from the camera screen.
+- **Full-screen photos** — tap the photo on a finding to view it full screen: swipe between its photos, pinch or double-tap to zoom, drag down, ✕ or Android back to close (`src/components/PhotoViewer.tsx`).
 - **Retake / delete** — fix a bad shot without leaving the note screen.
 - **Saves straight to your gallery** — on the Android app, every photo is also saved to your phone's normal photo gallery via the native camera, independent of the app.
 - **Everything stored offline** — findings, notes, locations and full-resolution photos are saved to the device (IndexedDB) as you go, no signal required. Nothing is lost if you close the app or lose connection.
