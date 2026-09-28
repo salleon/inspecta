@@ -10,10 +10,6 @@ export interface Site {
   kind: SiteKind;
   createdAt: number;
   updatedAt: number;
-  // the site's Notepad: the inspector's own notes, never in a report.
-  // Absent until something's written.
-  notes?: string;
-  notesUpdatedAt?: number;
 }
 
 export interface Finding {

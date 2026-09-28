@@ -52,7 +52,7 @@ export async function openPage(app, { advanced = true } = {}) {
       if (e.defaultPrevented) return;
       const h = location.hash.slice(1) || "/";
       let parent = "/";
-      const m = /^\/site\/([^/]+)\/(findings|export|notes|finding\/[^/]+\/note)$/.exec(h);
+      const m = /^\/site\/([^/]+)\/(findings|export|finding\/[^/]+\/note)$/.exec(h);
       if (m) parent = m[2] === "findings" ? "/" : `/site/${m[1]}/findings`;
       else if (h.startsWith("/admin/")) parent = h.replace(/\/[^/]+$/, "");
       location.replace("#" + parent);

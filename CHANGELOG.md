@@ -6,6 +6,9 @@ the technical detail.
 
 ## 28 September 2026
 
+- **Notepad removed.** The Notepad row and page are gone again; note-only
+  findings (the pen button) cover the same need. Anything already typed
+  into a Notepad stays in the phone's data and backups, just not shown.
 - **Update popup.** When a new version is out on Google Play, Inspecta
   says so when it opens: **Update now** downloads it in the background
   (a small bar shows progress, keep working), then **Restart** switches to

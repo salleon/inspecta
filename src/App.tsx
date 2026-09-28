@@ -4,7 +4,6 @@ import { App as CapacitorApp } from "@capacitor/app";
 import Dashboard from "./pages/Dashboard";
 import Note from "./pages/Note";
 import Findings from "./pages/Findings";
-import SiteNotes from "./pages/SiteNotes";
 import Onboarding from "./pages/Onboarding";
 import Splash from "./components/Splash";
 import UpdatePrompt from "./components/UpdatePrompt";
@@ -71,7 +70,7 @@ function routeDepth(pathname: string): number {
   if (pathname === "/") return 0;
   if (pathname.startsWith("/admin")) return pathname.split("/").length - 1;
   if (pathname.endsWith("/findings")) return 1;
-  // Note, Export and the Notepad are all one level below Findings
+  // Note and Export are both one level below Findings
   return 2;
 }
 
@@ -124,7 +123,6 @@ function AnimatedRoutes() {
           <Route path="/site/:siteId/finding/:findingId/note" element={<Note />} />
           <Route path="/site/:siteId/findings" element={<Findings />} />
           <Route path="/site/:siteId/export" element={<ExportPreview />} />
-          <Route path="/site/:siteId/notes" element={<SiteNotes />} />
           <Route path="/admin/*" element={<Admin />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
