@@ -6,6 +6,9 @@ the technical detail.
 
 ## 28 September 2026
 
+- **New app icon.** The new Inspecta by Enfact icon (building and tick) on
+  the phone's home screen, in the app's header and for the web version.
+  The test app uses the same icon on orange.
 - **Photos from the gallery.** On a finding, a new picture tile after the
   dashed **+** opens the phone's photo picker: pick one or several and
   they're added after the finding's other photos. A finding with no photo
