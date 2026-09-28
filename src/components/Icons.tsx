@@ -108,6 +108,16 @@ export function IconEdit({ size = 15, ...p }: IconProps) {
   );
 }
 
+// pen: a finding with just a note (no photo)
+export function IconPen({ size = 18, ...p }: IconProps) {
+  return (
+    <svg {...base(size)} {...p}>
+      <path d="M12 20h9"></path>
+      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"></path>
+    </svg>
+  );
+}
+
 export function IconChevronRight({ size = 18, ...p }: IconProps) {
   return (
     <svg {...base(size)} {...p}>

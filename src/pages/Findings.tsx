@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import type { Finding, Photo, Site } from "../db/types";
 import { addPhoto, createFinding, deleteFinding, deleteSite, getSite, getThumbnail, listFindings, listPhotos, reorderFinding, updateSite } from "../db/db";
 import { capturePhoto } from "../lib/capture";
-import { IconChevronLeft, IconShare, IconEdit, IconGrip, IconCheck, IconTrash } from "../components/Icons";
+import { IconChevronLeft, IconShare, IconEdit, IconGrip, IconCheck, IconTrash, IconPen, IconCamera } from "../components/Icons";
 import DefectTypePill from "../components/DefectTypePill";
 import { esrItem } from "../lib/esrCategories";
 import ConfirmDialog from "../components/ConfirmDialog";
@@ -88,6 +88,8 @@ export default function Findings() {
   const rowElsRef = useRef(new Map<string, HTMLElement>());
   const dragMetaRef = useRef<DragMeta | null>(null);
   const lastClientYRef = useRef(0);
+  // guards the pen button against a double tap making two findings
+  const startingNoteRef = useRef(false);
   const rafIdRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -192,6 +194,19 @@ export default function Findings() {
       navigate(`/site/${siteId}/finding/${finding.id}/note`);
     } finally {
       setBusy(false);
+    }
+  }
+
+  // the pen part of + New finding: a finding without a photo, straight to
+  // its note (an empty one isn't kept when left)
+  async function handleNewNoteFinding() {
+    if (!siteId || busy || reordering || startingNoteRef.current) return;
+    startingNoteRef.current = true;
+    try {
+      const finding = await createFinding(siteId);
+      navigate(`/site/${siteId}/finding/${finding.id}/note`, { state: { noteOnly: true } });
+    } finally {
+      startingNoteRef.current = false;
     }
   }
 
@@ -390,7 +405,7 @@ export default function Findings() {
       <div ref={listRef} style={{ flexGrow: 1, overflowY: "auto", padding: "4px 16px 12px", display: "flex", flexDirection: "column", position: "relative" }}>
         {rows.length === 0 && (
           <div style={{ padding: "40px 8px", textAlign: "center", color: "var(--muted-2)", fontSize: 14, fontWeight: 500 }}>
-            No findings yet — tap + New finding to log your first one.
+            No findings yet — tap New finding to log your first one, or the pen for one without a photo.
           </div>
         )}
 
@@ -481,31 +496,50 @@ export default function Findings() {
           replace it, and it reverses on exit. */}
       <div style={{ flexShrink: 0, padding: "12px 16px calc(28px + env(safe-area-inset-bottom))", borderTop: "1px solid var(--border)" }}>
         <div style={{ position: "relative", height: 54, overflow: "hidden" }}>
-          <button
-            onClick={handleNewFinding}
-            disabled={busy || reordering}
-            className="glow-sweep"
+          {/* pen on the left: a finding without a photo; the rest opens the
+              camera, as before */}
+          <div
+            className="split-button"
             style={{
               position: "absolute",
               inset: 0,
-              display: "block",
-              width: "100%",
-              textAlign: "center",
-              padding: "17px 0",
-              borderRadius: 14,
-              background: "var(--accent)",
-              border: "none",
-              fontSize: 16,
-              fontWeight: 800,
-              color: "var(--accent-text)",
-              overflow: "hidden",
               transform: `translateY(${reordering ? "120%" : "0"})`,
               transition: "transform 280ms cubic-bezier(0.16, 1, 0.3, 1)",
               pointerEvents: reordering ? "none" : "auto",
             }}
           >
-            {busy ? "Opening camera…" : "+ New finding"}
-          </button>
+            <button className="split-pen" style={{ width: 64 }} aria-label="New finding without a photo" onClick={handleNewNoteFinding} disabled={busy || reordering}>
+              <IconPen size={20} />
+            </button>
+            <button
+              onClick={handleNewFinding}
+              disabled={busy || reordering}
+              className="glow-sweep"
+              style={{
+                position: "relative",
+                flex: 1,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+                padding: "17px 0",
+                background: "none",
+                border: "none",
+                fontSize: 16,
+                fontWeight: 800,
+                color: "var(--accent-text)",
+                overflow: "hidden",
+              }}
+            >
+              {busy ? (
+                "Opening camera…"
+              ) : (
+                <>
+                  <IconCamera size={18} strokeWidth={2.2} /> New finding
+                </>
+              )}
+            </button>
+          </div>
           <button
             type="button"
             onClick={() => setReordering(false)}

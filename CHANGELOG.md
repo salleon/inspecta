@@ -6,6 +6,13 @@ the technical detail.
 
 ## 28 September 2026
 
+- **Findings without a photo.** "Save & next finding" and "+ New finding"
+  are now split: the small pen part on the left starts the next finding
+  with no photo (no camera, keyboard up on the Note, level carried over
+  as usual); the camera part works as before. A photo can still be added
+  later from the photo box. A finding left completely empty (no photo,
+  note, location, type or category) isn't kept, so a stray tap on the
+  pen leaves nothing behind.
 - **Full-screen photos.** On a finding, tap the big photo to see it full
   screen on black, with the note and location. Swipe sideways for the
   finding's other photos, pinch or double-tap to zoom, tap once to hide

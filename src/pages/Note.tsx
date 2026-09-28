@@ -4,6 +4,7 @@ import type { DefectType, Photo } from "../db/types";
 import {
   addPhoto,
   createFinding,
+  deleteFinding,
   deletePhoto,
   getFinding,
   getThumbnail,
@@ -12,7 +13,7 @@ import {
   updateFinding,
 } from "../db/db";
 import { capturePhoto } from "../lib/capture";
-import { IconRetake, IconTrash, IconChevronLeft, IconPlus, IconCamera, IconCheck } from "../components/Icons";
+import { IconRetake, IconTrash, IconChevronLeft, IconPlus, IconCamera, IconCheck, IconPen } from "../components/Icons";
 import RoundIconButton from "../components/RoundIconButton";
 import DefectTypePill from "../components/DefectTypePill";
 import LevelField from "../components/LevelField";
@@ -135,6 +136,8 @@ export default function Note() {
 
   useEffect(() => {
     refresh(0);
+    // a note-only finding (the pen button) starts with the keyboard up
+    if ((routerLocation.state as { noteOnly?: boolean } | null)?.noteOnly) document.getElementById("noteInput")?.focus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [findingId]);
 
@@ -185,6 +188,8 @@ export default function Note() {
   }, [note, location]);
 
   const wasCollapsedRef = useRef(false);
+  // guards the pen button against a double tap making two findings
+  const startingNoteOnly = useRef(false);
   // the full-screen photo viewer, and where the photo sat when it opened
   const [viewing, setViewing] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
 
@@ -203,21 +208,43 @@ export default function Note() {
   const activePhoto = photos[selected];
   const activeUrl = photoUrls[selected] ?? null;
 
-  async function persist() {
+  // leaving: going off this finding (back, Save & close, Save & next)
+  async function persist(leaving = false) {
     if (!findingId) return;
+    // a finding left with nothing in it (e.g. the pen button tapped by
+    // mistake) isn't kept; the level alone doesn't count, it's carried over
+    if (leaving && !photos.length && !note.trim() && !location.trim() && !defectType && !esrCategory) {
+      await deleteFinding(findingId);
+      return;
+    }
     await updateFinding(findingId, { note, location, defectType, level, esrCategory });
   }
 
   // Used by both the back button and "Save & close" — they're the same
   // action (persist the note/location, then return to the list).
   async function handleBack() {
-    await persist();
+    await persist(true);
     navigate(`/site/${siteId}/findings`);
+  }
+
+  // the pen part of Save & next: the next finding without a photo — no
+  // camera, straight into a blank finding with the keyboard up
+  async function handleSaveAndNextNoteOnly() {
+    if (!siteId || busy || startingNoteOnly.current) return;
+    startingNoteOnly.current = true;
+    try {
+      await persist(true);
+      const carry = advancedControls && level ? level : undefined;
+      const finding = await createFinding(siteId, carry ? { level: carry } : {});
+      navigate(`/site/${siteId}/finding/${finding.id}/note`, { state: { carriedLevel: carry, noteOnly: true } });
+    } finally {
+      startingNoteOnly.current = false;
+    }
   }
 
   async function handleSaveAndNextFinding() {
     if (!siteId || busy) return;
-    await persist();
+    await persist(true);
     // Launch the camera straight away for the next finding — no
     // intermediate screen. Cancelling just leaves you on Findings, since a
     // finding can't exist without a first photo.
@@ -659,26 +686,41 @@ export default function Note() {
         >
           Save &amp; close
         </button>
-        <button
-          onClick={handleSaveAndNextFinding}
-          disabled={busy}
-          className="glow-sweep"
-          style={{
-            position: "relative",
-            flex: 1,
-            textAlign: "center",
-            padding: "15px 0",
-            borderRadius: 14,
-            background: "var(--accent)",
-            border: "none",
-            fontSize: 14,
-            fontWeight: 800,
-            color: "var(--accent-text)",
-            overflow: "hidden",
-          }}
-        >
-          {busy ? "Opening camera…" : "Save & next finding"}
-        </button>
+        {/* pen on the left: next finding without a photo; the rest opens
+            the camera for the next finding, as before */}
+        <div className="split-button" style={{ flex: 1.35 }}>
+          <button className="split-pen" aria-label="Save and next finding without a photo" onClick={handleSaveAndNextNoteOnly} disabled={busy}>
+            <IconPen size={18} />
+          </button>
+          <button
+            onClick={handleSaveAndNextFinding}
+            disabled={busy}
+            className="glow-sweep"
+            style={{
+              position: "relative",
+              flex: 1,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 7,
+              padding: "15px 0",
+              background: "none",
+              border: "none",
+              fontSize: 14,
+              fontWeight: 800,
+              color: "var(--accent-text)",
+              overflow: "hidden",
+            }}
+          >
+            {busy ? (
+              "Opening camera…"
+            ) : (
+              <>
+                <IconCamera size={16} strokeWidth={2.2} /> Save &amp; next
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       {pickingDefectType && (
