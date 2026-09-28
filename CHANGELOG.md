@@ -6,6 +6,8 @@ the technical detail.
 
 ## 28 September 2026
 
+- **Build 3.** The first build sent to coworkers through Google Play
+  (Settings shows "Inspecta · Build 3").
 - **Google Play set-up (for automatic updates).** The APK build now also
   makes the file Google Play needs, and has a **Publish to coworkers** tick
   box that sends the build to the Play internal testing track, so Play
