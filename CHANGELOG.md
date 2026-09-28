@@ -6,6 +6,15 @@ the technical detail.
 
 ## 28 September 2026
 
+- **Photos from the gallery.** On a finding, a new picture tile after the
+  dashed **+** opens the phone's photo picker: pick one or several and
+  they're added after the finding's other photos. A finding with no photo
+  yet has a **Choose from gallery** button on its empty photo box. Gallery
+  photos are stamped with the date and time they were taken (from the
+  photo), or the time they were added if the phone can't tell.
+- **+ and gallery always in reach.** With lots of photos the thumbnails
+  scroll sideways, fading at the edge, while the + and gallery tiles stay
+  pinned on the right.
 - **Findings without a photo.** "Save & next finding" and "+ New finding"
   are now split: the small pen part on the left starts the next finding
   with no photo (no camera, keyboard up on the Note, level carried over

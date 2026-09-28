@@ -12,8 +12,8 @@ import {
   listPhotos,
   updateFinding,
 } from "../db/db";
-import { capturePhoto } from "../lib/capture";
-import { IconRetake, IconTrash, IconChevronLeft, IconPlus, IconCamera, IconCheck, IconPen } from "../components/Icons";
+import { capturePhoto, pickFromGallery } from "../lib/capture";
+import { IconRetake, IconTrash, IconChevronLeft, IconPlus, IconCamera, IconCheck, IconPen, IconGallery } from "../components/Icons";
 import RoundIconButton from "../components/RoundIconButton";
 import DefectTypePill from "../components/DefectTypePill";
 import LevelField from "../components/LevelField";
@@ -190,6 +190,25 @@ export default function Note() {
   const wasCollapsedRef = useRef(false);
   // guards the pen button against a double tap making two findings
   const startingNoteOnly = useRef(false);
+  // the thumbnail strip scrolls sideways under the pinned + / gallery
+  // tiles; a fade on either edge shows there are more photos that way
+  const stripRef = useRef<HTMLDivElement>(null);
+  const [stripFade, setStripFade] = useState({ left: false, right: false });
+  function updateStripFade() {
+    const el = stripRef.current;
+    const next = el ? { left: el.scrollLeft > 1, right: el.scrollLeft + el.clientWidth < el.scrollWidth - 1 } : { left: false, right: false };
+    setStripFade((f) => (f.left === next.left && f.right === next.right ? f : next));
+  }
+  useEffect(() => {
+    updateStripFade();
+    window.addEventListener("resize", updateStripFade);
+    return () => window.removeEventListener("resize", updateStripFade);
+  }, [photos, fieldFocused]);
+  // keep the selected photo's thumbnail in view (e.g. just added)
+  useEffect(() => {
+    const thumb = stripRef.current?.children[selected] as HTMLElement | undefined;
+    thumb?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+  }, [selected, photos.length]);
   // the full-screen photo viewer, and where the photo sat when it opened
   const [viewing, setViewing] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
 
@@ -290,6 +309,22 @@ export default function Note() {
       if (!blob) return; // cancelled
       await addPhoto(findingId, siteId, blob);
       await refresh(photos.length); // select the newly added photo
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // photos already on the phone: one or several, added after the others in
+  // the order picked, stamped with when they were taken
+  async function handleAddFromGallery() {
+    if (!findingId || !siteId || busy) return;
+    setBusy(true);
+    try {
+      await persist(); // don't lose a typed note/location while the picker is open
+      const picked = await pickFromGallery();
+      if (!picked.length) return; // cancelled
+      for (const p of picked) await addPhoto(findingId, siteId, p.blob, p.takenAt);
+      await refresh(photos.length); // select the first one added
     } finally {
       setBusy(false);
     }
@@ -432,6 +467,32 @@ export default function Note() {
             )}
           </button>
           {!activePhoto && !fieldFocused && (
+            <button
+              type="button"
+              onClick={handleAddFromGallery}
+              disabled={busy}
+              style={{
+                position: "absolute",
+                left: "50%",
+                bottom: 12,
+                transform: "translateX(-50%)",
+                display: "flex",
+                alignItems: "center",
+                gap: 7,
+                padding: "8px 14px",
+                borderRadius: 999,
+                background: "rgba(7,27,44,0.8)",
+                border: "1px solid var(--border-strong)",
+                fontSize: 13,
+                fontWeight: 800,
+                color: "var(--text)",
+                whiteSpace: "nowrap",
+              }}
+            >
+              <IconGallery size={16} color="var(--accent)" /> Choose from gallery
+            </button>
+          )}
+          {!activePhoto && !fieldFocused && (
             <div
               style={{
                 position: "absolute",
@@ -499,47 +560,55 @@ export default function Note() {
           // .finding-scroll no-shrink rule: a horizontal scroller in a flex
           // column is otherwise the first thing squashed when the screen
           // gets taller than the phone.
-          <div style={{ flexShrink: 0, height: THUMB_SIZE + 4, minHeight: THUMB_SIZE + 4, display: "flex", gap: 8, overflowX: "auto", overflowY: "hidden", paddingBottom: 2 }}>
-            {photos.map((p, i) => (
-              <button
-                key={p.id}
-                aria-label={`View photo ${i + 1}`}
-                onClick={() => setSelected(i)}
-                className="thumb-in"
-                style={{
-                  flexShrink: 0,
-                  width: THUMB_SIZE,
-                  height: THUMB_SIZE,
-                  borderRadius: 10,
-                  overflow: "hidden",
-                  padding: 0,
-                  background: "var(--panel-2)",
-                  border: i === selected ? "2px solid var(--accent)" : "1px solid var(--border-strong)",
-                }}
-              >
-                {thumbUrls[p.id] && (
-                  <img src={thumbUrls[p.id]} alt="" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
-                )}
-              </button>
-            ))}
-            <button
-              aria-label="Add another photo to this finding"
-              onClick={handleAddPhoto}
-              disabled={busy}
+          // The + and gallery tiles are pinned on the right; only the
+          // thumbnails scroll, so adding stays one tap however many there are.
+          <div style={{ flexShrink: 0, display: "flex", gap: 8 }}>
+            <div
+              ref={stripRef}
+              onScroll={updateStripFade}
               style={{
-                flexShrink: 0,
-                width: THUMB_SIZE,
-                height: THUMB_SIZE,
-                borderRadius: 10,
-                border: "1.5px dashed var(--border-strong)",
-                background: "none",
+                flex: 1,
+                minWidth: 0,
+                height: THUMB_SIZE + 4,
+                minHeight: THUMB_SIZE + 4,
                 display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "var(--muted)",
+                gap: 8,
+                overflowX: "auto",
+                overflowY: "hidden",
+                paddingBottom: 2,
+                scrollbarWidth: "none",
+                maskImage: stripFadeMask(stripFade),
+                WebkitMaskImage: stripFadeMask(stripFade),
               }}
             >
+              {photos.map((p, i) => (
+                <button
+                  key={p.id}
+                  aria-label={`View photo ${i + 1}`}
+                  onClick={() => setSelected(i)}
+                  className="thumb-in"
+                  style={{
+                    flexShrink: 0,
+                    width: THUMB_SIZE,
+                    height: THUMB_SIZE,
+                    borderRadius: 10,
+                    overflow: "hidden",
+                    padding: 0,
+                    background: "var(--panel-2)",
+                    border: i === selected ? "2px solid var(--accent)" : "1px solid var(--border-strong)",
+                  }}
+                >
+                  {thumbUrls[p.id] && (
+                    <img src={thumbUrls[p.id]} alt="" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
+                  )}
+                </button>
+              ))}
+            </div>
+            <button aria-label="Add another photo to this finding" onClick={handleAddPhoto} disabled={busy} style={addTileStyle}>
               <IconPlus size={18} strokeWidth={2.2} />
+            </button>
+            <button aria-label="Add photos from the gallery" onClick={handleAddFromGallery} disabled={busy} style={addTileStyle}>
+              <IconGallery size={20} />
             </button>
           </div>
         )}
@@ -792,6 +861,27 @@ export default function Note() {
 
 // photo thumbnail strip under the main photo
 const THUMB_SIZE = 56;
+
+// the dashed "+" (camera) and gallery tiles at the end of the strip
+const addTileStyle: CSSProperties = {
+  flexShrink: 0,
+  width: THUMB_SIZE,
+  height: THUMB_SIZE,
+  borderRadius: 10,
+  border: "1.5px dashed var(--border-strong)",
+  background: "none",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  color: "var(--muted)",
+  padding: 0,
+};
+
+// fades the strip's edge where more thumbnails are scrolled out of view
+function stripFadeMask({ left, right }: { left: boolean; right: boolean }) {
+  if (!left && !right) return undefined;
+  return `linear-gradient(to right, ${left ? "transparent, #000 24px" : "#000"}, ${right ? "#000 calc(100% - 24px), transparent" : "#000"})`;
+}
 
 const labelStyle: CSSProperties = {
   fontSize: 12,

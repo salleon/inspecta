@@ -108,6 +108,17 @@ export function IconEdit({ size = 15, ...p }: IconProps) {
   );
 }
 
+// picture: photos from the gallery
+export function IconGallery({ size = 20, ...p }: IconProps) {
+  return (
+    <svg {...base(size)} {...p}>
+      <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+      <circle cx="8.5" cy="8.5" r="1.5"></circle>
+      <polyline points="21 15 16 10 5 21"></polyline>
+    </svg>
+  );
+}
+
 // pen: a finding with just a note (no photo)
 export function IconPen({ size = 18, ...p }: IconProps) {
   return (

@@ -176,14 +176,15 @@ export async function findingCount(siteId: string) {
   return db.findings.where("siteId").equals(siteId).count();
 }
 
-export async function addPhoto(findingId: string, siteId: string, blob: Blob) {
+// takenAt: when a photo from the gallery was taken (defaults to now)
+export async function addPhoto(findingId: string, siteId: string, blob: Blob, takenAt = Date.now()) {
   const existing = await db.photos.where("findingId").equals(findingId).count();
   const photo: Photo = {
     id: uid(),
     findingId,
     siteId,
     blob,
-    takenAt: Date.now(),
+    takenAt,
     order: existing,
   };
   await db.photos.add(photo);
