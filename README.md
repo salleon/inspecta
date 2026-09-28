@@ -47,6 +47,15 @@ That's it — no Play Store, no hosting, just the one file. Whenever you want an
 
 > A **work/managed Android device** may block installing APKs from outside the Play Store via its MDM policy — if the install is blocked or greyed out, that's an IT/device-policy restriction, not something fixable from this app; check with whoever manages the device policy.
 
+### Automatic updates through Google Play (internal testing)
+
+Coworkers can get Inspecta from Google Play instead, as a private internal-testing app, so Play updates it on their phones by itself. The Play app ID is `au.com.inspecta.app`, the same as the APK, and Play signs with the same key, so the Play version installs over a sideloaded one and keeps its data.
+
+- **Every run** of Build Android APK also makes `inspecta-play-bundle` (`app-release.aab`), the file Play takes. The first one is uploaded by hand in the Play Console (Internal testing → Create new release).
+- **To publish an update:** Actions → Build Android APK → Run workflow, tick **Publish to coworkers**, optionally fill in **What's new**. It builds, tests and uploads to the internal testing track; Play then updates everyone. Needs the `PLAY_SERVICE_ACCOUNT_JSON` secret (a Google Cloud service account with "Release apps to testing tracks" on the app).
+- **Coworkers, once:** open the internal testing opt-in link from the Play Console on their phone (signed in with the Google account on the testers list), accept, then install Inspecta from Play.
+- **One-off signing key export:** when the Play Console asks how to sign the app, choose to use your existing key via "Export and upload a key from Java keystore", then paste the encryption key it shows into **play_encryption_key** on Run workflow. The run's `inspecta-signing-key-for-play` artifact (encrypted so only Google can open it) is the zip to upload there.
+
 ### Build label
 
 `BUILD_LABEL` (repo root) is the build number handed out to the team, shown in Settings ("Inspecta · Build 2") and used as the Android version name. It's changed by hand only when a build is given out — not on every APK build.

@@ -6,6 +6,12 @@ the technical detail.
 
 ## 28 September 2026
 
+- **Google Play set-up (for automatic updates).** The APK build now also
+  makes the file Google Play needs, and has a **Publish to coworkers** tick
+  box that sends the build to the Play internal testing track, so Play
+  updates everyone's phone. Plus a one-off option to hand Play the app's
+  existing signing key, so the Play version installs over the current app
+  and keeps its data.
 - **New app icon.** The new Inspecta by Enfact icon (building and tick) on
   the phone's home screen, in the app's header and for the web version.
   The test app uses the same icon on orange.

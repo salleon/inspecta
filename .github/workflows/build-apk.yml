@@ -9,6 +9,18 @@ on:
         description: "Skip tests (build even if a test would fail)"
         type: boolean
         default: false
+      publish_to_play:
+        description: "Publish to coworkers (Google Play internal testing)"
+        type: boolean
+        default: false
+      release_notes:
+        description: "What's new (shown in Play; optional)"
+        type: string
+        default: ""
+      play_encryption_key:
+        description: "One-off: Play's encryption key, to export the signing key for Play (leave empty)"
+        type: string
+        default: ""
 
 jobs:
   # the whole test suite first; the APK is only built if it passes —
@@ -74,7 +86,7 @@ jobs:
           CI_VERSION_CODE: ${{ github.run_number }}
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease assembleStaging --no-daemon
+          ./gradlew assembleRelease assembleStaging bundleRelease --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
@@ -89,3 +101,83 @@ jobs:
         with:
           name: inspecta-test-apk
           path: android/app/build/outputs/apk/staging/app-staging.apk
+
+      # the same release build as an app bundle, the format Google Play
+      # takes (the very first one is uploaded by hand in the Play Console)
+      - name: Upload Play bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: inspecta-play-bundle
+          path: android/app/build/outputs/bundle/release/app-release.aab
+
+      # "Publish to coworkers" ticked: straight to the internal testing
+      # track, and Play updates everyone's phone. versionCode is this
+      # workflow's run number, so it's always higher than the last one.
+      - name: Write release notes
+        if: ${{ inputs.publish_to_play && inputs.release_notes != '' }}
+        env:
+          NOTES: ${{ inputs.release_notes }}
+        run: |
+          mkdir -p whatsnew
+          printf '%s' "$NOTES" | head -c 500 > whatsnew/whatsnew-en-AU
+
+      - name: Publish to Google Play (internal testing)
+        if: ${{ inputs.publish_to_play }}
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: au.com.inspecta.app
+          releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
+          track: internal
+          status: completed
+          whatsNewDirectory: ${{ inputs.release_notes != '' && 'whatsnew' || '' }}
+
+  # One-off, for setting up Play App Signing with the key the app is
+  # already signed with (so the Play version installs over the current one
+  # and keeps everyone's data). Google's PEPK tool encrypts the key with
+  # Play's public key; only Google can open the zip it makes. Paste the
+  # encryption key the Play Console shows (hex, or the contents of
+  # encryption_public_key.pem) into "play_encryption_key" on Run workflow.
+  export_signing_key:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.play_encryption_key != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Export the signing key for Play
+        env:
+          ENCRYPTION_KEY: ${{ inputs.play_encryption_key }}
+          KEYSTORE_B64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          STORE_PASS: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: |
+          set -u
+          echo "$KEYSTORE_B64" | base64 -d > release.jks
+          curl -sSfL -o pepk.jar https://www.gstatic.com/play-apps-publisher-rapid/signing-tool/prod/pepk.jar
+          # the key comes as hex, or as a PEM file (whose line breaks the
+          # one-line input box flattens, so it's rebuilt here)
+          if printf '%s' "$ENCRYPTION_KEY" | grep -q "BEGIN PUBLIC KEY"; then
+            body=$(printf '%s' "$ENCRYPTION_KEY" | sed -e 's/-----BEGIN PUBLIC KEY-----//' -e 's/-----END PUBLIC KEY-----//' | tr -d ' \r\n\t')
+            { echo "-----BEGIN PUBLIC KEY-----"; printf '%s\n' "$body" | fold -w 64; echo "-----END PUBLIC KEY-----"; } > encryption_public_key.pem
+            KEYARG="--rsa-aes-encryption --encryption-key-path=encryption_public_key.pem"
+          else
+            KEYARG="--encryptionkey=$(printf '%s' "$ENCRYPTION_KEY" | tr -d ' \r\n\t')"
+          fi
+          common="--keystore=release.jks --alias=$KEY_ALIAS --output=inspecta-signing-key-for-play.zip --include-cert $KEYARG"
+          # newer PEPK takes the passwords as options; older ones ask for them
+          java -jar pepk.jar $common --keystore-pass="$STORE_PASS" --key-pass="$KEY_PASS" \
+            || printf '%s\n%s\n' "$STORE_PASS" "$KEY_PASS" | java -jar pepk.jar $common
+          rm -f release.jks
+          test -s inspecta-signing-key-for-play.zip
+
+      - name: Upload the encrypted key
+        uses: actions/upload-artifact@v4
+        with:
+          name: inspecta-signing-key-for-play
+          path: inspecta-signing-key-for-play.zip
+          retention-days: 1
