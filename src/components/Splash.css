@@ -331,3 +331,22 @@
   100.00% { opacity: 1; }
   100.00% { opacity: 1; }
 }
+
+/* builds from the test branch (lib/buildInfo): a label at the top, there
+   from the first frame, so a test version is never mistaken for the real one */
+.splash-test {
+  position: absolute;
+  left: 50%;
+  top: calc(28px + env(safe-area-inset-top));
+  transform: translateX(-50%);
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid #f5b841;
+  color: #f5b841;
+  background: rgba(245, 184, 65, 0.1);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}

@@ -32,6 +32,11 @@ export default defineConfig({
   ],
   // the Excel export's company template (inlined into the export chunk)
   assetsInclude: ["**/*.xlsx"],
+  // the branch a GitHub Actions build was made from (empty for local
+  // builds), so builds from anything but main say "Test version" (lib/buildInfo)
+  define: {
+    __BUILD_BRANCH__: JSON.stringify(process.env.GITHUB_REF_NAME ?? ""),
+  },
   server: {
     host: true,
   },

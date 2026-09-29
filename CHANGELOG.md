@@ -1,11 +1,16 @@
 # Changelog
 
 Plain-English notes on what changed in the app, newest first. Each entry
-matches a commit on the `advanced_controls` branch; the commit itself has
+matches a commit on the `test` branch (called `advanced_controls` until
+29 September 2026) or `main`; the commit itself has
 the technical detail.
 
 ## 29 September 2026
 
+- **Test versions are labelled.** An app built from any branch other than
+  `main` (now the `test` branch) shows a **Test version** tag at the top
+  of the splash screen and "Test version" after the build number in
+  Settings. Builds from `main` look exactly as before.
 - **Corrective actions pre-filled in the Excel.** When a finding's note is
   clearly one of EnFact's 65 common defects (e.g. "fire door held open with
   a wedge", "exit sign not illuminated"), the Excel register's Corrective

@@ -4,6 +4,7 @@ import letterF from "../assets/splash/letter-F.png";
 import letterA from "../assets/splash/letter-a.png";
 import letterC from "../assets/splash/letter-c.png";
 import letterT from "../assets/splash/letter-t.png";
+import { IS_TEST_BUILD } from "../lib/buildInfo";
 import "./Splash.css";
 
 // Shown once while the app boots — purely cosmetic, fades itself out and
@@ -15,7 +16,7 @@ const LETTERS = [letterE, letterN, letterF, letterA, letterC, letterT];
 
 export default function Splash({ leaving }: { leaving: boolean }) {
   return (
-    <div className={leaving ? "splash splash-leaving" : "splash"} role="img" aria-label="EnFact Inspecta, site inspection tool">
+    <div className={leaving ? "splash splash-leaving" : "splash"} role="img" aria-label={IS_TEST_BUILD ? "EnFact Inspecta, site inspection tool, test version" : "EnFact Inspecta, site inspection tool"}>
       <div className="splash-center" aria-hidden="true">
         <div className="splash-stage">
           <i className="splash-sw splash-hot" />
@@ -30,6 +31,7 @@ export default function Splash({ leaving }: { leaving: boolean }) {
         </div>
         <div className="splash-name">Inspecta</div>
       </div>
+      {IS_TEST_BUILD && <div className="splash-test">Test version</div>}
       <div className="splash-chin" aria-hidden="true">
         <span />
         <b>Site inspection tool</b>

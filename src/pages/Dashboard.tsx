@@ -11,6 +11,7 @@ import { UpdateSettingsRow } from "../components/UpdatePrompt";
 import { SITES_CHANGED, startTour } from "../lib/tour";
 // the build label handed out to the team (BUILD_LABEL, changed by hand)
 import buildLabel from "../../BUILD_LABEL?raw";
+import { IS_TEST_BUILD } from "../lib/buildInfo";
 import logo from "../assets/logo.png";
 import { getInspectorName, setInspectorName } from "../lib/profile";
 import { setAdvancedControls, useAdvancedControls } from "../lib/settings";
@@ -410,7 +411,7 @@ export default function Dashboard() {
             >
               Done
             </button>
-            <div style={{ flexShrink: 0, textAlign: "center", fontSize: 12, fontWeight: 600, color: "var(--muted-2)" }}>Inspecta · Build {buildLabel.trim()}</div>
+            <div style={{ flexShrink: 0, textAlign: "center", fontSize: 12, fontWeight: 600, color: "var(--muted-2)" }}>Inspecta · Build {buildLabel.trim()}{IS_TEST_BUILD ? " · Test version" : ""}</div>
           </div>
         </div>
       )}
