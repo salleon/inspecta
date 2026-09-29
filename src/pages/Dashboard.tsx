@@ -8,6 +8,7 @@ import ConfirmDialog from "../components/ConfirmDialog";
 import FormActions from "../components/FormActions";
 import BackupSettings from "../components/BackupSettings";
 import { UpdateSettingsRow } from "../components/UpdatePrompt";
+import { SITES_CHANGED, startTour } from "../lib/tour";
 // the build label handed out to the team (BUILD_LABEL, changed by hand)
 import buildLabel from "../../BUILD_LABEL?raw";
 import logo from "../assets/logo.png";
@@ -76,8 +77,14 @@ export default function Dashboard() {
 
   useEffect(() => {
     refresh();
+    // the first-time tour adds and removes its Example site
+    const onSitesChanged = () => void refresh();
+    window.addEventListener(SITES_CHANGED, onSitesChanged);
     const cache = thumbCache.current;
-    return () => cache.forEach((entry) => URL.revokeObjectURL(entry.url));
+    return () => {
+      window.removeEventListener(SITES_CHANGED, onSitesChanged);
+      cache.forEach((entry) => URL.revokeObjectURL(entry.url));
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -172,6 +179,7 @@ export default function Dashboard() {
         </div>
         <button
           aria-label="Settings"
+          data-tour="settings"
           onClick={() => setSettingsOpen(true)}
           style={{ position: "relative", width: 38, height: 38, background: "none", border: "none", padding: 0 }}
         >
@@ -238,6 +246,7 @@ export default function Dashboard() {
       {/* new site fab */}
       <button
         aria-label="Start new site inspection"
+        data-tour="new-site"
         onClick={() => setAdding(true)}
         className={`glow-sweep${sites.length === 0 ? " fab-pulse" : ""}`}
         style={{
@@ -372,6 +381,20 @@ export default function Dashboard() {
             </button>
             <BackupSettings rowStyle={settingsRowStyle} hintStyle={settingsRowHintStyle} onRestored={() => void refresh()} />
             <UpdateSettingsRow rowStyle={settingsRowStyle} hintStyle={settingsRowHintStyle} onAction={() => setSettingsOpen(false)} />
+            <button
+              type="button"
+              onClick={() => {
+                setSettingsOpen(false);
+                void startTour();
+              }}
+              style={settingsRowStyle}
+            >
+              <div style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
+                <span style={{ fontSize: 14, fontWeight: 700 }}>Replay tour</span>
+                <span style={settingsRowHintStyle}>A quick walk through the app, on an example site.</span>
+              </div>
+              <IconChevronRight color="var(--muted)" />
+            </button>
             <button type="button" onClick={() => navigate("/admin")} style={settingsRowStyle}>
               <IconLock size={18} color="var(--muted)" style={{ flexShrink: 0 }} />
               <div style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>

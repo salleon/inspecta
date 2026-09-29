@@ -4,6 +4,15 @@ Plain-English notes on what changed in the app, newest first. Each entry
 matches a commit on the `advanced_controls` branch; the commit itself has
 the technical detail.
 
+## 29 September 2026
+
+- **First-time tour.** New users get a welcome after entering their name
+  and can take a one-minute tour: the screen dims and one button at a time
+  is lit up with a tip, moving screen to screen on Next (new site, new
+  finding with camera / pen, Save & next, ESR category and "no rush",
+  export, Settings). It runs on a temporary Example site that's removed
+  at the end. Settings has **Replay tour**.
+
 ## 28 September 2026
 
 - **Notepad removed.** The Notepad row and page are gone again; note-only

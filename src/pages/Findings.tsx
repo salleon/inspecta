@@ -500,6 +500,7 @@ export default function Findings() {
               camera, as before */}
           <div
             className="split-button"
+            data-tour="new-finding"
             style={{
               position: "absolute",
               inset: 0,

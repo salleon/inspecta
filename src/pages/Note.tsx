@@ -700,7 +700,7 @@ export default function Note() {
         {/* ESR category — advanced controls; suggested from the note as
             it's typed, optional (none = Uncategorised) */}
         {showCategory && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <div data-tour="esr" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             <div style={labelStyle}>ESR category</div>
             {esrCategory && !changingCategory ? (
               <>
@@ -757,7 +757,7 @@ export default function Note() {
         </button>
         {/* pen on the left: next finding without a photo; the rest opens
             the camera for the next finding, as before */}
-        <div className="split-button" style={{ flex: 1.35 }}>
+        <div className="split-button" data-tour="save-next" style={{ flex: 1.35 }}>
           <button className="split-pen" aria-label="Save and next finding without a photo" onClick={handleSaveAndNextNoteOnly} disabled={busy}>
             <IconPen size={18} />
           </button>

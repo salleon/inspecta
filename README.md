@@ -9,6 +9,7 @@ A fast, offline-first app for on-site fire safety inspection capture — built t
 - **Multi-photo findings** — if one angle isn't enough, add extra photos to the finding you're currently on right from the camera screen.
 - **Findings without a photo** — the pen on the left of **Save & next** / **New finding** starts a finding with just a note (no camera). A finding left completely empty isn't kept.
 - **Photos from the gallery** — the picture tile after the + on a finding adds existing photos (one or several), stamped with when they were taken. The + and gallery tiles stay pinned while the thumbnails scroll.
+- **First-time tour** — offered once after a new user enters their name (Settings → Replay tour any time): lights up one button at a time and walks through every screen on a temporary Example site, deleted when the tour ends (`src/lib/tour.ts`, `src/components/Tour.tsx`).
 - **Full-screen photos** — tap the photo on a finding to view it full screen: swipe between its photos, pinch or double-tap to zoom, drag down, ✕ or Android back to close (`src/components/PhotoViewer.tsx`).
 - **Retake / delete** — fix a bad shot without leaving the note screen.
 - **Saves straight to your gallery** — on the Android app, every photo is also saved to your phone's normal photo gallery via the native camera, independent of the app.

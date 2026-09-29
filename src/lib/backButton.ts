@@ -23,23 +23,27 @@ export function parentRoute(pathname: string): string | null {
 // "handled" (the default navigation is then skipped). The most recently
 // mounted handler gets first say, so a sheet opened over a screen closes
 // before the screen itself reacts.
-type Handler = { current: () => boolean };
+// `first` handlers (e.g. the first-time tour, which sits over every
+// screen) get their say before any screen's, whenever they were mounted.
+type Handler = { current: () => boolean; first: boolean };
 const handlers: Handler[] = [];
 
 function onBack(e: Event) {
-  for (let i = handlers.length - 1; i >= 0; i--) {
-    if (handlers[i].current()) {
+  // newest first within each group
+  const order = [...handlers.filter((h) => h.first).reverse(), ...handlers.filter((h) => !h.first).reverse()];
+  for (const h of order) {
+    if (h.current()) {
       e.preventDefault();
       return;
     }
   }
 }
 
-export function useBackHandler(handler: () => boolean) {
-  const latest = useRef(handler);
-  latest.current = handler;
+export function useBackHandler(handler: () => boolean, first = false) {
+  const latest = useRef<Handler>({ current: handler, first });
+  latest.current.current = handler;
   useEffect(() => {
-    const h = latest;
+    const h = latest.current;
     if (!handlers.length) window.addEventListener(BACK_EVENT, onBack);
     handlers.push(h);
     return () => {
