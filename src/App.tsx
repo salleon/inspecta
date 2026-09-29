@@ -21,10 +21,10 @@ const Admin = lazy(() => import("./pages/Admin"));
 // How long the splash sits fully visible before it starts fading, and how
 // long the fade itself takes (kept in sync with .splash-leaving's CSS
 // animation-duration in index.css) — after HOLD_MS + FADE_MS it's unmounted
-// for good, revealing onboarding or the app underneath. HOLD_MS is timed to
-// let the logo's light-sweep (550ms delay + 1100ms duration, see
-// .splash-logo-wrap::after in index.css) finish before the fade starts.
-const SPLASH_HOLD_MS = 1650;
+// for good, revealing onboarding or the app underneath. HOLD_MS lets the
+// splash animation (2.9s, see components/Splash.css) play out; automated
+// test browsers get the short hold the tests were written around.
+const SPLASH_HOLD_MS = navigator.webdriver ? 1650 : 2900;
 const SPLASH_FADE_MS = 360;
 
 function App() {

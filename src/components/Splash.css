@@ -1,0 +1,333 @@
+/* The launch splash (components/Splash.tsx), as approved on the design
+   canvas: the EnFact swoosh is drawn along its own path with a teal shine on
+   its leading edge, the letters bounce up as it lands and the shine carries
+   on across them; then "Inspecta" flickers on like a neon sign and cools to
+   white while "Site inspection tool" slowly fades in at the bottom.
+
+   The logo is the real artwork cut into pieces (assets/splash): the swoosh
+   (with the stretch hidden behind the E filled in) and each letter, drawn at
+   240 x 117.5. The swoosh is revealed by a conic mask whose angle
+   (--splash-g) sweeps round the ellipse's centre; the shine dot follows the
+   swoosh's centreline, sampled from the artwork. Every element's resting
+   style is its final state, so with reduced motion it simply shows. */
+
+@property --splash-g {
+  syntax: "<angle>";
+  inherits: true;
+  initial-value: -40deg;
+}
+
+.splash {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  overflow: hidden;
+  background-color: var(--bg);
+  background-image:
+    linear-gradient(rgba(46, 196, 182, 0.09) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(46, 196, 182, 0.09) 1px, transparent 1px);
+  background-size: 26px 26px;
+  background-position: calc(50% + 13px) calc(50% + 13px);
+}
+
+/* a 390px-wide column centred on the screen; everything is placed from its
+   middle. The word EnFact (not the whole logo) sits on the centre line. */
+.splash-center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 390px;
+  margin-left: -195px;
+}
+
+.splash-stage {
+  position: absolute;
+  left: 58px;
+  top: -117px;
+  width: 240px;
+  height: 117.5px;
+}
+
+.splash-sw {
+  position: absolute;
+  left: -20px;
+  top: -20px;
+  width: 280px;
+  height: 157.5px;
+  background: url("../assets/splash/swoosh.png") 20px 20px / 240px 117.5px no-repeat;
+}
+
+/* the teal shine: a short stretch just behind the leading edge */
+.splash-hot {
+  opacity: 0;
+  filter: brightness(1.7) saturate(1.5) drop-shadow(0 0 4px #2ec4b6) drop-shadow(0 0 12px rgba(46, 196, 182, 0.85));
+  -webkit-mask-image: conic-gradient(from 195deg at 36.6% 44.5%, transparent var(--splash-g), #000 calc(var(--splash-g) + 3deg), #000 calc(var(--splash-g) + 16deg), transparent calc(var(--splash-g) + 30deg));
+  mask-image: conic-gradient(from 195deg at 36.6% 44.5%, transparent var(--splash-g), #000 calc(var(--splash-g) + 3deg), #000 calc(var(--splash-g) + 16deg), transparent calc(var(--splash-g) + 30deg));
+}
+
+/* the swoosh itself, a little behind the shine */
+.splash-cool {
+  -webkit-mask-image: conic-gradient(from 195deg at 36.6% 44.5%, transparent calc(var(--splash-g) + 12deg), #000 calc(var(--splash-g) + 20deg));
+  mask-image: conic-gradient(from 195deg at 36.6% 44.5%, transparent calc(var(--splash-g) + 12deg), #000 calc(var(--splash-g) + 20deg));
+}
+
+/* the letters rise out of the base line, so they're clipped just above it */
+.splash-rise {
+  position: absolute;
+  inset: 0;
+  clip-path: inset(-60px -40px 3.5% -40px);
+}
+
+.splash-letter {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.splash-flash {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  background: linear-gradient(100deg, transparent 35%, rgba(150, 240, 230, 0.9) 50%, transparent 65%) no-repeat;
+  background-size: 60% 100%;
+  -webkit-mask: url("../assets/splash/letters.png") 0 0 / 100% 100% no-repeat;
+  mask: url("../assets/splash/letters.png") 0 0 / 100% 100% no-repeat;
+}
+
+.splash-tip {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  opacity: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(190, 245, 239, 0.9), rgba(46, 196, 182, 0.6) 50%, transparent 75%);
+  box-shadow: 0 0 16px 8px rgba(46, 196, 182, 0.45);
+}
+
+.splash-name {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -4px;
+  text-align: center;
+  font-size: 44px;
+  line-height: 60px;
+  font-weight: 800;
+  letter-spacing: -0.6px;
+  color: #f4f7f9;
+}
+
+.splash-chin {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(34px + env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.splash-chin span {
+  width: 24px;
+  height: 1px;
+  background: rgba(46, 196, 182, 0.45);
+}
+
+.splash-chin b {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.splash-stage {
+  animation: splashCut 2.9s both;
+}
+
+.splash-tip {
+  animation: splashTip 2.9s both;
+}
+
+.splash-hot {
+  animation: splashHot 2.9s both;
+}
+
+.splash-letter:nth-child(1) {
+  animation: splashLetter0 2.9s both;
+}
+
+.splash-letter:nth-child(2) {
+  animation: splashLetter1 2.9s both;
+}
+
+.splash-letter:nth-child(3) {
+  animation: splashLetter2 2.9s both;
+}
+
+.splash-letter:nth-child(4) {
+  animation: splashLetter3 2.9s both;
+}
+
+.splash-letter:nth-child(5) {
+  animation: splashLetter4 2.9s both;
+}
+
+.splash-letter:nth-child(6) {
+  animation: splashLetter5 2.9s both;
+}
+
+.splash-flash {
+  animation: splashFlash 2.9s both;
+}
+
+.splash-name {
+  animation: splashName 2.9s both;
+}
+
+.splash-chin {
+  animation: splashChin 2.9s both;
+}
+
+@keyframes splashCut {
+  0.00% { --splash-g: 231.0deg; }
+  6.90% { --splash-g: 231.0deg; animation-timing-function: linear; }
+  8.00% { --splash-g: 228.1deg; animation-timing-function: linear; }
+  9.11% { --splash-g: 224.0deg; animation-timing-function: linear; }
+  10.22% { --splash-g: 218.9deg; animation-timing-function: linear; }
+  11.33% { --splash-g: 213.0deg; animation-timing-function: linear; }
+  12.44% { --splash-g: 206.1deg; animation-timing-function: linear; }
+  13.55% { --splash-g: 198.5deg; animation-timing-function: linear; }
+  14.66% { --splash-g: 190.3deg; animation-timing-function: linear; }
+  15.76% { --splash-g: 181.4deg; animation-timing-function: linear; }
+  16.87% { --splash-g: 172.0deg; animation-timing-function: linear; }
+  17.98% { --splash-g: 162.2deg; animation-timing-function: linear; }
+  19.09% { --splash-g: 152.1deg; animation-timing-function: linear; }
+  20.20% { --splash-g: 141.7deg; animation-timing-function: linear; }
+  21.31% { --splash-g: 131.1deg; animation-timing-function: linear; }
+  22.41% { --splash-g: 120.5deg; animation-timing-function: linear; }
+  23.52% { --splash-g: 109.9deg; animation-timing-function: linear; }
+  24.63% { --splash-g: 99.3deg; animation-timing-function: linear; }
+  25.74% { --splash-g: 88.9deg; animation-timing-function: linear; }
+  26.85% { --splash-g: 78.8deg; animation-timing-function: linear; }
+  27.96% { --splash-g: 69.0deg; animation-timing-function: linear; }
+  29.06% { --splash-g: 59.6deg; animation-timing-function: linear; }
+  30.17% { --splash-g: 50.7deg; animation-timing-function: linear; }
+  31.28% { --splash-g: 42.5deg; animation-timing-function: linear; }
+  32.39% { --splash-g: 34.9deg; animation-timing-function: linear; }
+  33.50% { --splash-g: 28.0deg; animation-timing-function: linear; }
+  34.61% { --splash-g: 22.1deg; animation-timing-function: linear; }
+  35.71% { --splash-g: 17.0deg; animation-timing-function: linear; }
+  36.82% { --splash-g: 12.9deg; animation-timing-function: linear; }
+  37.93% { --splash-g: 10.0deg; animation-timing-function: linear; }
+  43.10% { --splash-g: -40deg; }
+  100.00% { --splash-g: -40deg; }
+}
+@keyframes splashTip {
+  0.00% { left: 149.5px; top: 12.9px; opacity: 0; }
+  5.86% { left: 149.5px; top: 12.9px; opacity: 0; }
+  6.90% { left: 149.5px; top: 12.9px; opacity: 1; animation-timing-function: linear; }
+  8.00% { left: 147.3px; top: 9.5px; opacity: 1; animation-timing-function: linear; }
+  9.11% { left: 142.8px; top: 5.8px; opacity: 1; animation-timing-function: linear; }
+  10.22% { left: 134.7px; top: 3.4px; opacity: 1; animation-timing-function: linear; }
+  11.33% { left: 125.4px; top: 1.8px; opacity: 1; animation-timing-function: linear; }
+  12.44% { left: 116.0px; top: 0.8px; opacity: 1; animation-timing-function: linear; }
+  13.55% { left: 106.2px; top: 1.7px; opacity: 1; animation-timing-function: linear; }
+  14.66% { left: 97.5px; top: 2.6px; opacity: 1; animation-timing-function: linear; }
+  15.76% { left: 89.6px; top: 4.0px; opacity: 1; animation-timing-function: linear; }
+  16.87% { left: 82.4px; top: 5.5px; opacity: 1; animation-timing-function: linear; }
+  17.98% { left: 75.7px; top: 7.3px; opacity: 1; animation-timing-function: linear; }
+  19.09% { left: 69.3px; top: 9.4px; opacity: 1; animation-timing-function: linear; }
+  20.20% { left: 63.1px; top: 11.5px; opacity: 1; animation-timing-function: linear; }
+  21.31% { left: 56.8px; top: 14.1px; opacity: 1; animation-timing-function: linear; }
+  22.41% { left: 50.1px; top: 17.1px; opacity: 1; animation-timing-function: linear; }
+  23.52% { left: 42.6px; top: 20.7px; opacity: 1; animation-timing-function: linear; }
+  24.63% { left: 34.6px; top: 25.6px; opacity: 1; animation-timing-function: linear; }
+  25.74% { left: 25.0px; top: 32.0px; opacity: 1; animation-timing-function: linear; }
+  26.85% { left: 15.5px; top: 40.9px; opacity: 1; animation-timing-function: linear; }
+  27.96% { left: 8.1px; top: 52.3px; opacity: 1; animation-timing-function: linear; }
+  29.06% { left: 7.9px; top: 64.2px; opacity: 1; animation-timing-function: linear; }
+  30.17% { left: 16.2px; top: 72.6px; opacity: 1; animation-timing-function: linear; }
+  31.28% { left: 30.7px; top: 74.9px; opacity: 1; animation-timing-function: linear; }
+  32.39% { left: 39.3px; top: 77.2px; opacity: 1; animation-timing-function: linear; }
+  33.50% { left: 46.6px; top: 78.1px; opacity: 1; animation-timing-function: linear; }
+  34.61% { left: 53.5px; top: 76.8px; opacity: 1; animation-timing-function: linear; }
+  35.71% { left: 58.3px; top: 75.7px; opacity: 1; animation-timing-function: linear; }
+  36.82% { left: 61.4px; top: 75.4px; opacity: 1; animation-timing-function: linear; }
+  37.93% { left: 63.2px; top: 75.8px; opacity: 1; animation-timing-function: linear; }
+  44.83% { left: 63.2px; top: 75.8px; opacity: 0; }
+  100.00% { left: 63.2px; top: 75.8px; opacity: 0; }
+}
+@keyframes splashHot {
+  0.00% { opacity: 0; }
+  5.86% { opacity: 0; }
+  6.90% { opacity: 1; }
+  41.38% { opacity: 1; }
+  55.17% { opacity: 0; }
+  100.00% { opacity: 0; }
+}
+@keyframes splashLetter0 {
+  0.00% { transform: translateY(70px); }
+  27.59% { transform: translateY(70px); animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1); }
+  44.83% { transform: none; }
+  100.00% { transform: none; }
+}
+@keyframes splashLetter1 {
+  0.00% { transform: translateY(70px); }
+  30.00% { transform: translateY(70px); animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1); }
+  47.24% { transform: none; }
+  100.00% { transform: none; }
+}
+@keyframes splashLetter2 {
+  0.00% { transform: translateY(70px); }
+  32.41% { transform: translateY(70px); animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1); }
+  49.66% { transform: none; }
+  100.00% { transform: none; }
+}
+@keyframes splashLetter3 {
+  0.00% { transform: translateY(70px); }
+  34.83% { transform: translateY(70px); animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1); }
+  52.07% { transform: none; }
+  100.00% { transform: none; }
+}
+@keyframes splashLetter4 {
+  0.00% { transform: translateY(70px); }
+  37.24% { transform: translateY(70px); animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1); }
+  54.48% { transform: none; }
+  100.00% { transform: none; }
+}
+@keyframes splashLetter5 {
+  0.00% { transform: translateY(70px); }
+  39.66% { transform: translateY(70px); animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1); }
+  56.90% { transform: none; }
+  100.00% { transform: none; }
+}
+@keyframes splashFlash {
+  0.00% { background-position: -37% 0; opacity: 0; }
+  37.93% { background-position: -37% 0; opacity: 0; }
+  38.62% { background-position: -37% 0; opacity: 1; animation-timing-function: cubic-bezier(0.4, 0, 0.6, 1); }
+  58.62% { background-position: 200% 0; opacity: 1; }
+  59.31% { background-position: 200% 0; opacity: 0; }
+  100.00% { background-position: 200% 0; opacity: 0; }
+}
+@keyframes splashName {
+  0.00% { opacity: 0; }
+  53.45% { opacity: 0; }
+  55.17% { opacity: 1; }
+  56.90% { opacity: 0.2; }
+  59.66% { opacity: 1; }
+  61.72% { opacity: 0.4; }
+  63.79% { opacity: 1; color: #8ff0e6; text-shadow: 0 0 8px #2ec4b6, 0 0 22px rgba(46, 196, 182, 0.8); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+  84.48% { opacity: 1; color: #f4f7f9; text-shadow: 0 0 0 rgba(46, 196, 182, 0); }
+  100.00% { opacity: 1; color: #f4f7f9; text-shadow: 0 0 0 rgba(46, 196, 182, 0); }
+}
+@keyframes splashChin {
+  0.00% { opacity: 0; }
+  53.45% { opacity: 0; animation-timing-function: cubic-bezier(0.35, 0.2, 0.55, 1); }
+  100.00% { opacity: 1; }
+  100.00% { opacity: 1; }
+}

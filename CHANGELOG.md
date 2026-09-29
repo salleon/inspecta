@@ -6,6 +6,12 @@ the technical detail.
 
 ## 29 September 2026
 
+- **New splash screen (Build 4).** The EnFact swoosh draws itself with a
+  teal shine on its leading edge, the letters bounce up as it lands and
+  the shine carries across them; then "Inspecta" flickers on like a neon
+  sign and cools to white while "Site inspection tool" fades in at the
+  bottom. About three seconds, over a faint blueprint grid, then it fades
+  into the app as before. Settings now shows **Build 4**.
 - **First-time tour.** Everyone gets a welcome once (new users after
   entering their name, people already using the app on the first opening
   after this update) and can take a one-minute tour: the screen dims and one button at a time
@@ -13,8 +19,8 @@ the technical detail.
   finding with camera / pen, Save & next, ESR category and "no rush",
   export, Settings). It runs on a temporary Example site that's removed
   at the end. Settings has **Replay tour**.
-- **Tour wording.** The ESR tip now says "suggests the ESR category it
-  fits" (was "ESR item").
+- **Tour wording.** The ESR tip now says "suggests the category it fits"
+  (was "ESR item").
 
 ## 28 September 2026
 
