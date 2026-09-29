@@ -1,4 +1,5 @@
-// The first-time tour: offered once to a new user; runs through every
+// The first-time tour: offered once per phone (new users after their name,
+// existing users on the first opening after the update); runs through every
 // screen on a temporary Example site that's removed at the end (Done, Skip
 // tour, Android back, or on the next opening if the app was closed
 // mid-tour); taps only reach the tour; Settings → Replay tour.
@@ -58,19 +59,24 @@ test("a new user gets the welcome once, right after entering their name", async 
   await context.close();
 });
 
-test("existing users don't get it", async () => {
-  await go(page, app, "/");
-  assert.equal(await page.locator('[role="dialog"][aria-label="Welcome"]').count(), 0);
+test("someone already using the app gets it once, on the next opening", async () => {
+  await page.evaluate(() => localStorage.removeItem("inspecta.tourOffered")); // as before this update
+  await reopen();
+  assert.match(await page.locator('[role="dialog"][aria-label="Welcome"]').innerText(), /Welcome to Inspecta, Test/);
+  await page.getByRole("button", { name: "Skip, I'll explore" }).click();
+  await reopen();
+  assert.equal(await page.locator('[role="dialog"][aria-label="Welcome"]').count(), 0, "only once");
+  assert.deepEqual(await sites(), ["Harbour Tower"], "their site is untouched");
 });
 
 test("Show me around walks through every screen on an Example site, then removes it", async () => {
-  await page.evaluate(() => localStorage.setItem("inspecta.tourPending", "1"));
+  await page.evaluate(() => localStorage.removeItem("inspecta.tourOffered"));
   await reopen();
   await page.getByRole("button", { name: "Show me around" }).click();
   assert.deepEqual(await sites(), ["Example site", "Harbour Tower"]);
 
   assert.equal(await tipTitle(), "Start an inspection");
-  assert.match(page.url(), /#\/$/);
+  assert.match(new URL(page.url()).hash, /^(#\/)?$/, "on the sites screen");
   await page.mouse.click(341, 787); // the lit-up + : does nothing during the tour
   await page.waitForTimeout(300);
   assert.equal(await page.locator("text=New site").count(), 0, "taps don't reach the app");
@@ -90,7 +96,7 @@ test("Show me around walks through every screen on an Example site, then removes
   assert.match(page.url(), /\/findings$/);
   await next();
   assert.equal(await tipTitle(), "Settings");
-  assert.match(page.url(), /#\/$/);
+  assert.match(new URL(page.url()).hash, /^(#\/)?$/, "on the sites screen");
   assert.equal(await page.getByRole("button", { name: "Skip tour" }).count(), 0, "last step: just Done");
   await page.getByRole("button", { name: "Done", exact: true }).click();
   await page.waitForTimeout(500);
@@ -117,7 +123,7 @@ test("without Advanced controls the ESR steps are left out", async () => {
   await page.getByRole("button", { name: "Skip tour" }).click();
   await page.waitForTimeout(500);
   assert.deepEqual(await sites(), ["Harbour Tower"], "Skip tour removes it too");
-  assert.match(page.url(), /#\/$/);
+  assert.match(new URL(page.url()).hash, /^(#\/)?$/, "on the sites screen");
   await page.evaluate(() => localStorage.setItem("inspecta.advancedControls", "1"));
 });
 

@@ -41,6 +41,7 @@ before(async () => {
     await new Promise((r) => (tx.oncomplete = r));
     db.close();
     localStorage.setItem("inspecta.inspectorName", "Test Inspector");
+    localStorage.setItem("inspecta.tourOffered", "1"); // keep the tour welcome out of the way
     localStorage.setItem("inspecta.esrKeywordEdits", JSON.stringify({ "4.1": { added: [{ text: "spit fire", kind: "" }], removed: [] } }));
   });
 });

@@ -1,14 +1,16 @@
 import { useSyncExternalStore } from "react";
 import { addPhoto, createFinding, createSite, deleteSite, getSite, updateFinding } from "../db/db";
 
-// The first-time tour: once, for a new user (right after they enter their
-// name), a welcome offers a walk through the app. It runs on a temporary
+// The first-time tour: once per phone, a welcome offers a walk through the
+// app: for a new user right after they enter their name, and for anyone
+// already using the app on the first opening after the update that added
+// it. It runs on a temporary
 // "Example site" with one sample finding so every screen has something to
 // show, moving screen to screen on Next, and the Example site is deleted
 // when the tour ends (Done, Skip tour or Android back). Settings → Replay
 // tour runs it again. Real sites are never touched. See components/Tour.
 
-const PENDING_KEY = "inspecta.tourPending"; // welcome still to show
+const OFFERED_KEY = "inspecta.tourOffered"; // the welcome has been shown
 const SITE_KEY = "inspecta.tourSite"; // the Example site, while a tour runs
 export const SITES_CHANGED = "inspecta:sites-changed";
 
@@ -35,11 +37,6 @@ function storage(): Storage | null {
   }
 }
 
-// a new user just set their name: offer the tour once
-export function markTourPending() {
-  storage()?.setItem(PENDING_KEY, "1");
-}
-
 // on opening: show the welcome if it's due, and clear away an Example site
 // left behind if the app was closed mid-tour
 export async function initTour() {
@@ -51,16 +48,16 @@ export async function initTour() {
       window.dispatchEvent(new Event(SITES_CHANGED));
     }
   }
-  if (storage()?.getItem(PENDING_KEY) === "1") set({ welcome: true });
+  if (storage() && storage()?.getItem(OFFERED_KEY) !== "1") set({ welcome: true });
 }
 
 export function dismissWelcome() {
-  storage()?.removeItem(PENDING_KEY);
+  storage()?.setItem(OFFERED_KEY, "1");
   set({ welcome: false });
 }
 
 export async function startTour() {
-  storage()?.removeItem(PENDING_KEY);
+  storage()?.setItem(OFFERED_KEY, "1");
   const site = await createSite("Example site", "Sample only, removed after the tour", "afss");
   storage()?.setItem(SITE_KEY, site.id);
   const finding = await createFinding(site.id, { level: "Level 3" });
@@ -79,7 +76,6 @@ export function setTourStep(step: number) {
 export async function endTour() {
   const siteId = state.siteId;
   set({ active: false, welcome: false, step: 0, siteId: undefined, findingId: undefined });
-  storage()?.removeItem(PENDING_KEY);
   storage()?.removeItem(SITE_KEY);
   if (siteId) await deleteSite(siteId);
   window.dispatchEvent(new Event(SITES_CHANGED));

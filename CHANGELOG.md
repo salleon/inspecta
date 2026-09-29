@@ -6,8 +6,9 @@ the technical detail.
 
 ## 29 September 2026
 
-- **First-time tour.** New users get a welcome after entering their name
-  and can take a one-minute tour: the screen dims and one button at a time
+- **First-time tour.** Everyone gets a welcome once (new users after
+  entering their name, people already using the app on the first opening
+  after this update) and can take a one-minute tour: the screen dims and one button at a time
   is lit up with a tip, moving screen to screen on Next (new site, new
   finding with camera / pen, Save & next, ESR category and "no rush",
   export, Settings). It runs on a temporary Example site that's removed

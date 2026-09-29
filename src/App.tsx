@@ -8,7 +8,6 @@ import Onboarding from "./pages/Onboarding";
 import Splash from "./components/Splash";
 import UpdatePrompt from "./components/UpdatePrompt";
 import Tour from "./components/Tour";
-import { markTourPending } from "./lib/tour";
 import { hasInspectorName } from "./lib/profile";
 import { useKeepFocusedFieldVisible } from "./lib/keepFocusedVisible";
 import { BACK_EVENT, parentRoute } from "./lib/backButton";
@@ -52,12 +51,7 @@ function App() {
   return (
     <div className="app-shell">
       {needsOnboarding ? (
-        <Onboarding
-          onDone={() => {
-            markTourPending(); // a new user: offer the tour once
-            setNeedsOnboarding(false);
-          }}
-        />
+        <Onboarding onDone={() => setNeedsOnboarding(false)} />
       ) : (
         <HashRouter>
           <BackButton />
