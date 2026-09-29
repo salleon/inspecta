@@ -44,7 +44,7 @@ function rawWords(text: string): string[] {
     .filter(Boolean);
 }
 
-function tokens(text: string): string[] {
+export function tokens(text: string): string[] {
   return rawWords(text).map(stem);
 }
 
@@ -55,7 +55,7 @@ function keyWords(text: string): string[] {
 
 // one insert, delete or swap-a-letter apart, for words long enough that
 // that's a typo rather than a different word
-function nearlyEqual(a: string, b: string): boolean {
+export function nearlyEqual(a: string, b: string): boolean {
   if (a === b) return true;
   if (a.length < 5 || b.length < 5 || Math.abs(a.length - b.length) > 1 || a[0] !== b[0]) return false;
   let i = 0;

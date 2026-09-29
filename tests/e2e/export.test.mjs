@@ -130,6 +130,13 @@ test("Excel: blue / yellow / grey rows, refs, kept old number in purple, Uncateg
   assert.equal(fill["3.1.1"], "", "new finding not tinted");
   const refCell = ws.getRow(ws.getColumn(1).values.indexOf("3.1.1")).getCell(1);
   assert.deepEqual([refCell.alignment.horizontal, refCell.alignment.vertical], ["left", "top"]);
+
+  // corrective action pre-filled in red for common defects, blank otherwise
+  const action = (ref) => ws.getRow(ws.getColumn(1).values.indexOf(ref)).getCell(7);
+  assert.match(String(action("3.1.1").value), /^As per AS 2293, exit signs must be permanently illuminated/);
+  assert.equal(action("3.1.1").font.color.argb, "FFFF0000");
+  assert.match(String(action("5.5.1").value), /extinguisher/i);
+  assert.equal(action("13.1").value, null, "Logbook not on site: not a common defect");
 });
 
 test("photo-less findings are in the PDF", async () => {

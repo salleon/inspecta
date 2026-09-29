@@ -6,6 +6,12 @@ the technical detail.
 
 ## 29 September 2026
 
+- **Corrective actions pre-filled in the Excel.** When a finding's note is
+  clearly one of EnFact's 65 common defects (e.g. "fire door held open with
+  a wedge", "exit sign not illuminated"), the Excel register's Corrective
+  Action column gets that defect's standard report wording, in red so it's
+  checked before the report goes out. Unclear or unusual findings stay
+  blank. Nothing changes in the app or the PDF. The list is fixed for now.
 - **New splash screen (Build 4).** The EnFact swoosh draws itself with a
   teal shine on its leading edge, the letters bounce up as it lands and
   the shine carries across them; then "Inspecta" flickers on like a neon

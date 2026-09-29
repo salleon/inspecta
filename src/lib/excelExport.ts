@@ -1,6 +1,7 @@
 import type { Finding, Photo } from "../db/types";
 import { defectTypeStyle } from "./defectTypes";
 import { reportRows } from "./esrGrouping";
+import { suggestedCorrectiveAction } from "./correctiveAction";
 import { EXPORT_MAX_EDGE, watermarkBlob } from "./watermark";
 // Company template (header row A1:G1 with its fills, fonts and column
 // widths). Inlined as a data URL so the export works offline — the PWA
@@ -9,7 +10,9 @@ import templateDataUrl from "../assets/findings-template.xlsx?inline";
 
 // Excel findings register, built on the template: one row per finding,
 // A Ref · B Location · C Description (+ photos) · D Date identified ·
-// E Risk level · F Status · G Corrective action.
+// E Risk level · F Status · G Corrective action (pre-filled in red from the
+// common defects table when the note is clearly one of them, for the
+// engineer to check; see lib/correctiveAction).
 //
 // With ESR categories, findings sit under a blue row per section, a yellow
 // row for an item holding others (6.3), and a grey row per item (like the company's ESR spreadsheet), Uncategorised
@@ -52,6 +55,8 @@ const GROUP_FILL = "FFFFFFCC";
 const KEPT_REF_FILL = "FFB1A0C7";
 const UNCATEGORISED_FILL = "FFBFBFBF";
 const THIN = { style: "thin" as const, color: { argb: "FF000000" } };
+// pre-filled corrective action: red until the engineer has checked it
+const SUGGESTED_COLOUR = "FFFF0000";
 
 function estimateTextPx(text: string, widthPx: number): number {
   if (!text.trim()) return 0;
@@ -121,6 +126,7 @@ export async function buildFindingsWorkbook(
   const descPx = Math.max(colPx(descCol.width ?? 46), Math.ceil(neededPx));
   descCol.width = colWidthFor(descPx);
   const locPx = colPx(ws.getColumn(COL.location).width ?? 19);
+  const actionPx = colPx(ws.getColumn(COL.action).width ?? 40);
 
   const date = excelDate(inspectionMs);
   let rowNum = 2; // row 1 is the template's header
@@ -152,6 +158,8 @@ export async function buildFindingsWorkbook(
     const locationText = [finding.level, finding.location].filter(Boolean).join("\n");
     const noteH = estimateTextPx(finding.note, descPx);
     const locH = estimateTextPx(locationText, locPx);
+    const action = suggestedCorrectiveAction(finding);
+    const actionH = action ? estimateTextPx(action, actionPx) : 0;
 
     const prepared: PreparedPhoto[] = [];
     for (const p of photos) {
@@ -175,7 +183,7 @@ export async function buildFindingsWorkbook(
     const placements: { imageId: number; rowIdx: number; x: number; y: number; h: number }[] = [];
     let rowIdx = 0;
     let y = PAD + (noteH ? noteH + GAP : 0);
-    let rowFloor = Math.max(y, PAD + locH + PAD, MIN_ROW_PX);
+    let rowFloor = Math.max(y, PAD + locH + PAD, PAD + actionH + PAD, MIN_ROW_PX);
     for (let i = 0; i < prepared.length; i += 2) {
       const pair = prepared.slice(i, i + 2);
       const pairH = Math.max(...pair.map((p) => p.heightPx));
@@ -246,7 +254,12 @@ export async function buildFindingsWorkbook(
     status.value = "Open";
     status.alignment = centred;
 
-    row.getCell(COL.action).alignment = topLeft;
+    const actionCell = row.getCell(COL.action);
+    actionCell.alignment = topLeft;
+    if (action) {
+      actionCell.value = action;
+      actionCell.font = { ...FONT, color: { argb: SUGGESTED_COLOUR } };
+    }
 
     if (last > first) {
       for (const c of [COL.ref, COL.location, COL.date, COL.risk, COL.status, COL.action]) {
