@@ -57,7 +57,7 @@ const STEPS: Step[] = [
     title: "ESR category",
     body: (
       <>
-        As you type the note, {b("Quick add")} suggests the ESR item it fits: tap one to file the finding under it. {b("Browse all")} has the full list.
+        As you type the note, {b("Quick add")} suggests the ESR category it fits: tap one to file the finding under it. {b("Browse all")} has the full list.
       </>
     ),
     advancedOnly: true,

@@ -13,6 +13,8 @@ the technical detail.
   finding with camera / pen, Save & next, ESR category and "no rush",
   export, Settings). It runs on a temporary Example site that's removed
   at the end. Settings has **Replay tour**.
+- **Tour wording.** The ESR tip now says "suggests the ESR category it
+  fits" (was "ESR item").
 
 ## 28 September 2026
 
