@@ -58,8 +58,8 @@ export async function openPage(app, { advanced = true, tour = false } = {}) {
       if (e.defaultPrevented) return;
       const h = location.hash.slice(1) || "/";
       let parent = "/";
-      const m = /^\/site\/([^/]+)\/(findings|export|finding\/[^/]+\/note)$/.exec(h);
-      if (m) parent = m[2] === "findings" ? "/" : `/site/${m[1]}/findings`;
+      const m = /^\/site\/([^/]+)\/(findings|export|finding\/[^/]+\/note|flow\/[^/]+)$/.exec(h);
+      if (m) parent = m[2] === "findings" ? "/" : m[2].startsWith("flow/") ? `/site/${m[1]}/findings?tab=flow` : `/site/${m[1]}/findings`;
       else if (h.startsWith("/admin/")) parent = h.replace(/\/[^/]+$/, "");
       location.replace("#" + parent);
     };
@@ -83,10 +83,11 @@ export async function pressBack(page) {
 }
 
 // sites: [{ id, name, ... }], findings: [{ id, siteId, note, ... }],
-// photos: [{ id, findingId, siteId, color?, width?, height? }] (generated JPEGs, 400 × 300 unless given)
-export async function seed(page, { sites = [], findings = [], photos = [] }) {
+// photos: [{ id, findingId, siteId, color?, width?, height? }] (generated JPEGs, 400 × 300 unless given),
+// flowTests: [{ id, siteId, kind, sections, demand, ... }]
+export async function seed(page, { sites = [], findings = [], photos = [], flowTests = [] }) {
   await page.evaluate(
-    async ({ sites, findings, photos }) => {
+    async ({ sites, findings, photos, flowTests }) => {
       const req = indexedDB.open("inspecta");
       const idb = await new Promise((r) => (req.onsuccess = () => r(req.result)));
       const blobs = [];
@@ -100,14 +101,15 @@ export async function seed(page, { sites = [], findings = [], photos = [] }) {
         blobs.push(await new Promise((r) => c.toBlob(r, "image/jpeg", 0.9)));
       }
       const now = Date.now();
-      const tx = idb.transaction(["sites", "findings", "photos"], "readwrite");
+      const tx = idb.transaction(["sites", "findings", "photos", "flowTests"], "readwrite");
       for (const s of sites) tx.objectStore("sites").put({ address: "", kind: "afss", createdAt: now, updatedAt: now, ...s });
       findings.forEach((f, i) => tx.objectStore("findings").put({ location: "", order: i, createdAt: now, updatedAt: now, ...f }));
       photos.forEach(({ color: _c, width: _w, height: _h, ...ph }, i) => tx.objectStore("photos").put({ takenAt: now, order: 0, ...ph, blob: blobs[i] }));
+      flowTests.forEach((t, i) => tx.objectStore("flowTests").put({ name: t.kind, testedAt: now, k: 0, demand: [], sections: [], order: i, createdAt: now, updatedAt: now, ...t }));
       await new Promise((r) => (tx.oncomplete = r));
       idb.close();
     },
-    { sites, findings, photos },
+    { sites, findings, photos, flowTests },
   );
 }
 

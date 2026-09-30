@@ -67,3 +67,56 @@ export interface Thumbnail {
   siteId: string;
   blob: Blob;
 }
+
+// ---- flow tests (Flow tests tab on a site; see lib/flowTest) ----
+
+// sprinkler / hydrant: a section per supply (Town main, Electric pump,
+// Diesel pump…); combined: a section per pump, all on one graph; blank:
+// the inspector's own columns and rows
+export type FlowKind = "sprinkler" | "hydrant" | "combined" | "blank";
+// a flow as typed, in L/min or L/s (every sum works in L/min)
+export type FlowUnit = "min" | "sec";
+
+// one reading, every figure kept as typed ("" = not filled in)
+export interface FlowReading {
+  hg: string; // " Hg
+  flow: string; // blank: worked out from " Hg (see FlowTest.k)
+  flowUnit?: FlowUnit;
+  dis: string; // discharge kPa
+  suc: string; // suction kPa
+  rpm?: string;
+  amps?: string;
+}
+
+export interface FlowSection {
+  name: string;
+  rows: FlowReading[];
+}
+
+export interface DemandPoint {
+  flow: string;
+  flowUnit?: FlowUnit;
+  kpa: string;
+}
+
+export interface FlowTest {
+  id: string;
+  siteId: string;
+  kind: FlowKind;
+  name: string;
+  testedAt: number;
+  // L/min per √(" Hg), for flows worked out from " Hg; 0 = flows are typed
+  k: number;
+  sections: FlowSection[];
+  demand: DemandPoint[];
+  // the template's header and comment lines
+  equipment?: string;
+  testedBy?: string;
+  comment?: string;
+  // blank sheet only
+  columns?: string[];
+  cells?: string[][];
+  order: number;
+  createdAt: number;
+  updatedAt: number;
+}

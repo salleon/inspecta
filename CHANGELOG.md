@@ -7,6 +7,28 @@ the technical detail.
 
 ## 30 September 2026
 
+- **Flow tests (alpha test).** A site now has two tabs under its name:
+  **Findings** and **Flow tests** (marked ALPHA TEST). + New flow test
+  offers Sprinkler, Hydrant, Combined system or a Blank sheet.
+  - Sprinkler and Hydrant tests have a tab per supply, prefilled Town main,
+    Electric pump and Diesel pump; the names can be changed (two diesels,
+    say), + adds another and ✕ removes one. Only supplies with readings
+    count. A combined system has a tab per pump (Diesel 1, Diesel 2).
+  - Readings: " Hg, flow, discharge, suction, and RPM & Amps when opened.
+    Flow fills in from " Hg (× 534.15 for sprinklers, × 3440.5 for a
+    combined system, as on EnFact's sheets); hydrant flows are typed. Tap
+    the unit under Flow for L/min or L/s.
+  - The graph (axes fitted to the data) and a pass line per supply follow
+    the readings and demand points as they're typed. Test details: date,
+    equipment, tested by, comment. A converter tool (L/s ⇄ L/min) sits in
+    the list and each test. Tests are deleted by swiping left or with
+    Delete flow test, both asking first.
+  - The site's Excel gets a tab per flow test in EnFact's own layout
+    (their SPRINKLER, HYDRANT and Combined System sheets, logo included):
+    a block per tested supply or pump (more blocks added as needed), PASS
+    or FAIL in the Conclusion, and a real Excel chart of each discharge
+    curve and the demand points. A blank sheet goes in as a plain table.
+  - Flow tests are included in backups and deleted with their site.
 - **Older photos get their export copies in the background.** Photos taken
   before the export copies existed now get theirs automatically, starting
   8 seconds after the app opens, one at a time with a short pause between,

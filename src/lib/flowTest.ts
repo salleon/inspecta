@@ -1,0 +1,270 @@
+import type { DemandPoint, FlowKind, FlowReading, FlowTest, FlowUnit } from "../db/types";
+
+// Flow tests, as mocked up on the design canvas (FlowTest board): readings
+// of " Hg, flow, discharge and suction per supply or pump, the demand
+// points, and a graph and a pass line that follow them as they're typed.
+// Everything is kept as typed; the sums here work in L/min.
+
+// L/min per √(" Hg) for flows worked out from " Hg: EnFact's sprinkler
+// sheet (534.15) and the bigger rig on their combined system sheet
+// (3440.5, e.g. 7693 L/min at 5" Hg). Hydrant flows are typed (0).
+export const K_SPRINKLER = 534.15;
+export const K_COMBINED = 3440.5;
+
+export const SECTION_COLOURS = ["#2ec4b6", "#f5a55c", "#b48cff", "#5ab0ff", "#ff7ab8", "#e8d44d"];
+export const sectionColour = (i: number) => SECTION_COLOURS[i % SECTION_COLOURS.length];
+
+export const PASS_COLOUR = "#2bd47a";
+export const FAIL_COLOUR = "#ff5a4a";
+export const NEUTRAL_COLOUR = "#6a8098";
+
+export function num(v: string | undefined): number | null {
+  if (v === undefined) return null;
+  const n = parseFloat(String(v).replace(",", "."));
+  return Number.isFinite(n) ? n : null;
+}
+const r1 = (n: number) => Math.round(n * 10) / 10;
+
+// a typed flow in L/min, whichever unit it was typed in
+export function lmin(val: string, unit: FlowUnit | undefined): number | null {
+  const n = num(val);
+  return n === null ? null : unit === "sec" ? n * 60 : n;
+}
+
+// the flow for a reading (L/min): typed, or from " Hg × k
+export function flowOf(test: Pick<FlowTest, "k">, r: FlowReading): number | null {
+  if (r.flow !== "" && num(r.flow) !== null) return lmin(r.flow, r.flowUnit);
+  if (!test.k) return null;
+  const hg = num(r.hg);
+  return hg === null ? null : r1(test.k * Math.sqrt(Math.max(0, hg)));
+}
+
+export interface Point {
+  x: number;
+  y: number;
+}
+
+// (flow, pressure) points of one section, lowest flow first
+export function points(test: Pick<FlowTest, "k">, rows: FlowReading[], key: "dis" | "suc"): Point[] {
+  return rows
+    .map((r) => ({ x: flowOf(test, r), y: num(r[key]) }))
+    .filter((p): p is Point => p.x !== null && p.y !== null)
+    .sort((a, b) => a.x - b.x);
+}
+
+export function demandPoints(demand: DemandPoint[]): Point[] {
+  return demand.map((d) => ({ x: lmin(d.flow, d.flowUnit), y: num(d.kpa) })).filter((p): p is Point => p.x !== null && p.y !== null);
+}
+
+// pressure at a flow, read off the curve (straight between readings)
+function at(pts: Point[], x: number): number | null {
+  for (let i = 1; i < pts.length; i++) {
+    if (x >= pts[i - 1].x && x <= pts[i].x) {
+      const a = pts[i - 1];
+      const b = pts[i];
+      return b.x === a.x ? b.y : a.y + ((b.y - a.y) * (x - a.x)) / (b.x - a.x);
+    }
+  }
+  return null;
+}
+
+// a flow in L/min as shown: L/min, or L/s (unit "sec")
+export function showFlow(v: number | null, unit: FlowUnit): string {
+  if (v === null) return "";
+  return unit === "sec" ? String(Math.round(v / 6) / 10) : String(r1(v));
+}
+
+export interface Verdict {
+  text: string;
+  colour: string;
+  pass: boolean | null; // null: not enough to say
+}
+
+// Does a section's discharge curve clear every demand point?
+export function verdict(test: FlowTest, rows: FlowReading[], unit: FlowUnit = "min"): Verdict {
+  const u = unit === "sec" ? " L/s" : " L/min";
+  const pts = points(test, rows, "dis");
+  const dem = demandPoints(test.demand);
+  if (pts.length < 2 || !dem.length) return { text: "Add readings and demand points to compare", colour: NEUTRAL_COLOUR, pass: null };
+  let worst: { m: number; d: Point } | null = null;
+  for (const d of dem) {
+    const y = at(pts, d.x);
+    if (y === null) return { text: `Readings don't reach ${showFlow(d.x, unit)}${u} yet`, colour: NEUTRAL_COLOUR, pass: null };
+    const m = y - d.y;
+    if (!worst || m < worst.m) worst = { m, d };
+  }
+  return worst!.m >= 0
+    ? { text: `Above all demand points (closest +${Math.round(worst!.m)} kPa at ${showFlow(worst!.d.x, unit)}${u})`, colour: PASS_COLOUR, pass: true }
+    : { text: `Below demand at ${showFlow(worst!.d.x, unit)}${u} (${Math.round(worst!.m)} kPa)`, colour: FAIL_COLOUR, pass: false };
+}
+
+// A section counts once it has a discharge reading (a combined system's
+// pumps always do): empty ones stay off the graph, the result and the Excel.
+export function isTested(test: FlowTest, index: number): boolean {
+  return test.kind === "combined" || test.sections[index].rows.some((r) => r.dis.trim() !== "");
+}
+
+export interface SectionVerdict extends Verdict {
+  index: number;
+  name: string;
+}
+
+export function sectionVerdicts(test: FlowTest, unit: FlowUnit = "min"): SectionVerdict[] {
+  return test.sections
+    .map((s, i) => ({ s, i }))
+    .filter(({ i }) => isTested(test, i))
+    .map(({ s, i }) => ({ index: i, name: sectionName(test, i), ...verdict(test, s.rows, unit) }));
+}
+
+export function sectionName(test: FlowTest, i: number): string {
+  return test.sections[i].name.trim() || (test.kind === "combined" ? `Pump ${i + 1}` : `Supply ${i + 1}`);
+}
+
+// one line for the list
+export function summary(test: FlowTest): Verdict {
+  if (test.kind === "blank") return { text: "Blank sheet", colour: "#8ba0b5", pass: null };
+  const vs = sectionVerdicts(test);
+  const failing = vs.filter((v) => v.pass === false);
+  if (failing.length) return { text: `${failing.map((v) => v.name).join(" & ")} below demand`, colour: FAIL_COLOUR, pass: false };
+  if (vs.length && vs.every((v) => v.pass)) {
+    const who = vs.length === 1 ? vs[0].name : test.kind === "combined" ? `All ${vs.length} pumps` : vs.map((v) => v.name).join(" & ");
+    return { text: `${who} above all demand points`, colour: PASS_COLOUR, pass: true };
+  }
+  return { text: "Add readings and demand points to compare", colour: NEUTRAL_COLOUR, pass: null };
+}
+
+export function readingCount(test: FlowTest): number {
+  return test.sections.reduce((n, s) => n + s.rows.filter((r) => r.dis.trim() !== "").length, 0);
+}
+
+// ---- new tests ----
+
+export const KIND_LABEL: Record<FlowKind, string> = {
+  sprinkler: "Sprinkler",
+  hydrant: "Hydrant",
+  combined: "Combined system",
+  blank: "Blank sheet",
+};
+
+export const KIND_HINT: Record<FlowKind, string> = {
+  sprinkler: "Town main, electric and diesel pump in one test; rename or add supplies",
+  hydrant: "Town main, electric and diesel pump in one test; rename or add supplies",
+  combined: "Two pumps on one graph, e.g. Diesel 1 and Diesel 2",
+  blank: "Your own columns and rows, all editable, for anything that doesn't fit",
+};
+
+const HG_SPRINKLER = ["0", "2", "4", "6", "8"];
+const HG_COMBINED = ["0", "5", "10", "15", "20"];
+
+export function blankRows(kind: FlowKind): FlowReading[] {
+  const hgs = kind === "combined" ? HG_COMBINED : kind === "hydrant" ? ["", "", "", ""] : HG_SPRINKLER;
+  return hgs.map((hg) => ({ hg, flow: "", dis: "", suc: "" }));
+}
+
+export function newFlowTest(siteId: string, kind: FlowKind): Omit<FlowTest, "id" | "order" | "createdAt" | "updatedAt"> {
+  const base = { siteId, kind, name: KIND_LABEL[kind], testedAt: Date.now(), demand: [{ flow: "", kpa: "" }] };
+  if (kind === "blank") {
+    return {
+      ...base,
+      k: 0,
+      demand: [],
+      sections: [],
+      columns: ['" Hg', "Flow (L/min)", "Discharge (kPa)", "Suction (kPa)"],
+      cells: [0, 1, 2, 3, 4].map(() => ["", "", "", ""]),
+    };
+  }
+  const names = kind === "combined" ? ["Diesel 1", "Diesel 2"] : ["Town main", "Electric pump", "Diesel pump"];
+  return {
+    ...base,
+    k: kind === "combined" ? K_COMBINED : kind === "hydrant" ? 0 : K_SPRINKLER,
+    sections: names.map((name) => ({ name, rows: blankRows(kind) })),
+  };
+}
+
+// the next reading's " Hg: two (sprinkler) or five (combined) on from the last
+export function nextReading(test: FlowTest, rows: FlowReading[]): FlowReading {
+  const last = rows.length ? num(rows[rows.length - 1].hg) : null;
+  const step = test.kind === "combined" ? 5 : 2;
+  return { hg: last === null || test.kind === "hydrant" ? "" : String(last + step), flow: "", dis: "", suc: "" };
+}
+
+// ---- the graph ----
+
+// Round axis steps (1, 2, 2.5, 5 × 10^n) giving 4-7 gridlines, a little
+// headroom past the largest value, and pressure starting at 0 unless
+// everything sits high up (then just below the lowest).
+function nice(raw: number) {
+  const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const f = raw / mag;
+  return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * mag;
+}
+function fit(lo: number, hi: number) {
+  let best: { min: number; max: number; step: number } | null = null;
+  for (let n = 4; n <= 7; n++) {
+    const step = nice((hi * 1.04 - lo) / n);
+    const a = Math.floor(lo / step) * step;
+    const b = Math.ceil((hi * 1.04) / step) * step;
+    if (!best || b - a < best.max - best.min) best = { min: a, max: b, step };
+  }
+  return best!;
+}
+
+// The graph as SVG markup: each tested section's discharge curve in its
+// colour, the suction of the section being looked at (`current`) dashed,
+// and the demand points as red diamonds. `small`: the list thumbnail.
+export function chartSvg(test: FlowTest, w: number, h: number, opts: { small?: boolean; unit?: FlowUnit; current?: number } = {}): string {
+  const { small = false, unit = "min", current = 0 } = opts;
+  const div = unit === "sec" ? 60 : 1;
+  const pad = small ? { l: 4, r: 4, t: 4, b: 4 } : { l: 38, r: 10, t: 10, b: 26 };
+  const sc = (p: Point) => ({ x: p.x / div, y: p.y });
+  const series = test.sections
+    .map((s, i) => ({ pts: isTested(test, i) || i === current ? points(test, s.rows, "dis").map(sc) : [], colour: sectionColour(i) }))
+    .filter((s) => s.pts.length);
+  const cur = test.sections[current];
+  const suc = test.kind === "combined" || !cur ? [] : points(test, cur.rows, "suc").map(sc);
+  const dem = demandPoints(test.demand).map(sc);
+  const all = [...suc, ...dem, ...series.flatMap((s) => s.pts)];
+  const xs = all.map((p) => p.x);
+  const ys = all.map((p) => p.y);
+  let hiX = xs.length ? Math.max(...xs) : 0;
+  let hiY = ys.length ? Math.max(...ys) : 0;
+  const loY = ys.length ? Math.min(...ys) : 0;
+  hiX = hiX > 0 ? hiX : div === 60 ? 25 : 1500;
+  hiY = hiY > 0 ? hiY : 500;
+  const ax = fit(0, hiX);
+  const ay = fit(loY > hiY * 0.55 ? loY - (hiY - loY) * 0.15 : 0, hiY);
+  const minX = ax.min;
+  const maxX = ax.max;
+  const minY = Math.max(0, ay.min);
+  const maxY = ay.max;
+  const X = (x: number) => pad.l + ((w - pad.l - pad.r) * (x - minX)) / (maxX - minX);
+  const Y = (y: number) => h - pad.b - ((h - pad.t - pad.b) * (y - minY)) / (maxY - minY);
+  let s = `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="display:block">`;
+  if (!small) {
+    for (let gx = minX; gx <= maxX + 1e-9; gx += ax.step) {
+      s += `<line x1="${X(gx)}" y1="${pad.t}" x2="${X(gx)}" y2="${h - pad.b}" stroke="#163a5a"/><text x="${X(gx)}" y="${h - 8}" text-anchor="middle" font-size="10" font-weight="700" fill="#6a8098">${+gx.toFixed(2)}</text>`;
+    }
+    for (let gy = minY; gy <= maxY + 1e-9; gy += ay.step) {
+      s += `<line x1="${pad.l}" y1="${Y(gy)}" x2="${w - pad.r}" y2="${Y(gy)}" stroke="#163a5a"/><text x="${pad.l - 5}" y="${Y(gy) + 3}" text-anchor="end" font-size="10" font-weight="700" fill="#6a8098">${+gy.toFixed(2)}</text>`;
+    }
+  }
+  const line = (pts: Point[], colour: string, dash: boolean, width: number) =>
+    pts.length < 2
+      ? ""
+      : `<polyline points="${pts.map((p) => `${X(p.x)},${Y(p.y)}`).join(" ")}" fill="none" stroke="${colour}" stroke-width="${width}"${dash ? ' stroke-dasharray="5 4"' : ""} stroke-linejoin="round"/>`;
+  s += line(suc, "#6a8098", true, small ? 1.5 : 2);
+  for (const sr of series) {
+    s += line(sr.pts, sr.colour, false, small ? 2 : 2.5);
+    if (!small) for (const p of sr.pts) s += `<circle cx="${X(p.x)}" cy="${Y(p.y)}" r="3.5" fill="#071b2c" stroke="${sr.colour}" stroke-width="2"/>`;
+  }
+  const r = small ? 3 : 5;
+  for (const p of dem) s += `<path d="M${X(p.x)} ${Y(p.y) - r} l${r} ${r} l${-r} ${r} l${-r} ${-r} z" fill="none" stroke="#ff5a4a" stroke-width="2"/>`;
+  return `${s}</svg>`;
+}
+
+// a small grid picture for a blank sheet's list row
+export function blankThumbSvg(w: number, h: number): string {
+  let s = `<svg width="${w}" height="${h}" viewBox="0 0 72 52"><rect width="72" height="52" rx="8" fill="#071b2c"/>`;
+  for (let r = 0; r < 4; r++) for (let c = 0; c < 3; c++) s += `<rect x="${8 + c * 19}" y="${8 + r * 10}" width="16" height="7" rx="2" fill="${r ? "#163a5a" : "#1c4468"}"/>`;
+  return `${s}</svg>`;
+}

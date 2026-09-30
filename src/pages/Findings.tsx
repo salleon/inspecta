@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import type { Finding, Photo, Site } from "../db/types";
-import { addPhoto, createFinding, deleteFinding, deleteSite, getSite, getThumbnail, listFindings, listPhotos, reorderFinding, updateSite } from "../db/db";
+import { addPhoto, createFinding, deleteFinding, deleteSite, flowTestCount, getSite, getThumbnail, listFindings, listPhotos, reorderFinding, updateSite } from "../db/db";
 import { capturePhoto } from "../lib/capture";
 import { IconChevronLeft, IconShare, IconEdit, IconGrip, IconCheck, IconTrash, IconPen, IconCamera } from "../components/Icons";
 import DefectTypePill from "../components/DefectTypePill";
@@ -9,6 +9,7 @@ import { esrItem } from "../lib/esrCategories";
 import ConfirmDialog from "../components/ConfirmDialog";
 import FormActions from "../components/FormActions";
 import RoundIconButton from "../components/RoundIconButton";
+import FlowTestList from "../components/FlowTestList";
 
 interface Row {
   finding: Finding;
@@ -54,6 +55,10 @@ export default function Findings() {
   const navigate = useNavigate();
   const [site, setSite] = useState<Site | null>(null);
   const [rows, setRows] = useState<Row[]>([]);
+  // Findings / Flow tests tabs (?tab=flow, so back from a flow test lands here)
+  const [searchParams, setSearchParams] = useSearchParams();
+  const flowTab = searchParams.get("tab") === "flow";
+  const [flowCount, setFlowCount] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [editingSite, setEditingSite] = useState(false);
   const [editName, setEditName] = useState("");
@@ -98,6 +103,7 @@ export default function Findings() {
     const urls: string[] = [];
 
     async function load() {
+      flowTestCount(siteId!).then((n) => !cancelled && setFlowCount(n));
       const s = await getSite(siteId!);
       const findings = await listFindings(siteId!);
       const built: Row[] = [];
@@ -401,6 +407,33 @@ export default function Findings() {
         </RoundIconButton>
       </div>
 
+      {/* Findings / Flow tests (canvas option E1) */}
+      <div style={{ flexShrink: 0, margin: "0 16px 8px", display: "flex", gap: 4, padding: 4, borderRadius: 12, background: "var(--panel)", border: "1px solid var(--border)" }}>
+        {[
+          { flow: false, label: `Findings · ${rows.length}` },
+          { flow: true, label: `Flow tests${flowCount === null ? "" : ` · ${flowCount}`}` },
+        ].map((t) => {
+          const on = t.flow === flowTab;
+          return (
+            <button
+              key={t.label}
+              disabled={reordering}
+              onClick={() => setSearchParams(t.flow ? { tab: "flow" } : {}, { replace: true })}
+              style={{ flex: 1, padding: "9px 0", borderRadius: 10, border: "none", fontSize: 13, fontWeight: 800, whiteSpace: "nowrap", background: on ? "var(--accent)" : "none", color: on ? "var(--accent-text)" : "var(--muted)" }}
+            >
+              {t.label}
+              {t.flow && (
+                <span style={{ marginLeft: 5, padding: "1px 5px", borderRadius: 999, border: "1px solid currentColor", fontSize: 9, fontWeight: 800, letterSpacing: "0.04em", verticalAlign: 1, opacity: 0.85 }}>ALPHA TEST</span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {flowTab ? (
+        <FlowTestList siteId={siteId} onCount={setFlowCount} />
+      ) : (
+      <>
       {/* list */}
       <div ref={listRef} style={{ flexGrow: 1, overflowY: "auto", padding: "4px 16px 12px", display: "flex", flexDirection: "column", position: "relative" }}>
         {rows.length === 0 && (
@@ -571,6 +604,8 @@ export default function Findings() {
           </button>
         </div>
       </div>
+      </>
+      )}
 
       {editingSite && (
         <div

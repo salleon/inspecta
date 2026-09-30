@@ -1,5 +1,5 @@
 // Upgrading from an older release: a version-4 database with a finding
-// tagged 4.1 (since removed) opens at the current version (6) with it moved
+// tagged 4.1 (since removed) opens at the current version (7) with it moved
 // to 4 and the export-copies table added, and a keyword change saved
 // against 4.1 moves to 4 too.
 import { test, before, after } from "node:test";
@@ -66,8 +66,9 @@ test("opens the old database, moves 4.1 to 4, keeps the rest", async () => {
     db.close();
     return { version, stores, cats: Object.fromEntries(all.map((f) => [f.id, f.esrCategory])) };
   });
-  assert.equal(state.version, 60);
+  assert.equal(state.version, 70);
   assert.ok(state.stores.includes("exportCopies"), String(state.stores));
+  assert.ok(state.stores.includes("flowTests"), String(state.stores));
   assert.deepEqual(state.cats, { f0: "4", f1: "3.1" });
   assert.equal(await page.locator("text=4 · Emergency Lighting").count(), 1, "shown under section 4 in the preview");
 });

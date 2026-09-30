@@ -1,5 +1,5 @@
 import Dexie, { type Table } from "dexie";
-import type { Site, Finding, Photo, SiteKind, Thumbnail, ExportCopy, StampedPhoto } from "./types";
+import type { Site, Finding, Photo, SiteKind, Thumbnail, ExportCopy, StampedPhoto, FlowTest } from "./types";
 import { makeThumbnail } from "../lib/thumbnail";
 import { makeExportCopy } from "../lib/exportCopy";
 import { RENAMED_CODES } from "../lib/esrCategories";
@@ -10,6 +10,7 @@ class InspectaDB extends Dexie {
   photos!: Table<Photo, string>;
   thumbnails!: Table<Thumbnail, string>;
   exportCopies!: Table<ExportCopy, string>;
+  flowTests!: Table<FlowTest, string>;
 
   constructor() {
     super("inspecta");
@@ -70,6 +71,15 @@ class InspectaDB extends Dexie {
       thumbnails: "photoId, siteId",
       exportCopies: "photoId, siteId",
     });
+    // v7: flow tests (the Flow tests tab on a site). Additive only.
+    this.version(7).stores({
+      sites: "id, updatedAt, kind",
+      findings: "id, siteId, createdAt, order",
+      photos: "id, findingId, siteId, order",
+      thumbnails: "photoId, siteId",
+      exportCopies: "photoId, siteId",
+      flowTests: "id, siteId",
+    });
   }
 }
 
@@ -119,6 +129,7 @@ export async function deleteSite(siteId: string) {
   await db.exportCopies.where("siteId").equals(siteId).delete();
   await db.photos.where("siteId").equals(siteId).delete();
   await db.findings.where("siteId").equals(siteId).delete();
+  await db.flowTests.where("siteId").equals(siteId).delete();
   await db.sites.delete(siteId);
 }
 
@@ -307,6 +318,40 @@ export async function getStamped(
   return made;
 }
 
+// ---- flow tests ----
+
+export async function listFlowTests(siteId: string) {
+  const tests = await db.flowTests.where("siteId").equals(siteId).toArray();
+  return tests.sort((a, b) => a.order - b.order);
+}
+
+export async function flowTestCount(siteId: string) {
+  return db.flowTests.where("siteId").equals(siteId).count();
+}
+
+export async function getFlowTest(testId: string) {
+  return db.flowTests.get(testId);
+}
+
+// `test` is a new one from lib/flowTest's newFlowTest
+export async function addFlowTest(test: Omit<FlowTest, "id" | "order" | "createdAt" | "updatedAt">) {
+  const now = Date.now();
+  const saved: FlowTest = { ...test, id: uid(), order: now, createdAt: now, updatedAt: now };
+  await db.flowTests.add(saved);
+  await touchSite(test.siteId);
+  return saved;
+}
+
+export async function saveFlowTest(test: FlowTest) {
+  await db.flowTests.put({ ...test, updatedAt: Date.now() });
+}
+
+export async function deleteFlowTest(testId: string) {
+  const test = await db.flowTests.get(testId);
+  await db.flowTests.delete(testId);
+  if (test) await touchSite(test.siteId);
+}
+
 // ---- backup / restore (see lib/backup.ts) ----
 
 // Everything except the photo files themselves, which are read one at a
@@ -314,11 +359,12 @@ export async function getStamped(
 export async function backupRecords() {
   const sites = await db.sites.toArray();
   const findings = await db.findings.toArray();
+  const flowTests = await db.flowTests.toArray();
   const photos: Omit<Photo, "blob">[] = [];
   await db.photos.each(({ blob: _blob, ...meta }) => {
     photos.push(meta);
   });
-  return { sites, findings, photos };
+  return { sites, findings, flowTests, photos };
 }
 
 export async function photoBlob(photoId: string): Promise<Blob | undefined> {
@@ -330,10 +376,11 @@ export async function siteExists(siteId: string): Promise<boolean> {
 }
 
 // A restored site and its findings (photos follow one at a time).
-export async function restoreSiteRecords(site: Site, findings: Finding[]) {
-  await db.transaction("rw", db.sites, db.findings, async () => {
+export async function restoreSiteRecords(site: Site, findings: Finding[], flowTests: FlowTest[] = []) {
+  await db.transaction("rw", db.sites, db.findings, db.flowTests, async () => {
     await db.sites.add(site);
     await db.findings.bulkAdd(findings);
+    await db.flowTests.bulkAdd(flowTests);
   });
 }
 

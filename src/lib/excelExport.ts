@@ -1,9 +1,16 @@
-import type { Finding, Photo } from "../db/types";
+import type { Finding, FlowTest, Photo, Site } from "../db/types";
 import { defectTypeStyle } from "./defectTypes";
 import { reportRows } from "./esrGrouping";
 import { suggestedCorrectiveAction } from "./correctiveAction";
 import { EXPORT_MAX_EDGE, STAMP_VERSION, watermarkBlob } from "./watermark";
 import { getStamped } from "../db/db";
+import { addFlowCharts, addFlowSheets } from "./flowExcel";
+
+// the site's flow tests, which go in as tabs after the findings (lib/flowExcel)
+export interface FlowExport {
+  tests: FlowTest[];
+  site: Pick<Site, "name" | "address">;
+}
 
 // A photo stamped for the Excel: made once from its export copy, then
 // reused by every Excel export after (see db/getStamped).
@@ -120,6 +127,7 @@ export async function buildFindingsWorkbook(
   items: ExcelFinding[],
   inspectionMs: number,
   onProgress?: (progress: ExcelProgress) => void,
+  flow?: FlowExport,
 ): Promise<Blob> {
   const totalPhotos = items.reduce((n, i) => n + i.photos.length, 0);
   let donePhotos = 0;
@@ -318,11 +326,17 @@ export async function buildFindingsWorkbook(
   ws.views = [{ state: "frozen", ySplit: 1, topLeftCell: "A2", activeCell: "A2" }];
 
   onProgress?.({ stage: "building" });
-  // Stored, not deflated: the photos are already JPEG-compressed, so
-  // deflating the zip only burns time (it runs on the main thread and
-  // freezes the loading screen) for a negligible saving on the XML.
+  return writeWorkbook(wb, flow);
+}
+
+// Stored, not deflated: the photos are already JPEG-compressed, so
+// deflating the zip only burns time (it runs on the main thread and
+// freezes the loading screen) for a negligible saving on the XML.
+async function writeWorkbook(wb: import("exceljs").Workbook, flow?: FlowExport): Promise<Blob> {
+  const charts = flow?.tests.length ? await addFlowSheets(wb, flow.tests, flow.site) : [];
   const buffer = await wb.xlsx.writeBuffer({ zip: { compression: "STORE" } } as never);
-  return new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+  const bytes = await addFlowCharts(new Uint8Array(buffer as ArrayBuffer), charts);
+  return new Blob([bytes as BlobPart], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
 }
 
 const two = (n: number) => String(n).padStart(2, "0");
@@ -341,6 +355,7 @@ function dateAndTime(ms: number): string {
 export async function buildProjectWorkbook(
   items: ExcelFinding[],
   onProgress?: (progress: ExcelProgress) => void,
+  flow?: FlowExport,
 ): Promise<Blob> {
   const totalPhotos = items.reduce((n, i) => n + i.photos.length, 0);
   let donePhotos = 0;
@@ -461,6 +476,5 @@ export async function buildProjectWorkbook(
 
   ws.views = [{ state: "frozen", ySplit: 1, topLeftCell: "A2", activeCell: "A2" }];
   onProgress?.({ stage: "building" });
-  const buffer = await wb.xlsx.writeBuffer({ zip: { compression: "STORE" } } as never);
-  return new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+  return writeWorkbook(wb, flow);
 }

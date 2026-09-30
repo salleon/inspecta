@@ -18,6 +18,7 @@ import { BACK_EVENT, parentRoute } from "./lib/backButton";
 // launch. It's bundled locally, so this works offline.
 const ExportPreview = lazy(() => import("./pages/Export"));
 const Admin = lazy(() => import("./pages/Admin"));
+const FlowTest = lazy(() => import("./pages/FlowTest"));
 
 // How long the splash sits fully visible before it starts fading, and how
 // long the fade itself takes (kept in sync with .splash-leaving's CSS
@@ -131,6 +132,7 @@ function AnimatedRoutes() {
           <Route path="/site/:siteId/finding/:findingId/note" element={<Note />} />
           <Route path="/site/:siteId/findings" element={<Findings />} />
           <Route path="/site/:siteId/export" element={<ExportPreview />} />
+          <Route path="/site/:siteId/flow/:testId" element={<FlowTest />} />
           <Route path="/admin/*" element={<Admin />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

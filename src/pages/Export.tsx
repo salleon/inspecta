@@ -4,7 +4,7 @@ import { jsPDF } from "jspdf";
 import { Share } from "@capacitor/share";
 import { Capacitor } from "@capacitor/core";
 import type { Finding, Photo, Site } from "../db/types";
-import { countExportCopies, getExportCopy, getStamped, getSite, listFindings, listPhotos, updateFinding } from "../db/db";
+import { countExportCopies, getExportCopy, getStamped, getSite, listFindings, listFlowTests, listPhotos, updateFinding } from "../db/db";
 import { IconChevronLeft, IconShare } from "../components/Icons";
 import RoundIconButton from "../components/RoundIconButton";
 import ProgressOverlay from "../components/ProgressOverlay";
@@ -522,7 +522,9 @@ export default function ExportPreview() {
           const { buildFindingsWorkbook, buildProjectWorkbook } = await import("../lib/excelExport");
           const onProgress = (p: { stage: "photos"; done: number; total: number } | { stage: "building" }) =>
             p.stage === "photos" ? photoProgress(p.done, p.total) : setExportProgress({ percent: 88, step: "Building spreadsheet…" });
-          blob = site?.kind === "project" ? await buildProjectWorkbook(items, onProgress) : await buildFindingsWorkbook(items, inspectionMs, onProgress);
+          // the site's flow tests go in as tabs after the findings
+          const flow = site ? { tests: await listFlowTests(site.id), site } : undefined;
+          blob = site?.kind === "project" ? await buildProjectWorkbook(items, onProgress, flow) : await buildFindingsWorkbook(items, inspectionMs, onProgress, flow);
         }
         timer.mark("building");
         setExportProgress({ percent: 97, step: "Opening share menu…" });
