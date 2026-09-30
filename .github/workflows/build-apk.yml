@@ -14,7 +14,7 @@ on:
         type: boolean
         default: false
       publish_test_to_play:
-        description: "Publish Inspecta Test to my phone (its own Play app, only you test it)"
+        description: "Publish Inspecta Test to my phone (its own Play app, only you test it; always on for the test branch)"
         type: boolean
         default: false
       release_notes:
@@ -138,7 +138,7 @@ jobs:
       # track, and Play updates everyone's phone. versionCode is this
       # workflow's run number, so it's always higher than the last one.
       - name: Write release notes
-        if: ${{ (inputs.publish_to_play || inputs.publish_test_to_play) && inputs.release_notes != '' }}
+        if: ${{ (inputs.publish_to_play || inputs.publish_test_to_play || github.ref_name == 'test') && inputs.release_notes != '' }}
         env:
           NOTES: ${{ inputs.release_notes }}
         run: |
@@ -156,10 +156,11 @@ jobs:
           status: completed
           whatsNewDirectory: ${{ inputs.release_notes != '' && 'whatsnew' || '' }}
 
-      # "Publish Inspecta Test to my phone" ticked: the test app's internal
-      # testing track, where only you are a tester. Coworkers never get it.
+      # "Publish Inspecta Test to my phone" ticked, or any build of the test
+      # branch: the test app's internal testing track, where only you are a
+      # tester. Coworkers never get it.
       - name: Publish Inspecta Test to Google Play (internal testing)
-        if: ${{ inputs.publish_test_to_play }}
+        if: ${{ inputs.publish_test_to_play || github.ref_name == 'test' }}
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}

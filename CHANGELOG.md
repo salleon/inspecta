@@ -7,6 +7,10 @@ the technical detail.
 
 ## 30 September 2026
 
+- **Test branch builds go to Inspecta Test on Play.** Every build of the
+  `test` branch now publishes Inspecta Test to its own Play app's internal
+  testing (no tickbox needed), so it updates on the owner's phone through
+  Play. Builds of `main` only publish when asked, as before.
 - **Updating screen.** After **Update now**, a full-screen updating screen
   replaces the slim download bar: gears turning, with a new teal gear
   rolling along the progress track as the update downloads (the real
