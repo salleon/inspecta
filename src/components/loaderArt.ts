@@ -3,9 +3,9 @@
 // spreadsheet filling in for Excel, photos dropping into a pouch that zips
 // shut for the photos zip, and sites / findings / photos packed into a box
 // for backups. Each is drawn into a 240 × 220 SVG and moved frame by frame
-// by the function mountArt returns (time, and progress 0–100), which
-// scripts/render-animations uses to render them to video; the app plays the
-// videos (see AnimationVideo).
+// by the function mountArt returns (time, and progress 0–100). Exports draw
+// them live (components/ProgressOverlay); the backup's is played as a video
+// that scripts/render-animations renders from here (see AnimationVideo).
 
 export type LoaderArt = "conveyor" | "sheet" | "zip" | "box";
 export type LoaderUpdate = (t: number, pct: number, count?: number) => void;

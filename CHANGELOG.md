@@ -7,6 +7,13 @@ the technical detail.
 
 ## 30 September 2026
 
+- **Export animations drawn live again, and shown for at least 4 s.** The
+  PDF, Excel and photos zip loading pictures are drawn in the app again
+  (as before they became videos); the backup and updating screens keep
+  their videos. The export loading screen now stays up at least 4 seconds:
+  if the file is ready sooner, the percentage runs smoothly from 0 to 100
+  over those 4 seconds (it never runs ahead of the real progress), then
+  the share menu opens. Export timings in Admin still record the real time.
 - **Exports never wait on photo copies (failsafe).** A photo whose 1200 px
   export copy is ready is stamped from the copy, and the stamped photo is
   kept for next time, as before. A photo without its copy yet is now

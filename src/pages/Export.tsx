@@ -26,6 +26,10 @@ import { useBackHandler } from "../lib/backButton";
 import coverBgAfss from "../assets/cover-bg-afss.jpg";
 import coverBgProjects from "../assets/cover-bg-projects.jpg";
 
+// the export loading screen shows for at least this long: a quick export
+// still gets its animation, counting smoothly up to 100%
+const MIN_LOADER_MS = 4000;
+
 // Blob -> base64 (without the data: URL prefix), which is what
 // Filesystem.writeFile wants for a binary file.
 function blobToBase64(blob: Blob): Promise<string> {
@@ -134,6 +138,8 @@ export default function ExportPreview() {
   // added (nearly all the time), then building the file, then handing it to
   // the share menu
   const [exportProgress, setExportProgress] = useState<{ percent: number; step: string } | null>(null);
+  // when the current export started (performance.now()), for the loading screen's minimum time
+  const shareStartRef = useRef(0);
   // ESR categories (advanced controls): before a PDF / Excel export with
   // Uncategorised findings, offer to categorise them first — the popup, then
   // the Categorise screen. Asked once per visit to this screen.
@@ -480,6 +486,7 @@ export default function ExportPreview() {
   // Builds the PDF, Excel file or photos zip and hands it to the native
   // share sheet (or a download, on desktop web).
   async function handleShare(kind: ShareKind) {
+    shareStartRef.current = performance.now();
     setSharing(kind);
     setExportProgress({ percent: 0, step: "Getting ready…" });
     const photoIds = items.flatMap((i) => i.photos.map((p) => p.id));
@@ -534,6 +541,11 @@ export default function ExportPreview() {
         }
       }
       timer.finish();
+      // the loading screen stays up at least MIN_LOADER_MS, the percentage
+      // running smoothly on to 100 meanwhile (see ProgressOverlay)
+      setExportProgress({ percent: 100, step: "Finishing up…" });
+      const left = MIN_LOADER_MS - (performance.now() - shareStartRef.current);
+      if (left > 0) await new Promise((r) => setTimeout(r, left));
       setExportProgress(null); // the share menu takes over from here
 
       if (uri) {
@@ -717,6 +729,8 @@ export default function ExportPreview() {
           title={sharing === "pdf" ? "Preparing PDF" : sharing === "excel" ? "Preparing Excel" : "Preparing photos"}
           step={exportProgress.step}
           art={sharing === "pdf" ? "conveyor" : sharing === "excel" ? "sheet" : "zip"}
+          startedAt={shareStartRef.current}
+          minMs={MIN_LOADER_MS}
         />
       )}
     </div>
