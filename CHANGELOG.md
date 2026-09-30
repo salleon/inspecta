@@ -7,6 +7,15 @@ the technical detail.
 
 ## 30 September 2026
 
+- **Corrective action prefill: correct or blank.** After a real report
+  where half the red suggestions were wrong, the prefill now only fills in
+  when the finding is filed under an ESR category that defect belongs to
+  (uncategorised findings stay blank), no longer guesses at typos (it had
+  read "point" as "paint"), and no longer lets the category stand in for
+  the key words. It also knows EnFact shorthand like POT and EEL, and has
+  EnFact's wording for awnings 2.5 m or wider without sprinkler coverage.
+  On that report: the 5 wrong suggestions are gone (4 now blank, the
+  awning one now correct), the 5 correct ones stay.
 - **Updates show straight away.** After an update (the **Restart** button,
   or just reopening the app) the new version now appears immediately,
   without having to swipe the app out of the recent-apps tray. The cause

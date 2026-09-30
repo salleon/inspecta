@@ -4,17 +4,22 @@
 // treats it as that defect (see lib/correctiveAction). Wording is copied
 // verbatim from the spreadsheet; the match words are the app's.
 //
-// match: every group must be found in the note (any one word or phrase from
-// each). categories: a finding filed under one of these ESR items counts as
-// having the first group. unless: any of these words in the note rules the
-// defect out (another defect covers that case).
+// categories: the ESR items (or whole sections) the defect belongs to; only
+// a finding filed under one of them can get its wording. match: every group
+// must be found in the note (any one word or phrase from each), each by
+// different words. subjectFromCategory: the first group only names the
+// subject (door, sprinkler, exit sign...), which the ESR category already
+// says, so it needn't be in the note. unless: any of these in the note rules
+// the defect out. EF-01 was added by EnFact after testing (not in the
+// spreadsheet).
 
 export interface CommonDefect {
   id: string;
   measure: string;
   issue: string;
   match: string[][];
-  categories?: string[];
+  categories: string[];
+  subjectFromCategory?: boolean;
   unless?: string[];
   wording: string;
 }
@@ -26,6 +31,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     issue: "Unsealed / non fire-rated seal through wall",
     match: [["penetration", "pipe", "cable", "cabling", "conduit", "duct", "service", "hole", "gap"], ["unsealed", "not sealed", "non fire rated", "not fire rated", "expanding foam", "foam", "gap", "open", "missing collar", "no collar", "no fire collar", "missing fire collar", "hole"]],
     categories: ["1.4"],
+    subjectFromCategory: true,
     unless: ["door"],
     wording: "As per BCA C3.15.7, penetrations must be sealed to maintain the same FRL as the element they pass through.\n\nSeal penetration with a fire-rated method (fire collar, intumescent mastic etc.).",
   },
@@ -35,6 +41,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     issue: "Fire door chocked / held open by non-approved device",
     match: [["door", "doors", "doorset"], ["wedge", "wedged", "chock", "chocked", "held open", "propped", "prop", "cabin hook", "hook", "tied open", "door stop", "doorstop", "hold open"]],
     categories: ["1.6", "1.7"],
+    subjectFromCategory: true,
     unless: ["magnet", "magnetic", "electromagnetic", "coat hook"],
     wording: "As per AS 1851, non-approved hold-open devices (wedges, heavy objects, cabin hooks) are not permitted on fire doors.\n\nRemove chocking device and keep door closed.",
   },
@@ -43,14 +50,16 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     measure: "Fire Doors",
     issue: "Missing D-shaped handle",
     match: [["handle", "knob", "doorknob"], ["d shape", "d shaped", "d handle", "knob", "doorknob", "lever", "round handle"]],
+    categories: ["1.6", "1.7", "2.1"],
     wording: "As per AS1428.1, handles on emergency egress doors must be D-shaped with a 20mm return.\n\nReplace handle with a compliant D-shaped handle.",
   },
   {
     id: "CI-04",
     measure: "Fire Doors",
     issue: "Missing fire safety door signage",
-    match: [["fire door", "fire safety door", "smoke door", "fire isolated", "door sign", "door signage"], ["sign", "signage"], ["missing", "no", "not provided", "absent", "none", "without", "required", "needed", "not installed"]],
+    match: [["door", "doors", "fire door", "fire safety door", "smoke door", "fire isolated", "door sign", "door signage"], ["sign", "signage"], ["missing", "no", "not provided", "absent", "none", "without", "required", "needed", "not installed"]],
     categories: ["3.3", "1.6", "1.7"],
+    subjectFromCategory: true,
     unless: ["offence", "epa", "ep a", "exit sign", "faded", "painted", "obscured"],
     wording: "As per BCA D2.23, fire doors and doors discharging from fire-isolated exits must display \"FIRE SAFETY DOOR – DO NOT OBSTRUCT (DO NOT KEEP OPEN)\" signage.\n\nInstall compliant signage.",
   },
@@ -60,6 +69,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     issue: "Objects mounted to fire door",
     match: [["door", "doors", "doorset"], ["mounted", "screwed", "fixed to", "attached", "coat hook", "noticeboard", "notice board", "poster", "bracket", "letterbox", "peephole", "screw", "screws", "sticker", "stickers", "object", "objects"]],
     categories: ["1.6", "1.7"],
+    subjectFromCategory: true,
     unless: ["offence", "epa", "ep a", "sign", "signage", "notice"],
     wording: "As per AS 1905.1 Cl 4, only approved modifications can be made to fire doors. This is an unapproved modification.\n\nRemove objects from fire door.",
   },
@@ -69,6 +79,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     issue: "Fire door not latching",
     match: [["door", "doors", "doorset"], ["not latch", "not latching", "doesnt latch", "does not latch", "fail to latch", "fails to latch", "failed to latch", "not self close", "not self closing", "not closing", "doesnt close", "does not close", "fail to close", "fails to close", "failed to close", "not close", "latch", "latching", "closer"]],
     categories: ["1.6", "1.7"],
+    subjectFromCategory: true,
     unless: ["selector", "wedge", "chock", "propped", "auto door", "automatic door", "sliding"],
     wording: "As per AS 1851 and AS/NZS 1905.1, fire doorsets must be self-closing and self-latching.\n\nAdjust / repair door closer and latch.",
   },
@@ -78,6 +89,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     issue: "Fire door not tagged / missing FRL tag",
     match: [["door", "doors", "doorset"], ["tag", "tagged", "label", "frl tag", "compliance tag", "metal tag", "plate"], ["missing", "no", "not", "unable", "illegible", "painted", "removed", "without"]],
     categories: ["1.6", "1.7"],
+    subjectFromCategory: true,
     wording: "As per AS1905, fire doors must carry a tag confirming their fire rating.\n\nInstall missing FRL tag; check and retag all fire doors as necessary.",
   },
   {
@@ -85,6 +97,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     measure: "Fire Doors",
     issue: "Defective door selector preventing fire doors closing / latching",
     match: [["selector", "coordinator", "co ordinator"]],
+    categories: ["1.6", "1.7"],
     wording: "As per the BCA, fire doors must be self-closing and self-latching. The defective door selector is preventing this.\n\nRepair or replace door selector.",
   },
   {
@@ -93,6 +106,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     issue: "Non-compliant / illegal hardware on fire door",
     match: [["door", "doors", "doorset"], ["hardware", "deadbolt", "dead bolt", "barrel bolt", "bolt", "padlock", "chain", "hasp", "slide bolt", "illegal lock", "non compliant lock", "non compliant hardware"]],
     categories: ["1.6", "1.7"],
+    subjectFromCategory: true,
     unless: ["exit", "egress", "snib"],
     wording: "As per AS1905, only compliant hardware may be installed on fire doors.\n\nReplace with AS1905 compliant hardware (or provide manufacturer's evidence of compliance). Use a magnetic fail-safe release if the door must be held open.",
   },
@@ -100,8 +114,9 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     id: "CI-10",
     measure: "Fire Doors",
     issue: "Fire safety door signage faded, painted over or obscured",
-    match: [["fire door", "smoke door", "fire safety door", "fire isolated", "door sign", "door signage"], ["sign", "signage"], ["faded", "painted", "painted over", "obscured", "covered", "illegible", "peeling", "damaged", "worn"]],
+    match: [["door", "doors", "fire door", "smoke door", "fire safety door", "fire isolated", "door sign", "door signage"], ["sign", "signage"], ["faded", "painted", "painted over", "obscured", "covered", "illegible", "peeling", "damaged", "worn"]],
     categories: ["3.3", "1.6", "1.7"],
+    subjectFromCategory: true,
     unless: ["exit sign"],
     wording: "As per BCA D2.23, fire door signage must be able to be readily seen.\n\nRemove paint / obstruction, or replace faded / unreadable signage.",
   },
@@ -110,7 +125,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     measure: "Paths of Travel & Exits",
     issue: "Snib lock / illegal hardware on fire exit door",
     match: [["exit door", "egress door", "fire exit", "exit", "egress"], ["snib", "thumb turn", "thumbturn", "key lock", "keyed lock", "locked", "deadbolt", "padlock", "key"]],
-    categories: ["2.1", "2.5"],
+    categories: ["2"],
     unless: ["sign", "maglock", "mag lock", "fire trip", "fire mode"],
     wording: "As per BCA D2.21, exit doors must open with a single hand downward or pushing action without a key.\n\nRemove illegal hardware; install emergency snibs if a lock is required.",
   },
@@ -118,9 +133,9 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     id: "CI-12",
     measure: "Paths of Travel & Exits",
     issue: "Path of travel obstructed",
-    match: [["obstruct", "obstructed", "obstruction", "blocked", "blocking", "clutter", "cluttered", "stored", "storage", "rubbish", "furniture", "bins", "boxes", "pallet", "items"], ["path", "egress", "exit", "corridor", "stair", "stairwell", "passageway", "walkway", "travel", "landing", "hallway", "hall"]],
-    categories: ["2.4", "2.2", "2.1"],
-    unless: ["sprinkler", "hose", "hydrant", "booster", "extinguisher", "sign", "riser", "damper", "detector", "fire control", "blanket"],
+    match: [["obstruct", "obstructed", "obstruction", "blocked", "blocking", "clutter", "cluttered", "stored", "storage", "rubbish", "furniture", "bins", "boxes", "pallet", "items"], ["path", "pot", "egress", "exit", "corridor", "stair", "stairwell", "passageway", "walkway", "travel", "landing", "hallway", "hall"]],
+    categories: ["2"],
+    unless: ["block plan", "sprinkler", "hose", "hydrant", "booster", "extinguisher", "sign", "riser", "damper", "detector", "fire control", "blanket"],
     wording: "As per EP&A Regulation 2021 cl 109, nothing may obstruct the free passage of persons in a fire exit area.\n\nRemove obstruction.",
   },
   {
@@ -128,6 +143,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     measure: "Paths of Travel & Exits",
     issue: "Missing EP&A signage",
     match: [["ep a", "epa", "offence", "fire safety notice", "statutory sign", "statutory notice", "offence notice", "offence sign"], ["missing", "no", "not provided", "absent", "none", "without", "required", "needed", "not installed"]],
+    categories: ["2", "3.3"],
     unless: ["on door", "on the door", "mounted on"],
     wording: "As per EP&A Regulation 2021 cl 108, a fire safety notice must be displayed adjacent to each doorway providing access to a fire-isolated stair, passageway or ramp.\n\nInstall EP&A notice.",
   },
@@ -136,13 +152,15 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     measure: "Paths of Travel & Exits",
     issue: "Swinging door impeding path of travel",
     match: [["door", "doors", "doorset"], ["swing", "swings", "swinging", "opens into", "impede", "impeding", "impedes", "encroach", "encroaches", "reduces width", "reduce width"], ["path", "corridor", "stair", "landing", "egress", "travel", "passage", "passageway", "walkway"]],
+    categories: ["2"],
     wording: "As per BCA D2.20, a door swing must not encroach more than 500mm on the required width of a stair, ramp or passageway.\n\nRectify door swing / investigate methods of rectification.",
   },
   {
     id: "CI-15",
     measure: "Paths of Travel & Exits",
     issue: "Width / height of path of travel",
-    match: [["width", "height", "headroom", "clearance", "narrow", "too low", "low"], ["path", "corridor", "stair", "egress", "exit", "passage", "passageway", "doorway", "travel", "walkway"]],
+    match: [["width", "wide", "height", "headroom", "narrow", "too low"], ["path", "pot", "corridor", "stair", "egress", "exit", "passage", "passageway", "doorway", "travel", "walkway"]],
+    categories: ["2"],
     unless: ["sign", "sprinkler", "extinguisher", "handrail", "button", "detector", "hydrant", "door swing", "swing"],
     wording: "As per BCA D1.6, paths of travel must be at least 1m wide and 2m high (1980mm at doorways).\n\nClear or rectify the path of travel to achieve minimum dimensions.",
   },
@@ -151,6 +169,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     measure: "Paths of Travel & Exits",
     issue: "Fire stair handrail not continuous",
     match: [["handrail", "hand rail"], ["continuous", "not continuous", "discontinuous", "gap", "break", "missing", "ends", "terminate", "terminates", "broken", "stops"]],
+    categories: ["2"],
     wording: "As per BCA D2.17, fire stair handrails must be continuous between landings with nothing breaking the hand-hold.\n\nRectify handrail so it is continuous.",
   },
   {
@@ -158,6 +177,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     measure: "Paths of Travel & Exits",
     issue: "Artificial lighting in fire stairwell not functional",
     match: [["stair", "stairwell", "stairway", "fire stair", "fire isolated"], ["light", "lighting", "lights", "globe", "fitting", "lamp", "luminaire"], ["not working", "not functional", "not operat", "faulty", "failed", "fail", "blown", "out", "dark", "inoperable", "broken"]],
+    categories: ["2", "4"],
     unless: ["emergency", "exit sign", "eel"],
     wording: "As per BCA F4.4, artificial lighting must be provided in required stairways, passageways and ramps.\n\nReinstate lighting in fire stairwell.",
   },
@@ -166,6 +186,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     measure: "Paths of Travel & Exits",
     issue: "EP&A notice mounted on door instead of adjacent to it",
     match: [["ep a", "epa", "offence", "fire safety notice", "offence notice", "offence sign", "notice"], ["on door", "on the door", "mounted on", "fixed to", "attached to", "not adjacent", "on fire door", "on the fire door", "on door leaf"]],
+    categories: ["2", "3.3"],
     wording: "As per EP&A Regulation 2021 cl 108, the fire safety notice must be mounted adjacent to the door, not on it.\n\nRemount notice on the wall next to the door (or install an additional notice beside the door).",
   },
   {
@@ -173,7 +194,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     measure: "Paths of Travel & Exits",
     issue: "Services installed in fire-isolated stairway / passageway",
     match: [["stair", "stairwell", "stairway", "fire isolated", "passageway"], ["services", "cable", "cables", "cabling", "conduit", "pipe", "pipes", "gas meter", "meter", "electrical", "plumbing", "switchboard", "data cabling", "tray", "ductwork"]],
-    categories: ["2.2"],
+    categories: ["2"],
     unless: ["unsealed", "seal", "sealed", "penetration", "collar", "handrail", "light"],
     wording: "As per the BCA, only services associated with the fire stairs may be installed in a fire-isolated stair or passageway.\n\nRemove services or enclose in fire-rated construction.",
   },
@@ -181,7 +202,8 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     id: "CI-20",
     measure: "Automatic Fail-Safe Devices",
     issue: "Final exit auto door did not open",
-    match: [["auto door", "automatic door", "sliding door", "slider", "auto sliding", "autodoor", "sliding doors", "automatic doors", "auto doors"], ["not open", "didnt open", "did not open", "fail to open", "fails to open", "failed to open", "remain closed", "remained closed", "stay closed", "stayed closed", "doesnt open", "does not open"]],
+    match: [["auto door", "automatic door", "sliding door", "slider", "auto sliding", "autodoor", "sliding doors", "automatic doors", "auto doors"], ["not open", "didnt open", "did not open", "fail to open", "fails to open", "failed to open", "remain closed", "remained closed", "stay closed", "stayed closed", "doesnt open", "does not open", "fail to drive open", "failed to drive open", "did not drive open", "didnt drive open"]],
+    categories: ["2.5", "2.1"],
     wording: "As per BCA D2.19, automatic doors at the final point of egress must open on fire alarm and on power failure.\n\nRectify auto door so it opens in fire mode.",
   },
   {
@@ -189,7 +211,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     measure: "Automatic Fail-Safe Devices",
     issue: "Door in path of egress does not unlatch in fire trip",
     match: [["door", "maglock", "mag lock", "electric strike", "lock", "locks"], ["unlatch", "release", "unlock", "remain locked", "stayed locked", "remained locked"], ["fire trip", "fire mode", "alarm", "trip", "fire test", "activation", "activated"]],
-    categories: ["2.5"],
+    categories: ["2.5", "2.1"],
     unless: ["auto door", "automatic door", "sliding", "break glass", "call point", "mcp"],
     wording: "As per BCA D2.21, doors fitted with a fail-safe device must automatically unlock on fire trip.\n\nInvestigate and rectify fail-safe release.",
   },
@@ -198,6 +220,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     measure: "Automatic Fail-Safe Devices",
     issue: "Push button too close to internal corner",
     match: [["push button", "button", "exit button", "release button", "green button"], ["corner", "internal corner", "too close"]],
+    categories: ["2.5", "2.1"],
     wording: "As per AS1428.1-2009 (13.5.3) / NCC D2.21, power-operated door controls must be at least 500mm from an internal corner.\n\nRelocate push button.",
   },
   {
@@ -205,6 +228,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     measure: "Automatic Fail-Safe Devices",
     issue: "Push-button control size / operation",
     match: [["push button", "button", "exit button", "release button"], ["size", "small", "too small", "diameter", "hard to press", "difficult", "stiff", "operation", "twist"]],
+    categories: ["2.5", "2.1"],
     unless: ["corner"],
     wording: "As per AS1428.1, push-buttons must be at least 25mm diameter, proud of the surface, and activate the door before becoming flush.\n\nReplace with a compliant push-button control.",
   },
@@ -213,6 +237,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     measure: "Automatic Fail-Safe Devices",
     issue: "Break glass colour",
     match: [["break glass", "breakglass", "call point", "mcp"], ["colour", "color", "blue", "yellow", "white", "not green", "wrong"]],
+    categories: ["2.5", "2.1"],
     unless: ["release", "double action", "fail"],
     wording: "Note only: break glass colour coding was not introduced until AS1670.1-2005.\n\nNo action required for installations predating this standard.",
   },
@@ -221,6 +246,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     measure: "Automatic Fail-Safe Devices",
     issue: "Manual call point / break glass fails to release door, or is double action",
     match: [["break glass", "breakglass", "call point", "mcp", "manual release"], ["fail", "fails", "failed", "not release", "didnt release", "did not release", "double action", "two actions", "not unlock", "no release", "doesnt release", "does not release"]],
+    categories: ["2.5", "2.1"],
     wording: "As per BCA D2.21, the emergency door release must unlock the door so it is openable without a key, and must not be double action.\n\nReview and rectify MCP / break glass release.",
   },
   {
@@ -229,6 +255,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     issue: "Missing \"EXIT\" sign",
     match: [["exit sign", "exit light", "exit signage"], ["missing", "no", "not provided", "absent", "none", "without", "required", "needed", "not installed"]],
     categories: ["3.1"],
+    subjectFromCategory: true,
     unless: ["directional", "direction", "arrow", "above", "over door", "emergency light", "offence", "notice"],
     wording: "As per BCA E4.5, an exit sign must be installed on, above or adjacent to each required exit door and horizontal exit.\n\nInstall exit sign.",
   },
@@ -237,6 +264,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     measure: "Exit & Emergency Lighting (EEL)",
     issue: "Missing EEL sign above exit door",
     match: [["exit sign", "eel", "exit light", "sign"], ["above", "over"], ["door", "doorway"], ["missing", "no", "not provided", "absent", "none", "without", "required", "needed", "not installed"]],
+    categories: ["3.1", "4"],
     wording: "As per AS 2293, exit signs must be installed above or beside all required exit doors, fire stairs and along evacuation routes.\n\nInstall exit sign above / beside exit door.",
   },
   {
@@ -245,6 +273,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     issue: "Exit sign height",
     match: [["exit sign", "exit light"], ["height", "too high", "too low", "mounted high", "mounted low", "high", "low"]],
     categories: ["3.1"],
+    subjectFromCategory: true,
     wording: "As per AS 2293.1 Section 6.8.1, exit signs must be mounted between 2m and 2.7m above the floor where practicable.\n\nRelocate exit sign to within this height range.",
   },
   {
@@ -253,14 +282,16 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     issue: "\"EXIT\" wording sign",
     match: [["exit sign", "exit light", "exit"], ["wording", "word only", "words only", "text only", "no running man", "running man", "pictorial", "old style", "old type", "exit only"]],
     categories: ["3.1"],
+    subjectFromCategory: true,
     wording: "As per AS 2293.3 Section 3.3, exit signs must display the running man and/or directional arrows (\"EXIT\" wording only acceptable pre-2007).\n\nReplace with running man / directional decal.",
   },
   {
     id: "CI-30",
     measure: "Exit & Emergency Lighting (EEL)",
     issue: "\"EXIT\" sign not illuminated",
-    match: [["exit sign", "exit light"], ["not illuminated", "not lit", "unlit", "not working", "faulty", "failed", "dim", "dark", "off", "not operat", "blown", "fault", "not functional"]],
+    match: [["exit sign", "exit light", "eel", "exit"], ["not illuminated", "not lit", "unlit", "not working", "faulty", "failed", "dim", "dark", "off", "not operat", "blown", "fault", "not functional"]],
     categories: ["3.1"],
+    subjectFromCategory: true,
     wording: "As per AS 2293, exit signs must be permanently illuminated.\n\nRepair / replace failed exit sign.",
   },
   {
@@ -268,6 +299,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     measure: "Exit & Emergency Lighting (EEL)",
     issue: "Exit sign indicates wrong direction / incorrect decal",
     match: [["exit sign", "exit", "sign", "arrow", "decal"], ["wrong direction", "incorrect direction", "wrong way", "points wrong", "pointing wrong", "incorrect decal", "wrong decal", "wrong arrow", "incorrect arrow", "direction incorrect", "opposite direction", "points away"]],
+    categories: ["3.1", "4"],
     wording: "As per AS 2293, exit signs must correctly indicate the path of egress.\n\nReplace decal with a directional arrow to the exit, or remove / relocate signs installed in error.",
   },
   {
@@ -275,6 +307,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     measure: "Exit & Emergency Lighting (EEL)",
     issue: "Directional exit signage required — exit not readily apparent",
     match: [["directional", "direction sign", "directional sign", "directional signage", "arrow sign"], ["required", "missing", "needed", "no", "not apparent", "not readily", "additional", "none"]],
+    categories: ["3.1", "4"],
     unless: ["wrong", "incorrect"],
     wording: "As per BCA E4.6, where an exit is not readily apparent, directional exit signs must be installed.\n\nInstall additional directional exit signage.",
   },
@@ -283,6 +316,8 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     measure: "Exit & Emergency Lighting (EEL)",
     issue: "Exit sign obstructed or tampered with",
     match: [["exit sign", "exit light"], ["obstruct", "obstructed", "blocked", "covered", "hidden", "tampered", "hanging", "dislodged", "not visible", "obscured"]],
+    categories: ["3.1"],
+    subjectFromCategory: true,
     wording: "As per BCA E4.5 and AS 2293, exit signs must be clearly visible and permanently illuminated.\n\nRemove obstruction or relocate sign; replace tampered signs.",
   },
   {
@@ -290,6 +325,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     measure: "Detection & Alarm System",
     issue: "Visual Warning Device (VWD) / Visual Alarm Device (VAD) signage",
     match: [["vwd", "vad", "visual warning", "visual alarm", "strobe"], ["sign", "signage"]],
+    categories: ["7", "8"],
     wording: "As per AS1670.1-2024 Cl 3.17.4, VADs must be labelled \"EVACUATE\" in letters at least 15mm high.\n\nInstall EVACUATE label on or beside the VAD.",
   },
   {
@@ -297,6 +333,8 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     measure: "Detection & Alarm System",
     issue: "Detector located too close to supply air opening",
     match: [["detector", "smoke detector", "thermal detector", "heat detector", "detectors"], ["supply air", "air supply", "diffuser", "vent", "air conditioning", "aircon", "ac vent", "supply grille", "grille", "register"]],
+    categories: ["7", "6.2"],
+    subjectFromCategory: true,
     wording: "As per AS1670.1, detectors must be at least 400mm (1998) / 900mm (2018) from supply air openings.\n\nRelocate detector away from supply air opening.",
   },
   {
@@ -304,7 +342,8 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     measure: "Detection & Alarm System",
     issue: "Room without detection coverage / detectors not spaced to AS1670",
     match: [["detector", "detection", "detectors", "smoke detector"], ["no", "missing", "without", "not provided", "lacks", "lacking", "spacing", "spaced", "coverage", "not covered", "too far", "uncovered"]],
-    categories: ["7.2"],
+    categories: ["7", "6.2"],
+    subjectFromCategory: true,
     unless: ["sprinkler", "supply air", "diffuser", "vent", "pod"],
     wording: "As per AS1670, all rooms must be provided with detection coverage at compliant spacing.\n\nInstall additional smoke detectors.",
   },
@@ -313,6 +352,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     measure: "EWIS",
     issue: "EWIS tones less than 10dB above ambient",
     match: [["ewis", "tone", "tones", "alarm tone", "evacuation tone", "alert tone", "occupant warning", "speaker", "speakers"], ["10db", "10 db", "db", "decibel", "ambient", "not audible", "inaudible", "cannot hear", "cant hear", "quiet", "low volume", "too quiet", "hard to hear", "audibility"]],
+    categories: ["8"],
     wording: "As per AS1670.1 Cl 3.22(b)(viii), EWIS tones must be at least 10dB above ambient and no less than 65dB.\n\nContractor to increase amplifier output or install additional speakers.",
   },
   {
@@ -320,7 +360,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     measure: "EWIS",
     issue: "Area not provided with EWIS speaker coverage",
     match: [["speaker", "ewis", "speakers"], ["no", "missing", "not provided", "without", "coverage", "not covered"]],
-    categories: ["8.1"],
+    categories: ["8"],
     unless: ["audible", "db", "ambient", "quiet", "hear", "fault", "wip", "pod"],
     wording: "As per AS1670.1 Cl 3.22(b)(viii), EWIS tones must reach at least 10dB above ambient in all areas.\n\nInstall additional speakers and verify sound levels.",
   },
@@ -329,6 +369,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     measure: "EWIS",
     issue: "EWIS fault / WIP phone not operating",
     match: [["ewis", "wip", "warden intercom", "warden phone", "phone"], ["fault", "faulty", "not operat", "not working", "dead", "no dial", "failed", "inoperable"]],
+    categories: ["8"],
     unless: ["fire control room", "fcr"],
     wording: "As per NCC EP4.3, the EWIS must allow communication between the chief warden and floor / area wardens.\n\nInvestigate and rectify fault / repair WIP phone.",
   },
@@ -338,6 +379,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     issue: "Hydrant not fitted with Storz valve",
     match: [["hydrant"], ["storz", "coupling", "bsp", "adaptor", "adapter", "thread"]],
     categories: ["5.2"],
+    subjectFromCategory: true,
     wording: "As per AS2419 / NCC E1.3, hydrant connections must be compatible with local fire brigade equipment.\n\nInstall Storz valve to NSWFR requirements.",
   },
   {
@@ -346,6 +388,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     issue: "Hydrant installed incorrectly",
     match: [["hydrant"], ["installed incorrect", "incorrectly installed", "incorrect install", "incorrect", "wrong height", "angle", "orientation", "facing", "not installed correctly", "too high", "too low"]],
     categories: ["5.2"],
+    subjectFromCategory: true,
     unless: ["storz", "coverage", "10m", "within 10"],
     wording: "As per AS2419.1 Cl 3.2.2.2, hydrants must be at no more than 35°, 750–1200mm high, with 1000mm clear in front.\n\nReinstall hydrant to comply.",
   },
@@ -355,6 +398,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     issue: "Hydrant within 10m of building / hydrant coverage non-compliant",
     match: [["hydrant"], ["10m", "10 m", "within 10", "too close", "coverage", "distance", "not covered", "reach"]],
     categories: ["5.2"],
+    subjectFromCategory: true,
     wording: "As per AS2419.1, external hydrants must be at least 10m from the building they protect (unless shielded by a 90/90/90 fire wall).\n\nUndertake a hydrant coverage review and rectify.",
   },
   {
@@ -370,6 +414,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     measure: "Boosters & Block Plans",
     issue: "Block plan missing or not updated",
     match: [["block plan", "blockplan"], ["missing", "no", "not updated", "out of date", "outdated", "old", "not provided", "incorrect", "faded", "not current", "update"]],
+    categories: ["5.1", "5.2", "5.6"],
     wording: "As per AS2118 / AS2419, a block plan showing system duties must be provided and reflect what is installed.\n\nInstall / update block plan (engage a fire safety designer if duties are unknown).",
   },
   {
@@ -378,6 +423,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     issue: "Non-fire equipment / material in hose reel cupboard",
     match: [["hose reel", "hosereel", "fhr"], ["stored", "storage", "storing", "items", "rubbish", "mop", "cleaning", "bucket", "boxes", "used for", "non fire", "material", "clutter", "cluttered"]],
     categories: ["5.4"],
+    subjectFromCategory: true,
     wording: "As per AS 2441-2005 Cl 10.40.4, non-fire equipment must not be installed in hose reel cabinets.\n\nRemove material from hose reel cupboard.",
   },
   {
@@ -386,6 +432,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     issue: "Installation height",
     match: [["extinguisher", "extinguishers", "pfe"], ["height", "too high", "too low", "on floor", "on the floor", "mounted high", "mounted low", "not mounted", "floor", "ground"]],
     categories: ["5.5"],
+    subjectFromCategory: true,
     unless: ["missing", "bracket"],
     wording: "As per AS2444, extinguishers must be mounted with the handle no higher than 1200mm and the base at least 100mm above the floor.\n\nRemount extinguisher.",
   },
@@ -395,6 +442,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     issue: "Access — missing fire extinguisher where mounting bracket exists",
     match: [["extinguisher", "extinguishers", "pfe"], ["missing", "removed", "empty bracket", "bracket", "not present", "absent", "gone"]],
     categories: ["5.5"],
+    subjectFromCategory: true,
     wording: "As per AS1851, extinguishers must be kept in their assigned location and be readily accessible.\n\nRemove storage and reinstall extinguisher.",
   },
   {
@@ -402,6 +450,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     measure: "Fire Blankets",
     issue: "Maintenance",
     match: [["fire blanket", "blanket"], ["maintenance", "maintain", "maintained", "tag", "tagged", "out of date", "expired", "not tested", "service", "serviced", "inspect", "inspected", "damaged", "faded", "date"]],
+    categories: ["5.5", "13"],
     wording: "As per AS1851, fire blankets must be maintained at intervals not exceeding 6 months.\n\nService fire blanket.",
   },
   {
@@ -410,6 +459,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     issue: "Storage within 500mm sprinkler exclusion zone",
     match: [["sprinkler", "sprinklers", "sprinkler head", "sprinkler heads"], ["500mm", "500 mm", "500", "storage", "stored", "stock", "boxes", "items", "stacked", "clearance"]],
     categories: ["5.6"],
+    subjectFromCategory: true,
     wording: "As per AS2118.1-1999 Cl 5.4.8, a clear space of at least 500mm must be maintained below sprinkler deflectors.\n\nRemove storage to below 500mm of sprinkler heads.",
   },
   {
@@ -418,6 +468,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     issue: "Sprinkler distance from ceiling",
     match: [["sprinkler", "sprinklers", "sprinkler head", "sprinkler heads"], ["ceiling", "deflector", "below ceiling", "too low", "too far below", "distance from ceiling"]],
     categories: ["5.6"],
+    subjectFromCategory: true,
     unless: ["recess", "recessed", "painted", "storage", "stored"],
     wording: "As per AS2118.1, sprinklers must be within 300mm (combustible) / 450mm (non-combustible) of the ceiling.\n\nRelocate sprinkler.",
   },
@@ -427,6 +478,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     issue: "Recessed sprinkler head",
     match: [["sprinkler", "sprinklers", "sprinkler head", "sprinkler heads"], ["recessed", "recess", "concealed", "flush"]],
     categories: ["5.6"],
+    subjectFromCategory: true,
     wording: "As per AS2118.1, sprinklers must not be recessed unless manufactured for recessed mounting.\n\nRepair sprinkler to sit flush with the ceiling.",
   },
   {
@@ -435,6 +487,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     issue: "Mixed sprinkler heads",
     match: [["sprinkler", "sprinklers", "sprinkler head", "sprinkler heads", "heads"], ["mixed", "different", "mismatch", "mismatched", "inconsistent", "various"]],
     categories: ["5.6"],
+    subjectFromCategory: true,
     wording: "As per AS2118.1-2017, sprinklers in a compartment must have the same thermal sensitivity (RTI) and temperature rating.\n\nReplace sprinklers so all are uniform across the level.",
   },
   {
@@ -443,6 +496,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     issue: "Painted sprinkler bulb",
     match: [["sprinkler", "sprinklers", "sprinkler head", "sprinkler heads", "bulb", "bulbs"], ["painted", "paint", "overspray", "over spray", "coated"]],
     categories: ["5.6"],
+    subjectFromCategory: true,
     wording: "As per AS2118.1-1999 Cl 6.1, sprinklers must not have any coatings applied after leaving the factory.\n\nReplace painted sprinkler.",
   },
   {
@@ -450,6 +504,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     measure: "Sprinklers",
     issue: "Isolation pod not sprinkler / detection protected",
     match: [["pod", "isolation pod", "pods"], ["sprinkler", "sprinklers", "detection", "detector", "protected", "protection", "coverage", "speaker"]],
+    categories: ["5.6", "7"],
     wording: "As per AS2118.1 and AS1670.1, sprinklers and detection are required in all rooms and enclosures, including pods.\n\nInstall sprinkler, smoke detector and speaker (if required) within the pod.",
   },
   {
@@ -466,7 +521,8 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     issue: "Area not sprinkler protected / sprinklers out of code",
     match: [["sprinkler", "sprinklers", "sprinklered"], ["no", "missing", "not protected", "unprotected", "not provided", "without", "out of code", "not covered", "coverage", "not sprinklered", "unsprinklered"], ["area", "room", "space", "cupboard", "void", "storeroom", "store", "balcony", "bathroom", "level", "zone", "canopy", "awning", "shed", "office", "kitchen", "plant room"]],
     categories: ["5.6"],
-    unless: ["pod", "spare", "storage within", "500"],
+    subjectFromCategory: true,
+    unless: ["pod", "spare", "storage within", "500", "awning", "canopy", "canopies", "overhang"],
     wording: "As per AS2118.1, sprinklers must be installed throughout all areas, including all rooms and enclosures.\n\nInstall / relocate sprinklers; contractor to carry out a coverage audit.",
   },
   {
@@ -475,7 +531,8 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     issue: "Sprinkler spray pattern obstructed",
     match: [["sprinkler", "sprinklers", "sprinkler head", "sprinkler heads"], ["obstructed", "obstruct", "obstruction", "blocked", "spray pattern", "spray", "shielded", "shadow", "duct", "beam", "light fitting"]],
     categories: ["5.6"],
-    unless: ["stored", "storage", "stock", "boxes", "stacked", "500"],
+    subjectFromCategory: true,
+    unless: ["block plan", "stored", "storage", "stock", "boxes", "stacked", "500"],
     wording: "As per AS2118.1, nothing may interfere with the sprinkler discharge pattern.\n\nRelocate the sprinkler or the obstruction.",
   },
   {
@@ -484,6 +541,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     issue: "Sprinklers less than 2m apart / baffles missing",
     match: [["sprinkler", "sprinklers", "sprinkler head", "sprinkler heads", "heads"], ["2m", "2 m", "too close", "apart", "baffle", "baffles", "spacing", "close together", "cold solder", "cold soldering"]],
     categories: ["5.6"],
+    subjectFromCategory: true,
     wording: "As per AS2118.1, sprinklers less than 2m apart must be separated by baffles.\n\nInstall / reinstate baffles.",
   },
   {
@@ -491,6 +549,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     measure: "Air Handling Systems",
     issue: "AHU able to be manually overridden in fire mode (VSD override)",
     match: [["override", "overridden", "overridable", "hand mode", "manual mode", "manual control", "bypass"], ["ahu", "fan", "fans", "vsd", "air handling", "mechanical", "plant"]],
+    categories: ["6"],
     wording: "Fans must not be controllable via the VSD while in fire mode.\n\nMechanical contractor to reprogram the VSD to remove manual control in fire mode.",
   },
   {
@@ -499,6 +558,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     issue: "Mechanical plant fails to shut down on fire trip",
     match: [["ahu", "fan", "fans", "mechanical", "plant", "air handling", "air conditioning", "ventilation", "fcu", "exhaust", "ac unit"], ["not shut", "shut down", "shutdown", "did not stop", "didnt stop", "kept running", "continued running", "still running", "remained running", "fail to shut", "not stop", "did not shut", "didnt shut"]],
     categories: ["6.3.1", "6.3", "6.1"],
+    subjectFromCategory: true,
     unless: ["override", "overridden", "vsd"],
     wording: "As per AS1668.1, mechanical systems must shut down on fire trip and stay off until reset.\n\nRectify FIP / mechanical interface and retest.",
   },
@@ -507,6 +567,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     measure: "Air Handling Systems",
     issue: "Fire-mode fan isolator missing 003 lock",
     match: [["isolator", "fan isolator", "isolation switch"], ["003", "lock", "locked", "padlock", "lockable", "unlocked", "not locked"]],
+    categories: ["6"],
     wording: "As per AS1668.1, isolators for fans required in fire mode must be locked to prevent unauthorised isolation.\n\nInstall 003 lock on isolator.",
   },
   {
@@ -515,6 +576,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     issue: "Fire / smoke damper inaccessible for maintenance",
     match: [["damper", "dampers", "fire damper", "smoke damper"], ["inaccessible", "access", "no access", "cannot access", "not accessible", "access panel", "unable to access", "hatch"]],
     categories: ["6.3.4"],
+    subjectFromCategory: true,
     wording: "As per AS1851, dampers must be accessible for mandatory servicing.\n\nProvide access panel / remove obstruction.",
   },
   {
@@ -523,6 +585,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     issue: "Fire damper not maintained / installed incorrectly",
     match: [["damper", "dampers", "fire damper", "smoke damper"], ["not maintained", "maintenance", "tag", "not tagged", "untagged", "installed incorrect", "incorrectly installed", "incorrect", "service", "not tested", "failed", "fail", "not closing", "not close", "stuck", "seized", "dirty", "corroded"]],
     categories: ["6.3.4"],
+    subjectFromCategory: true,
     unless: ["access", "inaccessible", "hatch"],
     wording: "As per AS1851, fire dampers must be maintained and correctly installed.\n\nRectify defects (fusible link, cleaning, break-away joint) and carry out a detailed inspection.",
   },
@@ -532,6 +595,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     issue: "Fire control room not compliant (storage, documentation, phone, ventilation)",
     match: [["fire control room", "fcr", "fire control centre"], ["storage", "stored", "documentation", "document", "documents", "phone", "ventilation", "vent", "items", "non compliant", "not compliant", "clutter", "cluttered", "missing"]],
     categories: ["5.3"],
+    subjectFromCategory: true,
     wording: "As per BCA E1.8, the fire control room must be clear of storage and provided with ventilation and current documentation.\n\nClear storage; install updated C&E matrix, zone plans and schematics.",
   },
   {
@@ -541,5 +605,13 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     match: [["evacuation diagram", "evac diagram", "evac plan", "evacuation plan", "evac map", "evacuation map", "emergency diagram", "diagram", "diagrams"], ["out of date", "outdated", "old", "not updated", "incorrect", "missing", "no", "expired", "faded", "wrong", "validity", "date", "dated"]],
     categories: ["12"],
     wording: "As per AS 3745, evacuation diagrams must be reviewed every 5 years or when the floor layout changes.\n\nReview and update evacuation diagrams.",
+  },
+  {
+    id: "EF-01",
+    measure: "Sprinklers",
+    issue: "Awning / canopy 2.5 m or wider without sprinkler coverage",
+    match: [["awning", "awnings", "canopy", "canopies", "overhang"], ["sprinkler", "sprinklers", "coverage", "sprinklered"]],
+    categories: ["5.6"],
+    wording: "As per AS 2118.1-1999, sprinklers may be omitted under canopies of non-combustible construction less than 2.5 m in width over pedestrian walkways.\n\nThe awning extends beyond this limit, so it is not exempt and needs sprinkler coverage provided.",
   },
 ];
