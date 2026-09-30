@@ -13,6 +13,10 @@ on:
         description: "Publish to coworkers (Google Play internal testing)"
         type: boolean
         default: false
+      publish_test_to_play:
+        description: "Publish Inspecta Test to my phone (its own Play app, only you test it)"
+        type: boolean
+        default: false
       release_notes:
         description: "What's new (shown in Play; optional)"
         type: string
@@ -86,7 +90,7 @@ jobs:
           CI_VERSION_CODE: ${{ github.run_number }}
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease assembleStaging bundleRelease --no-daemon
+          ./gradlew assembleRelease assembleStaging bundleRelease bundleStaging --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
@@ -110,11 +114,19 @@ jobs:
           name: inspecta-play-bundle
           path: android/app/build/outputs/bundle/release/app-release.aab
 
+      # the test app as a bundle, for its own Play app "Inspecta Test"
+      # (again, its very first one is uploaded by hand in the Play Console)
+      - name: Upload test Play bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: inspecta-test-play-bundle
+          path: android/app/build/outputs/bundle/staging/app-staging.aab
+
       # "Publish to coworkers" ticked: straight to the internal testing
       # track, and Play updates everyone's phone. versionCode is this
       # workflow's run number, so it's always higher than the last one.
       - name: Write release notes
-        if: ${{ inputs.publish_to_play && inputs.release_notes != '' }}
+        if: ${{ (inputs.publish_to_play || inputs.publish_test_to_play) && inputs.release_notes != '' }}
         env:
           NOTES: ${{ inputs.release_notes }}
         run: |
@@ -128,6 +140,19 @@ jobs:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: au.com.inspecta.app
           releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
+          track: internal
+          status: completed
+          whatsNewDirectory: ${{ inputs.release_notes != '' && 'whatsnew' || '' }}
+
+      # "Publish Inspecta Test to my phone" ticked: the test app's internal
+      # testing track, where only you are a tester. Coworkers never get it.
+      - name: Publish Inspecta Test to Google Play (internal testing)
+        if: ${{ inputs.publish_test_to_play }}
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: au.com.inspecta.app.test
+          releaseFiles: android/app/build/outputs/bundle/staging/app-staging.aab
           track: internal
           status: completed
           whatsNewDirectory: ${{ inputs.release_notes != '' && 'whatsnew' || '' }}

@@ -7,6 +7,11 @@ the technical detail.
 
 ## 30 September 2026
 
+- **Inspecta Test through Google Play.** Each build now also makes a Play
+  bundle of the test app (Inspecta Test, which installs beside the real
+  one), and a new **Publish Inspecta Test to my phone** option on Run
+  workflow sends it to its own Play app's internal testing, where only the
+  owner tests it. Coworkers' app is not touched.
 - **Rectified findings are closed in Excel.** Their Status / Date Closed
   shows the inspection date instead of "Open", and they get no suggested
   corrective action. Outstanding findings stay Open and keep theirs.
