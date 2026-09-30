@@ -44,6 +44,13 @@ export interface Photo {
   order: number;
 }
 
+// the copy of a photo the PDF / Excel exports work from (see lib/exportCopy)
+export interface ExportCopy {
+  photoId: string;
+  siteId: string;
+  blob: Blob;
+}
+
 // small JPEG of a photo for list thumbnails (see lib/thumbnail)
 export interface Thumbnail {
   photoId: string;

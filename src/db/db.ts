@@ -1,6 +1,7 @@
 import Dexie, { type Table } from "dexie";
-import type { Site, Finding, Photo, SiteKind, Thumbnail } from "./types";
+import type { Site, Finding, Photo, SiteKind, Thumbnail, ExportCopy } from "./types";
 import { makeThumbnail } from "../lib/thumbnail";
+import { makeExportCopy } from "../lib/exportCopy";
 import { RENAMED_CODES } from "../lib/esrCategories";
 
 class InspectaDB extends Dexie {
@@ -8,6 +9,7 @@ class InspectaDB extends Dexie {
   findings!: Table<Finding, string>;
   photos!: Table<Photo, string>;
   thumbnails!: Table<Thumbnail, string>;
+  exportCopies!: Table<ExportCopy, string>;
 
   constructor() {
     super("inspecta");
@@ -59,6 +61,15 @@ class InspectaDB extends Dexie {
       .upgrade((tx) => tx.table("findings").toCollection().modify((f) => {
         if (f.esrCategory && RENAMED_CODES[f.esrCategory]) f.esrCategory = RENAMED_CODES[f.esrCategory];
       }));
+    // v6: the smaller copies the exports work from (see lib/exportCopy).
+    // Additive only; copies for older photos are made when first needed.
+    this.version(6).stores({
+      sites: "id, updatedAt, kind",
+      findings: "id, siteId, createdAt, order",
+      photos: "id, findingId, siteId, order",
+      thumbnails: "photoId, siteId",
+      exportCopies: "photoId, siteId",
+    });
   }
 }
 
@@ -105,6 +116,7 @@ async function touchSite(siteId: string) {
 export async function deleteSite(siteId: string) {
   // keys only — no need to read every photo just to delete it
   await db.thumbnails.where("siteId").equals(siteId).delete();
+  await db.exportCopies.where("siteId").equals(siteId).delete();
   await db.photos.where("siteId").equals(siteId).delete();
   await db.findings.where("siteId").equals(siteId).delete();
   await db.sites.delete(siteId);
@@ -143,10 +155,11 @@ export async function reorderFinding(findingId: string, order: number) {
   await db.findings.update(findingId, { order });
 }
 
-// A finding with its photos and their thumbnails.
+// A finding with its photos and their thumbnails / export copies.
 export async function deleteFinding(findingId: string) {
   const photoIds = await db.photos.where("findingId").equals(findingId).primaryKeys();
   await db.thumbnails.bulkDelete(photoIds);
+  await db.exportCopies.bulkDelete(photoIds);
   await db.photos.bulkDelete(photoIds);
   const finding = await db.findings.get(findingId);
   await db.findings.delete(findingId);
@@ -189,8 +202,12 @@ export async function addPhoto(findingId: string, siteId: string, blob: Blob, ta
   };
   await db.photos.add(photo);
   await db.findings.update(findingId, { updatedAt: Date.now() });
-  // make its thumbnail now, in the background, so lists never wait on it
-  void getThumbnail(photo).catch(() => {});
+  // make its thumbnail now, in the background, so lists never wait on it;
+  // then the copy the exports use, so exporting doesn't have to
+  void getThumbnail(photo)
+    .catch(() => {})
+    .then(() => getExportCopy(photo))
+    .catch(() => {});
   return photo;
 }
 
@@ -202,6 +219,7 @@ export async function listPhotos(findingId: string) {
 export async function deletePhoto(photoId: string) {
   await db.photos.delete(photoId);
   await db.thumbnails.delete(photoId);
+  await db.exportCopies.delete(photoId);
 }
 
 // A photo's small list thumbnail, made (and saved) the first time it's
@@ -222,6 +240,32 @@ export function getThumbnail(photo: Photo): Promise<Blob> {
       return blob;
     })().finally(() => thumbnailJobs.delete(photo.id));
     thumbnailJobs.set(photo.id, job);
+  }
+  return job;
+}
+
+// The smaller copy of a photo that the PDF / Excel exports work from (see
+// lib/exportCopy), made (and saved) the first time it's asked for. One is
+// made at a time, however many are asked for, so a slow phone never holds
+// two full-size photos in memory at once; the same photo shares one job.
+const exportCopyJobs = new Map<string, Promise<Blob>>();
+let exportCopyQueue: Promise<unknown> = Promise.resolve();
+export function getExportCopy(photo: Photo): Promise<Blob> {
+  let job = exportCopyJobs.get(photo.id);
+  if (!job) {
+    job = (async () => {
+      const saved = await db.exportCopies.get(photo.id);
+      if (saved) return saved.blob;
+      const made = exportCopyQueue.then(() => makeExportCopy(photo.blob));
+      exportCopyQueue = made.catch(() => {});
+      const blob = await made;
+      // only keep it if the photo still exists
+      await db.transaction("rw", db.photos, db.exportCopies, async () => {
+        if (await db.photos.get(photo.id)) await db.exportCopies.put({ photoId: photo.id, siteId: photo.siteId, blob });
+      });
+      return blob;
+    })().finally(() => exportCopyJobs.delete(photo.id));
+    exportCopyJobs.set(photo.id, job);
   }
   return job;
 }

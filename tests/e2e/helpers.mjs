@@ -83,7 +83,7 @@ export async function pressBack(page) {
 }
 
 // sites: [{ id, name, ... }], findings: [{ id, siteId, note, ... }],
-// photos: [{ id, findingId, siteId, color? }] (small generated JPEGs)
+// photos: [{ id, findingId, siteId, color?, width?, height? }] (generated JPEGs, 400 × 300 unless given)
 export async function seed(page, { sites = [], findings = [], photos = [] }) {
   await page.evaluate(
     async ({ sites, findings, photos }) => {
@@ -92,18 +92,18 @@ export async function seed(page, { sites = [], findings = [], photos = [] }) {
       const blobs = [];
       for (const ph of photos) {
         const c = document.createElement("canvas");
-        c.width = 400;
-        c.height = 300;
+        c.width = ph.width ?? 400;
+        c.height = ph.height ?? 300;
         const g = c.getContext("2d");
         g.fillStyle = ph.color ?? "#6d7b86";
-        g.fillRect(0, 0, 400, 300);
+        g.fillRect(0, 0, c.width, c.height);
         blobs.push(await new Promise((r) => c.toBlob(r, "image/jpeg", 0.9)));
       }
       const now = Date.now();
       const tx = idb.transaction(["sites", "findings", "photos"], "readwrite");
       for (const s of sites) tx.objectStore("sites").put({ address: "", kind: "afss", createdAt: now, updatedAt: now, ...s });
       findings.forEach((f, i) => tx.objectStore("findings").put({ location: "", order: i, createdAt: now, updatedAt: now, ...f }));
-      photos.forEach(({ color: _c, ...ph }, i) => tx.objectStore("photos").put({ takenAt: now, order: 0, ...ph, blob: blobs[i] }));
+      photos.forEach(({ color: _c, width: _w, height: _h, ...ph }, i) => tx.objectStore("photos").put({ takenAt: now, order: 0, ...ph, blob: blobs[i] }));
       await new Promise((r) => (tx.oncomplete = r));
       idb.close();
     },

@@ -7,6 +7,14 @@ the technical detail.
 
 ## 30 September 2026
 
+- **Faster exports on slower phones.** Each photo now gets a smaller copy
+  (1200 px, upright) made in the background soon after it's taken, and the
+  PDF and Excel exports work from that instead of loading the full 12 MP
+  photo every time. Photos already in the app get theirs when the export
+  screen first opens. Exported photos are now 1200 px (were 1600 px),
+  still around 600 dpi at the size they're printed. The photos zip and
+  backups still use the full-resolution originals. In a 20-photo test on a
+  slowed-down browser, an Excel export went from about 4.7 s to 1.7–2.5 s.
 - **Share Excel is the main export button.** On the export screen, Share
   Excel is now the teal button on the right and Share PDF the plain one
   beside it.

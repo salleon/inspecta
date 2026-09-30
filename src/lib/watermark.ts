@@ -25,10 +25,10 @@ function formatTimestamp(ms: number) {
 const STAMP_FONT_OF_WIDTH = 0.044 / 0.75;
 
 // Sizes for stamped copies (longest edge, px). Exports: plenty for a photo
-// printed ~4–5 cm wide (roughly 700+ dpi) and a fraction of the memory and
+// printed ~4–5 cm wide (roughly 600 dpi) and a fraction of the memory and
 // file size of the 12 MP original. Preview: the on-screen export preview.
 // The untouched full-resolution originals stay in the app's storage.
-export const EXPORT_MAX_EDGE = 1600;
+export const EXPORT_MAX_EDGE = 1200;
 export const PREVIEW_MAX_EDGE = 480;
 
 interface StampOptions {

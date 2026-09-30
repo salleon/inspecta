@@ -4,7 +4,7 @@ import { jsPDF } from "jspdf";
 import { Share } from "@capacitor/share";
 import { Capacitor } from "@capacitor/core";
 import type { Finding, Photo, Site } from "../db/types";
-import { getSite, listFindings, listPhotos, updateFinding } from "../db/db";
+import { getExportCopy, getSite, listFindings, listPhotos, updateFinding } from "../db/db";
 import { IconChevronLeft, IconShare } from "../components/Icons";
 import RoundIconButton from "../components/RoundIconButton";
 import ProgressOverlay from "../components/ProgressOverlay";
@@ -165,7 +165,7 @@ export default function ExportPreview() {
         // small stamped copies — the preview shows them ~90 px wide; full
         // photos are only processed when a file is actually exported
         const dataUrls: string[] = [];
-        for (const p of photos) dataUrls.push(await watermark(p.blob, p.takenAt, { maxEdge: PREVIEW_MAX_EDGE }));
+        for (const p of photos) dataUrls.push(await watermark(await getExportCopy(p), p.takenAt, { maxEdge: PREVIEW_MAX_EDGE }));
         built.push({ finding, dataUrls, photos });
       }
       if (!cancelled) {
@@ -343,7 +343,7 @@ export default function ExportPreview() {
       // one photo at a time, so only one full-size photo is ever decoded
       const tiles: string[] = [];
       for (const p of item.photos) {
-        tiles.push(await watermark(p.blob, p.takenAt, { cropAspect: tileAspect, maxEdge: EXPORT_MAX_EDGE }));
+        tiles.push(await watermark(await getExportCopy(p), p.takenAt, { cropAspect: tileAspect, maxEdge: EXPORT_MAX_EDGE }));
         onPhoto(++donePhotos, totalPhotos);
       }
       const rows = Math.ceil(tiles.length / 2);
