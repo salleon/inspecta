@@ -90,6 +90,7 @@ test("real report: Strawberry Hills Hotel", () => {
     ["24 yearly Sprinkler head test compliance", "5.6", "EF-06"],
     ["Sprinkler booster not maintained since 2025", "5.6", "EF-04"],
     ["Plant room used as a storage room with combustible material (ie Furniture, gas cans & etc…)", "6.1", "EF-07"],
+    ["Detection spacing not consistent with design standards AS 1670.1", "7.2", "EF-14"],
     ["Mechanical equipment did not shut down in Wet or Dry trip- as required by AS1668", "6.3.1", "CI-60"],
     ["Sound level of BOW is low in some areas.", "8.2", "CI-37"],
     ["Provide evidence of 5 yearly Sound Pressure Level test results.", "8.2", "EF-12"],
@@ -110,7 +111,7 @@ test("unclear or uncommon notes stay blank", () => {
 });
 
 test("every defect in the table has wording, match words and categories", () => {
-  assert.equal(COMMON_DEFECTS.length, 78);
+  assert.equal(COMMON_DEFECTS.length, 79);
   for (const d of COMMON_DEFECTS) {
     assert.ok(d.wording.trim(), d.id);
     assert.ok(d.match.length && d.match.every((g) => g.length), d.id);

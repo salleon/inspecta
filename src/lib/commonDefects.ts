@@ -343,11 +343,12 @@ export const COMMON_DEFECTS: CommonDefect[] = [
   {
     id: "CI-36",
     measure: "Detection & Alarm System",
-    issue: "Room without detection coverage / detectors not spaced to AS1670",
-    match: [["detector", "detection", "detectors", "smoke detector"], ["no", "missing", "without", "not provided", "lacks", "lacking", "spacing", "spaced", "coverage", "not covered", "too far", "uncovered"]],
+    issue: "Room without detection coverage",
+    match: [["detector", "detection", "detectors", "smoke detector"], ["no", "missing", "without", "not provided", "lacks", "lacking", "coverage", "not covered", "uncovered"]],
     categories: ["7", "6.2"],
     subjectFromCategory: true,
-    unless: ["sprinkler", "supply air", "diffuser", "vent", "pod"],
+    // spacing: EF-14
+    unless: ["sprinkler", "supply air", "diffuser", "vent", "pod", "spacing", "spaced", "too far"],
     wording: "As per AS1670, all rooms must be provided with detection coverage at compliant spacing.\n\nInstall additional smoke detectors.",
   },
   {
@@ -633,7 +634,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     issue: "No signage for the sprinkler stop valve location",
     match: [["valve", "valves", "valve box", "stop valve", "valve room", "valve set", "valve enclosure"], ["signage", "sign", "location plate", "plate"], ["no", "missing", "not provided", "without", "required", "none"]],
     categories: ["5.1", "5.6"],
-    wording: "As per AS 1670.1 Section 8.4, a location plate reading SPRINKLER STOP VALVE shall be fixed on the outside of an external wall, as near to the main stop valve as possible.\n\nInstall signage to indicate sprinkler stop valve enclosure location clearly.",
+    wording: "As per AS 2118.1 Section 8.4, a location plate reading SPRINKLER STOP VALVE shall be fixed on the outside of an external wall, as near to the main stop valve as possible.\n\nInstall signage to indicate sprinkler stop valve enclosure location clearly.",
   },
   {
     id: "EF-04",
@@ -716,5 +717,15 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     match: [["emergency lighting", "emergency light", "emergency lights"], ["limited", "deficiency", "deficiencies", "deficient", "insufficient", "inadequate", "lack", "not enough"]],
     categories: ["4", "2.6"],
     wording: "Possible deficiencies in the installed emergency lighting, including near changes of level and within stairs used for egress (AS2293.1 clauses 5.4(c) and 5.6).\n\nEnFact recommend that a specialist contractor be engaged to provide an opinion in regards to clause 5.4(c) and 5.6 of AS2293.1.",
+  },
+  {
+    id: "EF-14",
+    measure: "Detection & Alarm System",
+    issue: "Detector spacing not consistent with AS1670.1",
+    match: [["detector", "detection", "detectors", "smoke detector"], ["spacing", "spaced", "too far", "too far apart"]],
+    categories: ["7", "6.2"],
+    subjectFromCategory: true,
+    unless: ["sprinkler", "supply air", "diffuser", "vent", "pod"],
+    wording: "Detection spacing does not appear consistent with the design standard AS1670.1.\n\nProvide original installers certificate to confirm compliance standard applicable. Copies of DA approvals would also be useful in determining the required standard.",
   },
 ];

@@ -7,6 +7,11 @@ the technical detail.
 
 ## 30 September 2026
 
+- **Two corrective action wording fixes.** The sprinkler stop valve sign
+  now cites AS 2118.1 (not AS 1670.1), and a note about detector
+  **spacing** now asks for the original installer's certificate and DA
+  approvals instead of "install additional smoke detectors" (a room with
+  no detector still gets that).
 - **Corrective actions learnt from the Strawberry Hills Hotel report.**
   12 new defects with EnFact's own wording from that report (extinguisher
   obstructed, sprinkler stop valve sign, sprinkler not maintained, flow
