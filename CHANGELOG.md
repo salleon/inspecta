@@ -7,6 +7,16 @@ the technical detail.
 
 ## 30 September 2026
 
+- **Corrective actions learnt from the Strawberry Hills Hotel report.**
+  12 new defects with EnFact's own wording from that report (extinguisher
+  obstructed, sprinkler stop valve sign, sprinkler not maintained, flow
+  test, 24 yearly head test, plant room storage, gas cylinders, external
+  gong, AFSS on display out of date, electrical cupboard smoke seals, 5
+  yearly SPL test, limited emergency lighting). Also fixed: "lack of exit
+  signage" no longer gets the "not illuminated" wording, a sign that
+  "does not indicate towards" the exit gets the wrong-direction wording,
+  "does not drive open" is read as an auto door failing, and a low BOW
+  sound level gets the EWIS volume wording. The report is now a test.
 - **Inspecta Test through Google Play.** Each build now also makes a Play
   bundle of the test app (Inspecta Test, which installs beside the real
   one), and a new **Publish Inspecta Test to my phone** option on Run

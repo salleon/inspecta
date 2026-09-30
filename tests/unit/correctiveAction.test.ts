@@ -71,6 +71,38 @@ test("real report: the wrong ones are gone, the right ones stay", () => {
   for (const [note, category, want] of rows) assert.equal(id(note, category), want, note);
 });
 
+// A second real report (Strawberry Hills Hotel), finished by the engineer:
+// each note should get the defect whose wording matches what was written.
+test("real report: Strawberry Hills Hotel", () => {
+  const rows: [string, string, string | undefined][] = [
+    ["Electrical cupboards on path of travel to an egress require to be fitted with smoke seal and be non conbustable.", "1.7", "EF-11"],
+    ["Final egress doors can all be deadbolted shut", "2.4", "CI-11"],
+    ["Padlock on final egress door into alley", "2.4", "CI-11"],
+    ["Final egress Door obstructed. A person must not place anything that may obstruct the free passsage of persons in a fire exit area for a building.", "2.4", "CI-12"],
+    ["Final egress auto door does not drive open in  fire trip", "2.5", "CI-20"],
+    ["A lack of exit signage fails to indicate the exit down corridor", "3.1", "CI-32"],
+    ["Exit Sign not illuminated", "3.1", "CI-30"],
+    ["Sign above bar does not indicate towards egress Door", "3.1", "CI-31"],
+    ["Our inspection identified possible deficiencies in regards to the installed emergency lighting located near changes of level and within stairs used for the purpose of egress.", "4", "EF-13"],
+    ["No signage indicating the sprinkler valve box location", "5.1", "EF-03"],
+    ["Extinguisher obstructed", "5.5", "EF-02"],
+    ["Annual Sprinkler System Flow Test not undertaken at SIT", "5.6", "EF-05"],
+    ["24 yearly Sprinkler head test compliance", "5.6", "EF-06"],
+    ["Sprinkler booster not maintained since 2025", "5.6", "EF-04"],
+    ["Plant room used as a storage room with combustible material (ie Furniture, gas cans & etc…)", "6.1", "EF-07"],
+    ["Mechanical equipment did not shut down in Wet or Dry trip- as required by AS1668", "6.3.1", "CI-60"],
+    ["Sound level of BOW is low in some areas.", "8.2", "CI-37"],
+    ["Provide evidence of 5 yearly Sound Pressure Level test results.", "8.2", "EF-12"],
+    ["Outside gong does not function in alarm", "8.2", "EF-09"],
+    ["Evac plan out of date \nExpired 2020, due for replacement 2025", "12", "CI-65"],
+    ["Hazardous materials stored in plantroom", "13", "EF-08"],
+    ["AFSS from 2022 on display. Must be updated to current year (2026)", "13", "EF-10"],
+    // one-off, site-specific: left for the engineer
+    ["No safety record of basement exit routes acknowledgements, as specified in the FER.", "13", undefined],
+  ];
+  for (const [note, category, want] of rows) assert.equal(id(note, category), want, note);
+});
+
 test("unclear or uncommon notes stay blank", () => {
   for (const [note, c] of [["Cracked tile in bathroom", "13"], ["Door handle loose", "1.6"], ["Gap under fire door exceeds 10mm", "1.6"], ["", "1.6"]]) {
     assert.equal(id(note, c), undefined, note);
@@ -78,7 +110,7 @@ test("unclear or uncommon notes stay blank", () => {
 });
 
 test("every defect in the table has wording, match words and categories", () => {
-  assert.equal(COMMON_DEFECTS.length, 66);
+  assert.equal(COMMON_DEFECTS.length, 78);
   for (const d of COMMON_DEFECTS) {
     assert.ok(d.wording.trim(), d.id);
     assert.ok(d.match.length && d.match.every((g) => g.length), d.id);
