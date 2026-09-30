@@ -7,6 +7,14 @@ the technical detail.
 
 ## 30 September 2026
 
+- **Updates show straight away.** After an update (the **Restart** button,
+  or just reopening the app) the new version now appears immediately,
+  without having to swipe the app out of the recent-apps tray. The cause
+  was the web version's offline cache, which the Android app didn't need
+  but was still using, so it kept showing the previous version's screens.
+  It's now switched off and cleared inside the app (the web version keeps
+  it). The first time the updated app opens it may flash and reload once
+  while it clears the old copy.
 - **Projects reports.** Sites created as Projects no longer use ESR
   categories: no category box on the finding screen, no category tag in
   the findings list, and no "Categorise now" prompt when exporting. Their

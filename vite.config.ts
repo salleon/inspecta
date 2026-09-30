@@ -8,6 +8,8 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
+      // registered by lib/offlineCache, on the web only (not in the app)
+      injectRegister: false,
       includeAssets: ["favicon.svg", "apple-touch-icon.png"],
       manifest: {
         name: "Inspecta",
@@ -27,6 +29,12 @@ export default defineConfig({
       workbox: {
         // woff2: the bundled Manrope font, so it's there offline
         globPatterns: ["**/*.{js,css,html,png,svg,ico,woff2}"],
+        // removes the worker again inside the Android app (see the file)
+        importScripts: ["sw-native-cleanup.js"],
+        // a new version takes over straight away (as with the automatic
+        // registration this replaced)
+        skipWaiting: true,
+        clientsClaim: true,
       },
     }),
   ],
