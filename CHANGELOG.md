@@ -7,6 +7,14 @@ the technical detail.
 
 ## 30 September 2026
 
+- **Loading animations are now videos.** The PDF, Excel, photos zip and
+  backup animations, and the gears on the updating screen, are played as
+  pre-rendered videos instead of being drawn frame by frame, so they no
+  longer stutter while the phone is busy building the export. The big
+  percentage still climbs with the real progress; the picture just loops.
+  The photos zip no longer counts photos on the pouch (the line under the
+  title still does). `scripts/render-animations.mjs` re-renders the videos
+  after a change to the pictures.
 - **Test branch builds go to Inspecta Test on Play.** Every build of the
   `test` branch now publishes Inspecta Test to its own Play app's internal
   testing (no tickbox needed), so it updates on the owner's phone through

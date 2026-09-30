@@ -1,9 +1,10 @@
-// The picture on the updating screen (components/UpdateScreen), as picked on
-// the design canvas (UE, gear swap): a big gear turning with an old grey
-// gear meshed beside it; the new teal gear rides along the progress track
-// (small, centred on the line) as the update downloads, then the old gear
-// drops out and the new one grows as it lifts into its place. Drawn once
-// into a 260 × 260 SVG and moved every frame by the function returned.
+// The picture on the updating screen, as picked on the design canvas (UE,
+// gear swap): a big gear turning with an old grey gear meshed beside it;
+// the new teal gear rides along the progress track (small, centred on the
+// line) as the update downloads, then the old gear drops out and the new
+// one grows as it lifts into its place. Drawn into a 260 × 260 SVG and
+// rendered to video by scripts/render-animations; the app plays the video
+// (see AnimationVideo).
 
 export type UpdateStep = "downloading" | "installing" | "restarting";
 // t: seconds since the screen appeared; stepT: seconds since this step

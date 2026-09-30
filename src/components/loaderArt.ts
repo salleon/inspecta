@@ -1,11 +1,11 @@
-// Pictures for the loading overlay (components/ProgressOverlay), one per job,
-// as approved on the design canvas: a conveyor of fire-safety kit into a
-// report for PDFs, a spreadsheet filling in for Excel, photos dropping into
-// a pouch that zips shut for the photos zip, and sites / findings / photos
-// packed into a box for backups. Each is drawn once into a 240 × 220 SVG and
-// then moved on every animation frame by the function mountArt returns,
-// given the time since it appeared (for the idle motion) and the export's
-// real progress (0–100, for how far along the picture is).
+// Pictures for the loading overlay, one per job, as approved on the design
+// canvas: a conveyor of fire-safety kit into a report for PDFs, a
+// spreadsheet filling in for Excel, photos dropping into a pouch that zips
+// shut for the photos zip, and sites / findings / photos packed into a box
+// for backups. Each is drawn into a 240 × 220 SVG and moved frame by frame
+// by the function mountArt returns (time, and progress 0–100), which
+// scripts/render-animations uses to render them to video; the app plays the
+// videos (see AnimationVideo).
 
 export type LoaderArt = "conveyor" | "sheet" | "zip" | "box";
 export type LoaderUpdate = (t: number, pct: number, count?: number) => void;

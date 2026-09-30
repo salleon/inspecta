@@ -1,11 +1,13 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { finishUpdate } from "../lib/appUpdate";
 import { useBackHandler } from "../lib/backButton";
-import { mountGears, type UpdateStep } from "./updateGears";
+import AnimationVideo from "./AnimationVideo";
+import type { UpdateStep } from "./updateGears";
 
 // Full-screen while an update from Play is under way (after Update now):
-// the gear picture (updateGears), the real download percentage, then
-// Installing, when it hands over to Play to install and reopen the app.
+// the gears (videos of updateGears, see AnimationVideo) over the real
+// download percentage, then Installing, when it hands over to Play to
+// install and reopen the app.
 // Covers the app on purpose; Android back does nothing meanwhile.
 const STEPS: UpdateStep[] = ["downloading", "installing", "restarting"];
 const STEP_TEXT: Record<UpdateStep, string> = {
@@ -54,7 +56,8 @@ export default function UpdateScreen({ downloaded, progress }: { downloaded: boo
       }}
     >
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, marginTop: -60 }}>
-        <Gears step={step} pct={pct} />
+        <AnimationVideo name="update-download" hidden={step !== "downloading"} />
+        {step !== "downloading" && <AnimationVideo name="update-install" loop={false} />}
         <div style={{ fontSize: 34, fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>
           {pct}
           <span style={{ fontSize: 16, color: "var(--muted)", marginLeft: 1 }}>%</span>
@@ -84,29 +87,4 @@ export default function UpdateScreen({ downloaded, progress }: { downloaded: boo
       </div>
     </div>
   );
-}
-
-// Drawn once, then moved every frame from the latest step and percentage
-// (kept in a ref, so a new percentage doesn't rebuild it).
-function Gears({ step, pct }: { step: UpdateStep; pct: number }) {
-  const svgRef = useRef<SVGSVGElement>(null);
-  const latest = useRef({ step, pct, since: 0 });
-  if (latest.current.step !== step) latest.current = { step, pct, since: performance.now() };
-  latest.current.pct = pct;
-  useEffect(() => {
-    const svg = svgRef.current;
-    if (!svg) return;
-    const update = mountGears(svg);
-    const start = performance.now();
-    latest.current.since ||= start;
-    let frame = 0;
-    const tick = (now: number) => {
-      const { step, pct, since } = latest.current;
-      update((now - start) / 1000, step, (now - since) / 1000, pct);
-      frame = requestAnimationFrame(tick);
-    };
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, []);
-  return <svg ref={svgRef} width={260} height={260} viewBox="0 0 260 260" style={{ display: "block", overflow: "visible" }} aria-hidden="true" />;
 }

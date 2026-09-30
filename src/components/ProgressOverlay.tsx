@@ -1,10 +1,10 @@
-import { useEffect, useRef } from "react";
-import { mountArt, type LoaderArt } from "./loaderArt";
+import AnimationVideo from "./AnimationVideo";
 
 // Full-screen loading overlay with a big percentage, shown while a long
-// export or backup is prepared: a picture for the job when one is given
-// (see loaderArt: PDF, Excel, photos zip, backup), otherwise a filling
-// progress ring.
+// export or backup is prepared: an animation for the job when one is given
+// (a looping video, see AnimationVideo: PDF, Excel, photos zip, backup)
+// above the real percentage, otherwise a filling progress ring.
+export type LoaderArt = "conveyor" | "sheet" | "zip" | "box";
 const SIZE = 132;
 const STROKE = 10;
 const RADIUS = (SIZE - STROKE) / 2 - 1;
@@ -15,13 +15,11 @@ export default function ProgressOverlay({
   title,
   step,
   art,
-  count,
 }: {
   percent: number;
   title: string;
   step: string;
   art?: LoaderArt;
-  count?: number; // e.g. photos done so far, for pictures that show it
 }) {
   const pct = Math.max(0, Math.min(100, Math.round(percent)));
   return (
@@ -37,7 +35,7 @@ export default function ProgressOverlay({
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
         {art ? (
           <>
-            <ArtPicture art={art} percent={percent} count={count} />
+            <AnimationVideo name={art} />
             <div style={{ fontSize: 30, fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>
               {pct}
               <span style={{ fontSize: 15, color: "var(--muted)", marginLeft: 1 }}>%</span>
@@ -77,26 +75,4 @@ function Ring({ pct }: { pct: number }) {
       </div>
     </div>
   );
-}
-
-// Drawn once, then moved every frame from the latest progress (kept in a
-// ref, so a new percentage doesn't rebuild it).
-function ArtPicture({ art, percent, count }: { art: LoaderArt; percent: number; count?: number }) {
-  const svgRef = useRef<SVGSVGElement>(null);
-  const latest = useRef({ percent, count });
-  latest.current = { percent, count };
-  useEffect(() => {
-    const svg = svgRef.current;
-    if (!svg) return;
-    const update = mountArt(svg, art);
-    const start = performance.now();
-    let frame = 0;
-    const tick = (now: number) => {
-      update((now - start) / 1000, latest.current.percent, latest.current.count);
-      frame = requestAnimationFrame(tick);
-    };
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, [art]);
-  return <svg ref={svgRef} width={240} height={220} viewBox="0 0 240 220" style={{ display: "block", overflow: "visible" }} aria-hidden="true" />;
 }
