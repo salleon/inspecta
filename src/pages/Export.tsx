@@ -122,7 +122,8 @@ export default function ExportPreview() {
   // Loading screen for both exports: 0–85% while photos are stamped and
   // added (nearly all the time), then building the file, then handing it to
   // the share menu
-  const [exportProgress, setExportProgress] = useState<{ percent: number; step: string } | null>(null);
+  // (done: photos added so far, shown by the photos-zip picture)
+  const [exportProgress, setExportProgress] = useState<{ percent: number; step: string; done?: number } | null>(null);
   // ESR categories (advanced controls): before a PDF / Excel export with
   // Uncategorised findings, offer to categorise them first — the popup, then
   // the Categorise screen. Asked once per visit to this screen.
@@ -460,7 +461,7 @@ export default function ExportPreview() {
     setSharing(kind);
     setExportProgress({ percent: 0, step: "Getting ready…" });
     const photoProgress = (done: number, total: number, upTo = 85) =>
-      setExportProgress({ percent: total ? (upTo * done) / total : 0, step: `Adding photos: ${done} of ${total}` });
+      setExportProgress({ percent: total ? (upTo * done) / total : 0, step: `Adding photos: ${done} of ${total}`, done });
     const native = Capacitor.isNativePlatform();
     const inspectorName = getInspectorName();
     const title = reportTitle(site?.name, inspectorName);
@@ -671,6 +672,8 @@ export default function ExportPreview() {
           percent={exportProgress.percent}
           title={sharing === "pdf" ? "Preparing PDF" : sharing === "excel" ? "Preparing Excel" : "Preparing photos"}
           step={exportProgress.step}
+          art={sharing === "pdf" ? "conveyor" : sharing === "excel" ? "sheet" : "zip"}
+          count={exportProgress.done}
         />
       )}
     </div>

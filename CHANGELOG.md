@@ -7,6 +7,13 @@ the technical detail.
 
 ## 30 September 2026
 
+- **New loading animations.** The plain progress ring is replaced with a
+  picture for each job, moving with the real progress: fire-safety kit
+  (extinguisher, EXIT sign, sprinkler, fire door) riding a conveyor into a
+  report for **PDFs**, a spreadsheet filling in row by row for **Excel**,
+  photos dropping into a pouch that zips shut for the **photos zip**
+  (counting the photos), and sites, findings and photos packed into a box
+  that's taped shut for **backups**. Restoring a backup keeps the ring.
 - **Confidence on each suggested corrective action.** Every red
   suggestion in the Excel now starts with a bold **Confidence: High /
   Medium / Low** line. High: the note itself names both the thing and the

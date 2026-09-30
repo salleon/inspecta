@@ -8,7 +8,7 @@ import { CacheFileWriter } from "../lib/cacheFile";
 import { applyRestore, backupCounts, backupFileName, readBackup, writeBackup, type RestorePlan } from "../lib/backup";
 
 // Settings rows: "Back up all data" and "Restore from backup" (see
-// lib/backup). Both show the same progress ring as the exports.
+// lib/backup). Backing up shows the packed-box picture, restoring the ring.
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
@@ -140,7 +140,7 @@ export default function BackupSettings({ rowStyle, hintStyle, onRestored }: { ro
         />
       )}
       {message && <ConfirmDialog title={message.title} message={message.text} confirmLabel="OK" tone="primary" infoOnly onCancel={() => setMessage(null)} onConfirm={() => setMessage(null)} />}
-      {progress && <ProgressOverlay percent={progress.percent} title={progress.title} step={progress.step} />}
+      {progress && <ProgressOverlay percent={progress.percent} title={progress.title} step={progress.step} art={progress.title === "Backing up" ? "box" : undefined} />}
     </>
   );
 }
