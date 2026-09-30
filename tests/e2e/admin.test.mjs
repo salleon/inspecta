@@ -40,16 +40,32 @@ test("Settings → Admin needs the PIN (2021)", async () => {
   await enterPin("1234");
   assert.equal(await page.locator("text=Wrong PIN").count(), 1);
   await enterPin("2021");
-  assert.equal(await page.locator('button:has-text("ESR keywords")').count(), 1);
+  assert.equal(await page.locator('button:has-text("Keywords")').count(), 1);
+  assert.equal(await page.locator('button[role="switch"]:has-text("Advanced controls")').count(), 1);
+});
+
+test("Advanced controls are switched in Admin, not Settings", async () => {
+  const on = () => page.getAttribute('button[role="switch"]', "aria-checked");
+  assert.equal(await on(), "true");
+  await page.click('button[role="switch"]');
+  assert.equal(await on(), "false");
+  assert.equal(await page.evaluate(() => localStorage.getItem("inspecta.advancedControls")), "0");
+  await page.click('button[role="switch"]');
+  assert.equal(await on(), "true");
+  await go(page, app, "/");
+  await page.click('button[aria-label="Settings"]');
+  assert.equal(await page.getByText("Advanced controls", { exact: true }).count(), 0);
+  await openAdmin("/admin", "Keywords");
 });
 
 test("add a keyword; it drives suggestions and survives a restart", async () => {
+  await page.click('button:has-text("Keywords")');
   await page.click('button:has-text("ESR keywords")');
   await page.fill("input[type=search]", "fhr");
   assert.equal(await page.locator('button:has-text("Fire hose reel systems")').count(), 1, "search finds keywords");
   await page.fill("input[type=search]", "");
   await page.click('button:has-text("Miscellaneous")');
-  assert.match(page.url(), /#\/admin\/keywords\/13$/);
+  assert.match(page.url(), /#\/admin\/keywords\/esr\/13$/);
   await page.fill('input[aria-label="New keyword"]', "Sump pump");
   await page.click('button[aria-pressed]:has-text("Near-certain")');
   await page.click('button:has-text("Add keyword")');
@@ -58,7 +74,7 @@ test("add a keyword; it drives suggestions and survives a restart", async () => 
   assert.match(await page.locator('button:has-text("Matched")').first().innerText(), /Miscellaneous[\s\S]*sump pump/);
 
   await pressBack(page);
-  assert.match(page.url(), /#\/admin\/keywords$/);
+  assert.match(page.url(), /#\/admin\/keywords\/esr$/);
   await page.reload();
   await page.waitForTimeout(2300);
   assert.equal(await page.locator("text=Enter admin PIN").count(), 1, "locked again after a restart");
@@ -72,7 +88,7 @@ test("add a keyword; it drives suggestions and survives a restart", async () => 
 });
 
 test("share the keyword file, reset, and load it back", async () => {
-  await openAdmin("/admin", "Share keyword changes");
+  await openAdmin("/admin/keywords", "Share keyword changes");
   const file = await download(page, () => page.click('button:has-text("Share keyword changes")'));
   assert.match(file.name, /^inspecta-keywords-\d{4}-\d{2}-\d{2}\.json$/);
   await page.click('button:has-text("Reset keywords")');
@@ -97,7 +113,7 @@ test("learned keywords: listed after a pick, removable, and a changed pick is ta
   await page.click('button:has-text("Save & close")');
   await page.waitForURL(/#\/site\/s1\/findings$/); // saved and back on the list
 
-  await openAdmin("/admin/learned", "Make keyword");
+  await openAdmin("/admin/keywords/learned", "Make keyword");
   const text = await page.locator("body").innerText();
   assert.ok(text.includes("float") && text.includes("Fire main"), "learned words shown");
   assert.ok(!text.includes("Fire hydrant system"), "the changed pick was taken back");
@@ -126,7 +142,7 @@ test("change the PIN, then reset a forgotten one with this phone's recovery code
   await page.click('button:has-text("Continue")');
   await enterPin("7777");
   await enterPin("7777");
-  assert.equal(await page.locator('button:has-text("ESR keywords")').count(), 1);
+  assert.equal(await page.locator('button:has-text("Keywords")').count(), 1);
 });
 
 test("no page errors", () => {

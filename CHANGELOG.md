@@ -7,6 +7,13 @@ the technical detail.
 
 ## 30 September 2026
 
+- **Admin tidied: Keywords submenu, and Advanced controls moved in.** The
+  Admin menu now has Advanced controls (the on/off switch, moved from
+  Settings), Keywords, Last export timings, Change PIN and Email recovery
+  code. Keywords opens a submenu with everything keyword related: ESR
+  keywords, Learned keywords, Test a note, Share keyword changes, Load
+  keyword file and Reset keywords. Settings no longer shows the Advanced
+  controls switch; its Admin row says "Advanced controls, keywords".
 - **Older photos' copies start straight after the splash.** The background
   job that makes export copies for older photos now starts as soon as the
   splash screen has gone (was 8 seconds after opening) and pauses 0.1 s

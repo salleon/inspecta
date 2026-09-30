@@ -4,6 +4,7 @@ import { Share } from "@capacitor/share";
 import { Capacitor } from "@capacitor/core";
 import RoundIconButton from "../components/RoundIconButton";
 import { describeTimings, lastExportTimings } from "../lib/exportTimings";
+import { setAdvancedControls, useAdvancedControls } from "../lib/settings";
 import ConfirmDialog from "../components/ConfirmDialog";
 import { IconChevronLeft, IconChevronRight } from "../components/Icons";
 import { ESR_SECTIONS, esrItem, sectionItems } from "../lib/esrCategories";
@@ -28,13 +29,14 @@ import { writeBlobToCache } from "../lib/cacheFile";
 import { useBackHandler } from "../lib/backButton";
 
 // Settings → Admin: PIN-protected tools for the person who looks after the
-// app. For now, tuning the ESR keywords that drive the category
-// suggestions (see lib/esrKeywords). Routes:
-//   /admin                 PIN, then the admin menu
-//   /admin/keywords        every category, searchable
-//   /admin/keywords/:code  one category's keywords, add / remove, try it
-//   /admin/test            type a note, see the top 5 and why
-//   /admin/learned         words this phone has learnt from picks
+// app: Advanced controls, the ESR keywords that drive the category
+// suggestions (see lib/esrKeywords), export timings and the PIN. Routes:
+//   /admin                     PIN, then the admin menu
+//   /admin/keywords            the keyword menu
+//   /admin/keywords/esr        every category, searchable
+//   /admin/keywords/esr/:code  one category's keywords, add / remove, try it
+//   /admin/keywords/test       type a note, see the top 5 and why
+//   /admin/keywords/learned    words this phone has learnt from picks
 
 export default function Admin() {
   const [unlocked, setUnlocked] = useState(isAdminUnlocked);
@@ -52,11 +54,12 @@ export default function Admin() {
       />
     );
   }
-  const code = /^\/admin\/keywords\/(.+)$/.exec(pathname)?.[1];
+  const code = /^\/admin\/keywords\/esr\/(.+)$/.exec(pathname)?.[1];
   if (code && esrItem(decodeURIComponent(code))) return <KeywordDetail code={decodeURIComponent(code)} />;
-  if (pathname === "/admin/keywords") return <KeywordList />;
-  if (pathname === "/admin/test") return <Tester />;
-  if (pathname === "/admin/learned") return <Learned />;
+  if (pathname === "/admin/keywords/esr") return <KeywordList />;
+  if (pathname === "/admin/keywords/test") return <Tester />;
+  if (pathname === "/admin/keywords/learned") return <Learned />;
+  if (pathname === "/admin/keywords") return <KeywordMenu />;
   return <AdminHome />;
 }
 
@@ -222,10 +225,8 @@ function PinScreen({ onUnlock, start = { kind: "enter" }, onDone, back = "/" }: 
 
 function AdminHome() {
   const navigate = useNavigate();
-  const fileInput = useRef<HTMLInputElement>(null);
+  const advancedControls = useAdvancedControls();
   const [changingPin, setChangingPin] = useState(false);
-  const [confirmReset, setConfirmReset] = useState(false);
-  const [loaded, setLoaded] = useState<{ edits: ReturnType<typeof readKeywordFile>; name: string } | null>(null);
   const [notice, setNotice] = useState("");
   // Android back while choosing a new PIN cancels that, not the menu
   useBackHandler(() => {
@@ -261,6 +262,35 @@ function AdminHome() {
     }
   }
 
+  return (
+    <Screen title="Admin" back="/">
+      {notice && <div style={{ fontSize: 13, fontWeight: 700, color: "var(--accent)" }}>{notice}</div>}
+      <button type="button" role="switch" aria-checked={advancedControls} onClick={() => setAdvancedControls(!advancedControls)} style={rowStyle}>
+        <span style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
+          <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>Advanced controls</span>
+          <span style={hintStyle}>Show extra menus for more detailed data entry.</span>
+        </span>
+        <Switch on={advancedControls} />
+      </button>
+      <Row title="Keywords" hint={`ESR keywords, learned keywords, testing a note, sharing and loading keyword files. ${edited ? `${edited} edited on this phone.` : "Built-in list, no changes."}`} onClick={() => navigate("/admin/keywords")} />
+      <Row title="Last export timings" hint={lastTimings ? describeTimings(lastTimings) : "No export on this phone yet."} onClick={() => {}} chevron={false} />
+      <Row title="Change PIN" hint="Pick a new 4-digit admin PIN." onClick={() => setChangingPin(true)} />
+      <Row title="Email recovery code" hint="Send yourself the code that resets the PIN if you forget it." onClick={emailRecovery} />
+      <div style={{ ...hintStyle, padding: "4px 2px" }}>Changes here apply to this phone only.</div>
+    </Screen>
+  );
+}
+
+// ---- keyword menu ----
+
+function KeywordMenu() {
+  const navigate = useNavigate();
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [confirmReset, setConfirmReset] = useState(false);
+  const [loaded, setLoaded] = useState<{ edits: ReturnType<typeof readKeywordFile>; name: string } | null>(null);
+  const [notice, setNotice] = useState("");
+  const edited = editedCount();
+
   async function shareKeywords() {
     try {
       await shareBlob(keywordFile(), keywordFileName(), "Inspecta keyword changes");
@@ -279,11 +309,11 @@ function AdminHome() {
   }
 
   return (
-    <Screen title="Admin" back="/">
+    <Screen title="Keywords" back="/admin">
       {notice && <div style={{ fontSize: 13, fontWeight: 700, color: "var(--accent)" }}>{notice}</div>}
-      <Row title="ESR keywords" hint={`Words that suggest each category. ${edited ? `${edited} edited on this phone.` : "Built-in list, no changes."}`} onClick={() => navigate("/admin/keywords")} />
-      <Row title="Learned keywords" hint="Words this phone has picked up from your category choices. Remove a wrong one, or make a good one a keyword." onClick={() => navigate("/admin/learned")} />
-      <Row title="Test a note" hint="Type a note, see the top 5 and why." onClick={() => navigate("/admin/test")} />
+      <Row title="ESR keywords" hint={`Words that suggest each category. ${edited ? `${edited} edited on this phone.` : "Built-in list, no changes."}`} onClick={() => navigate("/admin/keywords/esr")} />
+      <Row title="Learned keywords" hint="Words this phone has picked up from your category choices. Remove a wrong one, or make a good one a keyword." onClick={() => navigate("/admin/keywords/learned")} />
+      <Row title="Test a note" hint="Type a note, see the top 5 and why." onClick={() => navigate("/admin/keywords/test")} />
       <Row title="Share keyword changes" hint="Send your changes as a file, to load on other phones or to have them built into the app." onClick={shareKeywords} />
       <Row title="Load keyword file" hint="Load changes shared from another phone." onClick={() => fileInput.current?.click()} />
       <input
@@ -296,9 +326,6 @@ function AdminHome() {
           e.target.value = "";
         }}
       />
-      <Row title="Last export timings" hint={lastTimings ? describeTimings(lastTimings) : "No export on this phone yet."} onClick={() => {}} chevron={false} />
-      <Row title="Change PIN" hint="Pick a new 4-digit admin PIN." onClick={() => setChangingPin(true)} />
-      <Row title="Email recovery code" hint="Send yourself the code that resets the PIN if you forget it." onClick={emailRecovery} />
       <Row title="Reset keywords" hint="Undo all keyword changes on this phone, back to the built-in list." onClick={() => setConfirmReset(true)} danger chevron={false} />
       <div style={{ ...hintStyle, padding: "4px 2px" }}>Changes here apply to this phone only.</div>
 
@@ -340,7 +367,7 @@ function KeywordList() {
   const [query, setQuery] = useState("");
   const q = query.trim().toLowerCase();
   return (
-    <Screen title="ESR keywords" back="/admin">
+    <Screen title="ESR keywords" back="/admin/keywords">
       <input type="search" placeholder="Search categories or keywords" aria-label="Search categories or keywords" value={query} onChange={(e) => setQuery(e.target.value)} style={fieldStyle} />
       {ESR_SECTIONS.map((s) => {
         const items = sectionItems(s).filter(
@@ -355,7 +382,7 @@ function KeywordList() {
             {items.map((i) => {
               const n = categoryKeywords(i.code).length;
               return (
-                <button key={i.code} type="button" onClick={() => navigate(`/admin/keywords/${encodeURIComponent(i.code)}`)} style={{ ...rowStyle, padding: "10px 12px", gap: 10 }}>
+                <button key={i.code} type="button" onClick={() => navigate(`/admin/keywords/esr/${encodeURIComponent(i.code)}`)} style={{ ...rowStyle, padding: "10px 12px", gap: 10 }}>
                   <Code code={i.code} />
                   <span style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
                     <span style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.35 }}>{i.name}</span>
@@ -388,7 +415,7 @@ function KeywordDetail({ code }: { code: string }) {
   const [note, setNote] = useState("");
 
   return (
-    <Screen title="Edit keywords" back="/admin/keywords">
+    <Screen title="Edit keywords" back="/admin/keywords/esr">
       <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
         <Code code={code} big />
         <div style={{ fontSize: 15, fontWeight: 800, lineHeight: 1.35 }}>{item.name}</div>
@@ -470,7 +497,7 @@ function Learned() {
   const all = learnedKeywords();
   const rows = all.filter((r) => !q || r.word.includes(q) || r.code === q || esrItem(r.code)?.name.toLowerCase().includes(q));
   return (
-    <Screen title="Learned keywords" back="/admin">
+    <Screen title="Learned keywords" back="/admin/keywords">
       <div style={hintStyle}>
         Each time you pick a category, the words in that note count towards it. The more picks, the stronger. Changing or clearing a pick takes it back. Remove a word that points the wrong way, or tap <b style={{ color: "var(--text)" }}>Make keyword</b> to turn it into a proper keyword for that category.
       </div>
@@ -538,7 +565,7 @@ function Learned() {
 function Tester() {
   const [note, setNote] = useState("");
   return (
-    <Screen title="Test a note" back="/admin">
+    <Screen title="Test a note" back="/admin/keywords">
       <input type="text" placeholder="Type a sample note" aria-label="Sample note" value={note} onChange={(e) => setNote(e.target.value)} style={fieldStyle} />
       <div style={hintStyle}>Top 5 from the keywords (what each phone learns from its own picks comes on top of this). Tap one to edit its keywords.</div>
       <Results note={note} />
@@ -557,7 +584,7 @@ function Results({ note, highlight }: { note: string; highlight?: string }) {
         <button
           key={r.code}
           type="button"
-          onClick={() => navigate(`/admin/keywords/${encodeURIComponent(r.code)}`)}
+          onClick={() => navigate(`/admin/keywords/esr/${encodeURIComponent(r.code)}`)}
           style={{ ...rowStyle, padding: "10px 12px", gap: 10, borderColor: r.code === highlight || (!highlight && i === 0) ? "var(--accent)" : "var(--border)" }}
         >
           <Code code={r.code} />
@@ -611,3 +638,34 @@ const linkButton: CSSProperties = { background: "none", border: "none", padding:
 const keyStyle: CSSProperties = { height: 54, borderRadius: 12, background: "var(--panel-2)", border: "1px solid var(--border)", color: "var(--text)", fontSize: 22, fontWeight: 700 };
 
 const editedTag: CSSProperties = { flexShrink: 0, fontSize: 10, fontWeight: 800, color: "var(--accent)", border: "1px solid rgba(46,196,182,0.5)", borderRadius: 6, padding: "2px 6px" };
+
+// Visual-only on/off pill — the row it sits in is the actual switch button.
+function Switch({ on }: { on: boolean }) {
+  return (
+    <div
+      style={{
+        flexShrink: 0,
+        position: "relative",
+        width: 44,
+        height: 26,
+        borderRadius: 13,
+        background: on ? "var(--accent)" : "var(--muted-2)",
+        transition: "background 0.18s ease",
+      }}
+    >
+      <div
+        style={{
+          position: "absolute",
+          top: 3,
+          left: 3,
+          width: 20,
+          height: 20,
+          borderRadius: "50%",
+          background: on ? "var(--accent-text)" : "var(--text)",
+          transform: `translateX(${on ? 18 : 0}px)`,
+          transition: "transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.18s ease",
+        }}
+      />
+    </div>
+  );
+}

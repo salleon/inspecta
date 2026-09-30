@@ -74,7 +74,7 @@ test("opens the old database, moves 4.1 to 4, keeps the rest", async () => {
 });
 
 test("a keyword change saved against 4.1 now belongs to 4", async () => {
-  await page.goto(app.url + "/#/admin/keywords");
+  await page.goto(app.url + "/#/admin/keywords/esr");
   await page.waitForTimeout(2500);
   for (const d of "2021") await page.click(`button[aria-label="${d}"]`);
   await page.waitForTimeout(300);

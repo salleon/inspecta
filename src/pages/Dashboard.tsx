@@ -14,7 +14,6 @@ import buildLabel from "../../BUILD_LABEL?raw";
 import { IS_TEST_BUILD } from "../lib/buildInfo";
 import logo from "../assets/logo.png";
 import { getInspectorName, setInspectorName } from "../lib/profile";
-import { setAdvancedControls, useAdvancedControls } from "../lib/settings";
 
 interface SiteRow extends Site {
   findings: number;
@@ -35,7 +34,6 @@ export default function Dashboard() {
   const [openSwipeId, setOpenSwipeId] = useState<string | null>(null);
   const [confirmDeleteSite, setConfirmDeleteSite] = useState<SiteRow | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const advancedControls = useAdvancedControls();
 
   // Site cover thumbnails (first finding's first photo — see
   // firstSitePhoto), by site id. The cache remembers which photo each URL
@@ -367,19 +365,6 @@ export default function Dashboard() {
               </div>
               <IconChevronRight color="var(--muted)" />
             </button>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={advancedControls}
-              onClick={() => setAdvancedControls(!advancedControls)}
-              style={settingsRowStyle}
-            >
-              <div style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
-                <span style={{ fontSize: 14, fontWeight: 700 }}>Advanced controls</span>
-                <span style={settingsRowHintStyle}>Show extra menus for more detailed data entry.</span>
-              </div>
-              <Switch on={advancedControls} />
-            </button>
             <BackupSettings rowStyle={settingsRowStyle} hintStyle={settingsRowHintStyle} onRestored={() => void refresh()} />
             <UpdateSettingsRow rowStyle={settingsRowStyle} hintStyle={settingsRowHintStyle} onAction={() => setSettingsOpen(false)} />
             <button
@@ -400,7 +385,7 @@ export default function Dashboard() {
               <IconLock size={18} color="var(--muted)" style={{ flexShrink: 0 }} />
               <div style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
                 <span style={{ fontSize: 14, fontWeight: 700 }}>Admin</span>
-                <span style={settingsRowHintStyle}>ESR keywords. PIN protected.</span>
+                <span style={settingsRowHintStyle}>Advanced controls, keywords. PIN protected.</span>
               </div>
               <IconChevronRight color="var(--muted)" />
             </button>
@@ -485,36 +470,6 @@ const settingsRowHintStyle: CSSProperties = {
   lineHeight: 1.4,
 };
 
-// Visual-only on/off pill — the row it sits in is the actual switch button.
-function Switch({ on }: { on: boolean }) {
-  return (
-    <div
-      style={{
-        flexShrink: 0,
-        position: "relative",
-        width: 44,
-        height: 26,
-        borderRadius: 13,
-        background: on ? "var(--accent)" : "var(--muted-2)",
-        transition: "background 0.18s ease",
-      }}
-    >
-      <div
-        style={{
-          position: "absolute",
-          top: 3,
-          left: 3,
-          width: 20,
-          height: 20,
-          borderRadius: "50%",
-          background: on ? "var(--accent-text)" : "var(--text)",
-          transform: `translateX(${on ? 18 : 0}px)`,
-          transition: "transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.18s ease",
-        }}
-      />
-    </div>
-  );
-}
 
 const sectionHeaderStyle: CSSProperties = {
   fontSize: 12,

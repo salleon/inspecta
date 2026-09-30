@@ -86,7 +86,7 @@ const STEPS: Step[] = [
     route: () => "/",
     target: '[data-tour="settings"]',
     title: "Settings",
-    body: <>Your name, backups, updates and Advanced controls. You can replay this tour here too.</>,
+    body: <>Your name, backups and updates, and Admin (Advanced controls and keywords). You can replay this tour here too.</>,
   },
 ];
 
