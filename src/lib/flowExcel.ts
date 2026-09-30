@@ -156,7 +156,10 @@ export async function addFlowSheets(wb: Workbook, tests: FlowTest[], site: Pick<
 }
 
 function addBlankSheet(wb: Workbook, test: FlowTest) {
-  const ws = wb.addWorksheet(sheetName(wb, test.name || SHEET.blank));
+  // prints on one page wide, however many columns
+  const ws = wb.addWorksheet(sheetName(wb, test.name || SHEET.blank), {
+    pageSetup: { fitToPage: true, fitToWidth: 1, fitToHeight: 0, orientation: (test.columns?.length ?? 0) > 6 ? "landscape" : "portrait" },
+  });
   const font = { name: "Arial", size: 10 };
   const thin = { style: "thin" as const, color: { argb: "FF000000" } };
   const border = { left: thin, right: thin, top: thin, bottom: thin };
