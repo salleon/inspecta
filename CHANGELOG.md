@@ -7,6 +7,9 @@ the technical detail.
 
 ## 30 September 2026
 
+- **Awning wording updated.** The corrective action for an awning with a
+  large overhang now gives both limits: less than 2.3 m (Ord 70) and
+  2.5 m (1999 onwards).
 - **Faster exports on slower phones.** Each photo now gets a smaller copy
   (1200 px, upright) made in the background soon after it's taken, and the
   PDF and Excel exports work from that instead of loading the full 12 MP

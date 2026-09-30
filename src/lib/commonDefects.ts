@@ -616,7 +616,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     issue: "Awning / canopy 2.5 m or wider without sprinkler coverage",
     match: [["awning", "awnings", "canopy", "canopies", "overhang"], ["sprinkler", "sprinklers", "coverage", "sprinklered"]],
     categories: ["5.6"],
-    wording: "As per AS 2118.1-1999, sprinklers may be omitted under canopies of non-combustible construction less than 2.5 m in width over pedestrian walkways.\n\nThe awning extends beyond this limit, so it is not exempt and needs sprinkler coverage provided.",
+    wording: "As per AS 2118.1-1999, sprinklers may be omitted under canopies of non-combustible construction less than 2.3m (ord 70) and 2.5 m (1999 onwards) in width over pedestrian walkways.\n\nThe awning extends beyond this limit, so it is not exempt and needs sprinkler coverage provided.",
   },
   {
     id: "EF-02",
