@@ -41,10 +41,11 @@ function App() {
   const [splashLeaving, setSplashLeaving] = useState(false);
   const [splashVisible, setSplashVisible] = useState(true);
 
-  // older photos get their export copies in the background (lib/copyBackfill)
+  // older photos get their export copies in the background (lib/copyBackfill),
+  // starting as soon as the splash has gone
   useEffect(() => {
-    if (!needsOnboarding) startCopyBackfill();
-  }, [needsOnboarding]);
+    if (!needsOnboarding && !splashVisible) startCopyBackfill();
+  }, [needsOnboarding, splashVisible]);
 
   useEffect(() => {
     const leaveTimer = setTimeout(() => setSplashLeaving(true), SPLASH_HOLD_MS);

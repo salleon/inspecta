@@ -86,7 +86,7 @@ test("photos from before the update get their copies in the background, without 
   await go(page, app, "/", 500);
   await page.reload(); // the app starts with them already there
   assert.equal(await copies(), 1, "only the photo exported earlier");
-  await page.waitForTimeout(13000); // starts 8 s after opening, one photo at a time
+  await page.waitForTimeout(6000); // starts once the splash has gone, one photo at a time
   assert.equal(await copies(), 3);
 });
 

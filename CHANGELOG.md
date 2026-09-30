@@ -7,6 +7,11 @@ the technical detail.
 
 ## 30 September 2026
 
+- **Older photos' copies start straight after the splash.** The background
+  job that makes export copies for older photos now starts as soon as the
+  splash screen has gone (was 8 seconds after opening) and pauses 0.1 s
+  between photos (was 0.4 s). It still waits while the app is in the
+  background or an export is running (Android pauses the app then).
 - **Export animations drawn live again, and shown for at least 4 s.** The
   PDF, Excel and photos zip loading pictures are drawn in the app again
   (as before they became videos); the backup and updating screens keep
