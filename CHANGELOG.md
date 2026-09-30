@@ -7,6 +7,10 @@ the technical detail.
 
 ## 30 September 2026
 
+- **Share without waiting for the preview.** The export screen shows the
+  findings and enables Share Excel / Share PDF straight away; the preview
+  photos fill in behind (grey boxes until they're ready) and pause while an
+  export runs.
 - **Awning wording updated.** The corrective action for an awning with a
   large overhang now gives both limits: less than 2.3 m (Ord 70) and
   2.5 m (1999 onwards).

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { jsPDF } from "jspdf";
 import { Share } from "@capacitor/share";
@@ -43,8 +43,7 @@ const SHARE_LABEL: Record<ShareKind, string> = { pdf: "PDF", excel: "Excel file"
 
 interface FindingImages {
   finding: Finding;
-  dataUrls: string[]; // watermarked, for the on-screen preview
-  photos: Photo[]; // originals — the Excel export stamps its own full-res copies
+  photos: Photo[]; // the exports stamp their own copies (see lib/exportCopy)
 }
 
 
@@ -118,7 +117,15 @@ export default function ExportPreview() {
   const [site, setSite] = useState<Site | null>(null);
   const [items, setItems] = useState<FindingImages[]>([]);
   const [loading, setLoading] = useState(true);
+  // the preview's small stamped photos, by photo id, filled in after the
+  // findings show (the share buttons don't wait for them)
+  const [previews, setPreviews] = useState<Record<string, string>>({});
   const [sharing, setSharing] = useState<ShareKind | null>(null);
+  // an export pauses the previews so it has the phone to itself
+  const sharingRef = useRef(false);
+  useEffect(() => {
+    sharingRef.current = sharing !== null;
+  }, [sharing]);
   // Loading screen for both exports: 0–85% while photos are stamped and
   // added (nearly all the time), then building the file, then handing it to
   // the share menu
@@ -160,19 +167,24 @@ export default function ExportPreview() {
       const s = await getSite(siteId!);
       const findings = await listFindings(siteId!);
       const built: FindingImages[] = [];
-      for (const finding of findings) {
-        const photos = await listPhotos(finding.id);
-        // small stamped copies — the preview shows them ~90 px wide; full
-        // photos are only processed when a file is actually exported
-        const dataUrls: string[] = [];
-        for (const p of photos) dataUrls.push(await watermark(await getExportCopy(p), p.takenAt, { maxEdge: PREVIEW_MAX_EDGE }));
-        built.push({ finding, dataUrls, photos });
-      }
-      if (!cancelled) {
-        setSite(s ?? null);
-        // Projects sites: no ESR sections, in the order the photos were taken
-        setItems(s?.kind === "project" ? forProjectReport(built) : built);
-        setLoading(false);
+      for (const finding of findings) built.push({ finding, photos: await listPhotos(finding.id) });
+      if (cancelled) return;
+      setSite(s ?? null);
+      // Projects sites: no ESR sections, in the order the photos were taken
+      const ordered = s?.kind === "project" ? forProjectReport(built) : built;
+      setItems(ordered);
+      setLoading(false);
+
+      // then the preview photos, top to bottom. Making them also makes each
+      // photo's export copy, so an export after this is quicker.
+      for (const { photos } of ordered) {
+        for (const p of photos) {
+          while (sharingRef.current && !cancelled) await new Promise((r) => setTimeout(r, 300));
+          if (cancelled) return;
+          const url = await watermark(await getExportCopy(p), p.takenAt, { maxEdge: PREVIEW_MAX_EDGE }).catch(() => null);
+          if (cancelled) return;
+          if (url) setPreviews((prev) => ({ ...prev, [p.id]: url }));
+        }
       }
     }
     load();
@@ -554,7 +566,7 @@ export default function ExportPreview() {
 
           {loading && (
             <div style={{ textAlign: "center", color: "var(--muted-2)", fontSize: 13, fontWeight: 600, padding: "20px 0" }}>
-              Preparing preview…
+              Loading findings…
             </div>
           )}
 
@@ -567,7 +579,7 @@ export default function ExportPreview() {
           {reportRows(items).map((row, idx, rows) =>
             row.kind === "finding" ? (
               // no divider line straight under a heading
-              <PreviewFinding key={row.entry.finding.id} entry={row.entry} first={idx === 0 || rows[idx - 1].kind !== "finding"} />
+              <PreviewFinding key={row.entry.finding.id} entry={row.entry} previews={previews} first={idx === 0 || rows[idx - 1].kind !== "finding"} />
             ) : (
               <PreviewHeading key={row.kind === "uncategorised" ? "uncategorised" : `${row.kind}-${row.code}`} row={row} />
             ),
@@ -656,7 +668,12 @@ export default function ExportPreview() {
 
       {categorising && (
         <CategoriseFlow
-          entries={categoriseIds.flatMap((id) => items.filter((i) => i.finding.id === id))}
+          entries={categoriseIds.flatMap((id) =>
+            items
+              .filter((i) => i.finding.id === id)
+              // the preview photos made so far (the rest fill in as they're ready)
+              .map((i) => ({ ...i, dataUrls: i.photos.flatMap((p) => (previews[p.id] ? [previews[p.id]] : [])) })),
+          )}
           onPick={handleCategorisePick}
           onExport={() => {
             setCategoriseAsked(true);
@@ -705,7 +722,7 @@ function PreviewHeading({ row }: { row: Heading }) {
   );
 }
 
-function PreviewFinding({ entry: { finding, dataUrls }, first }: { entry: FindingImages; first: boolean }) {
+function PreviewFinding({ entry: { finding, photos }, previews, first }: { entry: FindingImages; previews: Record<string, string>; first: boolean }) {
   return (
     <div
       style={{
@@ -716,10 +733,15 @@ function PreviewFinding({ entry: { finding, dataUrls }, first }: { entry: Findin
       }}
     >
       <div style={{ flexShrink: 0, width: 92, display: "flex", flexDirection: "column", gap: 4 }}>
-        {dataUrls.map((url) => (
-          <img key={url} src={url} alt="" style={{ width: "100%", borderRadius: 6, display: "block" }} />
-        ))}
-        {dataUrls.length === 0 && (
+        {photos.map((p) =>
+          previews[p.id] ? (
+            <img key={p.id} src={previews[p.id]} alt="" style={{ width: "100%", borderRadius: 6, display: "block" }} />
+          ) : (
+            // still being made
+            <div key={p.id} style={{ width: "100%", aspectRatio: "4 / 3", borderRadius: 6, background: "#e6e1d6" }} />
+          ),
+        )}
+        {photos.length === 0 && (
           <div style={{ height: 46, borderRadius: 6, border: "1px dashed #c9c4b8", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 600, color: "var(--muted-2)" }}>
             No photo
           </div>
