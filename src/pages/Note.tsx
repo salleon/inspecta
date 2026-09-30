@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import { Fragment, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { useNavigate, useParams, useLocation as useRouterLocation } from "react-router-dom";
 import type { DefectType, Photo } from "../db/types";
 import {
@@ -811,26 +811,35 @@ export default function Note() {
             style={{ width: "100%", background: "var(--panel)", borderRadius: "20px 20px 0 0", padding: "22px 20px calc(28px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 10 }}
           >
             <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 4 }}>Defect type</div>
-            {DEFECT_TYPES.map((t) => {
+            {DEFECT_TYPES.filter((t) => !t.previousInspection || !isProject).map((t, i, shown) => {
               const active = t.value === defectType;
+              // AFSS only: Rectified / Outstanding under their own heading
+              const heading = t.previousInspection && !shown[i - 1]?.previousInspection;
               return (
-                <button
-                  key={t.value}
-                  type="button"
-                  onClick={() => handlePickDefectType(t.value)}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    background: "var(--panel-2)",
-                    border: active ? "1px solid var(--accent)" : "1px solid var(--border)",
-                    borderRadius: 12,
-                    padding: "12px 14px",
-                  }}
-                >
-                  <DefectTypePill type={t.value} />
-                  {active && <IconCheck size={18} color="var(--accent)" strokeWidth={2.6} />}
-                </button>
+                <Fragment key={t.value}>
+                  {heading && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, fontSize: 12, fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--muted)" }}>
+                      From a previous inspection
+                      <span style={{ flexGrow: 1, height: 1, background: "var(--border)" }} />
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => handlePickDefectType(t.value)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      background: "var(--panel-2)",
+                      border: active ? "1px solid var(--accent)" : "1px solid var(--border)",
+                      borderRadius: 12,
+                      padding: "12px 14px",
+                    }}
+                  >
+                    <DefectTypePill type={t.value} />
+                    {active && <IconCheck size={18} color="var(--accent)" strokeWidth={2.6} />}
+                  </button>
+                </Fragment>
               );
             })}
             <button

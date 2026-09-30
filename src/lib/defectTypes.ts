@@ -7,6 +7,12 @@ import type { DefectType } from "../db/types";
 // blue use dark text since white isn't readable on them. "Note only" is a
 // white bubble, so it gets an outline anywhere it sits on a white
 // background (the PDF / export preview).
+//
+// "Rectified" and "Outstanding" are for a defect from a previous
+// inspection (fixed since, or still there): AFSS sites only, offered under
+// their own heading at the bottom of the picker. Outstanding's purple is the
+// one the Excel already uses for a finding's old reference number, and in
+// the Excel both are also written under the Ref (in `refText`).
 
 interface DefectTypeStyle {
   value: DefectType;
@@ -15,6 +21,8 @@ interface DefectTypeStyle {
   text: string;
   bgRgb: [number, number, number];
   textRgb: [number, number, number];
+  previousInspection?: boolean;
+  refText?: string; // ARGB for the word under the Ref in the Excel
 }
 
 export const DEFECT_TYPES: DefectTypeStyle[] = [
@@ -23,7 +31,8 @@ export const DEFECT_TYPES: DefectTypeStyle[] = [
   { value: "non-compliance", label: "Non-compliance", bg: "#00b050", text: "#03210f", bgRgb: [0, 176, 80], textRgb: [3, 33, 15] },
   { value: "recommend", label: "Recommend", bg: "#92d050", text: "#1a2e05", bgRgb: [146, 208, 80], textRgb: [26, 46, 5] },
   { value: "note-only", label: "Note only", bg: "#ffffff", text: "#000000", bgRgb: [255, 255, 255], textRgb: [0, 0, 0] },
-  { value: "rectified", label: "Rectified", bg: "#00b0f0", text: "#022a3a", bgRgb: [0, 176, 240], textRgb: [2, 42, 58] },
+  { value: "rectified", label: "Rectified", bg: "#00b0f0", text: "#022a3a", bgRgb: [0, 176, 240], textRgb: [2, 42, 58], previousInspection: true, refText: "FF0070C0" },
+  { value: "outstanding", label: "Outstanding", bg: "#b1a0c7", text: "#2a1a40", bgRgb: [177, 160, 199], textRgb: [42, 26, 64], previousInspection: true, refText: "FF7030A0" },
 ];
 
 export function defectTypeStyle(value: DefectType | undefined): DefectTypeStyle | undefined {

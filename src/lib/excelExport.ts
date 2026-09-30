@@ -189,7 +189,9 @@ export async function buildFindingsWorkbook(
     const placements: { imageId: number; rowIdx: number; x: number; y: number; h: number }[] = [];
     let rowIdx = 0;
     let y = PAD + (noteH ? noteH + GAP : 0);
-    let rowFloor = Math.max(y, PAD + locH + PAD, PAD + actionH + PAD, MIN_ROW_PX);
+    // Rectified / Outstanding add a second line under the Ref
+    const refLines = defectTypeStyle(finding.defectType)?.previousInspection ? 2 : 1;
+    let rowFloor = Math.max(y, PAD + locH + PAD, PAD + actionH + PAD, PAD + refLines * LINE_PX + PAD, MIN_ROW_PX);
     for (let i = 0; i < prepared.length; i += 2) {
       const pair = prepared.slice(i, i + 2);
       const pairH = Math.max(...pair.map((p) => p.heightPx));
@@ -230,7 +232,12 @@ export async function buildFindingsWorkbook(
     const row = ws.getRow(first);
 
     const refCell = row.getCell(COL.ref);
-    refCell.value = ref ?? null;
+    // a defect from a previous inspection says so under its Ref
+    const previous = defectTypeStyle(finding.defectType);
+    refCell.value =
+      previous?.previousInspection && previous.refText
+        ? { richText: [{ text: ref ? `${ref}\n` : "", font: FONT }, { text: previous.label, font: { ...FONT, bold: true, color: { argb: previous.refText } } }] }
+        : (ref ?? null);
     refCell.alignment = topLeft;
     if (kept) refCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: KEPT_REF_FILL } };
 

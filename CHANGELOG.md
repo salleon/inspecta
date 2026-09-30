@@ -7,6 +7,12 @@ the technical detail.
 
 ## 30 September 2026
 
+- **Outstanding defect type (AFSS only).** The defect type picker now ends
+  with a **From a previous inspection** heading holding **Rectified** and a
+  new **Outstanding** (purple), for items raised at an earlier inspection
+  that are fixed or still not fixed. Neither is offered on Projects sites.
+  In the AFSS Excel, the Ref cell of these findings now shows the word
+  **Rectified** (blue) or **Outstanding** (purple) in bold under the ref.
 - **New loading animations.** The plain progress ring is replaced with a
   picture for each job, moving with the real progress: fire-safety kit
   (extinguisher, EXIT sign, sprinkler, fire door) riding a conveyor into a

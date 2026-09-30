@@ -25,6 +25,8 @@ before(async () => {
       { id: "f1", siteId: "p1", note: "Fire collar missing on PVC pipe", location: "Plant room", level: "Level 1", defectType: "non-compliance" },
       { id: "f2", siteId: "p1", note: "Fire door closer disconnected", location: "Corridor", level: "Level 1", defectType: "critical" },
       { id: "g0", siteId: "a1", note: "Fire door held open with a wedge", esrCategory: "1.6" },
+      { id: "g1", siteId: "a1", note: "Exit sign still not illuminated", esrCategory: "3.1", defectType: "outstanding" },
+      { id: "g2", siteId: "a1", note: "Door closer replaced", esrCategory: "1.6", defectType: "rectified" },
     ],
     photos: [
       { id: "ph0", findingId: "f0", siteId: "p1", takenAt: t(9, 48) },
@@ -72,6 +74,44 @@ test("Excel: Photo · Location · Notes · Date · Risk level, by photo time, no
   const photos = ws.getImages();
   assert.equal(photos.length, 4);
   assert.ok(photos.every((p) => p.range.tl.nativeCol === 0), "photos in the first column");
+});
+
+test("defect type: Rectified and Outstanding under their own heading on AFSS, not offered on Projects", async () => {
+  await go(page, app, "/site/a1/finding/g0/note", 1200);
+  await scrollFindingToBottom(page);
+  await page.click("#defectTypeInput");
+  await page.waitForTimeout(400);
+  const sheet = page.locator(".sheet-panel").last();
+  const labels = (await sheet.innerText()).split("\n").map((l) => l.trim()).filter(Boolean);
+  assert.deepEqual(labels.slice(1, 10), ["Critical", "Non-critical", "Non-compliance", "Recommend", "Note only", "FROM A PREVIOUS INSPECTION", "Rectified", "Outstanding", "Skip"]);
+  await page.keyboard.press("Escape");
+  await go(page, app, "/site/p1/finding/f1/note", 1200);
+  await scrollFindingToBottom(page);
+  await page.click("#defectTypeInput");
+  await page.waitForTimeout(400);
+  const projectSheet = await page.locator(".sheet-panel").last().innerText();
+  assert.ok(!/Rectified|Outstanding|previous inspection/i.test(projectSheet), projectSheet);
+});
+
+test("AFSS Excel: the word under the Ref for Rectified / Outstanding", async () => {
+  await go(page, app, "/site/a1/export", 2500);
+  const xlsx = await download(page, async () => {
+    await page.click("text=Share Excel");
+    await page.waitForTimeout(600);
+    if (await page.locator("text=Skip to export").count()) await page.click("text=Skip to export");
+  });
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.readFile(xlsx.path);
+  const ws = wb.worksheets[0];
+  const refs = [];
+  ws.eachRow((row) => {
+    const v = row.getCell(1).value;
+    if (v?.richText) refs.push([v.richText.map((r) => r.text).join(""), v.richText[1].font.color.argb, v.richText[1].font.bold]);
+  });
+  assert.deepEqual(refs.sort(), [
+    ["1.6.2\nRectified", "FF0070C0", true],
+    ["3.1.1\nOutstanding", "FF7030A0", true],
+  ].sort());
 });
 
 test("no page errors", () => {
