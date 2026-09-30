@@ -94,6 +94,7 @@ export default function FlowTest() {
   const [sel, setSel] = useState(0); // the supply / pump being looked at
   const [unit, setUnit] = useState<FlowUnit>("min");
   const [more, setMore] = useState(false); // RPM and Amps columns
+  const [flowSide, setFlowSide] = useState(false); // first column shows Flow, not " Hg
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [confirmingRemove, setConfirmingRemove] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -124,6 +125,8 @@ export default function FlowTest() {
       setSite(s ?? null);
       setTest(t);
       setMore(t.sections.some((sec) => sec.rows.some((r) => r.rpm || r.amps)));
+      // hydrant flows are typed, so those start on the Flow side
+      setFlowSide(!t.k);
     })();
     return () => {
       cancelled = true;
@@ -310,7 +313,9 @@ export default function FlowTest() {
   const lineVerdicts = verdicts.length ? verdicts : [{ index: current, name: sectionName(test, current), ...verdict(test, rows, unit) }];
   const legend = test.sections.map((_, i) => i).filter((i) => isTested(test, i) || i === current);
   const hasSuction = !combined && rows.some((r) => r.suc.trim() !== "");
-  const gridCols = more ? "40px 1fr 1fr 1fr 1fr 1fr 22px" : "54px 1fr 1fr 1fr 26px";
+  // the first column flips between " Hg and Flow (canvas option D); + RPM & Amps adds two columns (P4)
+  const gridCols = more ? "58px 1fr 1fr 1fr 1fr 22px" : "70px 1fr 1fr 26px";
+  const flipTo = flowSide ? "rotateY(180deg)" : "none";
   const gap = more ? 4 : 6;
   const font = more ? 12 : 14;
   const updateRow = (i: number, fn: (r: FlowReading) => void) => change((t) => fn(t.sections[current].rows[i]));
@@ -386,13 +391,21 @@ export default function FlowTest() {
           </button>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: gridCols, gap, alignItems: "end" }}>
-          <div style={th}>" Hg</div>
-          <div style={th}>
-            Flow
-            <br />
-            <button style={unitPill} onClick={() => setUnit(unit === "sec" ? "min" : "sec")} aria-label="Change flow unit">
-              {unit === "sec" ? "L/s" : "L/min"} ⇄
-            </button>
+          <div className="flip">
+            <div className="flip-in" style={{ transform: flipTo }}>
+              <button onClick={() => setFlowSide(true)} aria-label="Show flow" style={{ ...th, border: "none", background: "none", padding: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
+                " Hg
+                <span style={unitPill}>⇄ Flow</span>
+              </button>
+              <div className="back" style={{ ...th, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
+                <button onClick={() => setFlowSide(false)} aria-label='Show " Hg' style={{ ...th, border: "none", background: "none", padding: 0 }}>
+                  Flow ⇄
+                </button>
+                <button style={{ ...unitPill, marginTop: 0 }} onClick={() => setUnit(unit === "sec" ? "min" : "sec")} aria-label="Change flow unit">
+                  {unit === "sec" ? "L/s" : "L/min"} ⇄
+                </button>
+              </div>
+            </div>
           </div>
           <div style={th}>
             Discharge
@@ -413,9 +426,13 @@ export default function FlowTest() {
           const autoFlow = flowOf(test, { ...r, flow: "" });
           return (
             <div key={i} style={{ display: "grid", gridTemplateColumns: gridCols, gap, alignItems: "center" }}>
-              <input style={cellStyle(font)} inputMode="decimal" value={r.hg} aria-label='" Hg' onChange={(e) => updateRow(i, (x) => void (x.hg = e.target.value))} />
+              <div className="flip">
+                <div className="flip-in" style={{ transform: flipTo, transitionDelay: `${i * 45}ms` }}>
+              <input style={cellStyle(font)} inputMode="decimal" value={r.hg} aria-label='" Hg' tabIndex={flowSide ? -1 : 0} onChange={(e) => updateRow(i, (x) => void (x.hg = e.target.value))} />
               <input
-                style={cellStyle(font, auto && autoFlow !== null)}
+                className="back"
+                tabIndex={flowSide ? 0 : -1}
+                style={{ ...cellStyle(font, auto && autoFlow !== null), borderColor: "rgba(46,196,182,.35)" }}
                 inputMode="decimal"
                 value={auto ? show(autoFlow) : shown(r.flow, r.flowUnit)}
                 aria-label="Flow"
@@ -428,6 +445,8 @@ export default function FlowTest() {
                   })
                 }
               />
+                </div>
+              </div>
               <input style={cellStyle(font)} inputMode="decimal" value={r.dis} aria-label="Discharge" onChange={(e) => updateRow(i, (x) => void (x.dis = e.target.value))} />
               <input style={cellStyle(font)} inputMode="decimal" value={r.suc} aria-label="Suction" onChange={(e) => updateRow(i, (x) => void (x.suc = e.target.value))} />
               {more && <input style={cellStyle(font)} inputMode="decimal" value={r.rpm ?? ""} aria-label="RPM" onChange={(e) => updateRow(i, (x) => void (x.rpm = e.target.value))} />}
@@ -442,7 +461,7 @@ export default function FlowTest() {
           + Add reading
         </button>
         <div style={{ fontSize: 11.5, color: "var(--muted-2)", lineHeight: 1.45 }}>
-          {test.k ? 'Flow fills in from " Hg. Type a flow to use your own. ' : "Type each flow. "}
+          {test.k ? 'Flow fills in from " Hg; tap ⇄ Flow to see it or type your own. ' : "Type each flow. "}
           Tap the unit under Flow to switch between L/min and L/s.
         </div>
       </div>

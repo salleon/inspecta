@@ -7,6 +7,14 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Flow test readings: " Hg and Flow share a column that flips.** The
+  readings now show just " Hg, Discharge and Suction (canvas option D).
+  Tap **⇄ Flow** under " Hg and that column flips over, row by row, to
+  show the flows (worked out from " Hg, or typed); tap **Flow ⇄** to flip
+  back. The L/min ⇄ L/s switch is under Flow on the flipped side. Hydrant
+  tests, whose flows are typed, open on the Flow side. **+ RPM & Amps**
+  still adds its two columns (option P4), and the table fits them better
+  now that Flow isn't a column of its own.
 - **Flow tests refined (from the canvas).**
   - The Findings tab now takes most of the bar; Flow tests is a compact tab
     beside it, with ALPHA TEST under its name.
