@@ -1,12 +1,13 @@
-import { useEffect, type CSSProperties, type ReactNode } from "react";
+import { useEffect, type CSSProperties } from "react";
 import { App as CapacitorApp } from "@capacitor/app";
 import { checkForUpdate, dismissUpdate, finishUpdate, startUpdate, useAppUpdate } from "../lib/appUpdate";
 import { useBackHandler } from "../lib/backButton";
 import { IconRetake } from "./Icons";
+import UpdateScreen from "./UpdateScreen";
 
 // App-wide: checks Play for a newer version when the app opens (and when
-// it comes back to the front), offers it in a popup, then shows a slim bar
-// while it downloads and a Restart button once it's ready. See
+// it comes back to the front), offers it in a popup, then covers the app
+// with the updating screen while it downloads and installs. See
 // lib/appUpdate. `ready` holds it back until the splash / name screen are
 // out of the way.
 export default function UpdatePrompt({ ready }: { ready: boolean }) {
@@ -23,24 +24,8 @@ export default function UpdatePrompt({ ready }: { ready: boolean }) {
 
   if (!ready) return null;
   if (status === "available" && !dismissed) return <UpdateDialog />;
-  if (status === "downloading") {
-    return (
-      <UpdateBar passThrough>
-        <span style={{ flexGrow: 1, fontSize: 13, fontWeight: 700 }}>Downloading update… {Math.round(progress * 100)}%</span>
-        <span style={{ fontSize: 12, color: "var(--muted)" }}>keep working</span>
-        <div style={{ position: "absolute", left: 0, bottom: 0, height: 3, width: `${Math.round(progress * 100)}%`, background: "var(--accent)", transition: "width 300ms" }} />
-      </UpdateBar>
-    );
-  }
-  if (status === "downloaded") {
-    return (
-      <UpdateBar>
-        <span style={{ flexGrow: 1, fontSize: 13, fontWeight: 700 }}>Update downloaded</span>
-        <button type="button" onClick={() => void finishUpdate()} style={{ padding: "9px 14px", borderRadius: 10, background: "var(--accent)", color: "var(--accent-text)", border: "none", fontSize: 13, fontWeight: 800 }}>
-          Restart
-        </button>
-      </UpdateBar>
-    );
+  if (status === "downloading" || status === "downloaded") {
+    return <UpdateScreen downloaded={status === "downloaded"} progress={progress} />;
   }
   return null;
 }
@@ -79,37 +64,6 @@ function UpdateDialog() {
           </button>
         </div>
       </div>
-    </div>
-  );
-}
-
-// Just below the screens' top bars, so it covers neither their back /
-// settings buttons nor the save buttons at the bottom of a finding. While
-// downloading it's only a notice, so taps go straight through it.
-function UpdateBar({ children, passThrough = false }: { children: ReactNode; passThrough?: boolean }) {
-  return (
-    <div
-      role="status"
-      className="pop-in"
-      style={{
-        position: "fixed",
-        left: 12,
-        right: 12,
-        top: "calc(66px + env(safe-area-inset-top))",
-        pointerEvents: passThrough ? "none" : "auto",
-        zIndex: 55,
-        padding: "10px 14px",
-        borderRadius: 14,
-        background: "var(--panel-2)",
-        border: "1px solid var(--border-strong)",
-        display: "flex",
-        alignItems: "center",
-        gap: 12,
-        overflow: "hidden",
-        boxShadow: "0 10px 30px rgba(0,0,0,0.45)",
-      }}
-    >
-      {children}
     </div>
   );
 }

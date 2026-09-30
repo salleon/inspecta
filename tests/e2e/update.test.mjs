@@ -1,7 +1,8 @@
 // The in-app update popup, with a stand-in for Google Play (the real one
 // only exists in the Play-installed Android app): offered on opening,
-// Later / Android back put it off, Update now downloads with a progress
-// bar, Restart finishes; Settings → Check for updates says what's going on.
+// Later / Android back put it off, Update now covers the app with the
+// updating screen (download percentage, then Installing, then it restarts
+// into the new version); Settings → Check for updates says what's going on.
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { startApp, openPage, go, pressBack } from "./helpers.mjs";
@@ -59,23 +60,29 @@ test("reopening the app asks again; Android back counts as Later", async () => {
   assert.match(page.url(), /#\/$/, "back didn't leave the screen underneath");
 });
 
-test("Settings shows the new version, and Update now downloads with a progress bar, then Restart", async () => {
+test("Settings shows the new version; Update now shows the updating screen, which installs once downloaded", async () => {
   await page.click('button[aria-label="Settings"]');
   const row = page.locator('button:has-text("Check for updates")');
   assert.match(await row.innerText(), /NEW VERSION/);
   await row.click();
   await page.waitForTimeout(300);
-  assert.equal(await page.locator("text=Downloading update… 0%").count(), 1, "Settings closed, bar showing");
+  const screen = page.locator('[role="progressbar"][aria-label="Updating Inspecta"]');
+  assert.equal(await screen.count(), 1, "Settings closed, updating screen showing");
+  assert.match(await screen.innerText(), /0%[\s\S]*Downloading the update/);
 
   await page.evaluate(() => window.__playSays({ installStatus: 2, bytesDownloaded: 31, totalBytesToDownload: 50 }));
   await page.waitForTimeout(100);
-  assert.equal(await page.locator("text=Downloading update… 62%").count(), 1);
+  assert.equal(await screen.getAttribute("aria-valuenow"), "62");
+  await pressBack(page);
+  assert.equal(await screen.count(), 1, "back doesn't close it");
 
   await page.evaluate(() => window.__playSays({ installStatus: 11, bytesDownloaded: 50, totalBytesToDownload: 50 }));
-  await page.waitForTimeout(100);
-  assert.equal(await page.locator("text=Update downloaded").count(), 1);
-  await page.getByRole("button", { name: "Restart", exact: true }).click();
-  assert.equal(await page.evaluate(() => window.__restarted), true);
+  await page.waitForTimeout(200);
+  assert.match(await screen.innerText(), /100%[\s\S]*Installing/);
+  assert.notEqual(await page.evaluate(() => window.__restarted), true, "gives the gear time to lift into place first");
+  await page.waitForTimeout(1500);
+  assert.match(await screen.innerText(), /Restarting/);
+  assert.equal(await page.evaluate(() => window.__restarted), true, "handed over to Play to install and reopen");
 });
 
 test("outside the Play app: no popup, and Settings says updates come through Play", async () => {

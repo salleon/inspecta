@@ -7,6 +7,12 @@ the technical detail.
 
 ## 30 September 2026
 
+- **Updating screen.** After **Update now**, a full-screen updating screen
+  replaces the slim download bar: gears turning, with a new teal gear
+  rolling along the progress track as the update downloads (the real
+  percentage), then the old gear drops out and the new one lifts into its
+  place while it installs, and Play restarts the app into the new version
+  on its own (no Restart button to tap). Android back doesn't close it.
 - **Two corrective action wording fixes.** The sprinkler stop valve sign
   now cites AS 2118.1 (not AS 1670.1), and a note about detector
   **spacing** now asks for the original installer's certificate and DA
