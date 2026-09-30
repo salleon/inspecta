@@ -7,6 +7,18 @@ the technical detail.
 
 ## 30 September 2026
 
+- **Repeat exports are much quicker.** The date-stamped photos made for an
+  Excel or PDF are now kept with each photo's 1200 px copy, so exporting
+  the same site again reuses them instead of stamping every photo again.
+  In a 30-photo test on a slowed-down browser: Excel 20.5 s the first time
+  (making the copies), 3.7 s after; PDF 6.1 s, then 2.2 s. The PDF also
+  takes the photos as raw bytes now, which uses much less memory.
+- **Scan animation on the export preview.** While each preview photo is
+  made, a teal line scans its box; when it's ready the photo is revealed
+  top to bottom behind the line (canvas option PE).
+- **Export timings in Admin.** Admin → Last export timings shows how long
+  each stage of this phone's last export took, and how many photos already
+  had their copy, to pin down a slow export on a particular phone.
 - **Share without waiting for the preview.** The export screen shows the
   findings and enables Share Excel / Share PDF straight away; the preview
   photos fill in behind (grey boxes until they're ready) and pause while an

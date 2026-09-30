@@ -4,14 +4,15 @@ import { jsPDF } from "jspdf";
 import { Share } from "@capacitor/share";
 import { Capacitor } from "@capacitor/core";
 import type { Finding, Photo, Site } from "../db/types";
-import { getExportCopy, getSite, listFindings, listPhotos, updateFinding } from "../db/db";
+import { countExportCopies, getExportCopy, getStamped, getSite, listFindings, listPhotos, updateFinding } from "../db/db";
 import { IconChevronLeft, IconShare } from "../components/Icons";
 import RoundIconButton from "../components/RoundIconButton";
 import ProgressOverlay from "../components/ProgressOverlay";
 import { getInitials, getInspectorName } from "../lib/profile";
 import { defectTypeStyle } from "../lib/defectTypes";
-import { EXPORT_MAX_EDGE, PREVIEW_MAX_EDGE, watermark } from "../lib/watermark";
+import { EXPORT_MAX_EDGE, PREVIEW_MAX_EDGE, STAMP_VERSION, watermark, watermarkBlob } from "../lib/watermark";
 import { CacheFileWriter, writeBlobToCache } from "../lib/cacheFile";
+import { startExportTimer } from "../lib/exportTimings";
 import { countPhotos, photosZipName, writePhotosZip } from "../lib/photosZip";
 import DefectTypePill from "../components/DefectTypePill";
 import CategoriseFlow from "../components/CategoriseFlow";
@@ -353,9 +354,16 @@ export default function ExportPreview() {
       // cropped to the tile shape from the original photo, THEN stamped, so
       // the timestamp is never trimmed off by the crop
       // one photo at a time, so only one full-size photo is ever decoded
-      const tiles: string[] = [];
+      // (made once and kept, see db/getStamped; handed to jsPDF as bytes,
+      // which takes far less memory than a data URL)
+      const tiles: Uint8Array[] = [];
       for (const p of item.photos) {
-        tiles.push(await watermark(await getExportCopy(p), p.takenAt, { cropAspect: tileAspect, maxEdge: EXPORT_MAX_EDGE }));
+        const key = `${STAMP_VERSION}:${EXPORT_MAX_EDGE}:${tileAspect.toFixed(4)}:${p.takenAt}`;
+        const tile = await getStamped(p, "pdf", key, async (copy) => {
+          const { jpeg, width, height } = await watermarkBlob(copy, p.takenAt, { cropAspect: tileAspect, maxEdge: EXPORT_MAX_EDGE });
+          return { blob: jpeg, width, height };
+        });
+        tiles.push(new Uint8Array(await tile.blob.arrayBuffer()));
         onPhoto(++donePhotos, totalPhotos);
       }
       const rows = Math.ceil(tiles.length / 2);
@@ -471,8 +479,16 @@ export default function ExportPreview() {
   async function handleShare(kind: ShareKind) {
     setSharing(kind);
     setExportProgress({ percent: 0, step: "Getting ready…" });
-    const photoProgress = (done: number, total: number, upTo = 85) =>
+    const photoIds = items.flatMap((i) => i.photos.map((p) => p.id));
+    const timer = startExportTimer(kind === "pdf" ? "PDF" : kind === "excel" ? "Excel" : "Photos zip", photoIds.length, await countExportCopies(photoIds));
+    let photosTimed = false;
+    const photoProgress = (done: number, total: number, upTo = 85) => {
       setExportProgress({ percent: total ? (upTo * done) / total : 0, step: `Adding photos: ${done} of ${total}` });
+      if (done === total && !photosTimed) {
+        photosTimed = true;
+        timer.mark("photos");
+      }
+    };
     const native = Capacitor.isNativePlatform();
     const inspectorName = getInspectorName();
     const title = reportTitle(site?.name, inspectorName);
@@ -489,6 +505,7 @@ export default function ExportPreview() {
           const out = new CacheFileWriter(filename);
           await writePhotosZip(items, site?.name, (b) => out.write(b), onPhoto);
           uri = await out.close();
+          timer.mark("saving");
         } else {
           const parts: Uint8Array[] = [];
           await writePhotosZip(items, site?.name, async (b) => void parts.push(b), onPhoto);
@@ -504,9 +521,14 @@ export default function ExportPreview() {
             p.stage === "photos" ? photoProgress(p.done, p.total) : setExportProgress({ percent: 88, step: "Building spreadsheet…" });
           blob = site?.kind === "project" ? await buildProjectWorkbook(items, onProgress) : await buildFindingsWorkbook(items, inspectionMs, onProgress);
         }
+        timer.mark("building");
         setExportProgress({ percent: 97, step: "Opening share menu…" });
-        if (native) uri = await writeBlobToCache(blob, filename);
+        if (native) {
+          uri = await writeBlobToCache(blob, filename);
+          timer.mark("saving");
+        }
       }
+      timer.finish();
       setExportProgress(null); // the share menu takes over from here
 
       if (uri) {
@@ -733,14 +755,12 @@ function PreviewFinding({ entry: { finding, photos }, previews, first }: { entry
       }}
     >
       <div style={{ flexShrink: 0, width: 92, display: "flex", flexDirection: "column", gap: 4 }}>
-        {photos.map((p) =>
-          previews[p.id] ? (
-            <img key={p.id} src={previews[p.id]} alt="" style={{ width: "100%", borderRadius: 6, display: "block" }} />
-          ) : (
-            // still being made
-            <div key={p.id} style={{ width: "100%", aspectRatio: "4 / 3", borderRadius: 6, background: "#e6e1d6" }} />
-          ),
-        )}
+        {/* a scanning line while each is being made (see .scan-box) */}
+        {photos.map((p) => (
+          <div key={p.id} className={previews[p.id] ? "scan-box ready" : "scan-box waiting"}>
+            {previews[p.id] && <img src={previews[p.id]} alt="" style={{ width: "100%", display: "block" }} />}
+          </div>
+        ))}
         {photos.length === 0 && (
           <div style={{ height: 46, borderRadius: 6, border: "1px dashed #c9c4b8", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 600, color: "var(--muted-2)" }}>
             No photo

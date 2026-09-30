@@ -44,11 +44,21 @@ export interface Photo {
   order: number;
 }
 
-// the copy of a photo the PDF / Excel exports work from (see lib/exportCopy)
+// the copy of a photo the PDF / Excel exports work from (see lib/exportCopy),
+// plus the stamped photos made from it, kept so a repeat export can reuse
+// them (key: what they were made for, so a change there remakes them)
+export interface StampedPhoto {
+  key: string;
+  blob: Blob;
+  width: number;
+  height: number;
+}
 export interface ExportCopy {
   photoId: string;
   siteId: string;
   blob: Blob;
+  excel?: StampedPhoto;
+  pdf?: StampedPhoto;
 }
 
 // small JPEG of a photo for list thumbnails (see lib/thumbnail)

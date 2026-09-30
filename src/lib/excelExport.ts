@@ -2,8 +2,17 @@ import type { Finding, Photo } from "../db/types";
 import { defectTypeStyle } from "./defectTypes";
 import { reportRows } from "./esrGrouping";
 import { suggestedCorrectiveAction } from "./correctiveAction";
-import { EXPORT_MAX_EDGE, watermarkBlob } from "./watermark";
-import { getExportCopy } from "../db/db";
+import { EXPORT_MAX_EDGE, STAMP_VERSION, watermarkBlob } from "./watermark";
+import { getStamped } from "../db/db";
+
+// A photo stamped for the Excel: made once from its export copy, then
+// reused by every Excel export after (see db/getStamped).
+function excelPhoto(p: Photo) {
+  return getStamped(p, "excel", `${STAMP_VERSION}:${EXPORT_MAX_EDGE}:${p.takenAt}`, async (copy) => {
+    const { jpeg, width, height } = await watermarkBlob(copy, p.takenAt, { maxEdge: EXPORT_MAX_EDGE });
+    return { blob: jpeg, width, height };
+  });
+}
 // Company template (header row A1:G1 with its fills, fonts and column
 // widths). Inlined as a data URL so the export works offline — the PWA
 // service worker doesn't precache .xlsx files.
@@ -174,7 +183,7 @@ export async function buildFindingsWorkbook(
       // camera photos upright (Excel ignores the JPEG rotation flag). Capped
       // at EXPORT_MAX_EDGE: shown 5 cm wide, so full camera resolution only
       // costs memory and file size.
-      const { jpeg, width, height } = await watermarkBlob(await getExportCopy(p), p.takenAt, { maxEdge: EXPORT_MAX_EDGE });
+      const { blob: jpeg, width, height } = await excelPhoto(p);
       const bytes = new Uint8Array(await jpeg.arrayBuffer());
       // ExcelJS writes `buffer` straight into the zip; its type says Buffer
       // (Node) but a Uint8Array is what the browser build accepts.
@@ -377,7 +386,7 @@ export async function buildProjectWorkbook(
     let rowIdx = 0;
     let y = PAD;
     for (const p of photos) {
-      const { jpeg, width, height } = await watermarkBlob(await getExportCopy(p), p.takenAt, { maxEdge: EXPORT_MAX_EDGE });
+      const { blob: jpeg, width, height } = await excelPhoto(p);
       const bytes = new Uint8Array(await jpeg.arrayBuffer());
       const imageId = wb.addImage({ buffer: bytes as unknown as ArrayBuffer, extension: "jpeg" });
       const h = (PHOTO_W * height) / width;

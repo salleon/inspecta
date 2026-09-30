@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Share } from "@capacitor/share";
 import { Capacitor } from "@capacitor/core";
 import RoundIconButton from "../components/RoundIconButton";
+import { describeTimings, lastExportTimings } from "../lib/exportTimings";
 import ConfirmDialog from "../components/ConfirmDialog";
 import { IconChevronLeft, IconChevronRight } from "../components/Icons";
 import { ESR_SECTIONS, esrItem, sectionItems } from "../lib/esrCategories";
@@ -247,6 +248,7 @@ function AdminHome() {
   }
 
   const edited = editedCount();
+  const lastTimings = lastExportTimings();
 
   async function emailRecovery() {
     const code = recoveryCode();
@@ -294,6 +296,7 @@ function AdminHome() {
           e.target.value = "";
         }}
       />
+      <Row title="Last export timings" hint={lastTimings ? describeTimings(lastTimings) : "No export on this phone yet."} onClick={() => {}} chevron={false} />
       <Row title="Change PIN" hint="Pick a new 4-digit admin PIN." onClick={() => setChangingPin(true)} />
       <Row title="Email recovery code" hint="Send yourself the code that resets the PIN if you forget it." onClick={emailRecovery} />
       <Row title="Reset keywords" hint="Undo all keyword changes on this phone, back to the built-in list." onClick={() => setConfirmReset(true)} danger chevron={false} />

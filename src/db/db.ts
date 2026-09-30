@@ -1,5 +1,5 @@
 import Dexie, { type Table } from "dexie";
-import type { Site, Finding, Photo, SiteKind, Thumbnail, ExportCopy } from "./types";
+import type { Site, Finding, Photo, SiteKind, Thumbnail, ExportCopy, StampedPhoto } from "./types";
 import { makeThumbnail } from "../lib/thumbnail";
 import { makeExportCopy } from "../lib/exportCopy";
 import { RENAMED_CODES } from "../lib/esrCategories";
@@ -244,6 +244,11 @@ export function getThumbnail(photo: Photo): Promise<Blob> {
   return job;
 }
 
+// how many of these photos already have their export copy made
+export async function countExportCopies(photoIds: string[]): Promise<number> {
+  return (await db.exportCopies.bulkGet(photoIds)).filter(Boolean).length;
+}
+
 // The smaller copy of a photo that the PDF / Excel exports work from (see
 // lib/exportCopy), made (and saved) the first time it's asked for. One is
 // made at a time, however many are asked for, so a slow phone never holds
@@ -268,6 +273,23 @@ export function getExportCopy(photo: Photo): Promise<Blob> {
     exportCopyJobs.set(photo.id, job);
   }
   return job;
+}
+
+// A photo stamped for the Excel or the PDF, made from its export copy by
+// `make` the first time and then kept with the copy, so exporting the same
+// site again doesn't redo it. `key` says what it was made for (stamp
+// style, crop, date): a different key makes it again.
+export async function getStamped(
+  photo: Photo,
+  kind: "excel" | "pdf",
+  key: string,
+  make: (copy: Blob) => Promise<Omit<StampedPhoto, "key">>,
+): Promise<Omit<StampedPhoto, "key">> {
+  const saved = (await db.exportCopies.get(photo.id))?.[kind];
+  if (saved?.key === key) return saved;
+  const made = await make(await getExportCopy(photo));
+  await db.exportCopies.update(photo.id, { [kind]: { key, ...made } });
+  return made;
 }
 
 // ---- backup / restore (see lib/backup.ts) ----

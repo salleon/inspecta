@@ -29,6 +29,9 @@ const STAMP_FONT_OF_WIDTH = 0.044 / 0.75;
 // file size of the 12 MP original. Preview: the on-screen export preview.
 // The untouched full-resolution originals stay in the app's storage.
 export const EXPORT_MAX_EDGE = 1200;
+// Stamped export photos are kept for reuse (db/getStamped). Bump this when
+// the stamp's look changes, so they're all made again.
+export const STAMP_VERSION = 1;
 export const PREVIEW_MAX_EDGE = 480;
 
 interface StampOptions {

@@ -309,3 +309,64 @@ button:active:not(:disabled) {
     opacity: 0;
   }
 }
+
+/* Export preview photos (canvas option PE, scan): while a photo's preview
+   is being made, a teal line scans its box; when it's ready the photo is
+   revealed top to bottom behind the line. */
+.scan-box {
+  position: relative;
+  overflow: hidden;
+  border-radius: 6px;
+  background: #e6e1d6;
+}
+.scan-box::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 2px;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+}
+.scan-box.waiting {
+  aspect-ratio: 4 / 3;
+}
+.scan-box.waiting::after {
+  animation: scanSweep 1.4s ease-in-out infinite alternate;
+}
+.scan-box.ready img {
+  animation: scanReveal 600ms linear both;
+}
+.scan-box.ready::after {
+  animation: scanDown 600ms linear both;
+}
+@keyframes scanSweep {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(calc(69px - 2px));
+  }
+}
+@keyframes scanReveal {
+  from {
+    clip-path: inset(0 0 100% 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+@keyframes scanDown {
+  from {
+    top: 0;
+    opacity: 1;
+  }
+  95% {
+    opacity: 1;
+  }
+  to {
+    top: calc(100% - 2px);
+    opacity: 0;
+  }
+}
