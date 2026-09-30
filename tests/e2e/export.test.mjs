@@ -133,9 +133,11 @@ test("Excel: blue / yellow / grey rows, refs, kept old number in purple, Uncateg
 
   // corrective action pre-filled in red for common defects, blank otherwise
   const action = (ref) => ws.getRow(ws.getColumn(1).values.indexOf(ref)).getCell(7);
-  assert.match(String(action("3.1.1").value), /^As per AS 2293, exit signs must be permanently illuminated/);
-  assert.equal(action("3.1.1").font.color.argb, "FFFF0000");
-  assert.match(String(action("5.5.1").value), /extinguisher/i);
+  const text = (cell) => (cell.value?.richText ?? []).map((r) => r.text).join("");
+  assert.match(text(action("3.1.1")), /^Confidence: High\n\nAs per AS 2293, exit signs must be permanently illuminated/);
+  assert.equal(action("3.1.1").value.richText[0].font.bold, true);
+  assert.ok(action("3.1.1").value.richText.every((r) => r.font.color.argb === "FFFF0000"), "all red");
+  assert.match(text(action("5.5.1")), /^Confidence: \w+\n\n.*extinguisher/is);
   assert.equal(action("13.1").value, null, "Logbook not on site: not a common defect");
 });
 

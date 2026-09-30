@@ -62,10 +62,31 @@ function assign(options: [number, number][][], used: [number, number][] = []): n
   return best;
 }
 
-function score(p: Prepared, note: Tokens, category: string): number | null {
+// How sure the match is, printed above the wording in the Excel so the
+// engineer knows which to check first:
+// - High: at least two of the defect's word groups are in the note itself,
+//   the finding is filed under a specific ESR item (not just a broad
+//   section heading like "2 Means of Egress"), and no other defect also
+//   matched;
+// - Low: only one word group in the note (the subject taken from the
+//   category, or a one-group defect);
+// - Medium: anything in between, or a second defect also matched.
+export type Confidence = "High" | "Medium" | "Low";
+
+// ESR section headings broad enough that a finding filed under the heading
+// itself (not one of its items) says little
+const BROAD_SECTIONS = new Set(["2", "5", "6", "7", "8"]);
+
+interface Match {
+  score: number;
+  fromNote: number; // word groups found in the note (not taken from the category)
+}
+
+function score(p: Prepared, note: Tokens, category: string): Match | null {
   if (!p.defect.categories.some((c) => category === c || category.startsWith(c + "."))) return null;
   if (p.unless.some((u) => spans(note, u).length)) return null;
   const options: [number, number][][] = [];
+  let fromNote = 0;
   for (const [i, group] of p.groups.entries()) {
     const found = group.flatMap((phrase) => spans(note, phrase));
     if (i === 0 && p.defect.subjectFromCategory && !found.length) {
@@ -74,31 +95,41 @@ function score(p: Prepared, note: Tokens, category: string): number | null {
     }
     if (!found.length) return null;
     options.push(found);
+    fromNote++;
   }
   const wordsUsed = assign(options);
   if (wordsUsed === null) return null;
   // more groups and more matched words make it more specific
-  return p.groups.length * 100 + wordsUsed * 10;
+  return { score: p.groups.length * 100 + wordsUsed * 10, fromNote };
+}
+
+export interface Suggestion {
+  defect: CommonDefect;
+  confidence: Confidence;
+}
+
+export function suggestionFor(note: string, esrCategory?: string): Suggestion | undefined {
+  const text = words(note);
+  if (!text.length || !esrCategory) return undefined;
+  const category = currentCode(esrCategory);
+  const matches: { defect: CommonDefect; m: Match }[] = [];
+  for (const p of table()) {
+    const m = score(p, text, category);
+    if (m) matches.push({ defect: p.defect, m });
+  }
+  if (!matches.length) return undefined;
+  matches.sort((a, b) => b.m.score - a.m.score);
+  const [best, next] = matches;
+  if (next && next.m.score === best.m.score) return undefined; // can't tell which
+  const confidence: Confidence =
+    best.m.fromNote <= 1 ? "Low" : !BROAD_SECTIONS.has(category) && !next ? "High" : "Medium";
+  return { defect: best.defect, confidence };
 }
 
 export function commonDefectFor(note: string, esrCategory?: string): CommonDefect | undefined {
-  const text = words(note);
-  if (!text.length) return undefined;
-  if (!esrCategory) return undefined;
-  const category = currentCode(esrCategory);
-  let best: { defect: CommonDefect; score: number } | undefined;
-  let tie = false;
-  for (const p of table()) {
-    const s = score(p, text, category);
-    if (s === null) continue;
-    if (!best || s > best.score) {
-      best = { defect: p.defect, score: s };
-      tie = false;
-    } else if (s === best.score) tie = true;
-  }
-  return best && !tie ? best.defect : undefined;
+  return suggestionFor(note, esrCategory)?.defect;
 }
 
-export function suggestedCorrectiveAction(finding: Pick<Finding, "note" | "esrCategory">): string | undefined {
-  return commonDefectFor(finding.note ?? "", finding.esrCategory)?.wording;
+export function suggestedCorrectiveAction(finding: Pick<Finding, "note" | "esrCategory">): Suggestion | undefined {
+  return suggestionFor(finding.note ?? "", finding.esrCategory);
 }

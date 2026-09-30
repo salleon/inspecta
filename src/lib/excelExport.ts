@@ -11,8 +11,9 @@ import templateDataUrl from "../assets/findings-template.xlsx?inline";
 // Excel findings register, built on the template: one row per finding,
 // A Ref · B Location · C Description (+ photos) · D Date identified ·
 // E Risk level · F Status · G Corrective action (pre-filled in red from the
-// common defects table when the note is clearly one of them, for the
-// engineer to check; see lib/correctiveAction).
+// common defects table when the note is clearly one of them, under a
+// "Confidence: High / Medium / Low" line, for the engineer to check; see
+// lib/correctiveAction).
 //
 // With ESR categories, findings sit under a blue row per section, a yellow
 // row for an item holding others (6.3), and a grey row per item (like the company's ESR spreadsheet), Uncategorised
@@ -162,8 +163,9 @@ export async function buildFindingsWorkbook(
     const locationText = [finding.level, finding.location].filter(Boolean).join("\n");
     const noteH = estimateTextPx(finding.note, descPx);
     const locH = estimateTextPx(locationText, locPx);
-    const action = suggestedCorrectiveAction(finding);
-    const actionH = action ? estimateTextPx(action, actionPx) : 0;
+    const suggestion = suggestedCorrectiveAction(finding);
+    const confidenceLine = suggestion ? `Confidence: ${suggestion.confidence}` : "";
+    const actionH = suggestion ? estimateTextPx(`${confidenceLine}\n\n${suggestion.defect.wording}`, actionPx) : 0;
 
     const prepared: PreparedPhoto[] = [];
     for (const p of photos) {
@@ -260,8 +262,14 @@ export async function buildFindingsWorkbook(
 
     const actionCell = row.getCell(COL.action);
     actionCell.alignment = topLeft;
-    if (action) {
-      actionCell.value = action;
+    if (suggestion) {
+      // "Confidence: High" in bold over the wording, all red until checked
+      actionCell.value = {
+        richText: [
+          { text: `${confidenceLine}\n\n`, font: { ...FONT, bold: true, color: { argb: SUGGESTED_COLOUR } } },
+          { text: suggestion.defect.wording, font: { ...FONT, color: { argb: SUGGESTED_COLOUR } } },
+        ],
+      };
       actionCell.font = { ...FONT, color: { argb: SUGGESTED_COLOUR } };
     }
 

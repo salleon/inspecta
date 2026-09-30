@@ -7,6 +7,13 @@ the technical detail.
 
 ## 30 September 2026
 
+- **Confidence on each suggested corrective action.** Every red
+  suggestion in the Excel now starts with a bold **Confidence: High /
+  Medium / Low** line. High: the note itself names both the thing and the
+  problem, under a specific ESR item, and nothing else matched. Low: the
+  note only names the problem and the ESR category supplied the rest.
+  Medium: in between, or a second common defect also fitted. Check the
+  Lows first.
 - **Corrective action prefill: correct or blank.** After a real report
   where half the red suggestions were wrong, the prefill now only fills in
   when the finding is filed under an ESR category that defect belongs to

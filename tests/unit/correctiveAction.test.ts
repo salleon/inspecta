@@ -3,7 +3,7 @@
 // anything unclear stays blank (a wrong one is worse than none).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { commonDefectFor } from "../../src/lib/correctiveAction";
+import { commonDefectFor, suggestionFor } from "../../src/lib/correctiveAction";
 import { COMMON_DEFECTS } from "../../src/lib/commonDefects";
 
 const id = (note: string, category?: string) => commonDefectFor(note, category)?.id;
@@ -84,4 +84,11 @@ test("every defect in the table has wording, match words and categories", () => 
     assert.ok(d.match.length && d.match.every((g) => g.length), d.id);
     assert.ok(d.categories.length, d.id);
   }
+});
+
+test("confidence: High with the problem and subject in the note, Low when the category supplies the subject", () => {
+  assert.equal(suggestionFor("Fire door held open with a wedge", "1.6")?.confidence, "High");
+  assert.equal(suggestionFor("POT obstructed", "2.4")?.confidence, "High");
+  assert.equal(suggestionFor("held open with a wedge", "1.6")?.confidence, "Low");
+  assert.equal(suggestionFor("5.6.2\nStorage stacked above limit", "5.6")?.confidence, "Low");
 });
