@@ -161,7 +161,9 @@ export async function buildFindingsWorkbook(
     const locationText = [finding.level, finding.location].filter(Boolean).join("\n");
     const noteH = estimateTextPx(finding.note, descPx);
     const locH = estimateTextPx(locationText, locPx);
-    const suggestion = suggestedCorrectiveAction(finding);
+    const rectified = finding.defectType === "rectified";
+    // a rectified defect needs no corrective action
+    const suggestion = rectified ? undefined : suggestedCorrectiveAction(finding);
     const confidenceLine = suggestion ? `Confidence: ${suggestion.confidence}` : "";
     const actionH = suggestion ? estimateTextPx(`${confidenceLine}\n\n${suggestion.defect.wording}`, actionPx) : 0;
 
@@ -261,7 +263,9 @@ export async function buildFindingsWorkbook(
     risk.alignment = centred;
 
     const status = row.getCell(COL.status);
-    status.value = "Open";
+    // rectified: closed on the day it was found fixed
+    status.value = rectified ? date : "Open";
+    if (rectified) status.numFmt = "dd/mm/yy";
     status.alignment = centred;
 
     const actionCell = row.getCell(COL.action);

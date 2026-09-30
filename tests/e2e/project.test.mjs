@@ -108,6 +108,18 @@ test("AFSS Excel: the word under the Ref for Rectified / Outstanding", async () 
     const v = row.getCell(1).value;
     if (v?.richText) refs.push([v.richText.map((r) => r.text).join(""), v.richText[1].font.color.argb, v.richText[1].font.bold]);
   });
+  // Rectified: closed on the inspection date, no suggested corrective action;
+  // Outstanding: still Open, still gets one
+  const byNote = {};
+  ws.eachRow((row) => (byNote[row.getCell(3).value] = row));
+  const rect = byNote["Door closer replaced"];
+  const out = byNote["Exit sign still not illuminated"];
+  assert.ok(rect.getCell(6).value instanceof Date, String(rect.getCell(6).value));
+  assert.equal(rect.getCell(6).value.getTime(), rect.getCell(4).value.getTime());
+  assert.equal(rect.getCell(6).numFmt, "dd/mm/yy");
+  assert.equal(rect.getCell(7).value ?? null, null);
+  assert.equal(out.getCell(6).value, "Open");
+  assert.ok(out.getCell(7).value?.richText, "Outstanding keeps its suggestion");
   assert.deepEqual(refs.sort(), [
     ["1.6.2\nRectified", "FF0070C0", true],
     ["3.1.1\nOutstanding", "FF7030A0", true],

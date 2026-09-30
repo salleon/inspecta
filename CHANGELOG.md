@@ -7,6 +7,9 @@ the technical detail.
 
 ## 30 September 2026
 
+- **Rectified findings are closed in Excel.** Their Status / Date Closed
+  shows the inspection date instead of "Open", and they get no suggested
+  corrective action. Outstanding findings stay Open and keep theirs.
 - **No more purple Ref cell in Excel.** A Ref kept from an old report
   (a number at the start of the note) is no longer tinted purple; the
   Rectified / Outstanding word under the Ref and the Risk Level colour
