@@ -122,10 +122,30 @@ test("a new sprinkler test: readings fill the flow, the result follows, and it's
   await page.fill('[aria-label="Demand flow"]', "1000");
   await page.fill('[aria-label="Demand pressure"]', "300");
   await page.waitForTimeout(300);
-  assert.equal(await page.locator("text=Town main: Above all demand points").count(), 1);
-  // a second supply, renamed
+  assert.equal(await page.locator("text=Supply 1: Above all demand points").count(), 1);
+  // name it from the tab's list, then a second of the same kind numbers both
+  await page.click('[aria-label="Supply 1: change name"]');
+  await page.click('[role="menuitem"]:has-text("Diesel pump")');
   await page.click('[aria-label="Add a supply"]');
-  await page.fill('[aria-label="Supply name"]', "Jockey pump");
+  await page.click('[aria-label="Supply 2: change name"]');
+  assert.equal(await page.getByText('"Diesel pump" becomes "Diesel pump 1"').count(), 1);
+  await page.click('[role="menuitem"]:has-text("Diesel pump 2")');
+  assert.equal(await page.locator('[aria-label="Diesel pump 1"]').count(), 1);
+  // a third, custom-named
+  await page.click('[aria-label="Add a supply"]');
+  await page.click('[aria-label="Supply 3: change name"]');
+  await page.click('[role="menuitem"]:has-text("Custom…")');
+  await page.fill('[aria-label="Supply name"]', "Fire pump 3");
+  await page.click('button:has-text("Use")');
+  // removing asks first; the other diesel goes back to its plain name
+  await page.click('[aria-label="Diesel pump 2"]');
+  await page.click('[aria-label="Diesel pump 2: change name"]');
+  await page.click('[role="menuitem"]:has-text("Remove this supply")');
+  await page.click('button:has-text("Cancel")');
+  assert.equal(await page.locator('[aria-label="Diesel pump 2: change name"]').count(), 1, "kept after Cancel");
+  await page.click('[aria-label="Diesel pump 2: change name"]');
+  await page.click('[role="menuitem"]:has-text("Remove this supply")');
+  await page.click('button:has-text("Remove")');
   await page.waitForTimeout(700);
   await pressBack(page);
   await page.waitForTimeout(600);
@@ -141,7 +161,7 @@ test("a new sprinkler test: readings fill the flow, the result follows, and it's
     idb.close();
     return all.find((t) => !["t1", "t2", "t3", "t4", "t5"].includes(t.id));
   });
-  assert.deepEqual(saved.sections.map((s) => s.name), ["Town main", "Electric pump", "Diesel pump", "Jockey pump"]);
+  assert.deepEqual(saved.sections.map((s) => s.name), ["Diesel pump", "Fire pump 3"]);
   assert.deepEqual(saved.sections[0].rows.map((r) => r.dis), ["600", "500", "420", "350", "300"]);
 });
 

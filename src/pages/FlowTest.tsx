@@ -14,11 +14,15 @@ import {
   sectionVerdicts,
   showFlow,
   blankRows,
+  nameKinds,
+  nameOptions,
+  renumber,
   verdict,
 } from "../lib/flowTest";
 import { IconChevronLeft } from "../components/Icons";
 import RoundIconButton from "../components/RoundIconButton";
 import ConfirmDialog from "../components/ConfirmDialog";
+import { useBackHandler } from "../lib/backButton";
 import FlowConverter from "../components/FlowConverter";
 
 // One flow test (see lib/flowTest), as mocked up on the design canvas:
@@ -91,6 +95,7 @@ export default function FlowTest() {
   const [unit, setUnit] = useState<FlowUnit>("min");
   const [more, setMore] = useState(false); // RPM and Amps columns
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [chartW, setChartW] = useState(340);
   const chartBox = useRef<HTMLDivElement>(null);
@@ -190,6 +195,29 @@ export default function FlowTest() {
     </>
   );
 
+  const removeDialog = confirmingRemove && test.kind !== "blank" && (() => {
+    const i = Math.min(sel, test.sections.length - 1);
+    const n = test.sections[i].rows.filter((r) => r.dis.trim() || r.suc.trim() || r.flow.trim()).length;
+    const what = test.kind === "combined" ? "pump" : "supply";
+    return (
+      <ConfirmDialog
+        title={`Remove ${sectionName(test, i)}?`}
+        message={`${n ? `This ${what} and its ${n} reading${n === 1 ? "" : "s"} will be permanently deleted.` : `This ${what} will be removed. It has no readings yet.`} This can't be undone.`}
+        confirmLabel="Remove"
+        confirmingLabel="Removing…"
+        onCancel={() => setConfirmingRemove(false)}
+        onConfirm={() => {
+          change((t) => {
+            t.sections.splice(i, 1);
+            renumber(t.sections, nameKinds(t));
+          });
+          setSel(Math.max(0, i - 1));
+          setConfirmingRemove(false);
+        }}
+      />
+    );
+  })();
+
   const dialog = confirmingDelete && (
     <ConfirmDialog
       title="Delete this flow test?"
@@ -206,13 +234,15 @@ export default function FlowTest() {
       <div style={{ flexGrow: 1, overflowY: "auto", padding: "4px 16px 24px", display: "flex", flexDirection: "column", gap: 12 }}>
         {body}
         {footer}
-      </div>
-      <div style={{ flexShrink: 0, padding: "10px 16px calc(14px + env(safe-area-inset-bottom))", borderTop: "1px solid var(--border)", fontSize: 12, fontWeight: 700, color: "var(--muted)", textAlign: "center", lineHeight: 1.5 }}>
-        {note}
-        <br />
-        (Export → Share Excel)
+        {/* where it goes: at the end of the page, not a fixed bar */}
+        <div style={{ padding: "6px 8px calc(4px + env(safe-area-inset-bottom))", fontSize: 11.5, fontWeight: 700, color: "var(--muted-2)", textAlign: "center", lineHeight: 1.5 }}>
+          {note}
+          <br />
+          (Export → Share Excel)
+        </div>
       </div>
       {dialog}
+      {removeDialog}
     </div>
   );
 
@@ -319,65 +349,23 @@ export default function FlowTest() {
       <div style={card}>
         <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingBottom: 6, borderBottom: "1px solid var(--border)" }}>
           <div style={lbl}>{combined ? "Pumps" : "Supply"}</div>
-          <div style={{ display: "flex", gap: 4, padding: 4, borderRadius: 12, background: "var(--bg)", border: "1px solid var(--border)", overflowX: "auto" }}>
-            {test.sections.map((s, i) => (
-              <button
-                key={i}
-                onClick={() => setSel(i)}
-                style={{
-                  flex: "1 0 auto",
-                  minWidth: 84,
-                  maxWidth: 160,
-                  padding: "9px 8px",
-                  borderRadius: 10,
-                  border: "none",
-                  background: i === current ? "var(--panel-2)" : "none",
-                  color: i === current ? "var(--text)" : "var(--muted)",
-                  fontSize: 12.5,
-                  fontWeight: 800,
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}
-              >
-                <span style={{ color: sectionColour(i) }}>●</span> {s.name || sectionName(test, i)}
-              </button>
-            ))}
-            <button
-              aria-label={combined ? "Add a pump" : "Add a supply"}
-              onClick={() => {
-                const n = test.sections.length;
-                change((t) => void t.sections.push({ name: combined ? `Pump ${n + 1}` : `Supply ${n + 1}`, rows: blankRows(t.kind) }));
-                setSel(n);
-              }}
-              style={{ flex: "0 0 auto", width: 38, borderRadius: 10, border: "1px dashed var(--border-strong)", background: "none", color: "var(--accent)", fontSize: 18, fontWeight: 800, padding: 0 }}
-            >
-              +
-            </button>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <RenameField
-              value={section.name}
-              onChange={(v) => change((t) => void (t.sections[current].name = v))}
-              placeholder={combined ? "Pump name, e.g. Diesel 1" : "Supply name, e.g. Diesel pump 2"}
-              label={combined ? "Pump name" : "Supply name"}
-              size={14}
-              dot={sectionColour(current)}
-            />
-            {test.sections.length > 1 && (
-              <button
-                aria-label={combined ? "Remove this pump" : "Remove this supply"}
-                onClick={() => {
-                  change((t) => void t.sections.splice(current, 1));
-                  setSel(Math.max(0, current - 1));
-                }}
-                style={{ flexShrink: 0, width: 36, height: 36, borderRadius: 10, border: "1px solid rgba(255,107,107,.45)", background: "none", color: "#ff6b6b", fontSize: 13, padding: 0 }}
-              >
-                ✕
-              </button>
-            )}
-          </div>
-          {!combined && <div style={{ fontSize: 11.5, color: "var(--muted-2)", lineHeight: 1.45 }}>Fill in whichever were tested; ones left empty stay off the graph and out of the Excel.</div>}
+          <SectionTabs
+            test={test}
+            current={current}
+            onSelect={setSel}
+            onAdd={() => {
+              const n = test.sections.length;
+              change((t) => void t.sections.push({ name: "", rows: blankRows(t.kind) }));
+              setSel(n);
+            }}
+            onName={(name) =>
+              change((t) => {
+                t.sections[current].name = name;
+                renumber(t.sections, nameKinds(t));
+              })
+            }
+            onRemove={() => setConfirmingRemove(true)}
+          />
         </div>
 
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -528,5 +516,161 @@ export default function FlowTest() {
       </div>
     </>,
     kindNote,
+  );
+}
+
+// The supply / pump tabs. The one you're on has a pencil: tap it for a
+// floating list of names (numbered automatically, see lib/flowTest's
+// nameOptions), Custom… / Rename… to type one, and Remove (which asks
+// first). + adds a supply with no name yet.
+function SectionTabs({
+  test,
+  current,
+  onSelect,
+  onAdd,
+  onName,
+  onRemove,
+}: {
+  test: FlowTestRecord;
+  current: number;
+  onSelect: (i: number) => void;
+  onAdd: () => void;
+  onName: (name: string) => void;
+  onRemove: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [custom, setCustom] = useState<string | null>(null);
+  const combined = test.kind === "combined";
+  const named = !!test.sections[current]?.name;
+  const close = () => {
+    setOpen(false);
+    setCustom(null);
+  };
+  useBackHandler(() => {
+    if (!open) return false;
+    close();
+    return true;
+  });
+  const row: CSSProperties = { display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1, width: "100%", padding: "11px 12px", border: "none", borderBottom: "1px solid var(--border)", background: "none", color: "var(--text)", textAlign: "left" };
+  return (
+    <div style={{ position: "relative" }}>
+      <div style={{ display: "flex", gap: 4, padding: 4, borderRadius: 12, background: "var(--bg)", border: "1px solid var(--border)", overflowX: "auto" }}>
+        {test.sections.map((s, i) => {
+          const on = i === current;
+          return (
+            <button
+              key={i}
+              aria-label={on ? `${sectionName(test, i)}: change name` : sectionName(test, i)}
+              onClick={() => {
+                if (on) setOpen(!open);
+                else {
+                  onSelect(i);
+                  close();
+                }
+              }}
+              style={{
+                flex: "1 0 auto",
+                minWidth: 84,
+                maxWidth: 190,
+                height: 40,
+                padding: "0 5px 0 10px",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                borderRadius: 10,
+                border: on ? "1px dashed #2e6a8e" : "1px solid transparent",
+                background: on ? "var(--panel-2)" : "none",
+                color: on ? "var(--text)" : "var(--muted)",
+                fontSize: 12.5,
+                fontWeight: 800,
+                whiteSpace: "nowrap",
+              }}
+            >
+              <span style={{ color: sectionColour(i), flexShrink: 0, fontSize: 11, lineHeight: 1 }}>●</span>
+              <span style={{ flexGrow: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", textAlign: "left" }}>{s.name || sectionName(test, i)}</span>
+              {on && (
+                <span style={{ flexShrink: 0, width: 28, height: 28, borderRadius: 8, background: "rgba(46,196,182,.14)", border: "1px solid rgba(46,196,182,.4)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <PencilIcon size={15} />
+                </span>
+              )}
+            </button>
+          );
+        })}
+        <button
+          aria-label={combined ? "Add a pump" : "Add a supply"}
+          onClick={() => {
+            close();
+            onAdd();
+          }}
+          style={{ flex: "0 0 auto", width: 38, borderRadius: 10, border: "1px dashed var(--border-strong)", background: "none", color: "var(--accent)", fontSize: 18, fontWeight: 800, padding: 0 }}
+        >
+          +
+        </button>
+      </div>
+
+      {open && (
+        <>
+          <div onClick={close} style={{ position: "fixed", inset: 0, zIndex: 29 }} />
+          <div
+            className="dropbox"
+            role="menu"
+            style={{ position: "absolute", top: "calc(100% + 6px)", left: 4, width: 248, zIndex: 30, borderRadius: 14, background: "var(--panel-2)", border: "1px solid #2e6a8e", boxShadow: "0 16px 36px rgba(0,0,0,.55), 0 2px 6px rgba(0,0,0,.4)", overflow: "hidden" }}
+          >
+            {nameOptions(test, current).map((o) => (
+              <button
+                key={o.base}
+                role="menuitem"
+                style={row}
+                onClick={() => {
+                  onName(o.base);
+                  close();
+                }}
+              >
+                <span style={{ fontSize: 14, fontWeight: 800 }}>{o.name}</span>
+                {o.note && <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted-2)" }}>{o.note}</span>}
+              </button>
+            ))}
+            {custom === null ? (
+              <button role="menuitem" style={{ ...row, flexDirection: "row", alignItems: "center", gap: 8, color: "var(--accent)", fontSize: 14, fontWeight: 800 }} onClick={() => setCustom(test.sections[current].name)}>
+                <PencilIcon size={14} />
+                {named ? "Rename…" : "Custom…"}
+              </button>
+            ) : (
+              <div style={{ display: "flex", gap: 8, padding: "8px 10px", borderBottom: "1px solid var(--border)" }}>
+                <input
+                  autoFocus
+                  value={custom}
+                  aria-label={combined ? "Pump name" : "Supply name"}
+                  placeholder="Type the equipment, e.g. Fire pump 3"
+                  onChange={(e) => setCustom(e.target.value)}
+                  style={{ ...cellStyle(14), textAlign: "left", padding: "8px 10px", flexGrow: 1 }}
+                />
+                <button
+                  onClick={() => {
+                    if (custom.trim()) onName(custom.trim());
+                    close();
+                  }}
+                  style={{ flexShrink: 0, padding: "0 14px", borderRadius: 8, border: "none", background: "var(--accent)", color: "var(--accent-text)", fontSize: 13, fontWeight: 800 }}
+                >
+                  Use
+                </button>
+              </div>
+            )}
+            {test.sections.length > 1 && (
+              <button
+                role="menuitem"
+                style={{ ...row, borderBottom: "none", color: "#ff6b6b", fontSize: 13, fontWeight: 800 }}
+                onClick={() => {
+                  close();
+                  onRemove();
+                }}
+              >
+                ✕ Remove this {combined ? "pump" : "supply"}
+              </button>
+            )}
+          </div>
+        </>
+      )}
+    </div>
   );
 }

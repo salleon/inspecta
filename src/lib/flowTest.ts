@@ -147,8 +147,8 @@ export const KIND_LABEL: Record<FlowKind, string> = {
 };
 
 export const KIND_HINT: Record<FlowKind, string> = {
-  sprinkler: "Town main, electric and diesel pump in one test; rename or add supplies",
-  hydrant: "Town main, electric and diesel pump in one test; rename or add supplies",
+  sprinkler: "One tab per supply (town main, electric, diesel…); + adds more",
+  hydrant: "One tab per supply (town main, electric, diesel…); + adds more",
   combined: "Two pumps on one graph, e.g. Diesel 1 and Diesel 2",
   blank: "Your own columns and rows, all editable, for anything that doesn't fit",
 };
@@ -173,12 +173,56 @@ export function newFlowTest(siteId: string, kind: FlowKind): Omit<FlowTest, "id"
       cells: [0, 1, 2, 3, 4].map(() => ["", "", "", ""]),
     };
   }
-  const names = kind === "combined" ? ["Diesel 1", "Diesel 2"] : ["Town main", "Electric pump", "Diesel pump"];
+  // names start blank, picked from the tab's list (see nameOptions)
+  const names = kind === "combined" ? ["", ""] : [""];
   return {
     ...base,
     k: kind === "combined" ? K_COMBINED : kind === "hydrant" ? 0 : K_SPRINKLER,
     sections: names.map((name) => ({ name, rows: blankRows(kind) })),
   };
+}
+
+// ---- supply / pump names ----
+
+// What a tab's name list offers. A kind used once keeps the plain name
+// ("Diesel pump"); two or more are numbered 1, 2, 3… in tab order, so
+// there's only ever one of each number (see renumber).
+export const SUPPLY_KINDS = ["Town main", "Electric pump", "Diesel pump", "Booster pump", "Jockey pump"];
+export const PUMP_KINDS = ["Diesel", "Electric"];
+export const nameKinds = (test: Pick<FlowTest, "kind">) => (test.kind === "combined" ? PUMP_KINDS : SUPPLY_KINDS);
+
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const ofKind = (name: string, base: string) => name === base || new RegExp(`^${escapeRe(base)} \\d+$`).test(name);
+
+// Renames every section of a kind: one keeps the plain name, several are
+// numbered in tab order. Run after any name change or removal.
+export function renumber(sections: { name: string }[], kinds: string[]) {
+  for (const base of kinds) {
+    const idx = sections.map((s, i) => (ofKind(s.name, base) ? i : -1)).filter((i) => i >= 0);
+    idx.forEach((i, n) => (sections[i].name = idx.length === 1 ? base : `${base} ${n + 1}`));
+  }
+}
+
+export interface NameOption {
+  base: string;
+  name: string; // what this tab would be called
+  note: string; // what it would rename on the other tabs
+}
+
+// Each kind for tab `index`, named as it would end up, and what picking it
+// would rename on the other tabs.
+export function nameOptions(test: FlowTest, index: number): NameOption[] {
+  const kinds = nameKinds(test);
+  return kinds.map((base) => {
+    const sim = test.sections.map((s) => ({ name: s.name }));
+    sim[index].name = base;
+    renumber(sim, kinds);
+    const note = sim
+      .map((s, i) => (i !== index && s.name !== test.sections[i].name ? `"${test.sections[i].name}" becomes "${s.name}"` : ""))
+      .filter(Boolean)
+      .join(", ");
+    return { base, name: sim[index].name, note };
+  });
 }
 
 // the next reading's " Hg: two (sprinkler) or five (combined) on from the last

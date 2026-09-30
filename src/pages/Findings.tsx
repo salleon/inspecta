@@ -407,27 +407,24 @@ export default function Findings() {
         </RoundIconButton>
       </div>
 
-      {/* Findings / Flow tests (canvas option E1) */}
+      {/* Findings / Flow tests (canvas option E1): Findings takes most of
+          the bar; flow tests are a smaller part of the day, so a compact tab */}
       <div style={{ flexShrink: 0, margin: "0 16px 8px", display: "flex", gap: 4, padding: 4, borderRadius: 12, background: "var(--panel)", border: "1px solid var(--border)" }}>
-        {[
-          { flow: false, label: `Findings · ${rows.length}` },
-          { flow: true, label: `Flow tests${flowCount === null ? "" : ` · ${flowCount}`}` },
-        ].map((t) => {
-          const on = t.flow === flowTab;
-          return (
-            <button
-              key={t.label}
-              disabled={reordering}
-              onClick={() => setSearchParams(t.flow ? { tab: "flow" } : {}, { replace: true })}
-              style={{ flex: 1, padding: "9px 0", borderRadius: 10, border: "none", fontSize: 13, fontWeight: 800, whiteSpace: "nowrap", background: on ? "var(--accent)" : "none", color: on ? "var(--accent-text)" : "var(--muted)" }}
-            >
-              {t.label}
-              {t.flow && (
-                <span style={{ marginLeft: 5, padding: "1px 5px", borderRadius: 999, border: "1px solid currentColor", fontSize: 9, fontWeight: 800, letterSpacing: "0.04em", verticalAlign: 1, opacity: 0.85 }}>ALPHA TEST</span>
-              )}
-            </button>
-          );
-        })}
+        <button
+          disabled={reordering}
+          onClick={() => setSearchParams({}, { replace: true })}
+          style={{ flex: "1 1 auto", padding: "11px 0", borderRadius: 10, border: "none", fontSize: 14.5, fontWeight: 800, whiteSpace: "nowrap", background: !flowTab ? "var(--accent)" : "none", color: !flowTab ? "var(--accent-text)" : "var(--muted)" }}
+        >
+          Findings · {rows.length}
+        </button>
+        <button
+          disabled={reordering}
+          onClick={() => setSearchParams({ tab: "flow" }, { replace: true })}
+          style={{ flex: "0 0 auto", padding: "6px 10px", borderRadius: 10, border: "none", fontSize: 11.5, fontWeight: 800, lineHeight: 1.2, whiteSpace: "nowrap", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, background: flowTab ? "var(--accent)" : "none", color: flowTab ? "var(--accent-text)" : "var(--muted)" }}
+        >
+          <span>Flow tests{flowCount === null ? "" : ` · ${flowCount}`}</span>
+          <span style={{ padding: "0 5px", borderRadius: 999, border: "1px solid currentColor", fontSize: 8, letterSpacing: "0.04em", opacity: 0.85 }}>ALPHA TEST</span>
+        </button>
       </div>
 
       {flowTab ? (

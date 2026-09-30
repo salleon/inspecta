@@ -5,6 +5,26 @@ matches a commit on the `test` branch (called `advanced_controls` until
 29 September 2026) or `main`; the commit itself has
 the technical detail.
 
+## 1 October 2026
+
+- **Flow tests refined (from the canvas).**
+  - The Findings tab now takes most of the bar; Flow tests is a compact tab
+    beside it, with ALPHA TEST under its name.
+  - New Sprinkler and Hydrant tests start with one supply and no name
+    (tab shows "Supply 1"); a combined system starts with two unnamed pumps.
+  - The supply you're on has a pencil. Tap it for a floating list of names:
+    Town main, Electric pump, Diesel pump, Booster pump, Jockey pump
+    (Diesel and Electric for combined pumps), then Custom… (Rename… once it
+    has a name) to type your own, and Remove.
+  - Numbering is automatic: one of a kind keeps the plain name, two or more
+    are numbered 1, 2, 3… in tab order, so there's never two "2"s. The list
+    says what a pick will rename ("Diesel pump" becomes "Diesel pump 1"),
+    and removing one renumbers the rest.
+  - Removing a supply asks first, saying how many readings go with it.
+  - The "Goes into the site's Excel…" line is now a small note at the end
+    of the page instead of a bar fixed to the bottom of the screen, and the
+    "Fill in whichever were tested…" hint is gone.
+
 ## 30 September 2026
 
 - **Admin tidied: Keywords submenu, and Advanced controls moved in.** The

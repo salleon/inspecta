@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { flowOf, newFlowTest, sectionVerdicts, summary, verdict, chartSvg } from "../../src/lib/flowTest";
+import { flowOf, newFlowTest, sectionVerdicts, summary, verdict, chartSvg, renumber, nameOptions, SUPPLY_KINDS } from "../../src/lib/flowTest";
 import type { FlowTest } from "../../src/db/types";
 
 const make = (over: Partial<FlowTest>): FlowTest => ({ ...newFlowTest("s1", "sprinkler"), id: "t", order: 0, createdAt: 0, updatedAt: 0, ...over });
@@ -18,7 +18,7 @@ test("flow comes from \" Hg × 534.15 unless typed (L/s typed flows count ×60)"
 test("combined systems use their sheet's 3440.5", () => {
   const t = { ...newFlowTest("s1", "combined"), id: "t", order: 0, createdAt: 0, updatedAt: 0 } as FlowTest;
   assert.equal(flowOf(t, { hg: "5", flow: "", dis: "", suc: "" }), 7693.2);
-  assert.deepEqual(t.sections.map((s) => s.name), ["Diesel 1", "Diesel 2"]);
+  assert.deepEqual(t.sections.map((s) => s.name), ["", ""], "pumps start unnamed");
 });
 
 test("verdict: pass when the curve clears every demand point, read between readings", () => {
@@ -56,4 +56,21 @@ test("the graph draws a curve per tested supply and the demand diamonds", () => 
   const svg = chartSvg(t, 300, 200);
   assert.equal(svg.match(/<polyline/g)?.length, 2);
   assert.equal(svg.match(/<path d="M/g)?.length, 1);
+});
+
+test("supply names: one of a kind is plain, several are numbered in tab order, never twice", () => {
+  const secs = [{ name: "Electric pump 2" }, { name: "Electric pump 2" }, { name: "Fire pump 3" }];
+  renumber(secs, SUPPLY_KINDS);
+  assert.deepEqual(secs.map((s) => s.name), ["Electric pump 1", "Electric pump 2", "Fire pump 3"]);
+  secs.splice(0, 1);
+  renumber(secs, SUPPLY_KINDS);
+  assert.deepEqual(secs.map((s) => s.name), ["Electric pump", "Fire pump 3"], "back to plain when one is left");
+});
+
+test("the name list says what a pick would be called and what it renames", () => {
+  const t = make({ sections: [{ name: "Diesel pump", rows: [] }, { name: "", rows: [] }] });
+  const diesel = nameOptions(t, 1).find((o) => o.base === "Diesel pump")!;
+  assert.equal(diesel.name, "Diesel pump 2");
+  assert.equal(diesel.note, '"Diesel pump" becomes "Diesel pump 1"');
+  assert.equal(nameOptions(t, 1).find((o) => o.base === "Town main")!.note, "");
 });
