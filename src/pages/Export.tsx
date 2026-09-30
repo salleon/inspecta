@@ -13,6 +13,7 @@ import { defectTypeStyle } from "../lib/defectTypes";
 import { EXPORT_MAX_EDGE, PREVIEW_MAX_EDGE, STAMP_VERSION, watermark, watermarkBlob } from "../lib/watermark";
 import { CacheFileWriter, writeBlobToCache } from "../lib/cacheFile";
 import { startExportTimer } from "../lib/exportTimings";
+import { pauseCopyBackfill } from "../lib/copyBackfill";
 import { countPhotos, photosZipName, writePhotosZip } from "../lib/photosZip";
 import DefectTypePill from "../components/DefectTypePill";
 import CategoriseFlow from "../components/CategoriseFlow";
@@ -126,6 +127,8 @@ export default function ExportPreview() {
   const sharingRef = useRef(false);
   useEffect(() => {
     sharingRef.current = sharing !== null;
+    // and the background copies for older photos (lib/copyBackfill)
+    pauseCopyBackfill(sharing !== null);
   }, [sharing]);
   // Loading screen for both exports: 0–85% while photos are stamped and
   // added (nearly all the time), then building the file, then handing it to

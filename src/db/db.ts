@@ -244,6 +244,21 @@ export function getThumbnail(photo: Photo): Promise<Blob> {
   return job;
 }
 
+// Photos with no export copy yet (taken before copies existed), most
+// recently worked-on sites first. Keys only, so no photo is read.
+export async function photoIdsWithoutExportCopy(): Promise<string[]> {
+  const have = new Set(await db.exportCopies.toCollection().primaryKeys());
+  const ids: string[] = [];
+  for (const siteId of await db.sites.orderBy("updatedAt").reverse().primaryKeys()) {
+    for (const id of await db.photos.where("siteId").equals(siteId).primaryKeys()) if (!have.has(id)) ids.push(id);
+  }
+  return ids;
+}
+
+export async function getPhoto(photoId: string) {
+  return db.photos.get(photoId);
+}
+
 // how many of these photos already have their export copy made
 export async function countExportCopies(photoIds: string[]): Promise<number> {
   return (await db.exportCopies.bulkGet(photoIds)).filter(Boolean).length;

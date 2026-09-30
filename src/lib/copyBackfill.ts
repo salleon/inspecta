@@ -1,0 +1,38 @@
+import { getExportCopy, photoIdsWithoutExportCopy, getPhoto } from "../db/db";
+
+// Photos taken before export copies existed (see lib/exportCopy) get theirs
+// here, in the background, so an older site's first export is as quick as
+// a new one's. Starts a little after the app opens, then works through
+// them one at a time, most recently worked-on sites first, with a pause
+// between photos so the app stays responsive. It waits while the app is
+// in the background or an export is running, and only runs once per
+// launch (whatever's left carries on next time). New photos don't need
+// it: they get their copy just after they're taken.
+
+const START_DELAY_MS = 8000;
+const BETWEEN_MS = 400;
+
+let paused = false;
+// an export (or anything else heavy) holds this while it runs
+export function pauseCopyBackfill(on: boolean) {
+  paused = on;
+}
+
+let started = false;
+export function startCopyBackfill() {
+  if (started) return;
+  started = true;
+  void run().catch(() => {});
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+async function run() {
+  await sleep(START_DELAY_MS);
+  for (const id of await photoIdsWithoutExportCopy()) {
+    while (paused || document.hidden) await sleep(1000);
+    const photo = await getPhoto(id);
+    if (photo) await getExportCopy(photo).catch(() => {});
+    await sleep(BETWEEN_MS);
+  }
+}

@@ -7,6 +7,13 @@ the technical detail.
 
 ## 30 September 2026
 
+- **Older photos get their export copies in the background.** Photos taken
+  before the export copies existed now get theirs automatically, starting
+  8 seconds after the app opens, one at a time with a short pause between,
+  most recently worked-on sites first. It waits while the app is in the
+  background or an export is running. So existing sites stop being slow on
+  their first export without having to open them. New photos still get
+  their copy just after they're taken.
 - **Repeat exports are much quicker.** The date-stamped photos made for an
   Excel or PDF are now kept with each photo's 1200 px copy, so exporting
   the same site again reuses them instead of stamping every photo again.

@@ -1,6 +1,7 @@
 // Exports work from a smaller copy of each photo (lib/exportCopy): the
 // PDF / Excel photos come out at most 1200 px, the copy is kept for next
-// time, and the photos zip still has the full-resolution originals.
+// time, the photos zip still has the full-resolution originals, and older
+// photos get their copies in the background (lib/copyBackfill).
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -71,6 +72,22 @@ test("the photos zip still has the full-resolution original", async () => {
   const jpgs = Object.values(files.files).filter((f) => f.name.endsWith(".jpg"));
   assert.equal(jpgs.length, 1);
   assert.deepEqual(jpegSize(await jpgs[0].async("nodebuffer")), [4000, 3000]);
+});
+
+test("photos from before the update get their copies in the background, without opening the export", async () => {
+  await seed(page, {
+    sites: [{ id: "s2", name: "Old site", kind: "afss" }],
+    findings: [{ id: "g1", siteId: "s2", note: "Extinguisher obstructed", esrCategory: "5.5" }],
+    photos: [
+      { id: "q1", findingId: "g1", siteId: "s2", width: 2000, height: 1500 },
+      { id: "q2", findingId: "g1", siteId: "s2", width: 2000, height: 1500 },
+    ],
+  });
+  await go(page, app, "/", 500);
+  await page.reload(); // the app starts with them already there
+  assert.equal(await copies(), 1, "only the photo exported earlier");
+  await page.waitForTimeout(13000); // starts 8 s after opening, one photo at a time
+  assert.equal(await copies(), 3);
 });
 
 test("no page errors", () => {

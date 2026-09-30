@@ -7,6 +7,7 @@ import Findings from "./pages/Findings";
 import Onboarding from "./pages/Onboarding";
 import Splash from "./components/Splash";
 import UpdatePrompt from "./components/UpdatePrompt";
+import { startCopyBackfill } from "./lib/copyBackfill";
 import Tour from "./components/Tour";
 import { hasInspectorName } from "./lib/profile";
 import { useKeepFocusedFieldVisible } from "./lib/keepFocusedVisible";
@@ -38,6 +39,11 @@ function App() {
 
   const [splashLeaving, setSplashLeaving] = useState(false);
   const [splashVisible, setSplashVisible] = useState(true);
+
+  // older photos get their export copies in the background (lib/copyBackfill)
+  useEffect(() => {
+    if (!needsOnboarding) startCopyBackfill();
+  }, [needsOnboarding]);
 
   useEffect(() => {
     const leaveTimer = setTimeout(() => setSplashLeaving(true), SPLASH_HOLD_MS);
