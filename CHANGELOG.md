@@ -7,6 +7,9 @@ the technical detail.
 
 ## 30 September 2026
 
+- **Share Excel is the main export button.** On the export screen, Share
+  Excel is now the teal button on the right and Share PDF the plain one
+  beside it.
 - **Loading animations are now videos.** The PDF, Excel, photos zip and
   backup animations, and the gears on the updating screen, are played as
   pre-rendered videos instead of being drawn frame by frame, so they no

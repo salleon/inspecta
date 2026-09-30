@@ -589,21 +589,22 @@ export default function ExportPreview() {
         </button>
         <div style={{ display: "flex", gap: 10 }}>
           <button
-            onClick={() => requestShare("excel")}
-            disabled={loading || sharing !== null || items.length === 0 || !site}
+            onClick={() => requestShare("pdf")}
+            disabled={loading || sharing !== null || items.length === 0}
             style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, textAlign: "center", padding: "15px 0", borderRadius: 12, background: "var(--panel)", border: "1px solid var(--border)", fontSize: 14, fontWeight: 700, color: "var(--text)" }}
           >
             <IconShare size={16} />
-            {sharing === "excel" ? "Preparing…" : "Share Excel"}
+            {sharing === "pdf" ? "Preparing…" : "Share PDF"}
           </button>
+          {/* the main one: the Excel register is what gets worked on */}
           <button
-            onClick={() => requestShare("pdf")}
-            disabled={loading || sharing !== null || items.length === 0}
+            onClick={() => requestShare("excel")}
+            disabled={loading || sharing !== null || items.length === 0 || !site}
             className="glow-sweep"
             style={{ position: "relative", flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, textAlign: "center", padding: "15px 0", borderRadius: 12, background: "var(--accent)", border: "none", fontSize: 14, fontWeight: 800, color: "var(--accent-text)", overflow: "hidden" }}
           >
             <IconShare size={16} />
-            {sharing === "pdf" ? "Preparing…" : "Share PDF"}
+            {sharing === "excel" ? "Preparing…" : "Share Excel"}
           </button>
         </div>
       </div>
