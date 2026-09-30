@@ -12,6 +12,10 @@ the technical detail.
   one), and a new **Publish Inspecta Test to my phone** option on Run
   workflow sends it to its own Play app's internal testing, where only the
   owner tests it. Coworkers' app is not touched.
+- **Inspecta Test gets its own upload key.** Play won't accept the real
+  app's signing key for a second app, so Inspecta Test is signed with its
+  own key when the TEST_KEYSTORE_BASE64 / TEST_KEYSTORE_PASSWORD secrets
+  are set (and like the real app until then).
 - **Rectified findings are closed in Excel.** Their Status / Date Closed
   shows the inspection date instead of "Open", and they get no suggested
   corrective action. Outstanding findings stay Open and keep theirs.

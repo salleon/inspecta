@@ -35,13 +35,28 @@ android {
     def releaseKeyPassword = System.getenv("RELEASE_KEY_PASSWORD")
     def hasReleaseSigning = releaseKeystorePath && releaseKeystorePassword && releaseKeyAlias && releaseKeyPassword
 
-    if (hasReleaseSigning) {
-        signingConfigs {
+    // Inspecta Test has its own upload key for its own Play app: Play won't
+    // take the real app's key there (it signs what Play delivers). Without
+    // it, the test app is signed like the release.
+    def testKeystorePath = System.getenv("TEST_KEYSTORE_PATH")
+    def testKeystorePassword = System.getenv("TEST_KEYSTORE_PASSWORD")
+    def hasTestSigning = testKeystorePath && testKeystorePassword
+
+    signingConfigs {
+        if (hasReleaseSigning) {
             release {
                 storeFile file(releaseKeystorePath)
                 storePassword releaseKeystorePassword
                 keyAlias releaseKeyAlias
                 keyPassword releaseKeyPassword
+            }
+        }
+        if (hasTestSigning) {
+            staging {
+                storeFile file(testKeystorePath)
+                storePassword testKeystorePassword
+                keyAlias "inspecta-test"
+                keyPassword testKeystorePassword
             }
         }
     }
@@ -64,6 +79,9 @@ android {
             versionNameSuffix "-test"
             // Capacitor's library modules only have debug/release
             matchingFallbacks = ['release']
+            if (hasTestSigning) {
+                signingConfig signingConfigs.staging
+            }
         }
     }
 }
