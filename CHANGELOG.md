@@ -5,6 +5,17 @@ matches a commit on the `test` branch (called `advanced_controls` until
 29 September 2026) or `main`; the commit itself has
 the technical detail.
 
+## 30 September 2026
+
+- **Projects reports.** Sites created as Projects no longer use ESR
+  categories: no category box on the finding screen, no category tag in
+  the findings list, and no "Categorise now" prompt when exporting. Their
+  reports list findings in the order the photos were taken (a note-only
+  finding goes by when it was written), with no section headings. The
+  Excel is a simple register: **Photo · Location · Notes · Date · Risk
+  level**, the photos first (several stacked in one cell) and the date with
+  the time the photo was taken. AFSS sites and reports are unchanged.
+
 ## 29 September 2026
 
 - **Test versions are labelled.** An app built from any branch other than

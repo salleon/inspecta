@@ -16,6 +16,7 @@ import { countPhotos, photosZipName, writePhotosZip } from "../lib/photosZip";
 import DefectTypePill from "../components/DefectTypePill";
 import CategoriseFlow from "../components/CategoriseFlow";
 import { reportRows, type ReportRow } from "../lib/esrGrouping";
+import { forProjectReport } from "../lib/projectReport";
 import { esrItem } from "../lib/esrCategories";
 import { learnCategory, unlearnCategory } from "../lib/esrSuggest";
 import { useAdvancedControls } from "../lib/settings";
@@ -169,7 +170,8 @@ export default function ExportPreview() {
       }
       if (!cancelled) {
         setSite(s ?? null);
-        setItems(built);
+        // Projects sites: no ESR sections, in the order the photos were taken
+        setItems(s?.kind === "project" ? forProjectReport(built) : built);
         setLoading(false);
       }
     }
@@ -438,7 +440,7 @@ export default function ExportPreview() {
   // (PDF and Excel only — the photos zip isn't grouped).
   function requestShare(kind: ShareKind) {
     const uncategorised = items.some((i) => !esrItem(i.finding.esrCategory));
-    if (kind !== "photos" && advancedControls && !categoriseAsked && uncategorised) setAskCategorise(kind);
+    if (kind !== "photos" && advancedControls && site?.kind !== "project" && !categoriseAsked && uncategorised) setAskCategorise(kind);
     else void handleShare(kind);
   }
 
@@ -485,10 +487,10 @@ export default function ExportPreview() {
         if (kind === "pdf") {
           blob = await buildPdf(photoProgress);
         } else {
-          const { buildFindingsWorkbook } = await import("../lib/excelExport");
-          blob = await buildFindingsWorkbook(items, inspectionMs, (p) =>
-            p.stage === "photos" ? photoProgress(p.done, p.total) : setExportProgress({ percent: 88, step: "Building spreadsheet…" }),
-          );
+          const { buildFindingsWorkbook, buildProjectWorkbook } = await import("../lib/excelExport");
+          const onProgress = (p: { stage: "photos"; done: number; total: number } | { stage: "building" }) =>
+            p.stage === "photos" ? photoProgress(p.done, p.total) : setExportProgress({ percent: 88, step: "Building spreadsheet…" });
+          blob = site?.kind === "project" ? await buildProjectWorkbook(items, onProgress) : await buildFindingsWorkbook(items, inspectionMs, onProgress);
         }
         setExportProgress({ percent: 97, step: "Opening share menu…" });
         if (native) uri = await writeBlobToCache(blob, filename);

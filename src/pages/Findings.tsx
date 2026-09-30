@@ -418,6 +418,7 @@ export default function Findings() {
               finding={finding}
               thumb={thumb}
               photoCount={photoCount}
+              showCategory={site?.kind !== "project"}
               index={i}
               reordering={reordering}
               isDragged={isDragged}
@@ -652,6 +653,7 @@ function FindingRow({
   finding,
   thumb,
   photoCount,
+  showCategory,
   index,
   reordering: rowReordering,
   isDragged,
@@ -670,6 +672,7 @@ function FindingRow({
   finding: Finding;
   thumb: string | null;
   photoCount: number;
+  showCategory: boolean; // not on Projects sites
   index: number;
   reordering: boolean;
   isDragged: boolean;
@@ -847,10 +850,10 @@ function FindingRow({
             {finding.level && <> · <b style={{ fontWeight: 700, color: "var(--text)" }}>{finding.level}</b></>}
             {finding.location ? ` · ${finding.location}` : ""}
           </div>
-          {(finding.defectType || esrItem(finding.esrCategory)) && (
+          {(finding.defectType || (showCategory && esrItem(finding.esrCategory))) && (
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <DefectTypePill type={finding.defectType} size="sm" />
-              {esrItem(finding.esrCategory) && (
+              {showCategory && esrItem(finding.esrCategory) && (
                 <span style={{ fontSize: 10, fontWeight: 800, color: "var(--muted)", border: "1px solid var(--border-strong)", borderRadius: 6, padding: "2px 6px", lineHeight: 1.2 }}>
                   {finding.esrCategory}
                 </span>

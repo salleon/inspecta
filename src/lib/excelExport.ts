@@ -97,6 +97,10 @@ function excelDate(ms: number): Date {
 
 // `inspectionMs`: the site visit date, shown as "Date identified" on every
 // row (see ExportPreview).
+// Projects sites (see buildProjectWorkbook): a plain register, photo first.
+const PCOL = { photo: 1, location: 2, notes: 3, date: 4, risk: 5 } as const;
+const PROJECT_HEADINGS = ["Photo", "Location", "Notes", "Date", "Risk Level"];
+
 // Progress for the loading screen. Stamping and adding photos is nearly
 // all of the work, so it's reported photo by photo.
 type ExcelProgress =
@@ -291,6 +295,146 @@ export async function buildFindingsWorkbook(
   // Stored, not deflated: the photos are already JPEG-compressed, so
   // deflating the zip only burns time (it runs on the main thread and
   // freezes the loading screen) for a negligible saving on the XML.
+  const buffer = await wb.xlsx.writeBuffer({ zip: { compression: "STORE" } } as never);
+  return new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+}
+
+const two = (n: number) => String(n).padStart(2, "0");
+// "29/09/26" over "09:02", in the phone's local time
+function dateAndTime(ms: number): string {
+  const d = new Date(ms);
+  return `${two(d.getDate())}/${two(d.getMonth() + 1)}/${two(d.getFullYear() % 100)}\n${two(d.getHours())}:${two(d.getMinutes())}`;
+}
+
+// The Excel register for a Projects site: Photo · Location · Notes · Date ·
+// Risk level, one row per finding with no ESR sections, in the order given
+// (the export screen sorts Projects findings by when their photos were
+// taken — see lib/projectReport). A finding's photos are stacked in its
+// Photo cell, carrying on into extra rows past Excel's row height limit;
+// Date is its first photo's (or, with none, when it was written).
+export async function buildProjectWorkbook(
+  items: ExcelFinding[],
+  onProgress?: (progress: ExcelProgress) => void,
+): Promise<Blob> {
+  const totalPhotos = items.reduce((n, i) => n + i.photos.length, 0);
+  let donePhotos = 0;
+  onProgress?.({ stage: "photos", done: 0, total: totalPhotos });
+
+  const ExcelJS = (await import("exceljs")).default;
+  const wb = new ExcelJS.Workbook();
+  const template = await (await fetch(templateDataUrl)).arrayBuffer();
+  await wb.xlsx.load(template);
+  const ws = wb.worksheets[0];
+
+  // the template's header styling, on five headings instead of seven
+  const header = ws.getRow(1);
+  const headStyle = JSON.parse(JSON.stringify(header.getCell(1).style));
+  for (let c = 1; c <= 7; c++) {
+    const cell = header.getCell(c);
+    if (c <= PROJECT_HEADINGS.length) {
+      cell.style = JSON.parse(JSON.stringify(headStyle));
+      cell.value = PROJECT_HEADINGS[c - 1];
+    } else {
+      cell.value = null;
+      cell.style = {};
+    }
+  }
+  const photoPx = PAD + PHOTO_W + PAD + 4;
+  ws.getColumn(PCOL.photo).width = colWidthFor(photoPx);
+  ws.getColumn(PCOL.location).width = 22;
+  ws.getColumn(PCOL.notes).width = 46;
+  ws.getColumn(PCOL.date).width = 12;
+  ws.getColumn(PCOL.risk).width = 18;
+  for (const c of [6, 7]) ws.getColumn(c).width = 9;
+  const locPx = colPx(22);
+  const notesPx = colPx(46);
+
+  let rowNum = 2;
+  for (const { finding, photos } of items) {
+    const locationText = [finding.level, finding.location].filter(Boolean).join("\n");
+    const textFloor = Math.max(PAD + estimateTextPx(locationText, locPx) + PAD, PAD + estimateTextPx(finding.note, notesPx) + PAD, MIN_ROW_PX, 2 * LINE_PX + 2 * PAD);
+
+    // photos one under another in the Photo column
+    const rowHeights: number[] = [];
+    const placements: { imageId: number; rowIdx: number; y: number; h: number }[] = [];
+    let rowIdx = 0;
+    let y = PAD;
+    for (const p of photos) {
+      const { jpeg, width, height } = await watermarkBlob(p.blob, p.takenAt, { maxEdge: EXPORT_MAX_EDGE });
+      const bytes = new Uint8Array(await jpeg.arrayBuffer());
+      const imageId = wb.addImage({ buffer: bytes as unknown as ArrayBuffer, extension: "jpeg" });
+      const h = (PHOTO_W * height) / width;
+      if (y + h + PAD > MAX_ROW_PX && y > PAD) {
+        rowHeights.push(y - GAP + PAD);
+        rowIdx++;
+        y = PAD;
+      }
+      placements.push({ imageId, rowIdx, y, h });
+      y += h + GAP;
+      onProgress?.({ stage: "photos", done: ++donePhotos, total: totalPhotos });
+    }
+    rowHeights.push(photos.length ? y - GAP + PAD : 0);
+    for (let i = 0; i < rowHeights.length; i++) rowHeights[i] = Math.max(rowHeights[i], i === 0 ? textFloor : MIN_ROW_PX);
+
+    const first = rowNum;
+    const last = rowNum + rowHeights.length - 1;
+    rowHeights.forEach((px, i) => {
+      const row = ws.getRow(first + i);
+      row.height = Math.min(409, Math.ceil(px * 0.75));
+      for (let c = 1; c <= PROJECT_HEADINGS.length; c++) {
+        const cell = row.getCell(c);
+        cell.font = FONT;
+        const inner = c === PCOL.photo; // one box across its rows
+        cell.border = {
+          left: THIN,
+          right: THIN,
+          top: inner && i > 0 ? undefined : THIN,
+          bottom: inner && i < rowHeights.length - 1 ? undefined : THIN,
+        };
+      }
+    });
+
+    const topLeft = { horizontal: "left", vertical: "top", wrapText: true } as const;
+    const centred = { horizontal: "center", vertical: "middle", wrapText: true } as const;
+    const row = ws.getRow(first);
+    const loc = row.getCell(PCOL.location);
+    loc.value = locationText || null;
+    loc.alignment = topLeft;
+    const notes = row.getCell(PCOL.notes);
+    notes.value = finding.note || null;
+    notes.alignment = topLeft;
+    const date = row.getCell(PCOL.date);
+    date.value = dateAndTime(photos.length ? Math.min(...photos.map((p) => p.takenAt)) : finding.createdAt);
+    date.alignment = centred;
+    const risk = row.getCell(PCOL.risk);
+    const defect = defectTypeStyle(finding.defectType);
+    if (defect) {
+      risk.value = defect.label;
+      risk.fill = { type: "pattern", pattern: "solid", fgColor: { argb: `FF${defect.bg.slice(1).toUpperCase()}` } };
+      risk.font = { ...FONT, bold: true, color: { argb: `FF${defect.text.slice(1).toUpperCase()}` } };
+    }
+    risk.alignment = centred;
+    row.getCell(PCOL.photo).alignment = topLeft;
+
+    if (last > first) for (const c of [PCOL.location, PCOL.notes, PCOL.date, PCOL.risk]) ws.mergeCells(first, c, last, c);
+
+    for (const p of placements) {
+      ws.addImage(p.imageId, {
+        tl: {
+          nativeCol: PCOL.photo - 1,
+          nativeColOff: Math.round(PAD * EMU_PER_PX),
+          nativeRow: first - 1 + p.rowIdx,
+          nativeRowOff: Math.round(p.y * EMU_PER_PX),
+        } as never,
+        ext: { width: PHOTO_W_EMU / EMU_PER_PX + 1e-6, height: p.h },
+        editAs: "oneCell",
+      });
+    }
+    rowNum = last + 1;
+  }
+
+  ws.views = [{ state: "frozen", ySplit: 1, topLeftCell: "A2", activeCell: "A2" }];
+  onProgress?.({ stage: "building" });
   const buffer = await wb.xlsx.writeBuffer({ zip: { compression: "STORE" } } as never);
   return new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
 }

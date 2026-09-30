@@ -7,6 +7,7 @@ import {
   deleteFinding,
   deletePhoto,
   getFinding,
+  getSite,
   getThumbnail,
   listFindings,
   listPhotos,
@@ -69,6 +70,8 @@ export default function Note() {
   // when a text field has focus (keyboard is up), shrink the photo so both
   // Note and Location stay visible above the keyboard without scrolling
   const [fieldFocused, setFieldFocused] = useState(false);
+  // Projects sites have no ESR category section (see lib/projectReport)
+  const [isProject, setIsProject] = useState(false);
 
   // the tapped thumbnail's on-screen position, handed over from Findings
   // via navigation state — captured once at mount, used to grow the photo
@@ -128,6 +131,9 @@ export default function Note() {
     let cancelled = false;
     listFindings(siteId).then((findings) => {
       if (!cancelled) setSiteLocs(siteLocations(findings, findingId));
+    });
+    getSite(siteId).then((site) => {
+      if (!cancelled) setIsProject(site?.kind === "project");
     });
     return () => {
       cancelled = true;
@@ -377,7 +383,8 @@ export default function Note() {
   // already saved on this finding stays visible (and editable) either way.
   const showDefectType = advancedControls || defectType !== undefined;
   const showLevel = advancedControls || level !== undefined;
-  const showCategory = advancedControls || esrCategory !== undefined;
+  // ESR categories are for AFSS reports only: never on a Projects site
+  const showCategory = !isProject && (advancedControls || esrCategory !== undefined);
 
   async function handleDelete() {
     if (!activePhoto || !findingId) return;
