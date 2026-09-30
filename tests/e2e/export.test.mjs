@@ -126,7 +126,7 @@ test("Excel: blue / yellow / grey rows, refs, kept old number in purple, Uncateg
   assert.equal(fill["1"], "FF99CCFF", "blue section");
   assert.equal(fill["1.8"], "FFD9D9D9", "grey item");
   assert.equal(fill["6.3"], "FFFFFFCC", "yellow 6.3");
-  assert.equal(fill["1.8.3"], "FFB1A0C7", "kept old number tinted purple");
+  assert.equal(fill["1.8.3"], "", "kept old number not tinted");
   assert.equal(fill["3.1.1"], "", "new finding not tinted");
   const refCell = ws.getRow(ws.getColumn(1).values.indexOf("3.1.1")).getCell(1);
   assert.deepEqual([refCell.alignment.horizontal, refCell.alignment.vertical], ["left", "top"]);

@@ -7,6 +7,10 @@ the technical detail.
 
 ## 30 September 2026
 
+- **No more purple Ref cell in Excel.** A Ref kept from an old report
+  (a number at the start of the note) is no longer tinted purple; the
+  Rectified / Outstanding word under the Ref and the Risk Level colour
+  show it instead.
 - **Outstanding defect type (AFSS only).** The defect type picker now ends
   with a **From a previous inspection** heading holding **Rectified** and a
   new **Outstanding** (purple), for items raised at an earlier inspection
