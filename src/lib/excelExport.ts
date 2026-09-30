@@ -15,8 +15,8 @@ export interface FlowExport {
 // A photo stamped for the Excel: made once from its export copy, then
 // reused by every Excel export after (see db/getStamped).
 function excelPhoto(p: Photo) {
-  return getStamped(p, "excel", `${STAMP_VERSION}:${EXPORT_MAX_EDGE}:${p.takenAt}`, async (copy) => {
-    const { jpeg, width, height } = await watermarkBlob(copy, p.takenAt, { maxEdge: EXPORT_MAX_EDGE });
+  return getStamped(p, "excel", `${STAMP_VERSION}:${EXPORT_MAX_EDGE}:${p.takenAt}`, async (source) => {
+    const { jpeg, width, height } = await watermarkBlob(source, p.takenAt, { maxEdge: EXPORT_MAX_EDGE });
     return { blob: jpeg, width, height };
   });
 }

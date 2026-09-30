@@ -362,8 +362,8 @@ export default function ExportPreview() {
       const tiles: Uint8Array[] = [];
       for (const p of item.photos) {
         const key = `${STAMP_VERSION}:${EXPORT_MAX_EDGE}:${tileAspect.toFixed(4)}:${p.takenAt}`;
-        const tile = await getStamped(p, "pdf", key, async (copy) => {
-          const { jpeg, width, height } = await watermarkBlob(copy, p.takenAt, { cropAspect: tileAspect, maxEdge: EXPORT_MAX_EDGE });
+        const tile = await getStamped(p, "pdf", key, async (source) => {
+          const { jpeg, width, height } = await watermarkBlob(source, p.takenAt, { cropAspect: tileAspect, maxEdge: EXPORT_MAX_EDGE });
           return { blob: jpeg, width, height };
         });
         tiles.push(new Uint8Array(await tile.blob.arrayBuffer()));

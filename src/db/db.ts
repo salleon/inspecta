@@ -3,6 +3,7 @@ import type { Site, Finding, Photo, SiteKind, Thumbnail, ExportCopy, StampedPhot
 import { makeThumbnail } from "../lib/thumbnail";
 import { makeExportCopy } from "../lib/exportCopy";
 import { RENAMED_CODES } from "../lib/esrCategories";
+import { isExportBusy } from "../lib/exportBusy";
 
 class InspectaDB extends Dexie {
   sites!: Table<Site, string>;
@@ -287,7 +288,11 @@ export function getExportCopy(photo: Photo): Promise<Blob> {
     job = (async () => {
       const saved = await db.exportCopies.get(photo.id);
       if (saved) return saved.blob;
-      const made = exportCopyQueue.then(() => makeExportCopy(photo.blob));
+      const made = exportCopyQueue.then(async () => {
+        // not while an export runs: it doesn't need the copy (see getStamped)
+        while (isExportBusy()) await new Promise((r) => setTimeout(r, 500));
+        return makeExportCopy(photo.blob);
+      });
       exportCopyQueue = made.catch(() => {});
       const blob = await made;
       // only keep it if the photo still exists
@@ -301,19 +306,26 @@ export function getExportCopy(photo: Photo): Promise<Blob> {
   return job;
 }
 
-// A photo stamped for the Excel or the PDF, made from its export copy by
-// `make` the first time and then kept with the copy, so exporting the same
-// site again doesn't redo it. `key` says what it was made for (stamp
-// style, crop, date): a different key makes it again.
+// A photo stamped for the Excel or the PDF. Failsafe, so an export is never
+// slower than before copies existed:
+// - stamped already (same `key`: stamp style, crop, date): reused as is;
+// - its 1200 px copy is ready: stamped from that, and kept with the copy
+//   for next time;
+// - no copy yet (it's still to be made in the background): stamped
+//   straight from the original in one pass, the way exports always did,
+//   without waiting for or making a copy. Nothing is kept; the copy comes
+//   later, and the next export gets the quick way.
 export async function getStamped(
   photo: Photo,
   kind: "excel" | "pdf",
   key: string,
-  make: (copy: Blob) => Promise<Omit<StampedPhoto, "key">>,
+  make: (source: Blob) => Promise<Omit<StampedPhoto, "key">>,
 ): Promise<Omit<StampedPhoto, "key">> {
-  const saved = (await db.exportCopies.get(photo.id))?.[kind];
+  const copy = await db.exportCopies.get(photo.id);
+  const saved = copy?.[kind];
   if (saved?.key === key) return saved;
-  const made = await make(await getExportCopy(photo));
+  if (!copy) return make(photo.blob);
+  const made = await make(copy.blob);
   await db.exportCopies.update(photo.id, { [kind]: { key, ...made } });
   return made;
 }

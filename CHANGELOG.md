@@ -7,6 +7,16 @@ the technical detail.
 
 ## 30 September 2026
 
+- **Exports never wait on photo copies (failsafe).** A photo whose 1200 px
+  export copy is ready is stamped from the copy, and the stamped photo is
+  kept for next time, as before. A photo without its copy yet is now
+  stamped straight from the original in one pass, the way the `main` app
+  always has, instead of making the copy first and then stamping it
+  (twice the work while the loading screen is up). Background copy making
+  also waits while an export runs. In a phone-like test (10 photos, one
+  core, graphics-chip drawing), an Excel export with no copies ready went
+  from 142 s to 112 s (`main`: 76 s; the rest is the loading video, 77 s
+  without it); with copies ready it takes 46 s.
 - **Flow tests (alpha test).** A site now has two tabs under its name:
   **Findings** and **Flow tests** (marked ALPHA TEST). + New flow test
   offers Sprinkler, Hydrant, Combined system or a Blank sheet.

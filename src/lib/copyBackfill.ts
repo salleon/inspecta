@@ -1,4 +1,5 @@
 import { getExportCopy, photoIdsWithoutExportCopy, getPhoto } from "../db/db";
+import { isExportBusy, setExportBusy } from "./exportBusy";
 
 // Photos taken before export copies existed (see lib/exportCopy) get theirs
 // here, in the background, so an older site's first export is as quick as
@@ -12,10 +13,9 @@ import { getExportCopy, photoIdsWithoutExportCopy, getPhoto } from "../db/db";
 const START_DELAY_MS = 8000;
 const BETWEEN_MS = 400;
 
-let paused = false;
 // an export (or anything else heavy) holds this while it runs
 export function pauseCopyBackfill(on: boolean) {
-  paused = on;
+  setExportBusy(on);
 }
 
 let started = false;
@@ -30,7 +30,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 async function run() {
   await sleep(START_DELAY_MS);
   for (const id of await photoIdsWithoutExportCopy()) {
-    while (paused || document.hidden) await sleep(1000);
+    while (isExportBusy() || document.hidden) await sleep(1000);
     const photo = await getPhoto(id);
     if (photo) await getExportCopy(photo).catch(() => {});
     await sleep(BETWEEN_MS);
