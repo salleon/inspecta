@@ -466,10 +466,135 @@ button:active:not(:disabled) {
     opacity: 0;
   }
 }
-/* a little tighter, so six readings fit sideways */
-.wide-rows input {
-  padding-top: 6px !important;
-  padding-bottom: 6px !important;
+/* full screen readings (canvas FlowKeypadB): the table scrolls both ways
+   under the number pad, which slides in from the right */
+.wide-scroll {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.wide-grid {
+  display: grid;
+  gap: 6px;
+  width: max-content;
+  padding-bottom: 8px;
+}
+.wide-grid input {
+  height: 44px;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  caret-color: transparent;
+}
+.wide-grid input:focus {
+  border: 2px solid var(--accent) !important;
+  background: #17405f !important;
+  box-shadow: 0 0 0 3px rgba(46, 196, 182, 0.18);
+}
+.wide-grid input[data-fresh]:focus {
+  background: rgba(46, 196, 182, 0.28) !important;
+}
+.wide-head,
+.wide-heads > div {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--panel);
+  padding: 4px 0 6px;
+  align-self: stretch;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+/* the first column (" Hg, or a hydrant's L/s) stays on the left */
+.wide-pin {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--panel);
+  box-shadow: 6px 0 0 var(--panel), 10px 0 12px -4px rgba(0, 0, 0, 0.55);
+}
+.wide-head.wide-pin {
+  z-index: 3;
+}
+.wide-head.wide-pin > div {
+  color: var(--accent) !important;
+}
+.wide-pin input:not(:focus) {
+  background: #123a5c !important;
+  border-color: #2e6a8e !important;
+}
+.wide-num {
+  position: absolute;
+  left: 5px;
+  top: 3px;
+  font-size: 9px;
+  font-weight: 800;
+  color: var(--muted-2);
+  pointer-events: none;
+}
+.wide-foot {
+  position: sticky;
+  left: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 4px 0 10px;
+}
+.wide-pad {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  bottom: 8px;
+  z-index: 5;
+  box-sizing: border-box;
+  padding: 8px;
+  border-radius: 16px;
+  background: rgba(10, 32, 52, 0.94);
+  border: 1px solid #2e6a8e;
+  box-shadow: -10px 0 30px rgba(0, 0, 0, 0.45);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: 32px repeat(4, 1fr);
+  gap: 6px;
+  transition: transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 320ms;
+}
+.wide-pad.off {
+  transform: translateX(calc(100% + 12px));
+  box-shadow: none;
+  transition: transform 260ms cubic-bezier(0.5, 0, 0.8, 0.3), box-shadow 260ms;
+}
+.wide-key {
+  border: none;
+  border-radius: 10px;
+  background: #1d4a70;
+  color: var(--text);
+  font-size: 22px;
+  font-weight: 700;
+  padding: 0;
+  min-height: 0;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.wide-key:active {
+  background: #2e6a8e;
+}
+.wide-key.fn {
+  background: #123250;
+  color: #cfe0ee;
+  font-size: 19px;
+}
+.wide-key.hide {
+  grid-column: span 3;
+  background: none;
+  border: 1px solid #1c4468;
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 800;
 }
 
 /* a scrolled list nudging past its top or bottom and settling back

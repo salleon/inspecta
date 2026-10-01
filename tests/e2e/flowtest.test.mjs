@@ -235,7 +235,28 @@ test("a new hydrant test: flows in L/s, PASS / FAIL at the bottom, RPM for a die
   assert.equal(await wide.locator('[aria-label="RPM"]').count(), 5);
   assert.equal(await wide.locator('[aria-label="Amps"]').count(), 0);
   assert.equal(await wide.locator('[aria-label=\'" Hg\']').count(), 0);
-  await wide.locator('[aria-label="RPM"]').first().fill("1920");
+  // the phone's keyboard stays shut: tapping a cell slides the app's own
+  // number pad in from the right, and it types into that cell
+  const keypad = wide.locator(".wide-pad");
+  assert.equal(await keypad.evaluate((e) => e.classList.contains("off")), true, "no keypad until a cell is tapped");
+  const rpm = wide.locator('[aria-label="RPM"]').first();
+  assert.equal(await rpm.getAttribute("inputmode"), "none");
+  await rpm.click();
+  await page.waitForTimeout(400);
+  assert.equal(await keypad.evaluate((e) => e.classList.contains("off")), false, "tapping a cell brings the keypad in");
+  for (const k of ["1", "9", "2", "2", "Backspace", "0"]) await keypad.locator(`[aria-label="${k}"]`).click();
+  assert.equal(await rpm.inputValue(), "1920");
+  // the first key after tapping a cell replaces what's there
+  await rpm.click();
+  await wide.locator('[aria-label="Discharge"]').first().click();
+  await keypad.locator('[aria-label="7"]').click();
+  assert.equal(await wide.locator('[aria-label="Discharge"]').first().inputValue(), "7");
+  await keypad.locator('[aria-label="Backspace"]').click();
+  // back hides the keypad first, then closes the full screen
+  await pressBack(page);
+  await page.waitForTimeout(400);
+  assert.equal(await keypad.evaluate((e) => e.classList.contains("off")), true, "back hid the keypad");
+  assert.equal(await wide.count(), 1);
   await pressBack(page);
   await page.waitForTimeout(600);
   assert.equal(await wide.count(), 0);
@@ -265,6 +286,7 @@ test("a new hydrant test: flows in L/s, PASS / FAIL at the bottom, RPM for a die
   await page.locator('[aria-label="Column name"]').fill("Oil press");
   await page.locator('button:has-text("Save")').click();
   assert.equal(await wide.locator('[aria-label="Oil press"]').first().inputValue(), "420");
+  await wide.locator('button:has-text("Hide keypad")').click();
   await pressBack(page);
   await page.waitForTimeout(600);
   assert.equal(await page.getByText("Added columns (Oil press) are in full screen").count(), 1);

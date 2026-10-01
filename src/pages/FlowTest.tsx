@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type FocusEvent, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import type { FlowTest as FlowTestRecord, FlowReading, FlowUnit, Site } from "../db/types";
 import { deleteFlowTest, getFlowTest, getSite, saveFlowTest } from "../db/db";
@@ -453,6 +453,26 @@ export default function FlowTest() {
         {flowCell(r, i, f)}
       </>
     );
+  // the same, one column at a time, for full screen (the first one is pinned)
+  const stepHeadParts = hydrant
+    ? [
+        <div key="f" style={th}>
+          Flow
+          <br />
+          L/s
+        </div>,
+      ]
+    : [
+        <div key="h" style={th}>
+          " Hg
+        </div>,
+        <div key="f" style={th}>
+          Flow
+          <br />
+          {unitLabel}
+        </div>,
+      ];
+  const stepCellParts = (r: FlowReading, i: number, f: number) => (hydrant ? [flowCell(r, i, f)] : [hgCell(r, i, f), flowCell(r, i, f)]);
   const pumpHeads = (
     <>
       {pumps.rpm && <div style={th}>RPM</div>}
@@ -759,16 +779,14 @@ export default function FlowTest() {
           current={current}
           onSelect={setSel}
           onClose={() => setWide(false)}
-          stepHead={stepHead}
-          stepCell={stepCell}
-          stepCols={split ? 2 : 1}
+          stepHeads={stepHeadParts}
+          stepCells={stepCellParts}
           engineHeads={engineHeads}
           engineCells={engineCells}
           engineCols={engine ? 2 : 0}
           pumpHeads={pumpHeads}
           pumpCells={pumpCells}
           updateRow={updateRow}
-          removeRow={removeRow}
           addReading={addReading}
           onColumns={(fn) => change(fn)}
           verdictLine={
@@ -970,26 +988,29 @@ function TurnIcon() {
   );
 }
 
-// The readings full screen (canvas FlowWide): on an upright phone it twists
-// a quarter-turn to lie sideways, with room to type and to add columns. The
-// same columns as the card (" Hg and the flow, or a hydrant's L/s; Discharge;
-// Suction; RPM or Amps), then any added ones. Done or the back button twists
-// it back; everything is already saved.
+// The readings full screen (canvas FlowWide, FlowKeypadB): on an upright
+// phone it twists a quarter-turn to lie sideways. The same columns as the card
+// (" Hg and the flow, or a hydrant's L/s; Discharge; Suction; RPM or Amps),
+// then any added ones, at full size: the table scrolls both ways under its
+// own number pad, with the first column pinned on the left. The phone's
+// keyboard stays shut (it would come up sideways). Done or the back button
+// twists it back; everything is already saved.
+const KEY_CELL = 96; // a column's width
+const KEY_GAP = 6;
+const PAD_MIN = 242; // the keypad never gets narrower than this
 function WideReadings({
   test,
   current,
   onSelect,
   onClose,
-  stepHead,
-  stepCell,
-  stepCols,
+  stepHeads,
+  stepCells,
   engineHeads,
   engineCells,
   engineCols,
   pumpHeads,
   pumpCells,
   updateRow,
-  removeRow,
   addReading,
   onColumns,
   verdictLine,
@@ -998,16 +1019,14 @@ function WideReadings({
   current: number;
   onSelect: (i: number) => void;
   onClose: () => void;
-  stepHead: ReactNode;
-  stepCell: (r: FlowReading, i: number, f: number) => ReactNode;
-  stepCols: number; // 2: " Hg and the flow side by side
+  stepHeads: ReactNode[]; // " Hg and the flow, or a hydrant's L/s
+  stepCells: (r: FlowReading, i: number, f: number) => ReactNode[];
   engineHeads: ReactNode;
   engineCells: (r: FlowReading, i: number, style: CSSProperties) => ReactNode;
   engineCols: number;
   pumpHeads: ReactNode;
   pumpCells: (r: FlowReading, i: number, style: CSSProperties) => ReactNode;
   updateRow: (i: number, fn: (r: FlowReading) => void) => void;
-  removeRow: (i: number) => void;
   addReading: () => void;
   onColumns: (fn: (t: FlowTestRecord) => void) => void;
   verdictLine: { colour: string; text: string } | null; // none for town main
@@ -1016,22 +1035,119 @@ function WideReadings({
   const [colEdit, setColEdit] = useState<number | null>(null);
   const [closing, setClosing] = useState(false);
   const [turn] = useState(() => window.innerHeight > window.innerWidth);
+  const [padOn, setPadOn] = useState(false);
+  const [bodyW, setBodyW] = useState(0);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const active = useRef<HTMLInputElement | null>(null);
+  const fresh = useRef(false); // the next key replaces the cell
+  const before = useRef<{ left: number; top: number } | null>(null); // where the table sat before the keypad came in
   const close = () => {
     if (closing) return;
     setClosing(true);
     window.setTimeout(onClose, 380);
   };
+  const hidePad = () => {
+    active.current?.blur();
+    delete active.current?.dataset.fresh;
+    active.current = null;
+    setPadOn(false);
+    const b = before.current;
+    before.current = null;
+    if (b) scrollRef.current?.scrollTo({ left: b.left, behavior: "smooth" });
+  };
   useBackHandler(() => {
     if (colEdit !== null) setColEdit(null);
+    else if (padOn) hidePad();
     else close();
     return true;
+  });
+  useEffect(() => {
+    const el = bodyRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setBodyW(el.clientWidth));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  // the cells come from the upright card, which wants the phone's keyboard
+  useEffect(() => {
+    scrollRef.current?.querySelectorAll("input").forEach((el) => (el.inputMode = "none"));
   });
   const rows = test.sections[current].rows;
   const extras = test.extraCols ?? [];
   const pumps = pumpColumns(test, current);
-  const cols = "1fr 1fr 1fr" + " 1fr".repeat(stepCols - 1 + engineCols + Number(pumps.rpm) + Number(pumps.amps) + extras.length) + " 28px";
+  const nCols = stepHeads.length + 2 + Number(pumps.rpm) + Number(pumps.amps) + engineCols + extras.length;
+  const tableW = nCols * KEY_CELL + (nCols - 1) * KEY_GAP;
+  // the keypad takes the room the columns leave, never less than PAD_MIN
+  const padW = Math.max(PAD_MIN, bodyW - 8 - tableW - KEY_GAP - 22);
+  const cols = `repeat(${nCols}, ${KEY_CELL}px) ${padW + 10}px`;
   const headBtn: CSSProperties = { ...th, position: "relative", border: "1px dashed #2e6a8e", background: "#0b2238", borderRadius: 7, padding: "3px 2px", color: "var(--text)" };
-  const pump: CSSProperties = { ...cellStyle(15), borderColor: "rgba(245,165,92,.4)" };
+  const pump: CSSProperties = { ...cellStyle(17), borderColor: "rgba(245,165,92,.4)" };
+  const big = cellStyle(17);
+
+  // keep the cell being typed in clear of the keypad and the pinned column
+  const reveal = (el: HTMLElement) => {
+    const sc = scrollRef.current;
+    if (!sc) return;
+    const pin = el.closest<HTMLElement>(".wide-pin");
+    const box = pin ?? el;
+    let left = sc.scrollLeft;
+    let top = sc.scrollTop;
+    const view = sc.clientWidth - padW - 18;
+    if (pin) left = 0;
+    else {
+      const x = el.offsetLeft;
+      if (x - KEY_CELL - 14 < left) left = x - KEY_CELL - 14;
+      else if (x + el.offsetWidth + 8 > left + view) left = x + el.offsetWidth + 8 - view;
+    }
+    const y = box.offsetTop;
+    if (y - 44 < top) top = y - 44;
+    else if (y + box.offsetHeight + 8 > top + sc.clientHeight) top = y + box.offsetHeight + 8 - sc.clientHeight;
+    sc.scrollTo({ left: Math.max(0, left), top: Math.max(0, top), behavior: "smooth" });
+  };
+  const onFocusCell = (e: FocusEvent) => {
+    const el = e.target;
+    if (!(el instanceof HTMLInputElement)) return;
+    if (active.current && active.current !== el) delete active.current.dataset.fresh;
+    active.current = el;
+    fresh.current = true;
+    el.dataset.fresh = "1";
+    if (!padOn) {
+      const sc = scrollRef.current;
+      before.current = sc ? { left: sc.scrollLeft, top: sc.scrollTop } : null;
+      setPadOn(true);
+    }
+    window.setTimeout(() => reveal(el), 0);
+  };
+  // a key goes into the cell as if typed, so the cell's own rules apply
+  const press = (key: string) => {
+    const el = active.current;
+    if (!el) return;
+    let v = fresh.current ? "" : el.value;
+    if (key === "bs") v = v.slice(0, -1);
+    else if (key === "." && v.includes(".")) return;
+    else if (v.length < 9) v += key;
+    fresh.current = false;
+    delete el.dataset.fresh;
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(el, v);
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+  };
+  const key = (k: string, label: ReactNode = k, extra = "") => (
+    <button
+      key={k}
+      type="button"
+      tabIndex={-1}
+      className={`wide-key${extra}`}
+      aria-label={k === "bs" ? "Backspace" : k === "." ? "Decimal point" : k}
+      // keep the cell focused
+      onPointerDown={(e) => e.preventDefault()}
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={() => press(k)}
+    >
+      {label}
+    </button>
+  );
+
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 40 }}>
       <div className={closing ? "wide-dim out" : "wide-dim"} onClick={close} style={{ position: "absolute", inset: 0, background: "rgba(3,13,22,.78)" }} />
@@ -1061,7 +1177,10 @@ function WideReadings({
               return (
                 <button
                   key={i}
-                  onClick={() => onSelect(i)}
+                  onClick={() => {
+                    hidePad();
+                    onSelect(i);
+                  }}
                   style={{ flexShrink: 0, padding: "6px 10px", borderRadius: 8, border: "none", background: on ? "var(--panel-2)" : "none", color: on ? "var(--text)" : "var(--muted)", fontSize: 12, fontWeight: 800, whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 5 }}
                 >
                   <span style={{ color: ref ? REFERENCE_COLOUR : sectionColour(i) }}>●</span>
@@ -1077,79 +1196,125 @@ function WideReadings({
             return bits.length ? <span style={{ flexShrink: 0, fontSize: 11.5, fontWeight: 700, color: "var(--muted)" }}>{bits.join(" · ")}</span> : null;
           })()}
           <div style={{ flexGrow: 1 }} />
+          <button
+            aria-label="Add a column"
+            onClick={() => {
+              hidePad();
+              setColEdit(-1);
+            }}
+            style={{ flexShrink: 0, height: 30, padding: "0 10px", borderRadius: 9, border: "1px dashed #2e6a8e", background: "none", color: "var(--accent)", fontSize: 12, fontWeight: 800 }}
+          >
+            + Column
+          </button>
           <button onClick={close} style={{ flexShrink: 0, padding: "7px 14px", borderRadius: 10, border: "none", background: "var(--accent)", color: "var(--accent-text)", fontSize: 12.5, fontWeight: 800 }}>
             Done
           </button>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: cols, gap: 8, alignItems: "end", flexShrink: 0 }}>
-          {stepHead}
-          <div style={th}>
-            Discharge
-            <br />
-            kPa
-          </div>
-          <div style={th}>
-            Suction
-            <br />
-            kPa
-          </div>
-          {pumpHeads}
-          {engineHeads}
-          {extras.map((c, j) => (
-            <button key={j} style={headBtn} aria-label={`Edit column ${c.name}`} onClick={() => setColEdit(j)}>
-              {c.name}
-              {c.unit?.trim() && (
-                <>
-                  <br />
-                  {c.unit}
-                </>
-              )}
-              <span style={{ position: "absolute", top: -6, right: -4, width: 13, height: 13, borderRadius: 4, background: "var(--panel-2)", border: "1px solid #2e6a8e", fontSize: 8, lineHeight: "12px", color: "var(--accent)" }}>✎</span>
-            </button>
-          ))}
-          <button
-            aria-label="Add a column"
-            onClick={() => setColEdit(-1)}
-            style={{ width: 24, height: 24, padding: 0, borderRadius: 7, border: "1px dashed #2e6a8e", background: "none", color: "var(--accent)", fontSize: 15, fontWeight: 800, justifySelf: "center" }}
-          >
-            +
-          </button>
-        </div>
-        <div className="wide-rows" style={{ flexGrow: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: 5, paddingTop: 6 }}>
-          {rows.map((r, i) => (
-            <div key={i} style={{ display: "grid", gridTemplateColumns: cols, gap: 8, alignItems: "center" }}>
-              {stepCell(r, i, 15)}
-              <input style={cellStyle(15)} inputMode="decimal" value={r.dis} aria-label="Discharge" onChange={(e) => updateRow(i, (x) => void (x.dis = e.target.value))} />
-              <input style={cellStyle(15)} inputMode="decimal" value={r.suc} aria-label="Suction" onChange={(e) => updateRow(i, (x) => void (x.suc = e.target.value))} />
-              {pumpCells(r, i, pump)}
-              {engineCells(r, i, cellStyle(15))}
-              {extras.map((c, j) => (
-                <input
-                  key={j}
-                  style={cellStyle(15)}
-                  inputMode="decimal"
-                  value={r.extra?.[j] ?? ""}
-                  aria-label={c.name}
-                  onChange={(e) =>
-                    updateRow(i, (x) => {
-                      x.extra = extras.map((_, k) => x.extra?.[k] ?? "");
-                      x.extra[j] = e.target.value;
-                    })
-                  }
-                />
+        <div ref={bodyRef} style={{ flexGrow: 1, minHeight: 0, position: "relative", overflow: "hidden" }}>
+          <div ref={scrollRef} className="wide-scroll" onFocus={onFocusCell}>
+            <div className="wide-grid" style={{ gridTemplateColumns: cols }}>
+              {stepHeads.map((h, j) => (
+                <div key={`h${j}`} className={j === 0 ? "wide-head wide-pin" : "wide-head"}>
+                  {h}
+                </div>
               ))}
-              <button style={xButton} aria-label="Remove reading" onClick={() => removeRow(i)}>
-                ✕
-              </button>
+              <div className="wide-head">
+                <div style={th}>
+                  Discharge
+                  <br />
+                  kPa
+                </div>
+              </div>
+              <div className="wide-head">
+                <div style={th}>
+                  Suction
+                  <br />
+                  kPa
+                </div>
+              </div>
+              {[pumpHeads, engineHeads].map((g, j) => (
+                <div key={`g${j}`} style={{ display: "contents" }} className="wide-heads">
+                  {g}
+                </div>
+              ))}
+              {extras.map((c, j) => (
+                <div key={`x${j}`} className="wide-head">
+                  <button
+                    style={headBtn}
+                    aria-label={`Edit column ${c.name}`}
+                    onClick={() => {
+                      hidePad();
+                      setColEdit(j);
+                    }}
+                  >
+                    {c.name}
+                    {c.unit?.trim() && (
+                      <>
+                        <br />
+                        {c.unit}
+                      </>
+                    )}
+                    <span style={{ position: "absolute", top: -6, right: -4, width: 13, height: 13, borderRadius: 4, background: "var(--panel-2)", border: "1px solid #2e6a8e", fontSize: 8, lineHeight: "12px", color: "var(--accent)" }}>✎</span>
+                  </button>
+                </div>
+              ))}
+              <div className="wide-head" />
+              {rows.map((r, i) => {
+                const [first, ...rest] = stepCells(r, i, 17);
+                return (
+                  <div key={i} style={{ display: "contents" }}>
+                    <div className="wide-pin">
+                      <span className="wide-num">{i + 1}</span>
+                      {first}
+                    </div>
+                    {rest}
+                    <input style={big} inputMode="none" value={r.dis} aria-label="Discharge" onChange={(e) => updateRow(i, (x) => void (x.dis = e.target.value))} />
+                    <input style={big} inputMode="none" value={r.suc} aria-label="Suction" onChange={(e) => updateRow(i, (x) => void (x.suc = e.target.value))} />
+                    {pumpCells(r, i, pump)}
+                    {engineCells(r, i, big)}
+                    {extras.map((c, j) => (
+                      <input
+                        key={j}
+                        style={big}
+                        inputMode="none"
+                        value={r.extra?.[j] ?? ""}
+                        aria-label={c.name}
+                        onChange={(e) =>
+                          updateRow(i, (x) => {
+                            x.extra = extras.map((_, k) => x.extra?.[k] ?? "");
+                            x.extra[j] = e.target.value;
+                          })
+                        }
+                      />
+                    ))}
+                    <div />
+                  </div>
+                );
+              })}
             </div>
-          ))}
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 14, flexShrink: 0 }}>
-          <button style={{ ...addButton, width: 240, flexShrink: 0 }} onClick={addReading}>
-            + Add reading
-          </button>
-          <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: 800, color: verdictLine?.colour }}>{verdictLine && `● ${verdictLine.text}`}</div>
-          {ResultBox({ test, index: current, unit: flowUnitFor(test) })}
+            <div className="wide-foot" style={{ width: Math.max(260, bodyW - (padOn ? padW + 30 : 20)) }}>
+              <button
+                style={{ ...addButton, width: 240, flexShrink: 0 }}
+                onClick={() => {
+                  hidePad();
+                  addReading();
+                }}
+              >
+                + Add reading
+              </button>
+              <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: 800, color: verdictLine?.colour }}>{verdictLine && `● ${verdictLine.text}`}</div>
+              {ResultBox({ test, index: current, unit: flowUnitFor(test) })}
+            </div>
+          </div>
+          <div className={padOn ? "wide-pad" : "wide-pad off"} style={{ width: padW }} aria-hidden={!padOn}>
+            <button type="button" tabIndex={-1} className="wide-key hide" onPointerDown={(e) => e.preventDefault()} onMouseDown={(e) => e.preventDefault()} onClick={hidePad}>
+              Hide keypad ›
+            </button>
+            {["7", "8", "9", "4", "5", "6", "1", "2", "3"].map((k) => key(k))}
+            {key(".", ".")}
+            {key("0")}
+            {key("bs", "⌫", " fn")}
+          </div>
         </div>
       </div>
       {/* upright, not turned with the readings: the keyboard comes up upright */}

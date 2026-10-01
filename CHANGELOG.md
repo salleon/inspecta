@@ -7,6 +7,20 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Full screen readings: the app's own number pad (canvas FlowKeypadB).**
+  The phone's keyboard no longer comes up sideways. Tap a cell and a number
+  pad slides in from the right (7 8 9 / 4 5 6 / 1 2 3 / . 0 ⌫);
+  **Hide keypad ›** (or back) slides it off again and the table slides back
+  to where it was. The first key after tapping a cell replaces it.
+  - Cells are full size and the table scrolls both ways; the first column
+    (" Hg, or L/s for hydrants) stays pinned on the left, with the reading
+    number in its corner.
+  - The keypad takes whatever room the columns leave (bigger keys on most
+    EnFact tests), never narrower than its smallest size; with more columns
+    the table scrolls under it.
+  - **+ Column** moved to the top bar; removing a reading is on the upright
+    page.
+
 - **Combined systems (canvas FlowCombined / FlowCombinedDuty).**
   - **System pump duty**: the demand points, the first marked **Pump duty**
     (a filled diamond on the graph). A **L/min / L/s switch** on the card
