@@ -74,6 +74,22 @@ Settings → **Back up all data** saves every site, finding and photo in one `.z
 
 Ideas agreed but not started yet:
 
+**Next up (in this order; mocked up on the design canvas, waiting for sign-off):**
+
+1. **Flow testing as its own site type** (canvas board FlowSiteType) — a third
+   type beside AFSS and Projects in New site, its own group on the home page;
+   a flow testing site opens straight to its flow tests (no findings, photos
+   or PDF) and exports one "Share flow test Excel". AFSS / project sites also
+   get "Flow tests only" on the Export page.
+2. **Add your own columns to flow test readings** (canvas board FlowColumns) —
+   "Columns ▾" replaces "+ RPM & Amps": tick RPM, Amps and added columns
+   (name + unit, quick picks like oil pressure, engine temp), headings
+   editable; the table scrolls sideways upright, full screen shows all; the
+   Excel gets them after Amps.
+3. **Updating screen: two pre-rendered gears + a live progress gear** (canvas
+   board UpdateGearsLive) — the two main gears are a video loop; a small gear
+   rolls along the progress bar with the real download percentage.
+
 - **Standard corrective-action text** — a library of standard sentences per category (e.g. "Incumbent contractor to carry out annual inspection testing in accordance with AS1851…") to fill the Corrective action column with a tap.
 - **Merge last year's report** — load the previous report for a site and mark its old findings as still present or rectified, flowing into the new report (with their old numbers). How it should work is still to be decided.
 
