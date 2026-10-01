@@ -821,7 +821,7 @@ export default function FlowTest() {
           placeholder="Anything to note on the report, e.g. Diesel pump fuel tank at 60%."
           rows={3}
           onChange={(e) => change((t) => void (t.comment = e.target.value))}
-          style={{ ...cellStyle(14), textAlign: "left", padding: "10px 12px", fontWeight: 600, lineHeight: 1.45, resize: "vertical", fontFamily: "inherit" }}
+          style={{ ...cellStyle(14), textAlign: "left", padding: "10px 12px", fontWeight: 600, lineHeight: 1.45, resize: "vertical", fontFamily: "inherit", minHeight: 84 /* never dragged too small to open again */ }}
         />
         <div style={{ fontSize: 11, color: "var(--muted-2)" }}>Printed under the graph in the export.</div>
       </div>

@@ -530,6 +530,10 @@ test("Save & close, above Delete flow test, saves and goes back to the flow test
   await go(page, app, "/site/s2/flow/t3", 1500);
   const buttons = await page.evaluate(() => [...document.querySelectorAll("button")].map((b) => b.textContent.trim()).filter((t) => t === "Save & close" || t === "Delete flow test"));
   assert.deepEqual(buttons, ["Save & close", "Delete flow test"]);
+  // the Comments box can't be dragged smaller than about three lines
+  const box = page.locator('[aria-label="Comments"]');
+  await box.evaluate((e) => (e.style.height = "4px"));
+  assert.ok((await box.boundingBox()).height >= 84, "kept big enough to open again");
   await page.fill('[aria-label="Comments"]', "Saved with Save & close");
   await page.click('button:has-text("Save & close")');
   await page.waitForTimeout(600);

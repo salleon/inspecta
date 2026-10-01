@@ -7,6 +7,8 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Flow test Comments can't be shrunk away.** The box can still be dragged
+  bigger, but never smaller than about three lines.
 - **New site: the picked kind in its own colour (canvas NewSiteColours).**
   AFSS teal, Projects orange, Flow testing blue: a translucent fill and
   outline, matching the home page's group icons and site tags.
