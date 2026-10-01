@@ -7,6 +7,10 @@ the technical detail.
 
 ## 1 October 2026
 
+- **No more getting stuck sideways.** Inspecta is locked upright on Android
+  (full screen readings do their own turning), and the full screen checks
+  again if the screen changes shape, laying itself flat on a sideways screen
+  instead of turning a second time.
 - **Save & close on a flow test.** Above Delete flow test, it saves anything
   still being typed and goes back to the flow tests list.
 - **Customised reports: bulk refine sections start folded.** Level, Location,

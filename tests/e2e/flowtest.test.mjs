@@ -255,6 +255,13 @@ test("a new hydrant test: flows in L/s, PASS / FAIL at the bottom, RPM for a die
   await keypad.locator('[aria-label="7"]').click();
   assert.equal(await wide.locator('[aria-label="Discharge"]').first().inputValue(), "7");
   await keypad.locator('[aria-label="Backspace"]').click();
+  // the screen turning while it's open: flat on a sideways screen, turned again upright
+  await page.setViewportSize({ width: 844, height: 390 });
+  await page.waitForTimeout(400);
+  assert.equal(await wide.evaluate((e) => e.classList.contains("wide-flat")), true, "flat on a sideways screen");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForTimeout(400);
+  assert.equal(await wide.evaluate((e) => e.classList.contains("wide-turn")), true, "turned again upright");
   // back hides the keypad first, then closes the full screen
   await pressBack(page);
   await page.waitForTimeout(400);

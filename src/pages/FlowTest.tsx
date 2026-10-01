@@ -1073,7 +1073,16 @@ function WideReadings({
   // the add / edit column box: null closed, -1 adding, else the column
   const [colEdit, setColEdit] = useState<number | null>(null);
   const [closing, setClosing] = useState(false);
-  const [turn] = useState(() => window.innerHeight > window.innerWidth);
+  // turned a quarter-turn on an upright screen, flat on a sideways one;
+  // checked again whenever the screen changes shape, so it never ends up
+  // turned on a screen that's already sideways (the app is locked upright on
+  // Android, but a tablet or the web version can still rotate)
+  const [turn, setTurn] = useState(() => window.innerHeight > window.innerWidth);
+  useEffect(() => {
+    const onResize = () => setTurn(window.innerHeight > window.innerWidth);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
   const [padOn, setPadOn] = useState(false);
   const [bodyW, setBodyW] = useState(0);
   const bodyRef = useRef<HTMLDivElement>(null);
