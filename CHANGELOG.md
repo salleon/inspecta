@@ -7,6 +7,11 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Flow tests: "reference" wording removed from the town main.** Town main
+  is still drawn grey and dashed on the graph and still gets no PASS / FAIL,
+  but the legend, readings, full screen and Excel no longer call it a
+  reference (no REF tag, no REFERENCE box, Excel just says "Conclusion:"),
+  since it isn't always one.
 - **Flow test readings: prefilled steps, PASS / FAIL, town main as a
   reference, and full screen (from the canvas FlowPrefill board).**
   - New sprinkler tests start with " Hg 0, 2, 4, 6, 8, 10 filled in;

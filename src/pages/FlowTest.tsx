@@ -74,7 +74,6 @@ const resultBox = (colour: string): CSSProperties => ({
   letterSpacing: "0.06em",
   whiteSpace: "nowrap",
 });
-const refTag: CSSProperties = { marginLeft: 2, padding: "1px 5px", borderRadius: 999, border: "1px solid #2e4a63", color: REFERENCE_COLOUR, fontSize: 8.5, fontWeight: 800, letterSpacing: "0.06em" };
 
 // a cell for the prefilled step column: dashed and dimmed, with a small
 // PREFILL tag, until something is read on its row; always editable
@@ -87,9 +86,9 @@ function StepCell({ prefill, className, style, ...input }: { prefill: boolean; c
   );
 }
 
-// PASS / FAIL against the demand (duty) points, or REFERENCE for town main
+// PASS / FAIL against the demand (duty) points (none for town main)
 function ResultBox({ test, index, unit }: { test: FlowTestRecord; index: number; unit: FlowUnit }) {
-  if (isReference(test, index)) return isTested(test, index) ? <span style={resultBox(REFERENCE_COLOUR)}>REFERENCE</span> : null;
+  if (isReference(test, index)) return null;
   const v = verdict(test, test.sections[index].rows, unit);
   if (v.pass === null) return null;
   return <span style={resultBox(v.pass ? PASS_COLOUR : FAIL_COLOUR)}>{v.pass ? "✓ PASS" : "✕ FAIL"}</span>;
@@ -425,7 +424,7 @@ export default function FlowTest() {
           {legend.map((i) =>
             isReference(test, i) ? (
               <span key={i}>
-                <span style={{ color: REFERENCE_COLOUR }}>- -</span> {sectionName(test, i)} (reference)
+                <span style={{ color: REFERENCE_COLOUR }}>- -</span> {sectionName(test, i)}
               </span>
             ) : (
               <span key={i}>
@@ -449,11 +448,6 @@ export default function FlowTest() {
             <span style={{ color: sectionColour(v.index) }}>●</span> {v.name}: {v.text}
           </div>
         ))}
-        {isReference(test, current) && (
-          <div style={{ fontSize: 12.5, fontWeight: 800, color: REFERENCE_COLOUR, textAlign: "center" }}>
-            - - {sectionName(test, current)}: reference only, not passed or failed
-          </div>
-        )}
       </div>
 
       {/* readings */}
@@ -597,7 +591,7 @@ export default function FlowTest() {
           nextLabel={nextLabel}
           verdictLine={
             isReference(test, current)
-              ? { colour: REFERENCE_COLOUR, text: `${sectionName(test, current)}: reference only, not passed or failed` }
+              ? null
               : (() => {
                   const v = verdict(test, rows, unit);
                   return { colour: v.colour, text: `${sectionName(test, current)}: ${v.text}` };
@@ -878,7 +872,7 @@ function WideReadings({
   removeRow: (i: number) => void;
   addReading: () => void;
   nextLabel: string;
-  verdictLine: { colour: string; text: string };
+  verdictLine: { colour: string; text: string } | null; // none for town main
 }) {
   const [closing, setClosing] = useState(false);
   const [turn] = useState(() => window.innerHeight > window.innerWidth);
@@ -931,7 +925,6 @@ function WideReadings({
                 >
                   <span style={{ color: ref ? REFERENCE_COLOUR : sectionColour(i) }}>●</span>
                   {sectionName(test, i)}
-                  {ref && <span style={refTag}>REF</span>}
                 </button>
               );
             })}
@@ -994,7 +987,7 @@ function WideReadings({
           <button style={{ ...addButton, width: 240, flexShrink: 0 }} onClick={addReading}>
             + Add reading{nextLabel && <span style={{ color: "var(--muted-2)", fontWeight: 700 }}> ({nextLabel})</span>}
           </button>
-          <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: 800, color: verdictLine.colour }}>● {verdictLine.text}</div>
+          <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: 800, color: verdictLine?.colour }}>{verdictLine && `● ${verdictLine.text}`}</div>
           {ResultBox({ test, index: current, unit })}
         </div>
       </div>

@@ -1,6 +1,6 @@
 import type { Workbook, Worksheet } from "exceljs";
 import type { FlowTest, Site } from "../db/types";
-import { demandPoints, flowOf, hasData, isReference, isTested, num, sectionName, sectionVerdicts } from "./flowTest";
+import { demandPoints, flowOf, hasData, isTested, num, sectionName, sectionVerdicts } from "./flowTest";
 import { ZipWriter } from "./zip";
 // EnFact's own flow test sheets, cut down to the one tab each (their
 // Combined System tab, which is the sprinkler tab with suction and RPM
@@ -278,8 +278,8 @@ function fillSheet(wb: Workbook, tplWb: Workbook, L: Layout, test: FlowTest, sit
     });
 
     // "Conclusion:" then PASS (in the template's PASS cell) or FAIL (its FAIL cell)
-    // (town main is a reference: no pass or fail)
-    ws.getCell(top + L.conclusionOffset, L.col.result).value = isReference(test, i) ? "Conclusion: reference only" : "Conclusion:";
+    // (town main gets no pass or fail)
+    ws.getCell(top + L.conclusionOffset, L.col.result).value = "Conclusion:";
     const v = verdicts.get(i);
     if (v?.pass === true) ws.getCell(top + L.passOffset, L.col.result).value = "PASS";
     if (v?.pass === false) ws.getCell(top + L.passOffset + 1, L.col.result).value = "FAIL";

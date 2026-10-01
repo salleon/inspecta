@@ -168,7 +168,7 @@ test("a new sprinkler test: readings fill the flow, the result follows, and it's
   assert.deepEqual(saved.sections[0].rows.map((r) => r.dis), ["600", "500", "420", "350", "300", ""]);
 });
 
-test("a new hydrant test: flows prefilled in L/s, PASS / FAIL at the bottom, town main a reference, full screen", async () => {
+test("a new hydrant test: flows prefilled in L/s, PASS / FAIL at the bottom, no pass or fail for town main, full screen", async () => {
   await go(page, app, "/site/s1/findings?tab=flow");
   await page.click("text=+ New flow test");
   await page.click("text=Hydrant >> nth=-1");
@@ -187,12 +187,13 @@ test("a new hydrant test: flows prefilled in L/s, PASS / FAIL at the bottom, tow
   await page.fill('[aria-label="Demand pressure"]', "550");
   await page.waitForTimeout(300);
   assert.equal(await page.getByText("✕ FAIL").count(), 1);
-  // named Town main it's a reference: graphed, never passed or failed
+  // named Town main: graphed, never passed or failed
   await page.click('[aria-label="Supply 1: change name"]');
   await page.click('[role="menuitem"]:has-text("Town main")');
   await page.waitForTimeout(300);
-  assert.equal(await page.getByText("REFERENCE", { exact: true }).count(), 1);
   assert.equal(await page.getByText("✕ FAIL").count(), 0);
+  assert.equal(await page.getByText("✓ PASS").count(), 0);
+  assert.equal(await page.getByText(/reference/i).count(), 0);
   // full screen, sideways, with every column; Done (or back) closes it
   await page.click('[aria-label="Full screen, sideways"]');
   await page.waitForTimeout(700);
@@ -234,8 +235,8 @@ test("the Excel gets a SPRINKLER and a HYDRANT tab in the template layout, with 
   assert.equal(s.getCell("C9").value, "Town main");
   assert.equal(s.getCell("D12").value, 755.4);
   assert.equal(s.getCell("F12").value, 250);
-  // the town main is a reference: no PASS or FAIL
-  assert.equal(s.getCell("N12").value, "Conclusion: reference only");
+  // the town main gets no PASS or FAIL
+  assert.equal(s.getCell("N12").value, "Conclusion:");
   assert.equal(s.getCell("N15").value, null);
   assert.equal(s.getCell("C21").value, "Electric pump");
   assert.equal(s.getCell("G23").value, 120);
