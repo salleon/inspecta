@@ -77,6 +77,20 @@ Ideas agreed but not started yet:
 - **Standard corrective-action text** — a library of standard sentences per category (e.g. "Incumbent contractor to carry out annual inspection testing in accordance with AS1851…") to fill the Corrective action column with a tap.
 - **Merge last year's report** — load the previous report for a site and mark its old findings as still present or rectified, flowing into the new report (with their old numbers). How it should work is still to be decided.
 
+## Later: splitting into an EnFact app and a Contractor app
+
+For now, features that differ go behind **Admin → Flow testing mode** (EnFact / Contractor), and each canvas mock-up says what EnFact gets and what Contractor gets. Keep those differences in one place in the code so the split stays easy.
+
+When it's time to make two apps, the plan is **one codebase with two editions**, not a copied branch (a copy means every fix has to be made twice and the two drift apart):
+
+1. Tag the current app as the EnFact baseline.
+2. Add a build-time edition (EnFact / Contractor) and a feature list saying what each edition gets and at what level (e.g. graph lines: EnFact fixed, Contractor full picker). Today's Admin switch moves into it; the EnFact app should behave exactly the same.
+3. A second Android app from the same project (product flavour): its own app ID, name, icon and Play listing and test track, so both can be on one phone.
+4. CI builds and tests both editions on every push. Branches stay as they are (`test` for development, `main` for releases).
+5. New contractor features are mocked up on the canvas first, marked by edition. Contractor-only screens live in their own folder.
+
+To decide first: the contractor app's name, icon and branding; its Play listing (same developer account, public or private testing); and whether contractors need accounts, shared sites or cloud sync (everything is on the phone today — the biggest decision).
+
 ## Running it as a web app instead
 
 You'll need [Node.js](https://nodejs.org) (18+) installed.

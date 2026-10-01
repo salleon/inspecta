@@ -7,6 +7,8 @@ the technical detail.
 
 ## 1 October 2026
 
+- **README: the plan for splitting into EnFact and Contractor apps** (one
+  codebase, two editions), noted for later. No change to the app.
 - **Home page: last site clear of the + button, and a bump at the ends.**
   The site list has room at the bottom so the last site scrolls up above the
   + button. Reaching the top or bottom of the list (or pulling past it) gives
