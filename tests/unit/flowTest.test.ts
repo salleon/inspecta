@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { flowOf, newFlowTest, sectionVerdicts, summary, verdict, chartSvg, renumber, nameOptions, SUPPLY_KINDS, blankRows, nextReading, hasData, isReference } from "../../src/lib/flowTest";
+import { flowOf, newFlowTest, sectionVerdicts, summary, verdict, chartSvg, renumber, nameOptions, SUPPLY_KINDS, blankRows, nextReading, hasData, isReference, lineShown, graphLines } from "../../src/lib/flowTest";
 import type { FlowTest } from "../../src/db/types";
 
 const make = (over: Partial<FlowTest>): FlowTest => ({ ...newFlowTest("s1", "sprinkler"), id: "t", order: 0, createdAt: 0, updatedAt: 0, ...over });
@@ -97,4 +97,25 @@ test("the name list says what a pick would be called and what it renames", () =>
   assert.equal(diesel.name, "Diesel pump 2");
   assert.equal(diesel.note, '"Diesel pump" becomes "Diesel pump 1"');
   assert.equal(nameOptions(t, 1).find((o) => o.base === "Town main")!.note, "");
+});
+
+test("graph lines: discharge shown, suction hidden until ticked, per line", () => {
+  const withSuc = (pairs: [number, number, number][]) => pairs.map(([hg, dis, suc]) => ({ hg: String(hg), flow: "", dis: String(dis), suc: String(suc) }));
+  const t = make({
+    demand: [],
+    sections: [
+      { name: "Town main", rows: rows([[0, 460], [2, 250]]) },
+      { name: "Diesel pump 1", rows: withSuc([[0, 980, 60], [2, 750, 50]]) },
+      { name: "Diesel pump 2", rows: withSuc([[0, 970, 80], [2, 740, 70]]) },
+    ],
+  });
+  assert.deepEqual(graphLines(t, 0).map((l) => `${l.kind}:${l.index}`), ["dis:0", "dis:1", "dis:2", "suc:1", "suc:2"]);
+  assert.equal(lineShown(t, "dis", 1), true);
+  assert.equal(lineShown(t, "suc", 1), false);
+  const dotted = (svg: string) => svg.match(/stroke-dasharray="2 3"/g)?.length ?? 0;
+  assert.equal(dotted(chartSvg(t, 300, 200)), 0);
+  t.graph = { "suc:2": true, "dis:0": false };
+  const svg = chartSvg(t, 300, 200);
+  assert.equal(dotted(svg), 1, "only Diesel 2's suction");
+  assert.equal(svg.match(/stroke-dasharray="5 4"/g), null, "town main hidden");
 });

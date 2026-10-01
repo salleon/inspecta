@@ -7,6 +7,16 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Flow test graph: choose the lines (canvas FlowLegend).** Under the
+  graph's key, one row of small tick chips: **Discharge**, **Town main** and
+  **Suction** switch a whole group on or off (Discharge and Town main start
+  on, Suction off). **More ▾** opens the full list with a tick for every
+  line: each supply's discharge and each supply's suction, with supplies
+  named by hand marked "custom", plus All suction, Reset and Done. A chip
+  whose group is only partly on shows a dash. Suction is drawn dotted in its
+  supply's colour (it used to show only for the open supply, automatically).
+  Ticks are saved with the flow test; pass / fail and the Excel chart are
+  unchanged.
 - **Flow tests: "reference" wording removed from the town main.** Town main
   is still drawn grey and dashed on the graph and still gets no PASS / FAIL,
   but the legend, readings, full screen and Excel no longer call it a

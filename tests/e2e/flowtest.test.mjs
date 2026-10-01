@@ -211,6 +211,38 @@ test("a new hydrant test: flows prefilled in L/s, PASS / FAIL at the bottom, no 
   await page.waitForTimeout(700);
 });
 
+test("the graph's line chips and More list: suction off until ticked, kept with the test", async () => {
+  await go(page, app, "/site/s1/findings?tab=flow");
+  await page.click("text=Sprinkler >> nth=0");
+  await page.waitForTimeout(800);
+  const dotted = () => page.locator('[stroke-dasharray="2 3"]').count();
+  const dashed = () => page.locator('polyline[stroke-dasharray="5 4"]').count();
+  assert.equal(await dotted(), 0, "suction starts hidden");
+  assert.equal(await dashed(), 1, "town main shown");
+  await page.click('button[aria-pressed]:has-text("Suction")');
+  assert.equal(await dotted(), 1, "the electric pump's suction");
+  await page.click('button[aria-pressed]:has-text("Town main")');
+  assert.equal(await dashed(), 0);
+  // More: single lines, then Reset
+  await page.click('button[aria-expanded]:has-text("More")');
+  assert.equal(await page.locator('[role="menuitemcheckbox"]').count(), 3);
+  await page.click('[role="menuitemcheckbox"]:has-text("Electric pump") >> nth=0');
+  assert.equal(await page.locator("polyline[stroke-width]:not([stroke-dasharray])").count(), 0, "electric discharge hidden");
+  await page.click('[role="menu"] button:has-text("Reset")');
+  assert.equal(await dotted(), 0);
+  assert.equal(await dashed(), 1);
+  await page.click('[role="menuitemcheckbox"]:has-text("Electric pump") >> nth=1');
+  await page.click('[role="menu"] button:has-text("Done")');
+  await page.waitForTimeout(600);
+  await pressBack(page);
+  await page.waitForTimeout(500);
+  await page.click("text=Sprinkler >> nth=0");
+  await page.waitForTimeout(800);
+  assert.equal(await dotted(), 1, "kept with the test");
+  await pressBack(page);
+  await page.waitForTimeout(500);
+});
+
 test("deleting a flow test asks first", async () => {
   await go(page, app, "/site/s1/findings?tab=flow");
   await page.click("text=Sprinkler >> nth=-1");

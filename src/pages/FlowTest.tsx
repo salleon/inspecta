@@ -5,10 +5,12 @@ import { deleteFlowTest, getFlowTest, getSite, saveFlowTest } from "../db/db";
 import {
   chartSvg,
   FAIL_COLOUR,
+  graphLines,
+  lineShown,
+  type LineKind,
   flowOf,
   hasData,
   isReference,
-  isTested,
   lmin,
   nextReading,
   NEUTRAL_COLOUR,
@@ -256,6 +258,7 @@ export default function FlowTest() {
           change((t) => {
             t.sections.splice(i, 1);
             renumber(t.sections, nameKinds(t));
+            delete t.graph; // ticks are by position, so start again
           });
           setSel(Math.max(0, i - 1));
           setConfirmingRemove(false);
@@ -361,8 +364,10 @@ export default function FlowTest() {
   const shown = (val: string, u: FlowUnit | undefined) => (val === "" ? "" : (u ?? "min") === unit ? val : show(lmin(val, u)));
   const verdicts = sectionVerdicts(test, unit);
   const lineVerdicts = verdicts.length || isReference(test, current) ? verdicts : [{ index: current, name: sectionName(test, current), ...verdict(test, rows, unit) }];
-  const legend = test.sections.map((_, i) => i).filter((i) => isTested(test, i) || i === current);
-  const hasSuction = !combined && rows.some((r) => r.suc.trim() !== "");
+  const lines = graphLines(test, current);
+  // the key lists what's drawn; suction shares its supply's colour
+  const legend = lines.filter((l) => l.kind === "dis" && lineShown(test, "dis", l.index)).map((l) => l.index);
+  const sucShown = lines.some((l) => l.kind === "suc" && lineShown(test, "suc", l.index));
   // hydrants: the first column is the flow (typed, prefilled in L/s). Others:
   // it flips between " Hg and Flow (canvas option D). + RPM & Amps adds two columns (P4)
   const gridCols = more ? "58px 1fr 1fr 1fr 1fr 22px" : "70px 1fr 1fr 26px";
@@ -435,12 +440,27 @@ export default function FlowTest() {
           <span>
             <span style={{ color: "#ff5a4a" }}>◆</span> Demand
           </span>
-          {hasSuction && (
+          {sucShown && (
             <span>
-              <span style={{ color: NEUTRAL_COLOUR }}>- -</span> Suction ({sectionName(test, current)})
+              <span style={{ color: NEUTRAL_COLOUR }}>····</span> Suction
             </span>
           )}
         </div>
+        <GraphLines
+          test={test}
+          lines={lines}
+          onChange={(set) =>
+            change((t) => {
+              t.graph = { ...t.graph };
+              for (const [k, v] of Object.entries(set)) {
+                // back to its default: drop it
+                const [kind] = k.split(":");
+                if (v === (kind === "dis")) delete t.graph[k];
+                else t.graph[k] = v;
+              }
+            })
+          }
+        />
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "center" }}>
         {lineVerdicts.map((v) => (
@@ -991,6 +1011,149 @@ function WideReadings({
           {ResultBox({ test, index: current, unit })}
         </div>
       </div>
+    </div>
+  );
+}
+
+// The graph's line ticks (canvas FlowLegend): one row of chips that switch
+// a whole group (Discharge, Town main, Suction), then More ▾ for the full
+// list, a tick per line, supplies added or named by hand included. A chip
+// whose group is only partly on shows a dash.
+function GraphLines({ test, lines, onChange }: { test: FlowTestRecord; lines: { kind: LineKind; index: number }[]; onChange: (set: Record<string, boolean>) => void }) {
+  const [open, setOpen] = useState(false);
+  useBackHandler(() => {
+    if (!open) return false;
+    setOpen(false);
+    return true;
+  });
+  const key = (l: { kind: LineKind; index: number }) => `${l.kind}:${l.index}`;
+  const groups = [
+    { label: "Discharge", dash: "", lines: lines.filter((l) => l.kind === "dis" && !isReference(test, l.index)) },
+    { label: "Town main", dash: "5 3", lines: lines.filter((l) => l.kind === "dis" && isReference(test, l.index)) },
+    { label: "Suction", dash: "2 2.5", lines: lines.filter((l) => l.kind === "suc") },
+  ].filter((g) => g.lines.length);
+  if (!lines.length) return null;
+  const shown = (l: { kind: LineKind; index: number }) => lineShown(test, l.kind, l.index);
+  const setAll = (ls: typeof lines, v: boolean) => onChange(Object.fromEntries(ls.map((l) => [key(l), v])));
+  const kinds = nameKinds(test);
+  const custom = (i: number) => {
+    const n = test.sections[i].name.trim();
+    return !!n && !kinds.some((b) => n === b || new RegExp(`^${b} \\d+$`).test(n));
+  };
+  const chip = (on: boolean, part: boolean): CSSProperties => ({
+    flexShrink: 0,
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 3,
+    padding: "3px 6px 3px 4px",
+    borderRadius: 999,
+    border: `1px solid ${on || part ? "rgba(46,196,182,.55)" : "var(--border-strong)"}`,
+    background: on || part ? "rgba(46,196,182,.12)" : "none",
+    color: on || part ? "var(--text)" : "var(--muted-2)",
+    fontSize: 10,
+    fontWeight: 800,
+    whiteSpace: "nowrap",
+  });
+  const box = (on: boolean, part = false, size = 12) => (
+    <span
+      style={{
+        width: size,
+        height: size,
+        flexShrink: 0,
+        boxSizing: "border-box",
+        borderRadius: 3,
+        border: `1.5px solid ${on || part ? "var(--accent)" : "#3f5a73"}`,
+        background: on || part ? "var(--accent)" : "none",
+        color: "var(--accent-text)",
+        fontSize: size - 3.5,
+        fontWeight: 900,
+        lineHeight: 1,
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      {on ? "✓" : part ? "–" : ""}
+    </span>
+  );
+  const swatch = (colour: string, dash: string, width = 14, faded = false) => (
+    <svg width={width} height="8" style={{ flexShrink: 0, opacity: faded ? 0.45 : 1 }}>
+      <line x1="1" y1="4" x2={width - 1} y2="4" stroke={colour} strokeWidth={dash === "2 2.5" ? 1.8 : dash ? 2 : 2.6} strokeDasharray={dash || undefined} />
+    </svg>
+  );
+  const item = (l: { kind: LineKind; index: number }) => {
+    const on = shown(l);
+    const colour = isReference(test, l.index) ? REFERENCE_COLOUR : sectionColour(l.index);
+    const dash = l.kind === "suc" ? "2 2.5" : isReference(test, l.index) ? "5 3" : "";
+    return (
+      <button
+        key={key(l)}
+        role="menuitemcheckbox"
+        aria-checked={on}
+        onClick={() => onChange({ [key(l)]: !on })}
+        style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "8px 12px", border: "none", background: "none", color: on ? "var(--text)" : "var(--muted)", fontSize: 13, fontWeight: 700, textAlign: "left" }}
+      >
+        {box(on, false, 15)}
+        {swatch(colour, dash, 20, !on)}
+        <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sectionName(test, l.index)}</span>
+        {custom(l.index) && <span style={{ flexShrink: 0, padding: "1px 5px", borderRadius: 999, border: "1px solid #2e4a63", fontSize: 8.5, fontWeight: 800, color: "var(--muted)" }}>custom</span>}
+      </button>
+    );
+  };
+  const groupHead: CSSProperties = { fontSize: 9.5, fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--muted-2)", padding: "7px 12px 3px" };
+  const small: CSSProperties = { padding: "5px 9px", borderRadius: 999, border: "1px solid var(--border-strong)", background: "none", color: "var(--muted)", fontSize: 11, fontWeight: 800 };
+  const sucLines = lines.filter((l) => l.kind === "suc");
+  return (
+    <div style={{ position: "relative", marginTop: 4, paddingTop: 6, borderTop: "1px solid var(--border)" }}>
+      <div style={{ display: "flex", gap: 3, justifyContent: "safe center", alignItems: "center", flexWrap: "nowrap", overflowX: "auto" }}>
+        {groups.map((g) => {
+          const n = g.lines.filter(shown).length;
+          const on = n === g.lines.length;
+          return (
+            <button key={g.label} aria-pressed={on} onClick={() => setAll(g.lines, !on)} style={chip(on, n > 0 && !on)}>
+              {box(on, n > 0 && !on, 11)}
+              {swatch(g.label === "Town main" ? REFERENCE_COLOUR : "var(--text)", g.dash, 11, n === 0)}
+              {g.label}
+            </button>
+          );
+        })}
+        <button
+          aria-expanded={open}
+          onClick={() => setOpen(!open)}
+          style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 2, padding: "3px 7px", borderRadius: 999, border: open ? "1px solid var(--accent)" : "1px dashed #2e6a8e", background: open ? "var(--accent)" : "none", color: open ? "var(--accent-text)" : "var(--accent)", fontSize: 10, fontWeight: 800, whiteSpace: "nowrap" }}
+        >
+          More <span style={{ fontSize: 9 }}>▾</span>
+        </button>
+      </div>
+      {open && (
+        <>
+          <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 29 }} />
+          <div
+            className="dropbox"
+            role="menu"
+            style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, width: 260, maxWidth: "100%", zIndex: 30, borderRadius: 14, background: "var(--panel-2)", border: "1px solid #2e6a8e", boxShadow: "0 16px 36px rgba(0,0,0,.55), 0 2px 6px rgba(0,0,0,.4)", padding: "4px 0", transformOrigin: "100% 0" }}
+          >
+            <div style={groupHead}>Discharge</div>
+            {lines.filter((l) => l.kind === "dis").map(item)}
+            {sucLines.length > 0 && <div style={groupHead}>Suction</div>}
+            {sucLines.map(item)}
+            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 10px 4px", marginTop: 4, borderTop: "1px solid var(--border)" }}>
+              {sucLines.length > 0 && (
+                <button style={small} onClick={() => setAll(sucLines, true)}>
+                  All suction
+                </button>
+              )}
+              <button style={small} onClick={() => onChange(Object.fromEntries(lines.map((l) => [key(l), l.kind === "dis"])))}>
+                Reset
+              </button>
+              <div style={{ flexGrow: 1 }} />
+              <button onClick={() => setOpen(false)} style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: "var(--accent)", color: "var(--accent-text)", fontSize: 12, fontWeight: 800 }}>
+                Done
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

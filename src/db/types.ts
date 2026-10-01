@@ -113,6 +113,9 @@ export interface FlowTest {
   equipment?: string;
   testedBy?: string;
   comment?: string;
+  // lines on the graph, by "dis:<section>" / "suc:<section>"; missing
+  // ones take the default (discharge shown, suction hidden)
+  graph?: Record<string, boolean>;
   // blank sheet only
   columns?: string[];
   cells?: string[][];

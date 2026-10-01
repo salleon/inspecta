@@ -256,6 +256,27 @@ export function nextReading(test: FlowTest, rows: FlowReading[]): FlowReading {
 
 // ---- the graph ----
 
+// ---- what's drawn ----
+
+export type LineKind = "dis" | "suc";
+
+// Is a section's discharge / suction line on the graph? Discharge (town
+// main included) starts shown, suction hidden; the inspector can change
+// either per line (FlowTest.graph).
+export function lineShown(test: Pick<FlowTest, "graph">, kind: LineKind, index: number): boolean {
+  return test.graph?.[`${kind}:${index}`] ?? kind === "dis";
+}
+
+// the lines that can be drawn: discharge for each tested supply (and the
+// one being looked at), suction for each that has some typed
+export function graphLines(test: FlowTest, current: number): { kind: LineKind; index: number }[] {
+  const idx = test.sections.map((_, i) => i);
+  return [
+    ...idx.filter((i) => (isTested(test, i) || i === current) && points(test, test.sections[i].rows, "dis").length).map((index) => ({ kind: "dis" as const, index })),
+    ...idx.filter((i) => points(test, test.sections[i].rows, "suc").length).map((index) => ({ kind: "suc" as const, index })),
+  ];
+}
+
 // Round axis steps (1, 2, 2.5, 5 × 10^n) giving 4-7 gridlines, a little
 // headroom past the largest value, and pressure starting at 0 unless
 // everything sits high up (then just below the lowest).
@@ -276,18 +297,21 @@ function fit(lo: number, hi: number) {
 }
 
 // The graph as SVG markup: each tested section's discharge curve in its
-// colour, the suction of the section being looked at (`current`) dashed,
-// and the demand points as red diamonds. `small`: the list thumbnail.
+// colour (town main grey, dashed), suction dotted in its section's colour
+// where ticked (see lineShown), and the demand points as red diamonds.
+// `small`: the list thumbnail.
 export function chartSvg(test: FlowTest, w: number, h: number, opts: { small?: boolean; unit?: FlowUnit; current?: number } = {}): string {
   const { small = false, unit = "min", current = 0 } = opts;
   const div = unit === "sec" ? 60 : 1;
   const pad = small ? { l: 4, r: 4, t: 4, b: 4 } : { l: 38, r: 10, t: 10, b: 26 };
   const sc = (p: Point) => ({ x: p.x / div, y: p.y });
   const series = test.sections
-    .map((s, i) => ({ pts: isTested(test, i) || i === current ? points(test, s.rows, "dis").map(sc) : [], colour: isReference(test, i) ? REFERENCE_COLOUR : sectionColour(i), ref: isReference(test, i) }))
+    .map((s, i) => ({ pts: (isTested(test, i) || i === current) && lineShown(test, "dis", i) ? points(test, s.rows, "dis").map(sc) : [], colour: isReference(test, i) ? REFERENCE_COLOUR : sectionColour(i), ref: isReference(test, i) }))
     .filter((s) => s.pts.length);
-  const cur = test.sections[current];
-  const suc = test.kind === "combined" || !cur ? [] : points(test, cur.rows, "suc").map(sc);
+  const sucs = test.sections
+    .map((s, i) => ({ pts: lineShown(test, "suc", i) ? points(test, s.rows, "suc").map(sc) : [], colour: isReference(test, i) ? REFERENCE_COLOUR : sectionColour(i) }))
+    .filter((s) => s.pts.length);
+  const suc = sucs.flatMap((s) => s.pts);
   const dem = demandPoints(test.demand).map(sc);
   const all = [...suc, ...dem, ...series.flatMap((s) => s.pts)];
   const xs = all.map((p) => p.x);
@@ -314,13 +338,13 @@ export function chartSvg(test: FlowTest, w: number, h: number, opts: { small?: b
       s += `<line x1="${pad.l}" y1="${Y(gy)}" x2="${w - pad.r}" y2="${Y(gy)}" stroke="#163a5a"/><text x="${pad.l - 5}" y="${Y(gy) + 3}" text-anchor="end" font-size="10" font-weight="700" fill="#6a8098">${+gy.toFixed(2)}</text>`;
     }
   }
-  const line = (pts: Point[], colour: string, dash: boolean, width: number) =>
+  const line = (pts: Point[], colour: string, dash: string, width: number) =>
     pts.length < 2
       ? ""
-      : `<polyline points="${pts.map((p) => `${X(p.x)},${Y(p.y)}`).join(" ")}" fill="none" stroke="${colour}" stroke-width="${width}"${dash ? ' stroke-dasharray="5 4"' : ""} stroke-linejoin="round"/>`;
-  s += line(suc, "#6a8098", true, small ? 1.5 : 2);
+      : `<polyline points="${pts.map((p) => `${X(p.x)},${Y(p.y)}`).join(" ")}" fill="none" stroke="${colour}" stroke-width="${width}"${dash ? ` stroke-dasharray="${dash}"` : ""} stroke-linejoin="round"/>`;
+  for (const sl of sucs) s += line(sl.pts, sl.colour, "2 3", small ? 1.2 : 1.8);
   for (const sr of series) {
-    s += line(sr.pts, sr.colour, sr.ref, sr.ref ? (small ? 1.5 : 2) : small ? 2 : 2.5);
+    s += line(sr.pts, sr.colour, sr.ref ? "5 4" : "", sr.ref ? (small ? 1.5 : 2) : small ? 2 : 2.5);
     if (!small) for (const p of sr.pts) s += `<circle cx="${X(p.x)}" cy="${Y(p.y)}" r="3.5" fill="#071b2c" stroke="${sr.colour}" stroke-width="2"/>`;
   }
   const r = small ? 3 : 5;
