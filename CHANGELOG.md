@@ -7,6 +7,15 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Flow test readings: add your own columns, and a Comments box (canvas
+  FlowColumns).** In full screen, a **+** after the headings adds a column
+  (name and unit, or a quick pick: oil pressure, engine temp, fuel level,
+  battery, jacket water) to every supply in the test. Added headings are
+  dashed with a pencil: tap to rename, change the unit or remove (asks first
+  if it has readings). The upright view is unchanged, with a line saying the
+  added columns are in full screen. The Excel gets them after Amps.
+  A **Comments** box under the readings replaces the one-line Comment in Test
+  details; it's printed under the graph in the export.
 - **Updating screen: two gears and a gear on the progress bar (canvas
   UpdateGearsLive).** Two meshed gears turn steadily (a pre-rendered video
   loop), and a small gear rolls along the progress bar under the percentage,

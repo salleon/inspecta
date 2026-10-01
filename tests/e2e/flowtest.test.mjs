@@ -30,10 +30,11 @@ export const FLOW_TESTS = [
     equipment: "80 mm / 20T Ambient", testedBy: "Wormald", comment: "Town main below demand at 1350 L/min. Electric pump satisfactory.",
     sections: [
       { name: "Town main", rows: rows([[0, 460], [2, 250], [4, 240], [6, 205], [8, 180]]) },
-      { name: "Electric pump", rows: rows([[0, 980, 120, 2950, 48], [2, 750, 110, 2940, 52], [4, 670, 100, 2930, 55], [6, 430, 95, 2920, 58], [8, 250, 90, 2910, 61]]) },
+      { name: "Electric pump", rows: rows([[0, 980, 120, 2950, 48], [2, 750, 110, 2940, 52], [4, 670, 100, 2930, 55], [6, 430, 95, 2920, 58], [8, 250, 90, 2910, 61]]).map((r, i) => ({ ...r, extra: [String(420 - i * 5)] })) },
       { name: "Diesel pump", rows: rows([[0, ""], [2, ""], [4, ""], [6, ""], [8, ""]]) },
     ],
     demand: [{ flow: "1100", kpa: "270" }, { flow: "1350", kpa: "240" }],
+    extraCols: [{ name: "Oil pressure", unit: "kPa" }],
   },
   // 1b. hydrant on the same site: flows typed in L/s off the pitot
   {
@@ -212,6 +213,37 @@ test("a new hydrant test: flows prefilled in L/s, PASS / FAIL at the bottom, no 
   assert.equal(await wide.count(), 0);
   assert.ok(page.url().includes("/flow/"), "back closed the full screen, not the test");
   assert.equal(await page.locator('[aria-label="RPM"]').first().inputValue(), "1920");
+  // add a column in full screen: every row gets it; the upright view says it's there
+  await page.click('[aria-label="Full screen, sideways"]');
+  await page.waitForTimeout(700);
+  await wide.locator('[aria-label="Add a column"]').click();
+  await wide.locator('button:has-text("Oil pressure (kPa)")').click();
+  await wide.locator('[role="dialog"][aria-label="Add a column"] button:has-text("Add")').click();
+  assert.equal(await wide.locator('[aria-label="Oil pressure"]').count(), 5);
+  await wide.locator('[aria-label="Oil pressure"]').first().fill("420");
+  await wide.locator('[aria-label="Edit column Oil pressure"]').click();
+  await wide.locator('[aria-label="Column name"]').fill("Oil press");
+  await wide.locator('button:has-text("Save")').click();
+  assert.equal(await wide.locator('[aria-label="Oil press"]').first().inputValue(), "420");
+  await pressBack(page);
+  await page.waitForTimeout(600);
+  assert.equal(await page.getByText("Added columns (Oil press) are in full screen").count(), 1);
+  // comments for the report
+  await page.fill('[aria-label="Comments"]', "Booster pump satisfactory.");
+  await page.waitForTimeout(600);
+  const saved = await page.evaluate(async () => {
+    const req = indexedDB.open("inspecta");
+    const idb = await new Promise((r) => (req.onsuccess = () => r(req.result)));
+    const all = await new Promise((r) => {
+      const q = idb.transaction("flowTests").objectStore("flowTests").getAll();
+      q.onsuccess = () => r(q.result);
+    });
+    idb.close();
+    return all.find((t) => t.kind === "hydrant" && t.id !== "t2");
+  });
+  assert.deepEqual(saved.extraCols, [{ name: "Oil press", unit: "kPa" }]);
+  assert.equal(saved.sections[0].rows[0].extra[0], "420");
+  assert.equal(saved.comment, "Booster pump satisfactory.");
   // tidy up so the other tests see the site as before
   await page.click("text=Delete flow test");
   await page.click("button:has-text('Delete') >> nth=-1");
@@ -281,6 +313,9 @@ test("the Excel gets a SPRINKLER and a HYDRANT tab in the template layout, with 
   assert.equal(s.getCell("G23").value, 120);
   assert.equal(s.getCell("H23").value, 2950);
   assert.equal(s.getCell("I22").value, "Amps");
+  // an added column goes after Amps, with its heading
+  assert.equal(s.getCell("J22").value, "Oil pressure (kPa)");
+  assert.equal(s.getCell("J23").value, 420);
   assert.equal(s.getCell("N26").value, "PASS");
   assert.notEqual(s.getCell("C33").value, "Diesel pump");
   const h = wb.getWorksheet("HYDRANT");

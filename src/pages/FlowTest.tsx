@@ -8,6 +8,7 @@ import {
   graphLines,
   lineShown,
   type LineKind,
+  extraHeading,
   flowOf,
   hasData,
   isReference,
@@ -583,6 +584,11 @@ export default function FlowTest() {
         <button style={addButton} onClick={addReading}>
           + Add reading{nextLabel && <span style={{ color: "var(--muted-2)", fontWeight: 700 }}> ({nextLabel})</span>}
         </button>
+        {!!test.extraCols?.length && (
+          <div style={{ fontSize: 11.5, color: "var(--muted)", textAlign: "center" }}>
+            Added columns ({test.extraCols.map((c) => c.name).join(", ")}) are in full screen
+          </div>
+        )}
         <div style={{ fontSize: 11.5, color: "var(--muted-2)", lineHeight: 1.45 }}>
           {hydrant
             ? "Flows start prefilled at 0, 5, 10, 15, 20 L/s; change any of them. Rows with nothing read stay off the graph and the Excel. "
@@ -608,6 +614,7 @@ export default function FlowTest() {
           updateRow={updateRow}
           removeRow={removeRow}
           addReading={addReading}
+          onColumns={(fn) => change(fn)}
           nextLabel={nextLabel}
           verdictLine={
             isReference(test, current)
@@ -619,6 +626,23 @@ export default function FlowTest() {
           }
         />
       )}
+      {/* comments, for the report */}
+      <div style={card}>
+        <div style={{ display: "flex", alignItems: "center" }}>
+          <div style={{ ...lbl, flexGrow: 1 }}>Comments</div>
+          <span style={{ fontSize: 10.5, fontWeight: 700, color: "var(--muted-2)" }}>on the report</span>
+        </div>
+        <textarea
+          value={test.comment ?? ""}
+          aria-label="Comments"
+          placeholder="Anything to note on the report, e.g. Diesel pump fuel tank at 60%."
+          rows={3}
+          onChange={(e) => change((t) => void (t.comment = e.target.value))}
+          style={{ ...cellStyle(14), textAlign: "left", padding: "10px 12px", fontWeight: 600, lineHeight: 1.45, resize: "vertical", fontFamily: "inherit" }}
+        />
+        <div style={{ fontSize: 11, color: "var(--muted-2)" }}>Printed under the graph in the export.</div>
+      </div>
+
       {/* demand points */}
       <div style={card}>
         <div style={lbl}>Demand points</div>
@@ -660,7 +684,6 @@ export default function FlowTest() {
             ["Date", "date"],
             ["Equipment", "equipment"],
             ["Tested by", "testedBy"],
-            ["Comment", "comment"],
           ] as const
         ).map(([label, key]) => (
           <label key={key} style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -678,7 +701,7 @@ export default function FlowTest() {
             ) : (
               <input
                 value={test[key] ?? ""}
-                placeholder={key === "equipment" ? "e.g. 80 mm / 20T Ambient" : key === "testedBy" ? "e.g. Chubb" : "e.g. PASS"}
+                placeholder={key === "equipment" ? "e.g. 80 mm / 20T Ambient" : "e.g. Chubb"}
                 onChange={(e) => change((t) => void (t[key] = e.target.value))}
                 style={{ ...cellStyle(14), textAlign: "left", padding: "8px 10px" }}
               />
@@ -877,6 +900,7 @@ function WideReadings({
   updateRow,
   removeRow,
   addReading,
+  onColumns,
   nextLabel,
   verdictLine,
 }: {
@@ -891,9 +915,12 @@ function WideReadings({
   updateRow: (i: number, fn: (r: FlowReading) => void) => void;
   removeRow: (i: number) => void;
   addReading: () => void;
+  onColumns: (fn: (t: FlowTestRecord) => void) => void;
   nextLabel: string;
   verdictLine: { colour: string; text: string } | null; // none for town main
 }) {
+  // the add / edit column box: null closed, -1 adding, else the column
+  const [colEdit, setColEdit] = useState<number | null>(null);
   const [closing, setClosing] = useState(false);
   const [turn] = useState(() => window.innerHeight > window.innerWidth);
   const close = () => {
@@ -902,12 +929,16 @@ function WideReadings({
     window.setTimeout(onClose, 380);
   };
   useBackHandler(() => {
-    close();
+    if (colEdit !== null) setColEdit(null);
+    else close();
     return true;
   });
   const hydrant = test.kind === "hydrant";
   const rows = test.sections[current].rows;
-  const cols = hydrant ? "1.2fr 64px 1fr 1fr 1fr 1fr 28px" : "0.95fr 1.1fr 1fr 1fr 1fr 1fr 28px";
+  const extras = test.extraCols ?? [];
+  const extraFr = extras.map(() => " 1fr").join("");
+  const cols = (hydrant ? "1.2fr 64px 1fr 1fr 1fr 1fr" : "0.95fr 1.1fr 1fr 1fr 1fr 1fr") + extraFr + " 28px";
+  const headBtn: CSSProperties = { ...th, position: "relative", border: "1px dashed #2e6a8e", background: "#0b2238", borderRadius: 7, padding: "3px 2px", color: "var(--text)" };
   const pump: CSSProperties = { ...cellStyle(15), borderColor: "rgba(245,165,92,.4)" };
   const unitLabel = unit === "sec" ? "L/s" : "L/min";
   return (
@@ -982,7 +1013,25 @@ function WideReadings({
           </div>
           <div style={th}>RPM</div>
           <div style={th}>Amps</div>
-          <div />
+          {extras.map((c, j) => (
+            <button key={j} style={headBtn} aria-label={`Edit column ${c.name}`} onClick={() => setColEdit(j)}>
+              {c.name}
+              {c.unit?.trim() && (
+                <>
+                  <br />
+                  {c.unit}
+                </>
+              )}
+              <span style={{ position: "absolute", top: -6, right: -4, width: 13, height: 13, borderRadius: 4, background: "var(--panel-2)", border: "1px solid #2e6a8e", fontSize: 8, lineHeight: "12px", color: "var(--accent)" }}>✎</span>
+            </button>
+          ))}
+          <button
+            aria-label="Add a column"
+            onClick={() => setColEdit(-1)}
+            style={{ width: 24, height: 24, padding: 0, borderRadius: 7, border: "1px dashed #2e6a8e", background: "none", color: "var(--accent)", fontSize: 15, fontWeight: 800, justifySelf: "center" }}
+          >
+            +
+          </button>
         </div>
         <div className="wide-rows" style={{ flexGrow: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: 5, paddingTop: 6 }}>
           {rows.map((r, i) => (
@@ -997,6 +1046,21 @@ function WideReadings({
               <input style={cellStyle(15)} inputMode="decimal" value={r.suc} aria-label="Suction" onChange={(e) => updateRow(i, (x) => void (x.suc = e.target.value))} />
               <input style={pump} inputMode="decimal" value={r.rpm ?? ""} aria-label="RPM" onChange={(e) => updateRow(i, (x) => void (x.rpm = e.target.value))} />
               <input style={pump} inputMode="decimal" value={r.amps ?? ""} aria-label="Amps" onChange={(e) => updateRow(i, (x) => void (x.amps = e.target.value))} />
+              {extras.map((c, j) => (
+                <input
+                  key={j}
+                  style={cellStyle(15)}
+                  inputMode="decimal"
+                  value={r.extra?.[j] ?? ""}
+                  aria-label={c.name}
+                  onChange={(e) =>
+                    updateRow(i, (x) => {
+                      x.extra = extras.map((_, k) => x.extra?.[k] ?? "");
+                      x.extra[j] = e.target.value;
+                    })
+                  }
+                />
+              ))}
               <button style={xButton} aria-label="Remove reading" onClick={() => removeRow(i)}>
                 ✕
               </button>
@@ -1010,6 +1074,120 @@ function WideReadings({
           <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: 800, color: verdictLine?.colour }}>{verdictLine && `● ${verdictLine.text}`}</div>
           {ResultBox({ test, index: current, unit })}
         </div>
+        {colEdit !== null && (
+          <ColumnBox
+            test={test}
+            index={colEdit}
+            onClose={() => setColEdit(null)}
+            onSave={(col) =>
+              onColumns((t) => {
+                t.extraCols = [...(t.extraCols ?? [])];
+                if (colEdit < 0) t.extraCols.push(col);
+                else t.extraCols[colEdit] = col;
+              })
+            }
+            onRemove={() =>
+              onColumns((t) => {
+                t.extraCols = (t.extraCols ?? []).filter((_, k) => k !== colEdit);
+                for (const sec of t.sections) for (const r of sec.rows) if (r.extra) r.extra = r.extra.filter((_, k) => k !== colEdit);
+              })
+            }
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+const QUICK_COLUMNS = [
+  { name: "Oil pressure", unit: "kPa" },
+  { name: "Engine temp", unit: "°C" },
+  { name: "Fuel level", unit: "%" },
+  { name: "Battery", unit: "V" },
+  { name: "Jacket water", unit: "°C" },
+];
+
+// Add a column (index -1) or change / remove one, inside the full-screen view
+// so it's the same way up. Every supply in the test gets the column.
+function ColumnBox({ test, index, onClose, onSave, onRemove }: { test: FlowTestRecord; index: number; onClose: () => void; onSave: (c: { name: string; unit?: string }) => void; onRemove: () => void }) {
+  const existing = index >= 0 ? test.extraCols?.[index] : undefined;
+  const [name, setName] = useState(existing?.name ?? "");
+  const [unitText, setUnitText] = useState(existing?.unit ?? "");
+  const [confirming, setConfirming] = useState(false);
+  const used = index >= 0 && test.sections.some((s) => s.rows.some((r) => (r.extra?.[index] ?? "").trim() !== ""));
+  const save = () => {
+    if (!name.trim()) return;
+    onSave({ name: name.trim(), unit: unitText.trim() || undefined });
+    onClose();
+  };
+  const field: CSSProperties = { ...cellStyle(14), textAlign: "left", padding: "9px 12px" };
+  const quiet: CSSProperties = { padding: "9px 14px", borderRadius: 10, border: "1px solid var(--border-strong)", background: "none", color: "var(--muted)", fontSize: 13, fontWeight: 800 };
+  return (
+    <div style={{ position: "absolute", inset: 0, background: "rgba(3,13,22,.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2 }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} role="dialog" aria-label={existing ? "Edit column" : "Add a column"} style={{ width: 340, background: "var(--panel)", border: "1px solid #2e6a8e", borderRadius: 16, padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ fontSize: 15, fontWeight: 800 }}>{existing ? "Column" : "Add a column"}</div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Name, e.g. Oil pressure" aria-label="Column name" style={{ ...field, flex: 2 }} />
+          <input value={unitText} onChange={(e) => setUnitText(e.target.value)} placeholder="Unit" aria-label="Column unit" style={{ ...field, flex: 1 }} />
+        </div>
+        {!existing && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {QUICK_COLUMNS.map((q) => (
+              <button
+                key={q.name}
+                onClick={() => {
+                  setName(q.name);
+                  setUnitText(q.unit);
+                }}
+                style={{ padding: "4px 10px", borderRadius: 999, border: "1px solid var(--border-strong)", background: "none", color: "var(--muted)", fontSize: 11.5, fontWeight: 800 }}
+              >
+                {extraHeading(q)}
+              </button>
+            ))}
+          </div>
+        )}
+        <div style={{ fontSize: 11.5, color: "var(--muted-2)" }}>Added to every supply in this test, and to the Excel after Amps.</div>
+        {confirming ? (
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <div style={{ flex: 1, fontSize: 12.5, color: "#ff6b6b", fontWeight: 700 }}>Remove it and its readings?</div>
+            <button style={quiet} onClick={() => setConfirming(false)}>
+              Keep
+            </button>
+            <button
+              style={{ ...quiet, borderColor: "rgba(255,107,107,.5)", color: "#ff6b6b" }}
+              onClick={() => {
+                onRemove();
+                onClose();
+              }}
+            >
+              Remove
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: "flex", gap: 8 }}>
+            {existing && (
+              <button
+                style={{ ...quiet, borderColor: "rgba(255,107,107,.5)", color: "#ff6b6b" }}
+                onClick={() => {
+                  if (used) setConfirming(true);
+                  else {
+                    onRemove();
+                    onClose();
+                  }
+                }}
+              >
+                Remove
+              </button>
+            )}
+            <div style={{ flexGrow: 1 }} />
+            <button style={quiet} onClick={onClose}>
+              Cancel
+            </button>
+            <button onClick={save} disabled={!name.trim()} style={{ padding: "9px 18px", borderRadius: 10, border: "none", background: "var(--accent)", color: "var(--accent-text)", fontSize: 13, fontWeight: 800, opacity: name.trim() ? 1 : 0.5 }}>
+              {existing ? "Save" : "Add"}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

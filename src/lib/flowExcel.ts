@@ -1,6 +1,6 @@
 import type { Workbook, Worksheet } from "exceljs";
 import type { FlowTest, Site } from "../db/types";
-import { demandPoints, flowOf, hasData, isTested, num, sectionName, sectionVerdicts } from "./flowTest";
+import { demandPoints, extraHeading, flowOf, hasData, isTested, num, sectionName, sectionVerdicts } from "./flowTest";
 import { ZipWriter } from "./zip";
 // EnFact's own flow test sheets, cut down to the one tab each (their
 // Combined System tab, which is the sprinkler tab with suction and RPM
@@ -248,6 +248,9 @@ function fillSheet(wb: Workbook, tplWb: Workbook, L: Layout, test: FlowTest, sit
     heading(L.col.suc, "Suction\n (kPa)");
     if (hasRpm || test.kind !== "hydrant") heading(L.col.rpm, "RPM");
     if (hasAmps) heading(L.col.amps, "Amps");
+    // added columns after Amps, as many as fit before the result column
+    const extras = (test.extraCols ?? []).slice(0, L.col.result - L.col.amps - 1);
+    extras.forEach((c, j) => heading(L.col.amps + 1 + j, extraHeading(c)));
 
     const pts: { x: number; y: number }[] = [];
     readings.forEach((r, j) => {
@@ -265,6 +268,7 @@ function fillSheet(wb: Workbook, tplWb: Workbook, L: Layout, test: FlowTest, sit
       put(L.col.suc, r.suc);
       if (hasRpm || test.kind !== "hydrant") put(L.col.rpm, r.rpm);
       if (hasAmps) put(L.col.amps, r.amps);
+      extras.forEach((_, j) => put(L.col.amps + 1 + j, r.extra?.[j]));
       const y = num(r.dis);
       if (flow !== null && y !== null) pts.push({ x: flow, y });
     });

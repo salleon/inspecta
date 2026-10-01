@@ -102,7 +102,10 @@ export function verdict(test: FlowTest, rows: FlowReading[], unit: FlowUnit = "m
 // A reading counts once something has been read on it. The step column
 // (" Hg, or a hydrant's flow) comes prefilled, so a row holding only that
 // is still a prefill: shown dimmed, and left off the graph and the Excel.
-export const hasData = (r: FlowReading) => [r.dis, r.suc, r.rpm ?? "", r.amps ?? ""].some((v) => v.trim() !== "");
+export const hasData = (r: FlowReading) => [r.dis, r.suc, r.rpm ?? "", r.amps ?? "", ...(r.extra ?? [])].some((v) => v.trim() !== "");
+
+// an added column's heading, with its unit
+export const extraHeading = (c: { name: string; unit?: string }) => (c.unit?.trim() ? `${c.name} (${c.unit.trim()})` : c.name);
 
 // Town main is tested as a reference (is a failure down to the main?), so
 // it's graphed but never passed or failed.
