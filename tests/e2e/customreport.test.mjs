@@ -43,12 +43,18 @@ test("Create Customised Report: name, bulk refine (Skip in orange, groups from t
   await page.click("text=✎ Create Customised Report");
   assert.equal(await sheet().count(), 1);
   // bulk refine options come from the findings: levels, locations, types, ESR categories, with counts
+  // Level, Location, Type and ESR category start folded; a tap opens each
+  assert.equal(await sheet().locator('button:has-text("Level 1 · 3")').count(), 0, "folded to start");
+  for (const h of ["Level", "Location", "Type", "ESR category"]) await sheet().locator(`button[aria-expanded="false"]:has-text("${h}")`).click();
   for (const t of ["Every finding · 5", "Level 1 · 3", "Stair 1 · 2", "Carpark · 1", "Critical · 3", "1.6 Fire Doors · 2"]) assert.equal(await sheet().locator(`button:has-text("${t}")`).count(), 1, t);
   const skip = sheet().locator('button:has-text("Skip")');
   assert.equal(await skip.evaluate((e) => getComputedStyle(e).color), "rgb(245, 165, 92)", "Skip orange to start");
   assert.equal(await page.locator('button:has-text("Pick findings")').isDisabled(), true, "needs a name");
   await page.fill('[aria-label="Report name"]', "Level 1");
   await sheet().locator('button:has-text("Level 1 · 3")').click();
+  // folded again, the heading still shows what's picked in it
+  await sheet().locator('button[aria-expanded="true"]:has-text("Level")').click();
+  assert.equal(await sheet().locator('button[aria-expanded="false"]:has-text("Level")').innerText(), "Level\n1 picked\n›");
   assert.notEqual(await skip.evaluate((e) => getComputedStyle(e).color), "rgb(245, 165, 92)", "Skip no longer highlighted");
   await page.click('button:has-text("Pick findings")');
   const boxes = page.locator('[role="dialog"][aria-label="Pick findings"] [role="checkbox"]');

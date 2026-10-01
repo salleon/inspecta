@@ -7,6 +7,9 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Customised reports: bulk refine sections start folded.** Level, Location,
+  Type and ESR category are tap-to-open headings; a folded one shows how
+  many are picked in it.
 - **Full screen readings scroll from anywhere.** A drag that starts on a
   cell now scrolls the table (before, only the blank space did on Android,
   because a drag on a text box went to the box). A tap still picks the cell.

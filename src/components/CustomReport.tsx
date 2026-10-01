@@ -149,6 +149,8 @@ export default function CustomReport({
   const [step, setStep] = useState<"sheet" | "pick">("sheet");
   const [name, setName] = useState(existing?.name ?? "");
   const [chosen, setChosen] = useState<Set<string>>(new Set());
+  // the Level, Location, Type and ESR category lists start folded; a tap opens one
+  const [open, setOpen] = useState<Set<string>>(new Set());
   const [ticked, setTicked] = useState<Set<string>>(new Set(existing?.findingIds ?? []));
   const [order, setOrder] = useState<SiteReport["order"]>(existing?.order ?? "esr");
   const groups = bulkGroups(entries);
@@ -280,23 +282,46 @@ export default function CustomReport({
         />
         <div style={label}>Bulk refine findings</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {groups.map((g, gi) => (
-            <div key={g.heading || "all"} style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-              {g.heading && <div style={{ fontSize: 10.5, fontWeight: 800, color: "var(--muted-2)" }}>{g.heading}</div>}
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                {gi === 0 && (
-                  <button style={skipChip(!chosen.size)} onClick={() => setChosen(new Set())}>
-                    Skip
+          {groups.map((g, gi) => {
+            const shut = !!g.heading && !open.has(g.heading);
+            const picked = g.options.filter((o) => chosen.has(o.key)).length;
+            return (
+              <div key={g.heading || "all"} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {g.heading && (
+                  <button
+                    aria-expanded={!shut}
+                    onClick={() =>
+                      setOpen((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(g.heading)) next.delete(g.heading);
+                        else next.add(g.heading);
+                        return next;
+                      })
+                    }
+                    style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderRadius: 10, border: "1px solid var(--border)", background: "var(--panel-2)", color: "var(--text)", fontSize: 13.5, fontWeight: 800, textAlign: "left" }}
+                  >
+                    <span style={{ flex: 1 }}>{g.heading}</span>
+                    {picked > 0 && <span style={{ padding: "2px 8px", borderRadius: 999, background: "rgba(46,196,182,.16)", color: "var(--accent)", fontSize: 11.5 }}>{picked} picked</span>}
+                    <span style={{ color: "var(--muted)", fontSize: 12, transform: shut ? "none" : "rotate(90deg)", transition: "transform 160ms" }}>›</span>
                   </button>
                 )}
-                {g.options.map((o) => (
-                  <button key={o.key} style={chip(chosen.has(o.key))} aria-pressed={chosen.has(o.key)} onClick={() => toggleBulk(o.key)}>
-                    {o.label} · {o.ids.length}
-                  </button>
-                ))}
+                {!shut && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: g.heading ? "0 2px 4px" : 0 }}>
+                    {gi === 0 && (
+                      <button style={skipChip(!chosen.size)} onClick={() => setChosen(new Set())}>
+                        Skip
+                      </button>
+                    )}
+                    {g.options.map((o) => (
+                      <button key={o.key} style={chip(chosen.has(o.key))} aria-pressed={chosen.has(o.key)} onClick={() => toggleBulk(o.key)}>
+                        {o.label} · {o.ids.length}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
         <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.45 }}>
           {chosen.size
