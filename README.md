@@ -74,28 +74,6 @@ Settings → **Back up all data** saves every site, finding and photo in one `.z
 
 Ideas agreed but not started yet:
 
-**Next up (in this order; mocked up on the design canvas, waiting for sign-off):**
-
-1. **Flow testing as its own site type** (canvas board FlowSiteType) — a third
-   type beside AFSS and Projects in New site, its own group on the home page;
-   a flow testing site opens straight to its flow tests (no findings or
-   photos). Its bottom bar has Export (above + New flow test), which opens a
-   preview of the results, one page per test in the template layout (header,
-   a table per supply with PASS / FAIL, graph, comments). Export PDF: a full
-   page per flow test. Export Excel: one sheet per flow test, named after the
-   test. AFSS / project sites keep flow tests in their Excel as now.
-   Both exports are mocked up on canvas board FlowExports; the chart legend
-   sits in a vertical box on the right of the graph.
-2. **Add your own columns to flow test readings, and comments** (canvas board
-   FlowColumns) — columns are added only in full screen, with a + at the end
-   of the headings (name + unit, quick picks like oil pressure, engine temp);
-   headings editable; the upright view is unchanged. The Excel gets them after
-   Amps. A Comments box under the readings replaces the one-line Comment and
-   prints under the graph on the PDF page and Excel sheet.
-3. **Updating screen: two pre-rendered gears + a live progress gear** (canvas
-   board UpdateGearsLive) — the two main gears are a video loop; a small gear
-   rolls along the progress bar with the real download percentage.
-
 - **Standard corrective-action text** — a library of standard sentences per category (e.g. "Incumbent contractor to carry out annual inspection testing in accordance with AS1851…") to fill the Corrective action column with a tap.
 - **Merge last year's report** — load the previous report for a site and mark its old findings as still present or rectified, flowing into the new report (with their old numbers). How it should work is still to be decided.
 
