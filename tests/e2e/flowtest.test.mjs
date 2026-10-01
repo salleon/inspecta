@@ -124,8 +124,17 @@ test("a new sprinkler test: readings fill the flow, the result follows, and it's
   await page.click("text=Sprinkler >> nth=-1");
   await page.waitForTimeout(800);
   assert.match(page.url(), /\/site\/s1\/flow\//);
-  // flow from " Hg: 534.15 × √2
+  // rows start empty: nothing suggested
+  const hg = page.locator('[aria-label=\'" Hg\']');
+  assert.equal(await hg.count(), 6);
+  assert.deepEqual(await hg.evaluateAll((els) => els.map((e) => e.value)), ["", "", "", "", "", ""]);
+  for (const [i, v] of ["0", "2", "4", "6", "8"].entries()) await hg.nth(i).fill(v);
+  // flow from " Hg: 534.15 × √2, in L/min behind the " Hg ⇄ L/min heading
   assert.equal(await page.locator('[aria-label="Flow"]').nth(1).inputValue(), "755.4");
+  assert.equal(await page.locator('[aria-label="Show flow in L/min"]').count(), 1);
+  assert.equal(await page.locator('[aria-label="Change flow unit"]').count(), 0, "no L/s for sprinklers");
+  // an unnamed supply: no RPM or Amps
+  assert.equal(await page.locator('[aria-label="RPM"], [aria-label="Amps"]').count(), 0);
   const dis = page.locator('[aria-label="Discharge"]');
   for (const [i, v] of ["600", "500", "420", "350", "300"].entries()) await dis.nth(i).fill(v);
   await page.fill('[aria-label="Demand flow"]', "1000");
@@ -171,36 +180,23 @@ test("a new sprinkler test: readings fill the flow, the result follows, and it's
     return all.find((t) => !["t1", "t2", "t3", "t4", "t5"].includes(t.id));
   });
   assert.deepEqual(saved.sections.map((s) => s.name), ["Diesel pump", "Fire pump 3"]);
-  // six prefilled " Hg steps (0-10); the last one wasn't read
-  assert.deepEqual(saved.sections[0].rows.map((r) => r.hg), ["0", "2", "4", "6", "8", "10"]);
+  // the " Hg typed; the last row left empty
+  assert.deepEqual(saved.sections[0].rows.map((r) => r.hg), ["0", "2", "4", "6", "8", ""]);
   assert.deepEqual(saved.sections[0].rows.map((r) => r.dis), ["600", "500", "420", "350", "300", ""]);
 });
 
-test("a new hydrant test: flows prefilled in L/s, PASS / FAIL at the bottom, no pass or fail for town main, full screen", async () => {
+test("a new hydrant test: flows in L/s, PASS / FAIL at the bottom, RPM for a diesel pump, no pass or fail for town main, full screen", async () => {
   await go(page, app, "/site/s1/findings?tab=flow");
   await page.click("text=+ New flow test");
   await page.click("text=Hydrant >> nth=-1");
   await page.waitForTimeout(800);
   const flow = page.locator('[aria-label="Flow"]');
-  assert.deepEqual(await Promise.all([0, 1, 2, 3, 4].map((i) => flow.nth(i).inputValue())), ["0", "5", "10", "15", "20"]);
-  // a prefilled number clears when tapped, and comes back if nothing's typed
-  await flow.nth(1).focus();
-  assert.equal(await flow.nth(1).inputValue(), "");
-  assert.equal(await flow.nth(1).getAttribute("placeholder"), "5");
-  await flow.nth(2).focus();
-  assert.equal(await flow.nth(1).inputValue(), "5");
-  await flow.nth(2).fill("12");
-  await flow.nth(3).focus();
-  assert.equal(await flow.nth(2).inputValue(), "12");
-  await flow.nth(2).focus();
-  await flow.nth(2).fill("10");
-  const faint = () => flow.evaluateAll((els) => els.filter((e) => getComputedStyle(e).color === "rgba(46, 196, 182, 0.55)").length);
-  assert.equal(await faint(), 5, "prefilled numbers in faint teal until the row is read");
-  assert.equal(await page.getByText("+ Add reading (25 L/s)").count(), 1);
+  assert.deepEqual(await flow.evaluateAll((els) => els.map((e) => e.value)), ["", "", "", "", ""], "no prefilled flows");
+  assert.equal(await page.locator('[aria-label=\'" Hg\']').count(), 0, "no \" Hg for hydrants");
+  assert.equal(await page.getByText("+ Add reading", { exact: true }).count(), 1);
+  for (const [i, v] of ["0", "5", "10"].entries()) await flow.nth(i).fill(v);
   const dis = page.locator('[aria-label="Discharge"]');
   for (const [i, v] of ["640", "585", "500"].entries()) await dis.nth(i).fill(v);
-  await page.locator("body").click({ position: { x: 5, y: 5 } });
-  assert.equal(await faint(), 2, "read rows aren't prefills any more");
   await page.fill('[aria-label="Demand flow"]', "10");
   await page.fill('[aria-label="Demand pressure"]', "350");
   await page.waitForTimeout(300);
@@ -208,24 +204,49 @@ test("a new hydrant test: flows prefilled in L/s, PASS / FAIL at the bottom, no 
   await page.fill('[aria-label="Demand pressure"]', "550");
   await page.waitForTimeout(300);
   assert.equal(await page.getByText("✕ FAIL").count(), 1);
-  // named Town main: graphed, never passed or failed
+  // a diesel pump gets RPM, an electric pump Amps
   await page.click('[aria-label="Supply 1: change name"]');
-  await page.click('[role="menuitem"]:has-text("Town main")');
-  await page.waitForTimeout(300);
-  assert.equal(await page.getByText("✕ FAIL").count(), 0);
-  assert.equal(await page.getByText("✓ PASS").count(), 0);
-  assert.equal(await page.getByText(/reference/i).count(), 0);
-  // full screen, sideways, with every column; Done (or back) closes it
+  await page.click('[role="menuitem"]:has-text("Electric pump")');
+  assert.equal(await page.locator('[aria-label="Amps"]').count(), 5);
+  assert.equal(await page.locator('[aria-label="RPM"]').count(), 0);
+  await page.click('[aria-label="Electric pump: change name"]');
+  await page.click('[role="menuitem"]:has-text("Diesel pump")');
+  assert.equal(await page.locator('[aria-label="RPM"]').count(), 5);
+  assert.equal(await page.locator('[aria-label="Amps"]').count(), 0);
+  // full screen, sideways, with the same columns; Done (or back) closes it.
+  // Turned clockwise, its left side keeps clear of the phone's status bar
+  // and its right side of the navigation buttons (as Capacitor reports them)
+  await page.evaluate(() => {
+    document.documentElement.style.setProperty("--safe-area-inset-top", "30px");
+    document.documentElement.style.setProperty("--safe-area-inset-bottom", "48px");
+  });
   await page.click('[aria-label="Full screen, sideways"]');
   await page.waitForTimeout(700);
   const wide = page.locator('[role="dialog"][aria-label="Readings, full screen"]');
+  const pad = await wide.evaluate((e) => [getComputedStyle(e).paddingLeft, getComputedStyle(e).paddingRight]);
+  assert.deepEqual(pad, ["46px", "64px"]);
+  await page.evaluate(() => {
+    document.documentElement.style.removeProperty("--safe-area-inset-top");
+    document.documentElement.style.removeProperty("--safe-area-inset-bottom");
+  });
   assert.equal(await wide.locator('[aria-label="RPM"]').count(), 5);
+  assert.equal(await wide.locator('[aria-label="Amps"]').count(), 0);
+  assert.equal(await wide.locator('[aria-label=\'" Hg\']').count(), 0);
   await wide.locator('[aria-label="RPM"]').first().fill("1920");
   await pressBack(page);
   await page.waitForTimeout(600);
   assert.equal(await wide.count(), 0);
   assert.ok(page.url().includes("/flow/"), "back closed the full screen, not the test");
   assert.equal(await page.locator('[aria-label="RPM"]').first().inputValue(), "1920");
+  // named Town main: graphed, never passed or failed
+  await page.click('[aria-label="Diesel pump: change name"]');
+  await page.click('[role="menuitem"]:has-text("Town main")');
+  await page.waitForTimeout(300);
+  assert.equal(await page.getByText("✕ FAIL").count(), 0);
+  assert.equal(await page.getByText("✓ PASS").count(), 0);
+  assert.equal(await page.getByText(/reference/i).count(), 0);
+  // RPM already read stays showing
+  assert.equal(await page.locator('[aria-label="RPM"]').count(), 5);
   // add a column in full screen: every row gets it; the upright view says it's there
   await page.click('[aria-label="Full screen, sideways"]');
   await page.waitForTimeout(700);

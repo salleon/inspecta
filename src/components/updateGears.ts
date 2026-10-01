@@ -1,5 +1,5 @@
 // The picture on the updating screen (design canvas UpdateGearsLive): two
-// meshed gears turning steadily, drawn into a 260 × 230 SVG and rendered to a
+// meshed gears turning steadily, drawn into a 300 × 230 SVG and rendered to a
 // looping video by scripts/render-animations (see AnimationVideo). The small
 // gear riding the progress bar is drawn live by UpdateScreen, so it follows
 // the real download.
@@ -34,7 +34,7 @@ const back = (x: number) => {
   return 1 + 2.7 * Math.pow(x - 1, 3) + 1.7 * Math.pow(x - 1, 2);
 };
 
-// a gear centred on 0,0: square teeth 9 deep around radius r
+// a gear centred on 0,0 (the earlier picture): square teeth 9 deep around radius r
 function gear(parent: Element, r: number, teeth: number, fill: string) {
   const g = el("g", {}, parent);
   let d = "";
@@ -90,25 +90,40 @@ export function mountGears(svg: SVGSVGElement): GearsUpdate {
   };
 }
 
-// the two main gears; a seamless loop every LOOP_S seconds
-export const MAIN_GEARS = { w: 260, h: 230 };
-const BIG = { r: 62, teeth: 14, x: 104, y: 98 };
-const SMALL = { r: 36, teeth: 9 };
-// pitch radii (half way up the teeth) touch, along a line 35° below level
-const PITCH = BIG.r + 4.5 + SMALL.r + 4.5;
-const SMALL_AT = { x: BIG.x + PITCH * Math.cos((35 * Math.PI) / 180), y: BIG.y + PITCH * Math.sin((35 * Math.PI) / 180) };
+// the two main gears, drawn as on the canvas board: chunky teeth with
+// sloped sides, a navy ring and a hub; a seamless loop every LOOP_S seconds
+export const MAIN_GEARS = { w: 300, h: 230 };
+const BIG = { r: 72, teeth: 16, x: 114, y: 99, fill: A };
+const SMALL = { r: 44, teeth: 10, x: 204, y: 154, fill: "#3f5a73" };
+const DEPTH = 10;
 // ten of the big gear's teeth per loop, so both gears are back where they started
 const LOOP_TURN = (10 * 360) / BIG.teeth;
 export const LOOP_S = 4;
+const SMALL_OFFSET = 10.1;
+
+function boardGear(parent: Element, r: number, teeth: number, fill: string) {
+  const g = el("g", {}, parent);
+  const pts: string[] = [];
+  for (let k = 0; k < teeth * 2; k++) {
+    const a0 = (Math.PI * 2 * k) / (teeth * 2);
+    const a1 = (Math.PI * 2 * (k + 1)) / (teeth * 2);
+    const R = k % 2 ? r - DEPTH : r;
+    for (const a of [a0 + 0.04, a1 - 0.04]) pts.push(`${(R * Math.cos(a)).toFixed(2)} ${(R * Math.sin(a)).toFixed(2)}`);
+  }
+  el("path", { d: `M${pts.join(" L")}Z`, fill }, g);
+  el("circle", { r: r * 0.42, fill: NAVY }, g);
+  el("circle", { r: r * 0.16, fill }, g);
+  return g;
+}
 
 // smallOffset: turns the small gear so its teeth sit in the big one's gaps
-export function mountMainGears(svg: SVGSVGElement, smallOffset = 29.7): (t: number) => void {
-  const big = gear(svg, BIG.r, BIG.teeth, A);
-  const small = gear(svg, SMALL.r, SMALL.teeth, "#3f5a73");
+export function mountMainGears(svg: SVGSVGElement, smallOffset = SMALL_OFFSET): (t: number) => void {
+  const big = boardGear(svg, BIG.r, BIG.teeth, BIG.fill);
+  const small = boardGear(svg, SMALL.r, SMALL.teeth, SMALL.fill);
   return (t) => {
     const a = (LOOP_TURN * (t % LOOP_S)) / LOOP_S;
     big.setAttribute("transform", `translate(${BIG.x} ${BIG.y}) rotate(${a})`);
     // meshed: the other way, faster by the ratio of teeth
-    small.setAttribute("transform", `translate(${SMALL_AT.x} ${SMALL_AT.y}) rotate(${(-a * BIG.teeth) / SMALL.teeth + smallOffset})`);
+    small.setAttribute("transform", `translate(${SMALL.x} ${SMALL.y}) rotate(${(-a * BIG.teeth) / SMALL.teeth + smallOffset})`);
   };
 }

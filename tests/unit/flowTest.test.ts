@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { flowOf, newFlowTest, sectionVerdicts, summary, verdict, chartSvg, renumber, nameOptions, SUPPLY_KINDS, blankRows, nextReading, hasData, isReference, lineShown, graphLines } from "../../src/lib/flowTest";
+import { flowOf, newFlowTest, sectionVerdicts, summary, verdict, chartSvg, renumber, nameOptions, SUPPLY_KINDS, blankRows, nextReading, hasData, flowUnitFor, pumpColumns, isReference, lineShown, graphLines } from "../../src/lib/flowTest";
 import type { FlowTest } from "../../src/db/types";
 
 const make = (over: Partial<FlowTest>): FlowTest => ({ ...newFlowTest("s1", "sprinkler"), id: "t", order: 0, createdAt: 0, updatedAt: 0, ...over });
@@ -54,18 +54,37 @@ test("the town main is graphed, dashed, but never passed or failed", () => {
   assert.match(chartSvg(t, 300, 200), /<polyline[^>]*stroke-dasharray/);
 });
 
-test("new tests come prefilled: sprinkler \" Hg 0-10, hydrant 0-20 L/s; + Add reading carries on the steps", () => {
-  assert.deepEqual(blankRows("sprinkler").map((r) => r.hg), ["0", "2", "4", "6", "8", "10"]);
+test("new tests start empty, with no suggested steps; + Add reading adds an empty row", () => {
+  assert.deepEqual(blankRows("sprinkler").map((r) => [r.hg, r.flow]), Array(6).fill(["", ""]));
   const h = blankRows("hydrant");
-  assert.deepEqual(h.map((r) => [r.flow, r.flowUnit]), [["0", "sec"], ["5", "sec"], ["10", "sec"], ["15", "sec"], ["20", "sec"]]);
+  assert.deepEqual(h.map((r) => [r.flow, r.flowUnit]), Array(5).fill(["", "sec"]));
   const ht = { ...newFlowTest("s1", "hydrant"), id: "h", order: 0, createdAt: 0, updatedAt: 0 } as FlowTest;
-  assert.deepEqual([nextReading(ht, h).flow, nextReading(ht, h).flowUnit], ["25", "sec"]);
-  assert.equal(nextReading(make({}), blankRows("sprinkler")).hg, "12");
-  // a row holding only its step is still a prefill: off the graph
-  assert.equal(hasData(h[0]), false);
-  assert.equal(hasData({ ...h[0], dis: "640" }), true);
-  const pre = make({ demand: [], sections: [{ name: "Electric pump", rows: blankRows("sprinkler") }] });
+  assert.deepEqual([nextReading(ht).flow, nextReading(ht).flowUnit], ["", "sec"]);
+  assert.equal(nextReading(make({})).hg, "");
+  assert.equal(flowUnitFor(ht), "sec");
+  assert.equal(flowUnitFor(make({})), "min");
+  // a row with only its " Hg or flow typed isn't a reading: off the graph
+  assert.equal(hasData({ ...h[0], flow: "5" }), false);
+  assert.equal(hasData({ ...h[0], flow: "5", dis: "640" }), true);
+  const pre = make({ demand: [], sections: [{ name: "Electric pump", rows: blankRows("sprinkler").map((r, n) => ({ ...r, hg: String(n * 2) })) }] });
   assert.equal(chartSvg(pre, 300, 200).match(/<polyline/g), null);
+});
+
+test("RPM for a diesel pump, Amps for an electric pump, neither for town main (unless already read)", () => {
+  const t = make({
+    sections: [
+      { name: "Town main", rows: [] },
+      { name: "Electric pump", rows: [] },
+      { name: "Diesel pump 2", rows: [] },
+      { name: "Booster pump", rows: [{ hg: "", flow: "", dis: "", suc: "", amps: "12" }] },
+    ],
+  });
+  assert.deepEqual([0, 1, 2, 3].map((i) => pumpColumns(t, i)), [
+    { rpm: false, amps: false },
+    { rpm: false, amps: true },
+    { rpm: true, amps: false },
+    { rpm: false, amps: true },
+  ]);
 });
 
 test("the graph draws a curve per tested supply and the demand diamonds", () => {

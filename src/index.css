@@ -1,5 +1,12 @@
 
 :root {
+  /* the phone's status bar, navigation buttons and camera cut-out: Android
+     WebViews give these as env(), or Capacitor puts them in --safe-area-inset-*
+     (older WebViews), so take whichever is set */
+  --sa-top: max(env(safe-area-inset-top, 0px), var(--safe-area-inset-top, 0px));
+  --sa-right: max(env(safe-area-inset-right, 0px), var(--safe-area-inset-right, 0px));
+  --sa-bottom: max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 0px));
+  --sa-left: max(env(safe-area-inset-left, 0px), var(--safe-area-inset-left, 0px));
   --bg: #071b2c;
   --panel: #0e2740;
   --panel-2: #143452;
@@ -406,8 +413,12 @@ button:active:not(:disabled) {
   transform: rotateY(180deg);
 }
 
-/* flow test readings full screen: twists a quarter-turn to lie sideways */
+/* flow test readings full screen: twists a quarter-turn to lie sideways.
+   Turned clockwise, its left edge is the phone's top (status bar) and its
+   right edge the phone's bottom (navigation buttons), so each side keeps
+   clear of the bar that ends up next to it */
 .wide-turn {
+  padding: calc(10px + var(--sa-right)) calc(16px + var(--sa-bottom)) calc(10px + var(--sa-left)) calc(16px + var(--sa-top));
   transform: translate(-50%, -50%) rotate(90deg);
   animation: wideTwistIn 560ms cubic-bezier(0.25, 0.8, 0.25, 1) both;
 }
@@ -415,6 +426,7 @@ button:active:not(:disabled) {
   animation: wideTwistOut 380ms cubic-bezier(0.5, 0, 0.75, 0.2) both;
 }
 .wide-flat {
+  padding: calc(10px + var(--sa-top)) calc(16px + var(--sa-right)) calc(10px + var(--sa-bottom)) calc(16px + var(--sa-left));
   transform: translate(-50%, -50%);
   animation: wideFlatIn 260ms ease-out both;
 }

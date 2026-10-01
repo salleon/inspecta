@@ -7,6 +7,22 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Full screen readings clear of the phone's bars.** Turned sideways, the
+  readings were partly under the status bar (left) and the navigation buttons
+  (right, over + add column and the ✕ remove buttons). Each side now keeps
+  clear of the bar next to it.
+- **Simpler readings table.** Sprinkler (and combined) tests: the first
+  column switches between " Hg and L/min (no L/s). Hydrant tests: just the
+  flow in L/s, with no " Hg column, in both views. RPM shows only for a diesel
+  pump and Amps only for an electric (or jockey) pump; town main and other
+  supplies have neither (a column already holding readings stays). The
+  + RPM & Amps button and the flow unit switches are gone.
+- **No prefilled readings.** New tests and + Add reading start with empty
+  rows, with no suggested " Hg or L/s steps.
+- **Update screen gears match the canvas.** The two turning gears are now
+  drawn as on the board: chunky sloped teeth (16 and 10), a navy ring and a
+  hub.
+
 - **Matching the canvas more closely.** New site's AFSS / Projects / Flow
   testing buttons are now outlined, with the picked one a teal tint and teal
   outline (not solid teal). Each site on the home page has a small coloured

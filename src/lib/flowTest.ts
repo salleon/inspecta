@@ -99,9 +99,8 @@ export function verdict(test: FlowTest, rows: FlowReading[], unit: FlowUnit = "m
     : { text: `Below demand at ${showFlow(worst!.d.x, unit)}${u} (${Math.round(worst!.m)} kPa)`, colour: FAIL_COLOUR, pass: false };
 }
 
-// A reading counts once something has been read on it. The step column
-// (" Hg, or a hydrant's flow) comes prefilled, so a row holding only that
-// is still a prefill: shown dimmed, and left off the graph and the Excel.
+// A reading counts once something has been read on it: a row with only
+// its " Hg or flow typed is left off the graph and the Excel.
 export const hasData = (r: FlowReading) => [r.dis, r.suc, r.rpm ?? "", r.amps ?? "", ...(r.extra ?? [])].some((v) => v.trim() !== "");
 
 // an added column's heading, with its unit
@@ -168,16 +167,30 @@ export const KIND_HINT: Record<FlowKind, string> = {
   blank: "Your own columns and rows, all editable, for anything that doesn't fit",
 };
 
-// the prefilled steps: " Hg for a sprinkler pump, L/s for a hydrant
-// (around the duty, usually 10 L/s), " Hg for a combined system
-const HG_SPRINKLER = ["0", "2", "4", "6", "8", "10"];
-const LS_HYDRANT = ["0", "5", "10", "15", "20"];
-const HG_COMBINED = ["0", "5", "10", "15", "20"];
-
+// New readings start empty, ready for whatever the inspector types (no
+// suggested steps): six rows for a sprinkler pump, five otherwise. A
+// hydrant's flows are in L/s.
 export function blankRows(kind: FlowKind): FlowReading[] {
-  if (kind === "hydrant") return LS_HYDRANT.map((flow) => ({ hg: "", flow, flowUnit: "sec", dis: "", suc: "" }));
-  const hgs = kind === "combined" ? HG_COMBINED : HG_SPRINKLER;
-  return hgs.map((hg) => ({ hg, flow: "", dis: "", suc: "" }));
+  const n = kind === "sprinkler" ? 6 : 5;
+  return Array.from({ length: n }, () => blankReading(kind));
+}
+
+const blankReading = (kind: FlowKind): FlowReading => (kind === "hydrant" ? { hg: "", flow: "", flowUnit: "sec", dis: "", suc: "" } : { hg: "", flow: "", dis: "", suc: "" });
+
+// The flow unit a test is read in: L/s for hydrants, L/min otherwise.
+export const flowUnitFor = (test: Pick<FlowTest, "kind">): FlowUnit => (test.kind === "hydrant" ? "sec" : "min");
+
+// The pump column a supply has: RPM for a diesel pump, Amps for an electric
+// (or jockey) pump, neither for town main or anything else. A column that
+// already holds readings stays, whatever the supply is called.
+export function pumpColumns(test: Pick<FlowTest, "kind" | "sections">, index: number): { rpm: boolean; amps: boolean } {
+  const s = test.sections[index];
+  const name = s?.name ?? "";
+  const rows = s?.rows ?? [];
+  return {
+    rpm: /diesel/i.test(name) || rows.some((r) => (r.rpm ?? "").trim() !== ""),
+    amps: /electric|jockey/i.test(name) || rows.some((r) => (r.amps ?? "").trim() !== ""),
+  };
 }
 
 export function newFlowTest(siteId: string, kind: FlowKind): Omit<FlowTest, "id" | "order" | "createdAt" | "updatedAt"> {
@@ -244,18 +257,8 @@ export function nameOptions(test: FlowTest, index: number): NameOption[] {
   });
 }
 
-// the next reading's step: " Hg two (sprinkler) or five (combined) on from
-// the last, or a hydrant's flow 5 L/s on
-export function nextReading(test: FlowTest, rows: FlowReading[]): FlowReading {
-  const prev = rows[rows.length - 1];
-  if (test.kind === "hydrant") {
-    const ls = prev ? lmin(prev.flow, prev.flowUnit) : null;
-    return { hg: "", flow: ls === null ? "" : String(Math.round(ls / 6 + 50) / 10), flowUnit: "sec", dis: "", suc: "" };
-  }
-  const last = prev ? num(prev.hg) : null;
-  const step = test.kind === "combined" ? 5 : 2;
-  return { hg: last === null ? "" : String(last + step), flow: "", dis: "", suc: "" };
-}
+// + Add reading: an empty row
+export const nextReading = (test: Pick<FlowTest, "kind">): FlowReading => blankReading(test.kind);
 
 // ---- the graph ----
 

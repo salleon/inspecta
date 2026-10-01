@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties, type InputHTMLAttributes, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import type { FlowTest as FlowTestRecord, FlowReading, FlowUnit, Site } from "../db/types";
 import { deleteFlowTest, getFlowTest, getSite, saveFlowTest } from "../db/db";
@@ -10,12 +10,13 @@ import {
   type LineKind,
   extraHeading,
   flowOf,
-  hasData,
+  flowUnitFor,
   isReference,
   lmin,
   nextReading,
   NEUTRAL_COLOUR,
   PASS_COLOUR,
+  pumpColumns,
   REFERENCE_COLOUR,
   sectionColour,
   sectionName,
@@ -60,8 +61,6 @@ const cellStyle = (font: number, auto = false): CSSProperties => ({
 });
 const addButton: CSSProperties = { width: "100%", padding: "10px 0", borderRadius: 10, background: "none", border: "1px dashed var(--border-strong)", color: "var(--accent)", fontSize: 13, fontWeight: 800 };
 const xButton: CSSProperties = { width: 26, height: 26, borderRadius: "50%", border: "none", background: "none", color: "var(--muted-2)", fontSize: 13, padding: 0 };
-// a prefilled step (" Hg, or a hydrant's L/s) on a row with nothing read yet
-const prefillStyle: CSSProperties = { color: "rgba(46,196,182,.55)", fontWeight: 600 };
 const resultBox = (colour: string): CSSProperties => ({
   display: "inline-flex",
   alignItems: "center",
@@ -76,32 +75,6 @@ const resultBox = (colour: string): CSSProperties => ({
   letterSpacing: "0.06em",
   whiteSpace: "nowrap",
 });
-
-// a cell for the prefilled step column: the number in faint teal until
-// something is read on its row. Tapping a prefilled number clears it, ready
-// to type; leave it without typing (or empty) and the prefill comes back.
-function StepCell({ prefill, className, style, value, onValue, ...input }: { prefill: boolean; className?: string; style: CSSProperties; value: string; onValue: (v: string) => void } & Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "onChange">) {
-  // the prefill being stood in for while it's tapped
-  const [held, setHeld] = useState<string | null>(null);
-  const cleared = held !== null && value === held;
-  return (
-    <div className={className} style={{ position: "relative", minWidth: 0 }}>
-      <input
-        {...input}
-        inputMode="decimal"
-        value={cleared ? "" : value}
-        placeholder={cleared ? held : undefined}
-        onFocus={() => setHeld(prefill && value !== "" ? value : null)}
-        onChange={(e) => onValue(e.target.value)}
-        onBlur={() => {
-          if (held !== null && value === "") onValue(held);
-          setHeld(null);
-        }}
-        style={{ ...style, ...(prefill && !cleared ? prefillStyle : null) }}
-      />
-    </div>
-  );
-}
 
 // PASS / FAIL against the demand (duty) points (none for town main)
 function ResultBox({ test, index, unit }: { test: FlowTestRecord; index: number; unit: FlowUnit }) {
@@ -151,9 +124,7 @@ export default function FlowTest() {
   const [site, setSite] = useState<Site | null>(null);
   const [test, setTest] = useState<FlowTestRecord | null>(null);
   const [sel, setSel] = useState(0); // the supply / pump being looked at
-  const [unit, setUnit] = useState<FlowUnit>("min");
-  const [more, setMore] = useState(false); // RPM and Amps columns
-  const [flowSide, setFlowSide] = useState(false); // first column shows Flow, not " Hg
+  const [flowSide, setFlowSide] = useState(false); // first column shows L/min, not " Hg
   const [wide, setWide] = useState(false); // readings full screen, sideways
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [confirmingRemove, setConfirmingRemove] = useState(false);
@@ -184,9 +155,6 @@ export default function FlowTest() {
       }
       setSite(s ?? null);
       setTest(t);
-      setMore(t.sections.some((sec) => sec.rows.some((r) => r.rpm || r.amps)));
-      // hydrants are read in L/s
-      if (t.kind === "hydrant") setUnit("sec");
     })();
     return () => {
       cancelled = true;
@@ -204,6 +172,8 @@ export default function FlowTest() {
   }, [test !== null]);
 
   if (!test || !siteId) return null;
+  // hydrants are read in L/s, everything else in L/min
+  const unit: FlowUnit = flowUnitFor(test);
 
   function change(fn: (t: FlowTestRecord) => void) {
     setTest((prev) => {
@@ -383,34 +353,33 @@ export default function FlowTest() {
   // the key lists what's drawn; suction shares its supply's colour
   const legend = lines.filter((l) => l.kind === "dis" && lineShown(test, "dis", l.index)).map((l) => l.index);
   const sucShown = lines.some((l) => l.kind === "suc" && lineShown(test, "suc", l.index));
-  // hydrants: the first column is the flow (typed, prefilled in L/s). Others:
-  // it flips between " Hg and Flow (canvas option D). + RPM & Amps adds two columns (P4)
-  const gridCols = more ? "58px 1fr 1fr 1fr 1fr 22px" : "70px 1fr 1fr 26px";
+  // The first column: a hydrant's flow in L/s; for the others it flips
+  // between " Hg and L/min (worked out from " Hg, or typed). Then discharge,
+  // suction, and RPM for a diesel pump or Amps for an electric one.
+  const pumps = pumpColumns(test, current);
+  const nPump = Number(pumps.rpm) + Number(pumps.amps);
+  const gridCols = `70px 1fr 1fr${" 1fr".repeat(nPump)} 26px`;
   const flipTo = flowSide ? "rotateY(180deg)" : "none";
-  const gap = more ? 4 : 6;
-  const font = more ? 12 : 14;
+  const gap = nPump > 1 ? 4 : 6;
+  const font = nPump > 1 ? 12 : 14;
   const updateRow = (i: number, fn: (r: FlowReading) => void) => change((t) => fn(t.sections[current].rows[i]));
   const kindNote = { sprinkler: "Goes into the site's Excel as a SPRINKLER tab", hydrant: "Goes into the site's Excel as a HYDRANT tab", combined: "Goes into the site's Excel as a Combined System tab" }[test.kind];
   const unitLabel = unit === "sec" ? "L/s" : "L/min";
-  const toggleUnit = () => setUnit(unit === "sec" ? "min" : "sec");
-  const next = nextReading(test, rows);
-  const nextLabel = hydrant ? (next.flow ? `${shown(next.flow, next.flowUnit)} ${unitLabel}` : "") : next.hg ? `${next.hg} " Hg` : "";
-  const addReading = () => change((t) => void t.sections[current].rows.push(nextReading(t, t.sections[current].rows)));
+  const addReading = () => change((t) => void t.sections[current].rows.push(nextReading(t)));
 
-  // the cells, shared by the card and the full-screen view
-  const hgCell = (r: FlowReading, i: number, f: number, props: { className?: string; tabIndex?: number } = {}) => (
-    <StepCell {...props} prefill={!hydrant && !hasData(r)} style={cellStyle(f)} value={r.hg} aria-label='" Hg' onValue={(v) => updateRow(i, (x) => void (x.hg = v))} />
+  const hgCell = (r: FlowReading, i: number, f: number, props: { tabIndex?: number } = {}) => (
+    <input {...props} style={cellStyle(f)} inputMode="decimal" value={r.hg} aria-label='" Hg' onChange={(e) => updateRow(i, (x) => void (x.hg = e.target.value))} />
   );
   const flowCell = (r: FlowReading, i: number, f: number, props: { className?: string; tabIndex?: number } = {}) => {
     if (hydrant)
       return (
-        <StepCell
+        <input
           {...props}
-          prefill={!hasData(r)}
           style={cellStyle(f)}
+          inputMode="decimal"
           value={shown(r.flow, r.flowUnit)}
           aria-label="Flow"
-          onValue={(v) => updateRow(i, (x) => void Object.assign(x, { flow: v, flowUnit: unit }))}
+          onChange={(e) => updateRow(i, (x) => void Object.assign(x, { flow: e.target.value, flowUnit: unit }))}
         />
       );
     const auto = r.flow === "";
@@ -418,7 +387,7 @@ export default function FlowTest() {
     return (
       <input
         {...props}
-        style={{ ...cellStyle(f, auto && autoFlow !== null), borderColor: "rgba(46,196,182,.35)", ...(auto && !hasData(r) ? { color: "#3f5a73" } : null) }}
+        style={{ ...cellStyle(f, auto && autoFlow !== null), borderColor: "rgba(46,196,182,.35)" }}
         inputMode="decimal"
         value={auto ? show(autoFlow) : shown(r.flow, r.flowUnit)}
         aria-label="Flow"
@@ -433,6 +402,50 @@ export default function FlowTest() {
       />
     );
   };
+  const headFlip: CSSProperties = { ...th, border: "none", background: "none", padding: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 };
+  const stepHead = hydrant ? (
+    <div style={th}>
+      Flow
+      <br />
+      L/s
+    </div>
+  ) : (
+    <div className="flip">
+      <div className="flip-in" style={{ transform: flipTo }}>
+        <button onClick={() => setFlowSide(true)} aria-label="Show flow in L/min" style={headFlip}>
+          " Hg
+          <span style={unitPill}>⇄ L/min</span>
+        </button>
+        <button className="back" onClick={() => setFlowSide(false)} aria-label='Show " Hg' style={headFlip}>
+          L/min
+          <span style={unitPill}>⇄ " Hg</span>
+        </button>
+      </div>
+    </div>
+  );
+  const stepCell = (r: FlowReading, i: number, f: number) =>
+    hydrant ? (
+      flowCell(r, i, f)
+    ) : (
+      <div className="flip">
+        <div className="flip-in" style={{ transform: flipTo, transitionDelay: `${i * 45}ms` }}>
+          {hgCell(r, i, f, { tabIndex: flowSide ? -1 : 0 })}
+          {flowCell(r, i, f, { className: "back", tabIndex: flowSide ? 0 : -1 })}
+        </div>
+      </div>
+    );
+  const pumpHeads = (
+    <>
+      {pumps.rpm && <div style={th}>RPM</div>}
+      {pumps.amps && <div style={th}>Amps</div>}
+    </>
+  );
+  const pumpCells = (r: FlowReading, i: number, style: CSSProperties) => (
+    <>
+      {pumps.rpm && <input style={style} inputMode="decimal" value={r.rpm ?? ""} aria-label="RPM" onChange={(e) => updateRow(i, (x) => void (x.rpm = e.target.value))} />}
+      {pumps.amps && <input style={style} inputMode="decimal" value={r.amps ?? ""} aria-label="Amps" onChange={(e) => updateRow(i, (x) => void (x.amps = e.target.value))} />}
+    </>
+  );
   const removeRow = (i: number) => change((t) => void t.sections[current].rows.splice(i, 1));
 
   return shell(
@@ -511,21 +524,6 @@ export default function FlowTest() {
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <div style={{ ...lbl, flexGrow: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Readings · {sectionName(test, current)}</div>
           <button
-            onClick={() => setMore(!more)}
-            style={{
-              flexShrink: 0,
-              padding: "4px 10px",
-              borderRadius: 999,
-              border: `1px solid ${more ? "rgba(46,196,182,.5)" : "var(--border-strong)"}`,
-              background: more ? "rgba(46,196,182,.12)" : "none",
-              color: more ? "var(--accent)" : "var(--muted)",
-              fontSize: 11,
-              fontWeight: 800,
-            }}
-          >
-            {more ? "− RPM & Amps" : "+ RPM & Amps"}
-          </button>
-          <button
             onClick={() => setWide(true)}
             aria-label="Full screen, sideways"
             style={{ flexShrink: 0, height: 28, display: "flex", alignItems: "center", gap: 5, padding: "0 9px", borderRadius: 9, border: "1px solid rgba(46,196,182,.55)", background: "rgba(46,196,182,.14)", color: "var(--accent)", fontSize: 11.5, fontWeight: 800 }}
@@ -535,31 +533,7 @@ export default function FlowTest() {
           </button>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: gridCols, gap, alignItems: "end" }}>
-          {hydrant ? (
-            <div style={{ ...th, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
-              Flow
-              <button style={{ ...unitPill, marginTop: 0 }} onClick={toggleUnit} aria-label="Change flow unit">
-                {unitLabel} ⇄
-              </button>
-            </div>
-          ) : (
-            <div className="flip">
-              <div className="flip-in" style={{ transform: flipTo }}>
-                <button onClick={() => setFlowSide(true)} aria-label="Show flow" style={{ ...th, border: "none", background: "none", padding: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
-                  " Hg
-                  <span style={unitPill}>⇄ Flow</span>
-                </button>
-                <div className="back" style={{ ...th, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
-                  <button onClick={() => setFlowSide(false)} aria-label='Show " Hg' style={{ ...th, border: "none", background: "none", padding: 0 }}>
-                    Flow ⇄
-                  </button>
-                  <button style={{ ...unitPill, marginTop: 0 }} onClick={toggleUnit} aria-label="Change flow unit">
-                    {unitLabel} ⇄
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+          {stepHead}
           <div style={th}>
             Discharge
             <br />
@@ -570,33 +544,22 @@ export default function FlowTest() {
             <br />
             kPa
           </div>
-          {more && <div style={th}>RPM</div>}
-          {more && <div style={th}>Amps</div>}
+          {pumpHeads}
           <div />
         </div>
         {rows.map((r, i) => (
           <div key={i} style={{ display: "grid", gridTemplateColumns: gridCols, gap, alignItems: "center" }}>
-            {hydrant ? (
-              flowCell(r, i, font)
-            ) : (
-              <div className="flip">
-                <div className="flip-in" style={{ transform: flipTo, transitionDelay: `${i * 45}ms` }}>
-                  {hgCell(r, i, font, { tabIndex: flowSide ? -1 : 0 })}
-                  {flowCell(r, i, font, { className: "back", tabIndex: flowSide ? 0 : -1 })}
-                </div>
-              </div>
-            )}
+            {stepCell(r, i, font)}
             <input style={cellStyle(font)} inputMode="decimal" value={r.dis} aria-label="Discharge" onChange={(e) => updateRow(i, (x) => void (x.dis = e.target.value))} />
             <input style={cellStyle(font)} inputMode="decimal" value={r.suc} aria-label="Suction" onChange={(e) => updateRow(i, (x) => void (x.suc = e.target.value))} />
-            {more && <input style={cellStyle(font)} inputMode="decimal" value={r.rpm ?? ""} aria-label="RPM" onChange={(e) => updateRow(i, (x) => void (x.rpm = e.target.value))} />}
-            {more && <input style={cellStyle(font)} inputMode="decimal" value={r.amps ?? ""} aria-label="Amps" onChange={(e) => updateRow(i, (x) => void (x.amps = e.target.value))} />}
+            {pumpCells(r, i, cellStyle(font))}
             <button style={xButton} aria-label="Remove reading" onClick={() => removeRow(i)}>
               ✕
             </button>
           </div>
         ))}
         <button style={addButton} onClick={addReading}>
-          + Add reading{nextLabel && <span style={{ color: "var(--muted-2)", fontWeight: 700 }}> ({nextLabel})</span>}
+          + Add reading
         </button>
         {!!test.extraCols?.length && (
           <div style={{ fontSize: 11.5, color: "var(--muted)", textAlign: "center" }}>
@@ -604,10 +567,8 @@ export default function FlowTest() {
           </div>
         )}
         <div style={{ fontSize: 11.5, color: "var(--muted-2)", lineHeight: 1.45 }}>
-          {hydrant
-            ? "Flows start prefilled at 0, 5, 10, 15, 20 L/s; change any of them. Rows with nothing read stay off the graph and the Excel. "
-            : 'The " Hg steps start prefilled; change any of them. Flow fills in from " Hg; tap ⇄ Flow to see it or type your own. '}
-          Tap the unit under Flow to switch between L/min and L/s.
+          {hydrant ? "Flows in L/s. " : 'Flow in L/min works out from " Hg; tap ⇄ L/min to see it or type your own. '}
+          {test.kind === "combined" ? "RPM shows for diesel pumps, Amps for electric." : "RPM shows for a diesel pump, Amps for an electric pump."}
         </div>
       </div>
 
@@ -615,21 +576,16 @@ export default function FlowTest() {
         <WideReadings
           test={test}
           current={current}
-          unit={unit}
           onSelect={setSel}
-          onUnit={toggleUnit}
-          onClose={() => {
-            setWide(false);
-            // RPM or Amps typed full screen: keep those columns showing
-            if (test.sections.some((x) => x.rows.some((r) => r.rpm || r.amps))) setMore(true);
-          }}
-          hgCell={hgCell}
-          flowCell={flowCell}
+          onClose={() => setWide(false)}
+          stepHead={stepHead}
+          stepCell={stepCell}
+          pumpHeads={pumpHeads}
+          pumpCells={pumpCells}
           updateRow={updateRow}
           removeRow={removeRow}
           addReading={addReading}
           onColumns={(fn) => change(fn)}
-          nextLabel={nextLabel}
           verdictLine={
             isReference(test, current)
               ? null
@@ -662,10 +618,7 @@ export default function FlowTest() {
         <div style={lbl}>Demand points</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 26px", gap: 6 }}>
           <div style={th}>
-            Flow{" "}
-            <button style={unitPill} onClick={() => setUnit(unit === "sec" ? "min" : "sec")} aria-label="Change flow unit">
-              {unit === "sec" ? "L/s" : "L/min"} ⇄
-            </button>
+            Flow {unitLabel}
           </div>
           <div style={th}>Pressure kPa</div>
           <div />
@@ -895,42 +848,38 @@ function TurnIcon() {
   );
 }
 
-type CellFn = (r: FlowReading, i: number, f: number) => ReactNode;
-
-// The readings full screen (canvas FlowWide / FlowPrefill): on an upright
-// phone it twists a quarter-turn to lie sideways, so every column is out
-// at once, with room to type. Sprinkler / combined: Flow, " Hg, Discharge,
-// Suction, RPM, Amps. Hydrant: Flow, " Hg (optional), then the same.
-// Done or the back button twists it back; everything is already saved.
+// The readings full screen (canvas FlowWide): on an upright phone it twists
+// a quarter-turn to lie sideways, with room to type and to add columns. The
+// same columns as the card (" Hg ⇄ L/min, or a hydrant's L/s; Discharge;
+// Suction; RPM or Amps), then any added ones. Done or the back button twists
+// it back; everything is already saved.
 function WideReadings({
   test,
   current,
-  unit,
   onSelect,
-  onUnit,
   onClose,
-  hgCell,
-  flowCell,
+  stepHead,
+  stepCell,
+  pumpHeads,
+  pumpCells,
   updateRow,
   removeRow,
   addReading,
   onColumns,
-  nextLabel,
   verdictLine,
 }: {
   test: FlowTestRecord;
   current: number;
-  unit: FlowUnit;
   onSelect: (i: number) => void;
-  onUnit: () => void;
   onClose: () => void;
-  hgCell: CellFn;
-  flowCell: CellFn;
+  stepHead: ReactNode;
+  stepCell: (r: FlowReading, i: number, f: number) => ReactNode;
+  pumpHeads: ReactNode;
+  pumpCells: (r: FlowReading, i: number, style: CSSProperties) => ReactNode;
   updateRow: (i: number, fn: (r: FlowReading) => void) => void;
   removeRow: (i: number) => void;
   addReading: () => void;
   onColumns: (fn: (t: FlowTestRecord) => void) => void;
-  nextLabel: string;
   verdictLine: { colour: string; text: string } | null; // none for town main
 }) {
   // the add / edit column box: null closed, -1 adding, else the column
@@ -947,14 +896,12 @@ function WideReadings({
     else close();
     return true;
   });
-  const hydrant = test.kind === "hydrant";
   const rows = test.sections[current].rows;
   const extras = test.extraCols ?? [];
-  const extraFr = extras.map(() => " 1fr").join("");
-  const cols = (hydrant ? "1.2fr 64px 1fr 1fr 1fr 1fr" : "0.95fr 1.1fr 1fr 1fr 1fr 1fr") + extraFr + " 28px";
+  const pumps = pumpColumns(test, current);
+  const cols = "1fr 1fr 1fr" + " 1fr".repeat(Number(pumps.rpm) + Number(pumps.amps) + extras.length) + " 28px";
   const headBtn: CSSProperties = { ...th, position: "relative", border: "1px dashed #2e6a8e", background: "#0b2238", borderRadius: 7, padding: "3px 2px", color: "var(--text)" };
   const pump: CSSProperties = { ...cellStyle(15), borderColor: "rgba(245,165,92,.4)" };
-  const unitLabel = unit === "sec" ? "L/s" : "L/min";
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 40 }}>
       <div className={closing ? "wide-dim out" : "wide-dim"} onClick={close} style={{ position: "absolute", inset: 0, background: "rgba(3,13,22,.78)" }} />
@@ -969,7 +916,6 @@ function WideReadings({
           width: turn ? "100vh" : "100vw",
           height: turn ? "100vw" : "100vh",
           boxSizing: "border-box",
-          padding: "calc(10px + env(safe-area-inset-top)) 16px 10px",
           background: "var(--panel)",
           display: "flex",
           flexDirection: "column",
@@ -1000,21 +946,7 @@ function WideReadings({
           </button>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: cols, gap: 8, alignItems: "end", flexShrink: 0 }}>
-          <div style={{ ...th, display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-            Flow
-            <button style={{ ...unitPill, marginTop: 0 }} onClick={onUnit} aria-label="Change flow unit">
-              {unitLabel} ⇄
-            </button>
-          </div>
-          <div style={th}>
-            " Hg
-            {hydrant && (
-              <>
-                <br />
-                <span style={{ color: "var(--muted-2)" }}>optional</span>
-              </>
-            )}
-          </div>
+          {stepHead}
           <div style={th}>
             Discharge
             <br />
@@ -1025,8 +957,7 @@ function WideReadings({
             <br />
             kPa
           </div>
-          <div style={th}>RPM</div>
-          <div style={th}>Amps</div>
+          {pumpHeads}
           {extras.map((c, j) => (
             <button key={j} style={headBtn} aria-label={`Edit column ${c.name}`} onClick={() => setColEdit(j)}>
               {c.name}
@@ -1050,16 +981,10 @@ function WideReadings({
         <div className="wide-rows" style={{ flexGrow: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: 5, paddingTop: 6 }}>
           {rows.map((r, i) => (
             <div key={i} style={{ display: "grid", gridTemplateColumns: cols, gap: 8, alignItems: "center" }}>
-              {flowCell(r, i, 15)}
-              {hydrant ? (
-                <input style={cellStyle(15)} inputMode="decimal" value={r.hg} aria-label='" Hg' onChange={(e) => updateRow(i, (x) => void (x.hg = e.target.value))} />
-              ) : (
-                hgCell(r, i, 15)
-              )}
+              {stepCell(r, i, 15)}
               <input style={cellStyle(15)} inputMode="decimal" value={r.dis} aria-label="Discharge" onChange={(e) => updateRow(i, (x) => void (x.dis = e.target.value))} />
               <input style={cellStyle(15)} inputMode="decimal" value={r.suc} aria-label="Suction" onChange={(e) => updateRow(i, (x) => void (x.suc = e.target.value))} />
-              <input style={pump} inputMode="decimal" value={r.rpm ?? ""} aria-label="RPM" onChange={(e) => updateRow(i, (x) => void (x.rpm = e.target.value))} />
-              <input style={pump} inputMode="decimal" value={r.amps ?? ""} aria-label="Amps" onChange={(e) => updateRow(i, (x) => void (x.amps = e.target.value))} />
+              {pumpCells(r, i, pump)}
               {extras.map((c, j) => (
                 <input
                   key={j}
@@ -1083,10 +1008,10 @@ function WideReadings({
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 14, flexShrink: 0 }}>
           <button style={{ ...addButton, width: 240, flexShrink: 0 }} onClick={addReading}>
-            + Add reading{nextLabel && <span style={{ color: "var(--muted-2)", fontWeight: 700 }}> ({nextLabel})</span>}
+            + Add reading
           </button>
           <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: 800, color: verdictLine?.colour }}>{verdictLine && `● ${verdictLine.text}`}</div>
-          {ResultBox({ test, index: current, unit })}
+          {ResultBox({ test, index: current, unit: flowUnitFor(test) })}
         </div>
         {colEdit !== null && (
           <ColumnBox

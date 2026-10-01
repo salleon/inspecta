@@ -27,7 +27,7 @@ const CLIPS = [
   // loaders: one run from 0 to 100% per loop, fading out and in at the seam
   ...["conveyor", "sheet", "zip", "box"].map((art) => ({ name: art, w: 240, h: 220, seconds: 6, kind: "loader", art, pad: [100, 30, 20, 30] })),
   // updating screen: the two main gears, one seamless loop (updateGears LOOP_S)
-  { name: "update-gears", w: 260, h: 230, seconds: 4, kind: "gears", pad: [10, 10, 10, 10] },
+  { name: "update-gears", w: 300, h: 230, seconds: 4, kind: "gears", pad: [10, 10, 10, 10] },
 ];
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "animations-"));

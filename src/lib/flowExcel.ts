@@ -230,7 +230,7 @@ function fillSheet(wb: Workbook, tplWb: Workbook, L: Layout, test: FlowTest, sit
 
   for (const { s, i } of sections) {
     const top = out;
-    // rows still holding only the prefilled step aren't readings
+    // rows with only their " Hg or flow typed aren't readings
     const readings = s.rows.filter(hasData);
     const dataRows = Math.max(L.dataRows, readings.length);
     // name and heading rows, the readings (extra ones styled like the last), then the gap

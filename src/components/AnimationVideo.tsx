@@ -13,7 +13,7 @@ import updateGears from "../assets/animations/update-gears.webm";
 export type Animation = "conveyor" | "sheet" | "zip" | "box" | "update-gears";
 
 const LOADER = { w: 240, h: 220, pad: [100, 30, 20, 30] };
-const GEARS = { w: 260, h: 230, pad: [10, 10, 10, 10] };
+const GEARS = { w: 300, h: 230, pad: [10, 10, 10, 10] };
 const VIDEOS: Record<Animation, { src: string; w: number; h: number; pad: number[] }> = {
   conveyor: { src: conveyor, ...LOADER },
   sheet: { src: sheet, ...LOADER },
