@@ -16,6 +16,7 @@ import logo from "../assets/logo.png";
 import { getInspectorName, setInspectorName } from "../lib/profile";
 import { setConverterTool, useConverterTool } from "../lib/settings";
 import Switch from "../components/Switch";
+import SiteKindIcon from "../components/SiteKindIcon";
 
 interface SiteRow extends Site {
   findings: number;
@@ -141,11 +142,14 @@ export default function Dashboard() {
 
   // AFSS and Projects sections render identically — only the label and the
   // filtered list differ.
-  function renderSiteGroup(label: string, group: SiteRow[]) {
+  function renderSiteGroup(label: string, kind: SiteKind, group: SiteRow[]) {
     if (group.length === 0) return null;
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <div style={sectionHeaderStyle}>{label}</div>
+        <div style={{ ...sectionHeaderStyle, display: "flex", alignItems: "center", gap: 7 }}>
+          <SiteKindIcon kind={kind} />
+          {label}
+        </div>
         {group.map((site, i) => (
           <SiteButton
             key={site.id}
@@ -243,9 +247,9 @@ export default function Dashboard() {
             {sites.length === 0 ? "No sites yet — tap + to start your first inspection." : "No sites match your search."}
           </div>
         )}
-        {renderSiteGroup("AFSS", afssSites)}
-        {renderSiteGroup("Projects", projectSites)}
-        {renderSiteGroup("Flow testing", flowSites)}
+        {renderSiteGroup("AFSS", "afss", afssSites)}
+        {renderSiteGroup("Projects", "project", projectSites)}
+        {renderSiteGroup("Flow testing", "flow", flowSites)}
       </div>
 
       {/* new site fab */}
@@ -306,6 +310,7 @@ export default function Dashboard() {
                 onClick={() => setKind("afss")}
                 style={kindToggleStyle(kind === "afss")}
               >
+                <SiteKindIcon kind="afss" size={13} color="currentColor" />
                 AFSS
               </button>
               <button
@@ -313,6 +318,7 @@ export default function Dashboard() {
                 onClick={() => setKind("project")}
                 style={kindToggleStyle(kind === "project")}
               >
+                <SiteKindIcon kind="project" size={13} color="currentColor" />
                 Projects
               </button>
               <button
@@ -320,6 +326,7 @@ export default function Dashboard() {
                 onClick={() => setKind("flow")}
                 style={kindToggleStyle(kind === "flow")}
               >
+                <SiteKindIcon kind="flow" size={13} color="currentColor" />
                 Flow testing
               </button>
             </div>
@@ -508,8 +515,13 @@ const sectionHeaderStyle: CSSProperties = {
 function kindToggleStyle(active: boolean): CSSProperties {
   return {
     flexGrow: 1,
+    flexBasis: 0,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 5,
     textAlign: "center",
-    padding: "10px 0",
+    padding: "10px 4px",
     borderRadius: 10,
     border: active ? "1px solid var(--accent)" : "1px solid var(--border)",
     background: active ? "var(--accent)" : "var(--panel-2)",

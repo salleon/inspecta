@@ -7,6 +7,9 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Site type icons.** The home page groups and the New site buttons now
+  each have a small icon: AFSS a clipboard with a tick (teal), Projects a hard
+  hat (orange), Flow testing a drop (blue).
 - **Prefilled steps: faint numbers that clear when tapped.** The prefilled
   " Hg / L/s numbers no longer have a dashed teal outline or a PREFILL label;
   they're just shown in faint teal until something is read on their row.
