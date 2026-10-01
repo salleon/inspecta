@@ -54,6 +54,11 @@ test("New site offers Flow testing; the home page groups flow testing sites", as
   // the keyboard waits: nothing is focused until Site name is tapped
   assert.notEqual(await page.evaluate(() => document.activeElement?.tagName), "INPUT");
   await page.click('button:has-text("Flow testing")');
+  // the picked kind in its own colour: flow testing blue (AFSS teal, Projects orange)
+  assert.equal(await page.locator('button:has-text("Flow testing")').evaluate((e) => getComputedStyle(e).color), "rgb(90, 176, 255)");
+  await page.click('button:has-text("Projects")');
+  assert.equal(await page.locator('button:has-text("Projects")').evaluate((e) => getComputedStyle(e).color), "rgb(245, 165, 92)");
+  await page.click('button:has-text("Flow testing")');
   assert.equal(await page.getByText("Just flow tests: no findings or photos.", { exact: false }).count(), 1);
   await page.fill('input[placeholder="Site name"]', "Aldi Gordon");
   await page.click('button[type="submit"]');

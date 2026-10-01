@@ -7,6 +7,9 @@ the technical detail.
 
 ## 1 October 2026
 
+- **New site: the picked kind in its own colour (canvas NewSiteColours).**
+  AFSS teal, Projects orange, Flow testing blue: a translucent fill and
+  outline, matching the home page's group icons and site tags.
 - **New site: the keyboard waits.** The + no longer opens the keyboard
   straight away; pick AFSS, Projects or Flow testing, then tap Site name.
 - **Flows are typed, not worked out from " Hg.** The flow depends on the

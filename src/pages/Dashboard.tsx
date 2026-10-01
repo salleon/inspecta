@@ -17,7 +17,7 @@ import logo from "../assets/logo.png";
 import { getInspectorName, setInspectorName } from "../lib/profile";
 import { setConverterTool, useConverterTool } from "../lib/settings";
 import Switch from "../components/Switch";
-import SiteKindIcon, { KindTag } from "../components/SiteKindIcon";
+import SiteKindIcon, { KIND_COLOUR, KindTag } from "../components/SiteKindIcon";
 
 interface SiteRow extends Site {
   findings: number;
@@ -313,7 +313,7 @@ export default function Dashboard() {
               <button
                 type="button"
                 onClick={() => setKind("afss")}
-                style={kindToggleStyle(kind === "afss")}
+                style={kindToggleStyle(kind === "afss", "afss")}
               >
                 <SiteKindIcon kind="afss" size={13} color="currentColor" />
                 AFSS
@@ -321,7 +321,7 @@ export default function Dashboard() {
               <button
                 type="button"
                 onClick={() => setKind("project")}
-                style={kindToggleStyle(kind === "project")}
+                style={kindToggleStyle(kind === "project", "project")}
               >
                 <SiteKindIcon kind="project" size={13} color="currentColor" />
                 Projects
@@ -329,7 +329,7 @@ export default function Dashboard() {
               <button
                 type="button"
                 onClick={() => setKind("flow")}
-                style={kindToggleStyle(kind === "flow")}
+                style={kindToggleStyle(kind === "flow", "flow")}
               >
                 <SiteKindIcon kind="flow" size={13} color="currentColor" />
                 Flow testing
@@ -517,7 +517,8 @@ const sectionHeaderStyle: CSSProperties = {
   padding: "0 2px",
 };
 
-function kindToggleStyle(active: boolean): CSSProperties {
+function kindToggleStyle(active: boolean, kind: SiteKind): CSSProperties {
+  const c = KIND_COLOUR[kind];
   return {
     flexGrow: 1,
     flexBasis: 0,
@@ -528,10 +529,11 @@ function kindToggleStyle(active: boolean): CSSProperties {
     textAlign: "center",
     padding: "10px 4px",
     borderRadius: 10,
-    // as on the canvas: picked is a teal tint with a teal outline
-    border: active ? "1px solid rgba(46,196,182,.6)" : "1px solid var(--border-strong)",
-    background: active ? "rgba(46,196,182,.14)" : "none",
-    color: active ? "var(--accent)" : "var(--muted)",
+    // as on the canvas (NewSiteColours): picked takes its kind's colour,
+    // a translucent fill with a stronger outline
+    border: active ? `1px solid ${c}99` : "1px solid var(--border-strong)",
+    background: active ? `${c}24` : "none",
+    color: active ? c : "var(--muted)",
     fontSize: 13,
     fontWeight: 800,
   };
