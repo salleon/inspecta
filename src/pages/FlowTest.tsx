@@ -217,6 +217,17 @@ export default function FlowTest() {
     navigate(`/site/${siteId}/findings?tab=flow`);
   };
 
+  // Save & close: everything's saved as it's typed; this saves anything still
+  // waiting and goes back to the flow tests list
+  async function saveAndClose() {
+    if (timer.current !== null) window.clearTimeout(timer.current);
+    timer.current = null;
+    const last = pending.current;
+    pending.current = null;
+    if (last) await saveFlowTest(last);
+    navigate(`/site/${siteId}/findings?tab=flow`);
+  }
+
   async function handleDelete() {
     if (!test || deleting) return;
     setDeleting(true);
@@ -244,6 +255,12 @@ export default function FlowTest() {
   const footer = (
     <>
       <FlowConverter />
+      <button
+        onClick={() => void saveAndClose()}
+        style={{ marginTop: 2, padding: "14px 0", borderRadius: 12, background: "var(--accent)", border: "none", color: "var(--accent-text)", fontSize: 14, fontWeight: 800 }}
+      >
+        Save & close
+      </button>
       <button
         onClick={() => setConfirmingDelete(true)}
         style={{ marginTop: 2, padding: "12px 0", borderRadius: 12, background: "none", border: "1px solid rgba(255,107,107,.45)", color: "#ff6b6b", fontSize: 13, fontWeight: 800 }}

@@ -7,6 +7,8 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Save & close on a flow test.** Above Delete flow test, it saves anything
+  still being typed and goes back to the flow tests list.
 - **Customised reports: bulk refine sections start folded.** Level, Location,
   Type and ESR category are tap-to-open headings; a folded one shows how
   many are picked in it.

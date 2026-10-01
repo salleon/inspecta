@@ -303,7 +303,7 @@ test("a new hydrant test: flows in L/s, PASS / FAIL at the bottom, RPM for a die
   await wide.locator('[aria-label="Oil pressure"]').first().fill("420");
   await wide.locator('[aria-label="Edit column Oil pressure"]').click();
   await page.locator('[aria-label="Column name"]').fill("Oil press");
-  await page.locator('button:has-text("Save")').click();
+  await page.getByRole("button", { name: "Save", exact: true }).click();
   assert.equal(await wide.locator('[aria-label="Oil press"]').first().inputValue(), "420");
   await wide.locator('button:has-text("Hide keypad")').click();
   await pressBack(page);
@@ -508,4 +508,25 @@ test("a combined system goes on a Combined System tab like their sheet", async (
   assert.equal(s.getCell("N14").value, "PASS");
   assert.equal(s.getCell("N26").value, "PASS");
   assert.deepEqual(errors, []);
+});
+
+test("Save & close, above Delete flow test, saves and goes back to the flow tests list", async () => {
+  await go(page, app, "/site/s2/flow/t3", 1500);
+  const buttons = await page.evaluate(() => [...document.querySelectorAll("button")].map((b) => b.textContent.trim()).filter((t) => t === "Save & close" || t === "Delete flow test"));
+  assert.deepEqual(buttons, ["Save & close", "Delete flow test"]);
+  await page.fill('[aria-label="Comments"]', "Saved with Save & close");
+  await page.click('button:has-text("Save & close")');
+  await page.waitForTimeout(600);
+  assert.ok(page.url().endsWith("/site/s2/findings?tab=flow"), page.url());
+  const comment = await page.evaluate(async () => {
+    const req = indexedDB.open("inspecta");
+    const idb = await new Promise((r) => (req.onsuccess = () => r(req.result)));
+    const t = await new Promise((r) => {
+      const q = idb.transaction("flowTests").objectStore("flowTests").get("t3");
+      q.onsuccess = () => r(q.result);
+    });
+    idb.close();
+    return t.comment;
+  });
+  assert.equal(comment, "Saved with Save & close");
 });
