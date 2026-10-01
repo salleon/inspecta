@@ -1,10 +1,11 @@
-// The picture on the updating screen, as picked on the design canvas (UE,
-// gear swap): a big gear turning with an old grey gear meshed beside it;
-// the new teal gear rides along the progress track (small, centred on the
-// line) as the update downloads, then the old gear drops out and the new
-// one grows as it lifts into its place. Drawn into a 260 × 260 SVG and
-// rendered to video by scripts/render-animations; the app plays the video
-// (see AnimationVideo).
+// The picture on the updating screen (design canvas UpdateGearsLive): two
+// meshed gears turning steadily, drawn into a 260 × 230 SVG and rendered to a
+// looping video by scripts/render-animations (see AnimationVideo). The small
+// gear riding the progress bar is drawn live by UpdateScreen, so it follows
+// the real download.
+//
+// mountGears below is the earlier picture (the gear riding a drawn track);
+// it's kept for the record but no longer rendered.
 
 export type UpdateStep = "downloading" | "installing" | "restarting";
 // t: seconds since the screen appeared; stepT: seconds since this step
@@ -86,5 +87,28 @@ export function mountGears(svg: SVGSVGElement): GearsUpdate {
       const scale = ON_TRACK + (1 - ON_TRACK) * clamp(lift);
       neu.setAttribute("transform", `translate(${x} ${y}) rotate(${lift >= 1 ? small : (TRACK_W - 24) * 3.2 + 200 * lift}) scale(${scale})`);
     }
+  };
+}
+
+// the two main gears; a seamless loop every LOOP_S seconds
+export const MAIN_GEARS = { w: 260, h: 230 };
+const BIG = { r: 62, teeth: 14, x: 104, y: 98 };
+const SMALL = { r: 36, teeth: 9 };
+// pitch radii (half way up the teeth) touch, along a line 35° below level
+const PITCH = BIG.r + 4.5 + SMALL.r + 4.5;
+const SMALL_AT = { x: BIG.x + PITCH * Math.cos((35 * Math.PI) / 180), y: BIG.y + PITCH * Math.sin((35 * Math.PI) / 180) };
+// ten of the big gear's teeth per loop, so both gears are back where they started
+const LOOP_TURN = (10 * 360) / BIG.teeth;
+export const LOOP_S = 4;
+
+// smallOffset: turns the small gear so its teeth sit in the big one's gaps
+export function mountMainGears(svg: SVGSVGElement, smallOffset = 29.7): (t: number) => void {
+  const big = gear(svg, BIG.r, BIG.teeth, A);
+  const small = gear(svg, SMALL.r, SMALL.teeth, "#3f5a73");
+  return (t) => {
+    const a = (LOOP_TURN * (t % LOOP_S)) / LOOP_S;
+    big.setAttribute("transform", `translate(${BIG.x} ${BIG.y}) rotate(${a})`);
+    // meshed: the other way, faster by the ratio of teeth
+    small.setAttribute("transform", `translate(${SMALL_AT.x} ${SMALL_AT.y}) rotate(${(-a * BIG.teeth) / SMALL.teeth + smallOffset})`);
   };
 }

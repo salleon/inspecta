@@ -73,13 +73,18 @@ test("Settings shows the new version; Update now shows the updating screen, whic
   await page.evaluate(() => window.__playSays({ installStatus: 2, bytesDownloaded: 31, totalBytesToDownload: 50 }));
   await page.waitForTimeout(100);
   assert.equal(await screen.getAttribute("aria-valuenow"), "62");
+  // the small gear rides the bar to the real progress (62% of 250 px), turning as it rolls
+  await page.waitForTimeout(400);
+  const gear = await page.locator('[data-testid="progress-gear"] svg').evaluate((g) => ({ left: parseFloat(g.style.left), turn: g.querySelector("g").style.transform }));
+  assert.equal(gear.left, 250 * 0.62 - 13);
+  assert.match(gear.turn, /rotate\((\d+\.?\d*)deg\)/);
   await pressBack(page);
   assert.equal(await screen.count(), 1, "back doesn't close it");
 
   await page.evaluate(() => window.__playSays({ installStatus: 11, bytesDownloaded: 50, totalBytesToDownload: 50 }));
   await page.waitForTimeout(200);
   assert.match(await screen.innerText(), /100%[\s\S]*Installing/);
-  assert.notEqual(await page.evaluate(() => window.__restarted), true, "gives the gear time to lift into place first");
+  assert.notEqual(await page.evaluate(() => window.__restarted), true, "a moment on Installing first");
   await page.waitForTimeout(1500);
   assert.match(await screen.innerText(), /Restarting/);
   assert.equal(await page.evaluate(() => window.__restarted), true, "handed over to Play to install and reopen");

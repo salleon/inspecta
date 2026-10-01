@@ -7,6 +7,14 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Updating screen: two gears and a gear on the progress bar (canvas
+  UpdateGearsLive).** Two meshed gears turn steadily (a pre-rendered video
+  loop), and a small gear rolls along the progress bar under the percentage,
+  sitting at the real download progress and turning as it rolls. If the
+  download pauses the small gear stops while the big ones keep turning.
+  Replaces the old gear-swap video and the three little step bars. (You'll see
+  it on the update after the one that installs it, since the screen belongs to
+  the version doing the updating.)
 - **Converter tool hidden by default.** The L/s ⇄ L/min converter no longer
   shows on the Flow tests tab or inside a flow test. Turn it back on with the
   new **Converter tool** switch in Settings (per phone).
