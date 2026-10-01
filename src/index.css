@@ -490,3 +490,22 @@ button:active:not(:disabled) {
   padding-top: 6px !important;
   padding-bottom: 6px !important;
 }
+
+/* a scrolled list nudging past its top or bottom and settling back
+   (lib/edgeBump) */
+.bump-top {
+  animation: bumpTop 380ms cubic-bezier(0.3, 0.7, 0.3, 1);
+}
+.bump-bottom {
+  animation: bumpBottom 380ms cubic-bezier(0.3, 0.7, 0.3, 1);
+}
+@keyframes bumpTop {
+  35% {
+    transform: translateY(8px);
+  }
+}
+@keyframes bumpBottom {
+  35% {
+    transform: translateY(-8px);
+  }
+}

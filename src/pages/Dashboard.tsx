@@ -12,6 +12,7 @@ import { SITES_CHANGED, startTour } from "../lib/tour";
 // the build label handed out to the team (BUILD_LABEL, changed by hand)
 import buildLabel from "../../BUILD_LABEL?raw";
 import { IS_TEST_BUILD } from "../lib/buildInfo";
+import { useEdgeBump } from "../lib/edgeBump";
 import logo from "../assets/logo.png";
 import { getInspectorName, setInspectorName } from "../lib/profile";
 import { setConverterTool, useConverterTool } from "../lib/settings";
@@ -45,6 +46,9 @@ export default function Dashboard() {
   // shows, so a refresh only redoes sites whose first photo changed.
   const [thumbs, setThumbs] = useState<Record<string, string>>({});
   const thumbCache = useRef(new Map<string, { photoId: string; url: string }>());
+  // the site list bumps at its top and bottom
+  const listRef = useRef<HTMLDivElement>(null);
+  useEdgeBump(listRef);
 
   async function refresh() {
     const list = await listSites();
@@ -241,7 +245,8 @@ export default function Dashboard() {
       </div>
 
       {/* site list */}
-      <div style={{ flexGrow: 1, overflowY: "auto", padding: "0 20px 12px", display: "flex", flexDirection: "column", gap: 22 }}>
+      {/* the bottom padding keeps the last site clear of the + button */}
+      <div ref={listRef} style={{ flexGrow: 1, overflowY: "auto", padding: "0 20px calc(100px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 22 }}>
         {filtered.length === 0 && (
           <div style={{ padding: "40px 8px", textAlign: "center", color: "var(--muted-2)", fontSize: 14, fontWeight: 500 }}>
             {sites.length === 0 ? "No sites yet — tap + to start your first inspection." : "No sites match your search."}

@@ -453,6 +453,69 @@ export default function FlowTest() {
 
   return shell(
     <>
+      {/* the template's header and comment lines */}
+      <div style={card}>
+        <div style={lbl}>Test details</div>
+        {(
+          [
+            ["Date", "date"],
+            ["Equipment", "equipment"],
+            ["Tested by", "testedBy"],
+          ] as const
+        ).map(([label, key]) => (
+          <label key={key} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ width: 78, flexShrink: 0, fontSize: 12.5, fontWeight: 700, color: "var(--muted)" }}>{label}</span>
+            {key === "date" ? (
+              <input
+                type="date"
+                value={dateInputValue(test.testedAt)}
+                onChange={(e) => {
+                  const [y, m, d] = e.target.value.split("-").map(Number);
+                  if (y && m && d) change((t) => void (t.testedAt = new Date(y, m - 1, d, 12).getTime()));
+                }}
+                style={{ ...cellStyle(14), textAlign: "left", padding: "8px 10px", colorScheme: "dark" }}
+              />
+            ) : (
+              <input
+                value={test[key] ?? ""}
+                placeholder={key === "equipment" ? "e.g. 80 mm / 20T Ambient" : "e.g. Chubb"}
+                onChange={(e) => change((t) => void (t[key] = e.target.value))}
+                style={{ ...cellStyle(14), textAlign: "left", padding: "8px 10px" }}
+              />
+            )}
+          </label>
+        ))}
+      </div>
+      {/* demand points */}
+      <div style={card}>
+        <div style={lbl}>Demand points</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 26px", gap: 6 }}>
+          <div style={th}>
+            Flow {unitLabel}
+          </div>
+          <div style={th}>Pressure kPa</div>
+          <div />
+        </div>
+        {test.demand.map((d, i) => (
+          <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 1fr 26px", gap: 6, alignItems: "center" }}>
+            <input
+              style={cellStyle(14)}
+              inputMode="decimal"
+              value={shown(d.flow, d.flowUnit)}
+              aria-label="Demand flow"
+              onChange={(e) => change((t) => void Object.assign(t.demand[i], { flow: e.target.value, flowUnit: unit }))}
+            />
+            <input style={cellStyle(14)} inputMode="decimal" value={d.kpa} aria-label="Demand pressure" onChange={(e) => change((t) => void (t.demand[i].kpa = e.target.value))} />
+            <button style={xButton} aria-label="Remove demand point" onClick={() => change((t) => void t.demand.splice(i, 1))}>
+              ✕
+            </button>
+          </div>
+        ))}
+        <button style={addButton} onClick={() => change((t) => void t.demand.push({ flow: "", kpa: "" }))}>
+          + Add demand point
+        </button>
+      </div>
+
       {/* graph */}
       <div style={{ ...card, padding: "10px 8px 6px", gap: 2 }}>
         <div ref={chartBox} style={{ width: "100%", height: 210 }} dangerouslySetInnerHTML={{ __html: chartSvg(test, chartW, 210, { unit, current }) }} />
@@ -618,69 +681,6 @@ export default function FlowTest() {
         <div style={{ fontSize: 11, color: "var(--muted-2)" }}>Printed under the graph in the export.</div>
       </div>
 
-      {/* demand points */}
-      <div style={card}>
-        <div style={lbl}>Demand points</div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 26px", gap: 6 }}>
-          <div style={th}>
-            Flow {unitLabel}
-          </div>
-          <div style={th}>Pressure kPa</div>
-          <div />
-        </div>
-        {test.demand.map((d, i) => (
-          <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 1fr 26px", gap: 6, alignItems: "center" }}>
-            <input
-              style={cellStyle(14)}
-              inputMode="decimal"
-              value={shown(d.flow, d.flowUnit)}
-              aria-label="Demand flow"
-              onChange={(e) => change((t) => void Object.assign(t.demand[i], { flow: e.target.value, flowUnit: unit }))}
-            />
-            <input style={cellStyle(14)} inputMode="decimal" value={d.kpa} aria-label="Demand pressure" onChange={(e) => change((t) => void (t.demand[i].kpa = e.target.value))} />
-            <button style={xButton} aria-label="Remove demand point" onClick={() => change((t) => void t.demand.splice(i, 1))}>
-              ✕
-            </button>
-          </div>
-        ))}
-        <button style={addButton} onClick={() => change((t) => void t.demand.push({ flow: "", kpa: "" }))}>
-          + Add demand point
-        </button>
-      </div>
-
-      {/* the template's header and comment lines */}
-      <div style={card}>
-        <div style={lbl}>Test details</div>
-        {(
-          [
-            ["Date", "date"],
-            ["Equipment", "equipment"],
-            ["Tested by", "testedBy"],
-          ] as const
-        ).map(([label, key]) => (
-          <label key={key} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ width: 78, flexShrink: 0, fontSize: 12.5, fontWeight: 700, color: "var(--muted)" }}>{label}</span>
-            {key === "date" ? (
-              <input
-                type="date"
-                value={dateInputValue(test.testedAt)}
-                onChange={(e) => {
-                  const [y, m, d] = e.target.value.split("-").map(Number);
-                  if (y && m && d) change((t) => void (t.testedAt = new Date(y, m - 1, d, 12).getTime()));
-                }}
-                style={{ ...cellStyle(14), textAlign: "left", padding: "8px 10px", colorScheme: "dark" }}
-              />
-            ) : (
-              <input
-                value={test[key] ?? ""}
-                placeholder={key === "equipment" ? "e.g. 80 mm / 20T Ambient" : "e.g. Chubb"}
-                onChange={(e) => change((t) => void (t[key] = e.target.value))}
-                style={{ ...cellStyle(14), textAlign: "left", padding: "8px 10px" }}
-              />
-            )}
-          </label>
-        ))}
-      </div>
     </>,
     kindNote,
     ResultBox({ test, index: current, unit }),

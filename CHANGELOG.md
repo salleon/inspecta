@@ -7,6 +7,13 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Home page: last site clear of the + button, and a bump at the ends.**
+  The site list has room at the bottom so the last site scrolls up above the
+  + button. Reaching the top or bottom of the list (or pulling past it) gives
+  a small bump.
+- **Flow test page order.** Now Test details, Demand points, the graph,
+  Readings, then Comments.
+
 - **Flow test tabs only when something was read.** An AFSS or project Excel
   (whole site or a customised report) now only gets a tab for a flow test
   that has readings in it; one started but left empty is left out.
