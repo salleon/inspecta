@@ -26,3 +26,15 @@ export default function SiteKindIcon({ kind, size = 14, color }: { kind: SiteKin
     </svg>
   );
 }
+
+const TAG: Record<SiteKind, string> = { afss: "AFSS", project: "Project", flow: "Flow" };
+
+// the small coloured tag on a site's row (and a flow testing site's header)
+export function KindTag({ kind }: { kind: SiteKind }) {
+  const c = KIND_COLOUR[kind];
+  return (
+    <span style={{ padding: "2px 8px", borderRadius: 999, border: `1px solid ${c}66`, background: `${c}1a`, color: c, fontSize: 10.5, fontWeight: 800, whiteSpace: "nowrap", lineHeight: 1.4 }}>
+      {TAG[kind]}
+    </span>
+  );
+}

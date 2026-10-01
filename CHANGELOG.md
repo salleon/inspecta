@@ -7,6 +7,12 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Matching the canvas more closely.** New site's AFSS / Projects / Flow
+  testing buttons are now outlined, with the picked one a teal tint and teal
+  outline (not solid teal). Each site on the home page has a small coloured
+  tag (AFSS, Project, Flow). A flow testing site's page shows its name with
+  "Flow testing" underneath and a Flow tag. Export Excel lists the sheet
+  names, and added reading columns have a pale yellow heading in the Excel.
 - **Site type icons.** The home page groups and the New site buttons now
   each have a small icon: AFSS a clipboard with a tick (teal), Projects a hard
   hat (orange), Flow testing a drop (blue).

@@ -136,6 +136,7 @@ export default function FlowExport() {
         <div style={{ fontSize: 11.5, color: "var(--muted-2)", textAlign: "center" }}>Each test is one page in the PDF and one sheet in the Excel.</div>
         <button disabled={!tests.length || !!busy} onClick={() => void share("excel")} style={{ ...btn, border: "1px solid rgba(46,196,182,.55)", background: "rgba(46,196,182,.12)", color: "var(--accent)" }}>
           Export Excel
+          {tests.length > 0 && <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 700, color: "var(--muted)" }}>sheets: {tests.map((t) => t.name || "Flow test").join(" · ")}</span>}
         </button>
         <button disabled={!tests.length || !!busy} onClick={() => void share("pdf")} style={{ ...btn, padding: "16px 0", border: "none", background: "var(--accent)", color: "var(--accent-text)" }}>
           Export PDF

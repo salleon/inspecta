@@ -16,7 +16,7 @@ import logo from "../assets/logo.png";
 import { getInspectorName, setInspectorName } from "../lib/profile";
 import { setConverterTool, useConverterTool } from "../lib/settings";
 import Switch from "../components/Switch";
-import SiteKindIcon from "../components/SiteKindIcon";
+import SiteKindIcon, { KindTag } from "../components/SiteKindIcon";
 
 interface SiteRow extends Site {
   findings: number;
@@ -523,11 +523,12 @@ function kindToggleStyle(active: boolean): CSSProperties {
     textAlign: "center",
     padding: "10px 4px",
     borderRadius: 10,
-    border: active ? "1px solid var(--accent)" : "1px solid var(--border)",
-    background: active ? "var(--accent)" : "var(--panel-2)",
-    color: active ? "var(--accent-text)" : "var(--text)",
+    // as on the canvas: picked is a teal tint with a teal outline
+    border: active ? "1px solid rgba(46,196,182,.6)" : "1px solid var(--border-strong)",
+    background: active ? "rgba(46,196,182,.14)" : "none",
+    color: active ? "var(--accent)" : "var(--muted)",
     fontSize: 13,
-    fontWeight: 700,
+    fontWeight: 800,
   };
 }
 
@@ -709,6 +710,7 @@ function SiteButton({
           </div>
         </div>
         <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5 }}>
+          <KindTag kind={site.kind} />
           <span style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)" }}>
             {formatInspectedDate(site.createdAt)}
           </span>

@@ -10,6 +10,7 @@ import ConfirmDialog from "../components/ConfirmDialog";
 import FormActions from "../components/FormActions";
 import RoundIconButton from "../components/RoundIconButton";
 import FlowTestList from "../components/FlowTestList";
+import { KindTag } from "../components/SiteKindIcon";
 
 interface Row {
   finding: Finding;
@@ -399,13 +400,15 @@ export default function Findings() {
           style={{ background: "none", border: "none", display: "flex", alignItems: "center", gap: 6, color: "inherit", padding: "4px 6px" }}
         >
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-            <div style={{ fontSize: 14, fontWeight: 700 }}>{flowSite ? "Flow tests" : "Findings"}</div>
-            <div style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)" }}>{site?.name ?? ""}</div>
+            <div style={{ fontSize: 14, fontWeight: 700 }}>{flowSite ? site?.name : "Findings"}</div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)" }}>{flowSite ? "Flow testing" : site?.name ?? ""}</div>
           </div>
           <IconEdit size={13} color="var(--muted-2)" />
         </button>
         {flowSite ? (
-          <div style={{ width: 40, height: 40 }} />
+          <div style={{ width: 40, display: "flex", justifyContent: "flex-end" }}>
+            <KindTag kind="flow" />
+          </div>
         ) : (
           <RoundIconButton ariaLabel="Export PDF" onClick={() => navigate(`/site/${siteId}/export`)}>
             <IconShare />

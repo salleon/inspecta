@@ -252,7 +252,11 @@ function fillSheet(wb: Workbook, tplWb: Workbook, L: Layout, test: FlowTest, sit
     if (hasAmps) heading(L.col.amps, "Amps");
     // added columns after Amps, as many as fit before the result column
     const extras = (test.extraCols ?? []).slice(0, L.col.result - L.col.amps - 1);
-    extras.forEach((c, j) => heading(L.col.amps + 1 + j, extraHeading(c)));
+    extras.forEach((c, j) => {
+      heading(L.col.amps + 1 + j, extraHeading(c));
+      // added columns stand out, as on the canvas (FlowExports)
+      ws.getCell(head, L.col.amps + 1 + j).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFF4D6" } };
+    });
 
     const pts: { x: number; y: number }[] = [];
     readings.forEach((r, j) => {
