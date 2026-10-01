@@ -7,6 +7,21 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Customised reports (export page, canvas ExportReports).** AFSS and
+  project sites can export a chosen group of findings as its own report.
+  **✎ Create Customised Report** on the export preview opens a sheet: name
+  the report, then **Bulk refine findings**: **Skip** (translucent orange,
+  nothing ticked to start) or tick whole groups at once, taken from the
+  site's own findings (every finding, each level, location, defect type and
+  ESR category, with counts). **Pick findings** shows the preview with a tick
+  on each finding (All / None), then **Organise by** time taken or ESR
+  category, and **Done**. Each report gets its own chip next to **Whole
+  site** and is saved with the site (and in backups). Its PDF, Excel and
+  photos only have its findings and are named after it (e.g. Harbour Tower -
+  Level 1). Long-press a report's chip to change it or delete it (findings
+  are never deleted). A report shows how many findings were added since it
+  was made and aren't in it.
+
 - **PDF: lots of photos on one finding carry on over the page.** A finding
   with more photos than fit on a page (AFSS and project reports) used to run
   off the bottom and get cut off. The photos now carry on onto the next page,

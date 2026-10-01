@@ -1,5 +1,5 @@
 import Dexie, { type Table } from "dexie";
-import type { Site, Finding, Photo, SiteKind, Thumbnail, ExportCopy, StampedPhoto, FlowTest } from "./types";
+import type { Site, Finding, Photo, SiteKind, Thumbnail, ExportCopy, StampedPhoto, FlowTest, SiteReport } from "./types";
 import { makeThumbnail } from "../lib/thumbnail";
 import { makeExportCopy } from "../lib/exportCopy";
 import { RENAMED_CODES } from "../lib/esrCategories";
@@ -118,6 +118,12 @@ export async function updateSite(
   changes: Partial<Pick<Site, "name" | "address">>,
 ) {
   await db.sites.update(siteId, changes);
+}
+
+// the site's customised reports, all at once (not a change to the site
+// itself, so its place on the home page stays put)
+export async function saveSiteReports(siteId: string, reports: SiteReport[]) {
+  await db.sites.update(siteId, { reports });
 }
 
 async function touchSite(siteId: string) {

@@ -3,8 +3,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import { jsPDF } from "jspdf";
 import { Share } from "@capacitor/share";
 import { Capacitor } from "@capacitor/core";
-import type { Finding, Photo, Site } from "../db/types";
-import { countExportCopies, getExportCopy, getStamped, getSite, listFindings, listFlowTests, listPhotos, updateFinding } from "../db/db";
+import type { Finding, Photo, Site, SiteReport } from "../db/types";
+import { countExportCopies, getExportCopy, getStamped, getSite, listFindings, listFlowTests, listPhotos, saveSiteReports, updateFinding } from "../db/db";
 import { IconChevronLeft, IconShare } from "../components/Icons";
 import RoundIconButton from "../components/RoundIconButton";
 import ProgressOverlay from "../components/ProgressOverlay";
@@ -19,6 +19,8 @@ import DefectTypePill from "../components/DefectTypePill";
 import CategoriseFlow from "../components/CategoriseFlow";
 import { reportRows, type ReportRow } from "../lib/esrGrouping";
 import { forProjectReport } from "../lib/projectReport";
+import { newSince, reportEntries } from "../lib/customReports";
+import CustomReport, { ReportChips } from "../components/CustomReport";
 import { esrItem } from "../lib/esrCategories";
 import { learnCategory, unlearnCategory } from "../lib/esrSuggest";
 import { useAdvancedControls } from "../lib/settings";
@@ -121,7 +123,24 @@ export default function ExportPreview() {
   const { siteId } = useParams<{ siteId: string }>();
   const navigate = useNavigate();
   const [site, setSite] = useState<Site | null>(null);
-  const [items, setItems] = useState<FindingImages[]>([]);
+  // every finding on the site, in list order (not yet in report order)
+  const [allItems, setAllItems] = useState<FindingImages[]>([]);
+  // the customised report being looked at (null: the whole site)
+  const [reportId, setReportId] = useState<string | null>(null);
+  // Create Customised Report open: a new one, or one being changed
+  const [editing, setEditing] = useState<SiteReport | "new" | null>(null);
+  const report = site?.reports?.find((r) => r.id === reportId) ?? null;
+  // what this report exports, in its order: the whole site (Projects sites
+  // in the order the photos were taken, with no ESR sections), or the
+  // customised report's findings
+  const siteItems = site?.kind === "project" ? forProjectReport(allItems) : allItems;
+  const items = report ? reportEntries(allItems, report) : siteItems;
+
+  async function saveReports(reports: SiteReport[]) {
+    if (!site) return;
+    await saveSiteReports(site.id, reports);
+    setSite({ ...site, reports });
+  }
   const [loading, setLoading] = useState(true);
   // the preview's small stamped photos, by photo id, filled in after the
   // findings show (the share buttons don't wait for them)
@@ -182,7 +201,7 @@ export default function ExportPreview() {
       setSite(s ?? null);
       // Projects sites: no ESR sections, in the order the photos were taken
       const ordered = s?.kind === "project" ? forProjectReport(built) : built;
-      setItems(ordered);
+      setAllItems(built);
       setLoading(false);
 
       // then the preview photos, top to bottom. Making them also makes each
@@ -235,7 +254,7 @@ export default function ExportPreview() {
 
     // report title + address, built bottom-up so we know exactly how tall
     // the details block is
-    const title = site?.name || "Inspection";
+    const title = report ? `${site?.name || "Inspection"} - ${report.name}` : site?.name || "Inspection";
     doc.setFont("helvetica", "bold");
     doc.setFontSize(40);
     const titleLines: string[] = doc.splitTextToSize(title, contentW);
@@ -498,7 +517,7 @@ export default function ExportPreview() {
     if (previous) unlearnCategory(finding.note, previous);
     learnCategory(finding.note, code);
     void updateFinding(finding.id, { esrCategory: code });
-    setItems((prev) => prev.map((i) => (i.finding.id === finding.id ? { ...i, finding: { ...i.finding, esrCategory: code } } : i)));
+    setAllItems((prev) => prev.map((i) => (i.finding.id === finding.id ? { ...i, finding: { ...i.finding, esrCategory: code } } : i)));
   }
 
   // Builds the PDF, Excel file or photos zip and hands it to the native
@@ -519,7 +538,9 @@ export default function ExportPreview() {
     };
     const native = Capacitor.isNativePlatform();
     const inspectorName = getInspectorName();
-    const title = reportTitle(site?.name, inspectorName);
+    const title = report ? `${site?.name ?? "Inspection"} - ${report.name}` : reportTitle(site?.name, inspectorName);
+    // a customised report's files are named after it too
+    const fileSite = report ? `${site?.name ?? "Inspection"} ${report.name}` : site?.name;
     try {
       let filename: string;
       let blob: Blob | null = null; // web: the file to share / download
@@ -527,28 +548,29 @@ export default function ExportPreview() {
       if (kind === "photos") {
         // streamed straight into the file one photo at a time — never
         // held in memory as a whole
-        filename = photosZipName(site?.name);
+        filename = photosZipName(fileSite);
         const onPhoto = (done: number, total: number) => photoProgress(done, total, 95);
         if (native) {
           const out = new CacheFileWriter(filename);
-          await writePhotosZip(items, site?.name, (b) => out.write(b), onPhoto);
+          await writePhotosZip(items, fileSite, (b) => out.write(b), onPhoto);
           uri = await out.close();
           timer.mark("saving");
         } else {
           const parts: Uint8Array[] = [];
-          await writePhotosZip(items, site?.name, async (b) => void parts.push(b), onPhoto);
+          await writePhotosZip(items, fileSite, async (b) => void parts.push(b), onPhoto);
           blob = new Blob(parts as BlobPart[], { type: "application/zip" });
         }
       } else {
-        filename = reportFilename(site?.name, inspectorName, kind === "pdf" ? "pdf" : "xlsx");
+        filename = reportFilename(fileSite, inspectorName, kind === "pdf" ? "pdf" : "xlsx");
         if (kind === "pdf") {
           blob = await buildPdf(photoProgress);
         } else {
           const { buildFindingsWorkbook, buildProjectWorkbook } = await import("../lib/excelExport");
           const onProgress = (p: { stage: "photos"; done: number; total: number } | { stage: "building" }) =>
             p.stage === "photos" ? photoProgress(p.done, p.total) : setExportProgress({ percent: 88, step: "Building spreadsheet…" });
-          // the site's flow tests go in as tabs after the findings
-          const flow = site ? { tests: await listFlowTests(site.id), site } : undefined;
+          // the site's flow tests go in as tabs after the findings (the
+          // whole site's report only)
+          const flow = site && !report ? { tests: await listFlowTests(site.id), site } : undefined;
           blob = site?.kind === "project" ? await buildProjectWorkbook(items, onProgress, flow) : await buildFindingsWorkbook(items, inspectionMs, onProgress, flow);
         }
         timer.mark("building");
@@ -611,14 +633,42 @@ export default function ExportPreview() {
         <div style={{ width: 40, height: 40 }} />
       </div>
 
+      {/* the whole site and each customised report (long-press one to
+          change or delete it) */}
+      <ReportChips
+        total={allItems.length}
+        reports={site?.reports ?? []}
+        current={report?.id ?? null}
+        onSelect={setReportId}
+        onChange={(r) => setEditing(r)}
+        onDelete={(r) => {
+          if (reportId === r.id) setReportId(null);
+          void saveReports((site?.reports ?? []).filter((x) => x.id !== r.id));
+        }}
+      />
+
       {/* paper preview */}
       <div style={{ flexGrow: 1, overflowY: "auto", padding: "8px 16px 12px" }}>
         <div style={{ background: "var(--paper)", borderRadius: 12, padding: "22px 18px", display: "flex", flexDirection: "column", gap: 18 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 2, borderBottom: "1px solid var(--paper-border)", paddingBottom: 14 }}>
-            <div style={{ fontSize: 16, fontWeight: 800, color: "var(--paper-text)" }}>{reportTitle(site?.name, getInspectorName())}</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: "var(--paper-text)" }}>{report ? `${site?.name ?? "Inspection"} - ${report.name}` : reportTitle(site?.name, getInspectorName())}</div>
             <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted-2)" }}>
               {site?.address ? `${site.address} · ` : ""}Inspected {formatDate(inspectionMs)}
+              {report && ` · ${report.findingIds.length} finding${report.findingIds.length === 1 ? "" : "s"} · by ${report.order === "time" ? "time taken" : "ESR category"}`}
             </div>
+            {!loading && allItems.length > 0 && (
+              <button
+                onClick={() => setEditing("new")}
+                style={{ marginTop: 10, alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 999, background: "#e3efe9", border: "1px solid #9fd3c6", color: "#1f6b5b", fontSize: 12, fontWeight: 800 }}
+              >
+                ✎ Create Customised Report
+              </button>
+            )}
+            {report && newSince(allItems, report) > 0 && (
+              <button onClick={() => setEditing(report)} style={{ marginTop: 8, alignSelf: "flex-start", border: "none", background: "none", padding: 0, textAlign: "left", fontSize: 11.5, fontWeight: 700, color: "#b26a1f" }}>
+                {newSince(allItems, report)} finding{newSince(allItems, report) === 1 ? "" : "s"} added since this report, not in it: tap to change it
+              </button>
+            )}
           </div>
 
           {loading && (
@@ -643,6 +693,22 @@ export default function ExportPreview() {
           )}
         </div>
       </div>
+
+      {editing && (
+        <CustomReport
+          entries={siteItems}
+          previews={previews}
+          existing={editing === "new" ? null : editing}
+          onCancel={() => setEditing(null)}
+          onSave={(r) => {
+            const others = (site?.reports ?? []).filter((x) => x.id !== r.id);
+            const at = (site?.reports ?? []).findIndex((x) => x.id === r.id);
+            void saveReports(at < 0 ? [...others, r] : [...others.slice(0, at), r, ...others.slice(at)]);
+            setReportId(r.id);
+            setEditing(null);
+          }}
+        />
+      )}
 
       {/* share bar */}
       <div style={{ flexShrink: 0, padding: "12px 16px calc(28px + env(safe-area-inset-bottom))", borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 10 }}>

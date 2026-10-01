@@ -11,6 +11,20 @@ export interface Site {
   kind: SiteKind;
   createdAt: number;
   updatedAt: number;
+  // customised reports made on the export page (see lib/customReports);
+  // absent until the first one is made
+  reports?: SiteReport[];
+}
+
+// A customised report: a chosen group of the site's findings, exported on
+// its own under its name, laid out by time taken or ESR category.
+export interface SiteReport {
+  id: string;
+  name: string;
+  findingIds: string[];
+  order: "time" | "esr";
+  createdAt: number;
+  updatedAt: number;
 }
 
 export interface Finding {
