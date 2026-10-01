@@ -4,7 +4,7 @@ import { Share } from "@capacitor/share";
 import { Capacitor } from "@capacitor/core";
 import RoundIconButton from "../components/RoundIconButton";
 import { describeTimings, lastExportTimings } from "../lib/exportTimings";
-import { setAdvancedControls, useAdvancedControls } from "../lib/settings";
+import { setAdvancedControls, setFlowMode, useAdvancedControls, useFlowMode, type FlowMode } from "../lib/settings";
 import ConfirmDialog from "../components/ConfirmDialog";
 import { IconChevronLeft, IconChevronRight } from "../components/Icons";
 import { ESR_SECTIONS, esrItem, sectionItems } from "../lib/esrCategories";
@@ -227,6 +227,7 @@ function PinScreen({ onUnlock, start = { kind: "enter" }, onDone, back = "/" }: 
 function AdminHome() {
   const navigate = useNavigate();
   const advancedControls = useAdvancedControls();
+  const flowMode = useFlowMode();
   const [changingPin, setChangingPin] = useState(false);
   const [notice, setNotice] = useState("");
   // Android back while choosing a new PIN cancels that, not the menu
@@ -273,6 +274,39 @@ function AdminHome() {
         </span>
         <Switch on={advancedControls} />
       </button>
+      <div style={{ ...rowStyle, flexDirection: "column", alignItems: "stretch", gap: 10, borderColor: "rgba(46,196,182,.45)" }}>
+        <span style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+          <span style={{ fontSize: 14, fontWeight: 700 }}>Flow testing mode</span>
+          <span style={hintStyle}>Who's using the app for flow tests.</span>
+        </span>
+        <div role="radiogroup" aria-label="Flow testing mode" style={{ display: "flex", gap: 4, padding: 4, borderRadius: 12, background: "var(--bg)", border: "1px solid var(--border)" }}>
+          {(
+            [
+              ["enfact", "EnFact"],
+              ["contractor", "Contractor"],
+            ] as [FlowMode, string][]
+          ).map(([mode, label]) => {
+            const on = flowMode === mode;
+            return (
+              <button
+                key={mode}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                onClick={() => setFlowMode(mode)}
+                style={{ flex: 1, padding: "9px 0", borderRadius: 9, border: `1px solid ${on ? "rgba(46,196,182,.6)" : "transparent"}`, background: on ? "rgba(46,196,182,.14)" : "none", color: on ? "var(--accent)" : "var(--muted)", fontSize: 13.5, fontWeight: 800 }}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+        <span style={hintStyle}>
+          <b style={{ color: flowMode === "enfact" ? "var(--text)" : "var(--muted)" }}>EnFact:</b> the graph always shows discharge and town main, with no line options; supplies are Town main, Electric pump or Diesel pump (or a custom name).
+          <br />
+          <b style={{ color: flowMode === "contractor" ? "var(--text)" : "var(--muted)" }}>Contractor:</b> every option (graph line picker, suction, booster / jockey pumps).
+        </span>
+      </div>
       <Row title="Keywords" hint={`ESR keywords, learned keywords, testing a note, sharing and loading keyword files. ${edited ? `${edited} edited on this phone.` : "Built-in list, no changes."}`} onClick={() => navigate("/admin/keywords")} />
       <Row title="Last export timings" hint={lastTimings ? describeTimings(lastTimings) : "No export on this phone yet."} onClick={() => {}} chevron={false} />
       <Row title="Change PIN" hint="Pick a new 4-digit admin PIN." onClick={() => setChangingPin(true)} />

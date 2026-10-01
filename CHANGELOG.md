@@ -7,6 +7,16 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Flow testing mode: EnFact or Contractor (Admin, canvas FlowModes).**
+  Admin has a new Flow testing mode switch, starting on EnFact. In **EnFact**
+  mode the graph always shows the discharge for every supply and the town
+  main, with no line chips or More list and no suction lines; a supply's name
+  list offers Town main, Electric pump or Diesel pump (numbered as before),
+  plus Custom… / Rename… for anything else. **Contractor** mode is the app as
+  it was: graph line options, suction, booster and jockey pumps. The exports
+  follow the same mode. Tests keep their names and readings when the mode
+  changes.
+
 - **Full screen readings clear of the phone's bars.** Turned sideways, the
   readings were partly under the status bar (left) and the navigation buttons
   (right, over + add column and the ✕ remove buttons). Each side now keeps

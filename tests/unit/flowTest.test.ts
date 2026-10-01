@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { setFlowMode } from "../../src/lib/settings";
 import { flowOf, newFlowTest, sectionVerdicts, summary, verdict, chartSvg, renumber, nameOptions, SUPPLY_KINDS, blankRows, nextReading, hasData, flowUnitFor, pumpColumns, isReference, lineShown, graphLines } from "../../src/lib/flowTest";
 import type { FlowTest } from "../../src/db/types";
 
@@ -118,7 +119,8 @@ test("the name list says what a pick would be called and what it renames", () =>
   assert.equal(nameOptions(t, 1).find((o) => o.base === "Town main")!.note, "");
 });
 
-test("graph lines: discharge shown, suction hidden until ticked, per line", () => {
+test("graph lines (Contractor mode): discharge shown, suction hidden until ticked, per line", () => {
+  setFlowMode("contractor");
   const withSuc = (pairs: [number, number, number][]) => pairs.map(([hg, dis, suc]) => ({ hg: String(hg), flow: "", dis: String(dis), suc: String(suc) }));
   const t = make({
     demand: [],
@@ -137,6 +139,20 @@ test("graph lines: discharge shown, suction hidden until ticked, per line", () =
   const svg = chartSvg(t, 300, 200);
   assert.equal(dotted(svg), 1, "only Diesel 2's suction");
   assert.equal(svg.match(/stroke-dasharray="5 4"/g), null, "town main hidden");
+  // EnFact mode: always every discharge and town main, never suction
+  setFlowMode("enfact");
+  const enfact = chartSvg(t, 300, 200);
+  assert.equal(dotted(enfact), 0);
+  assert.equal(enfact.match(/stroke-dasharray="5 4"/g)?.length, 1, "town main drawn");
+});
+
+test("supply names: EnFact mode offers Town main, Electric and Diesel; Contractor every kind", () => {
+  const t = make({ sections: [{ name: "Booster pump", rows: [] }, { name: "", rows: [] }] });
+  setFlowMode("enfact");
+  assert.deepEqual(nameOptions(t, 1).map((o) => o.name), ["Town main", "Electric pump", "Diesel pump"]);
+  setFlowMode("contractor");
+  assert.deepEqual(nameOptions(t, 1).map((o) => o.name), ["Town main", "Electric pump", "Diesel pump", "Booster pump 2", "Jockey pump"]);
+  setFlowMode("enfact");
 });
 
 test("flow testing exports are named after the site", async () => {

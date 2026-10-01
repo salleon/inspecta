@@ -58,6 +58,17 @@ test("Advanced controls are switched in Admin, not Settings", async () => {
   await openAdmin("/admin", "Keywords");
 });
 
+test("Flow testing mode: EnFact to start, switched to Contractor in Admin", async () => {
+  const mode = (name) => page.getAttribute(`[role="radiogroup"][aria-label="Flow testing mode"] [role="radio"]:has-text("${name}")`, "aria-checked");
+  assert.equal(await mode("EnFact"), "true");
+  assert.equal(await mode("Contractor"), "false");
+  await page.click('[role="radio"]:has-text("Contractor")');
+  assert.equal(await mode("Contractor"), "true");
+  assert.equal(await page.evaluate(() => localStorage.getItem("inspecta.flowMode")), "contractor");
+  await page.click('[role="radio"]:has-text("EnFact")');
+  assert.equal(await page.evaluate(() => localStorage.getItem("inspecta.flowMode")), "enfact");
+});
+
 test("add a keyword; it drives suggestions and survives a restart", async () => {
   await page.click('button:has-text("Keywords")');
   await page.click('button:has-text("ESR keywords")');

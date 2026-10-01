@@ -69,3 +69,31 @@ export function setConverterTool(on: boolean) {
 export function useConverterTool(): boolean {
   return useSyncExternalStore(subscribe, getConverterTool);
 }
+
+// Flow testing mode (Admin): "enfact", the stripped-down version for
+// EnFact's consultants (graph always discharge + town main, no line
+// options; supplies Town main / Electric / Diesel or a custom name), or
+// "contractor", every option. EnFact unless switched in Admin.
+export type FlowMode = "enfact" | "contractor";
+const FLOW_MODE_KEY = "inspecta.flowMode";
+
+export function getFlowMode(): FlowMode {
+  try {
+    return localStorage.getItem(FLOW_MODE_KEY) === "contractor" ? "contractor" : "enfact";
+  } catch {
+    return "enfact";
+  }
+}
+
+export function setFlowMode(mode: FlowMode) {
+  try {
+    localStorage.setItem(FLOW_MODE_KEY, mode);
+  } catch {
+    // best-effort
+  }
+  listeners.forEach((l) => l());
+}
+
+export function useFlowMode(): FlowMode {
+  return useSyncExternalStore(subscribe, getFlowMode);
+}

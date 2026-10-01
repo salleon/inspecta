@@ -33,6 +33,7 @@ import RoundIconButton from "../components/RoundIconButton";
 import ConfirmDialog from "../components/ConfirmDialog";
 import { useBackHandler } from "../lib/backButton";
 import FlowConverter from "../components/FlowConverter";
+import { useFlowMode } from "../lib/settings";
 
 // One flow test (see lib/flowTest), as mocked up on the design canvas:
 // the graph and pass lines at the top follow the readings as they're typed.
@@ -124,6 +125,8 @@ export default function FlowTest() {
   const [site, setSite] = useState<Site | null>(null);
   const [test, setTest] = useState<FlowTestRecord | null>(null);
   const [sel, setSel] = useState(0); // the supply / pump being looked at
+  // EnFact mode (Admin): the graph has no line options (see lineShown)
+  const enfact = useFlowMode() === "enfact";
   const [flowSide, setFlowSide] = useState(false); // first column shows L/min, not " Hg
   const [wide, setWide] = useState(false); // readings full screen, sideways
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -474,21 +477,23 @@ export default function FlowTest() {
             </span>
           )}
         </div>
-        <GraphLines
-          test={test}
-          lines={lines}
-          onChange={(set) =>
-            change((t) => {
-              t.graph = { ...t.graph };
-              for (const [k, v] of Object.entries(set)) {
-                // back to its default: drop it
-                const [kind] = k.split(":");
-                if (v === (kind === "dis")) delete t.graph[k];
-                else t.graph[k] = v;
-              }
-            })
-          }
-        />
+        {!enfact && (
+          <GraphLines
+            test={test}
+            lines={lines}
+            onChange={(set) =>
+              change((t) => {
+                t.graph = { ...t.graph };
+                for (const [k, v] of Object.entries(set)) {
+                  // back to its default: drop it
+                  const [kind] = k.split(":");
+                  if (v === (kind === "dis")) delete t.graph[k];
+                  else t.graph[k] = v;
+                }
+              })
+            }
+          />
+        )}
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "center" }}>
         {lineVerdicts.map((v) => (

@@ -284,8 +284,27 @@ test("a new hydrant test: flows in L/s, PASS / FAIL at the bottom, RPM for a die
   await page.waitForTimeout(700);
 });
 
-test("the graph's line chips and More list: suction off until ticked, kept with the test", async () => {
+test("EnFact mode (the default): always discharge and town main, no line options, three supply types plus custom", async () => {
   await go(page, app, "/site/s1/findings?tab=flow");
+  await page.click("text=Sprinkler >> nth=0");
+  await page.waitForTimeout(800);
+  assert.equal(await page.locator('[stroke-dasharray="2 3"]').count(), 0, "no suction");
+  assert.equal(await page.locator('polyline[stroke-dasharray="5 4"]').count(), 1, "town main shown");
+  assert.equal(await page.locator('button[aria-pressed]').count(), 0, "no line chips");
+  assert.equal(await page.locator('button:has-text("More")').count(), 0);
+  await page.click('[aria-label$=": change name"]');
+  const items = await page.locator('[role="menuitem"]').allInnerTexts();
+  assert.ok(items.some((t) => /Electric pump/.test(t)) && items.some((t) => /Diesel pump/.test(t)) && items.some((t) => /Town main/.test(t)));
+  assert.ok(!items.some((t) => /Booster|Jockey/.test(t)), items.join(" | "));
+  assert.ok(items.some((t) => /Custom…|Rename…/.test(t)), "custom names kept");
+  await pressBack(page);
+});
+
+test("the graph's line chips and More list (Contractor mode): suction off until ticked, kept with the test", async () => {
+  await page.evaluate(() => localStorage.setItem("inspecta.flowMode", "contractor"));
+  await go(page, app, "/site/s1/findings?tab=flow");
+  await page.reload();
+  await page.waitForTimeout(600);
   await page.click("text=Sprinkler >> nth=0");
   await page.waitForTimeout(800);
   const dotted = () => page.locator('[stroke-dasharray="2 3"]').count();
@@ -314,6 +333,7 @@ test("the graph's line chips and More list: suction off until ticked, kept with 
   assert.equal(await dotted(), 1, "kept with the test");
   await pressBack(page);
   await page.waitForTimeout(500);
+  await page.evaluate(() => localStorage.setItem("inspecta.flowMode", "enfact"));
 });
 
 test("deleting a flow test asks first", async () => {

@@ -1,4 +1,5 @@
 import type { DemandPoint, FlowKind, FlowReading, FlowTest, FlowUnit } from "../db/types";
+import { getFlowMode } from "./settings";
 
 // Flow tests, as mocked up on the design canvas (FlowTest board): readings
 // of " Hg, flow, discharge and suction per supply or pump, the demand
@@ -222,6 +223,10 @@ export function newFlowTest(siteId: string, kind: FlowKind): Omit<FlowTest, "id"
 export const SUPPLY_KINDS = ["Town main", "Electric pump", "Diesel pump", "Booster pump", "Jockey pump"];
 export const PUMP_KINDS = ["Diesel", "Electric"];
 export const nameKinds = (test: Pick<FlowTest, "kind">) => (test.kind === "combined" ? PUMP_KINDS : SUPPLY_KINDS);
+// what a supply tab's list offers: in EnFact mode (Admin) just these three
+// (Custom… covers anything else); numbering still goes by every kind
+export const ENFACT_SUPPLY_KINDS = ["Town main", "Electric pump", "Diesel pump"];
+export const offeredKinds = (test: Pick<FlowTest, "kind">) => (test.kind !== "combined" && getFlowMode() === "enfact" ? ENFACT_SUPPLY_KINDS : nameKinds(test));
 
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const ofKind = (name: string, base: string) => name === base || new RegExp(`^${escapeRe(base)} \\d+$`).test(name);
@@ -245,7 +250,7 @@ export interface NameOption {
 // would rename on the other tabs.
 export function nameOptions(test: FlowTest, index: number): NameOption[] {
   const kinds = nameKinds(test);
-  return kinds.map((base) => {
+  return offeredKinds(test).map((base) => {
     const sim = test.sections.map((s) => ({ name: s.name }));
     sim[index].name = base;
     renumber(sim, kinds);
@@ -267,9 +272,11 @@ export const nextReading = (test: Pick<FlowTest, "kind">): FlowReading => blankR
 export type LineKind = "dis" | "suc";
 
 // Is a section's discharge / suction line on the graph? Discharge (town
-// main included) starts shown, suction hidden; the inspector can change
-// either per line (FlowTest.graph).
+// main included) starts shown, suction hidden; in Contractor mode (Admin)
+// the inspector can change either per line (FlowTest.graph). In EnFact mode
+// it's always discharge and town main, never suction.
 export function lineShown(test: Pick<FlowTest, "graph">, kind: LineKind, index: number): boolean {
+  if (getFlowMode() === "enfact") return kind === "dis";
   return test.graph?.[`${kind}:${index}`] ?? kind === "dis";
 }
 
