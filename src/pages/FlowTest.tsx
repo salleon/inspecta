@@ -127,7 +127,7 @@ export default function FlowTest() {
   const [sel, setSel] = useState(0); // the supply / pump being looked at
   // EnFact mode (Admin): the graph has no line options (see lineShown)
   const enfact = useFlowMode() === "enfact";
-  const [flowSide, setFlowSide] = useState(false); // first column shows L/min, not " Hg
+  const [flowSide, setFlowSide] = useState(false); // combined: the first column shows L/s, not " Hg
   const [wide, setWide] = useState(false); // readings full screen, sideways
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [confirmingRemove, setConfirmingRemove] = useState(false);
@@ -356,15 +356,17 @@ export default function FlowTest() {
   // the key lists what's drawn; suction shares its supply's colour
   const legend = lines.filter((l) => l.kind === "dis" && lineShown(test, "dis", l.index)).map((l) => l.index);
   const sucShown = lines.some((l) => l.kind === "suc" && lineShown(test, "suc", l.index));
-  // The first column: a hydrant's flow in L/s; for the others it flips
-  // between " Hg and L/min (worked out from " Hg, or typed). Then discharge,
-  // suction, and RPM for a diesel pump or Amps for an electric one.
+  // The first columns: a hydrant's flow in L/s; a sprinkler's " Hg and
+  // L/min side by side; a combined system's flips between " Hg and L/s.
+  // Flow is worked out from " Hg, or typed. Then discharge, suction, and
+  // RPM for a diesel pump or Amps for an electric one.
   const pumps = pumpColumns(test, current);
   const nPump = Number(pumps.rpm) + Number(pumps.amps);
-  const gridCols = `70px 1fr 1fr${" 1fr".repeat(nPump)} 26px`;
+  const split = test.kind === "sprinkler";
+  const gridCols = `${split ? "52px 68px" : "70px"} 1fr 1fr${" 1fr".repeat(nPump)} 26px`;
   const flipTo = flowSide ? "rotateY(180deg)" : "none";
-  const gap = nPump > 1 ? 4 : 6;
-  const font = nPump > 1 ? 12 : 14;
+  const gap = nPump > 1 || (split && nPump) ? 4 : 6;
+  const font = nPump > 1 || (split && nPump) ? 12 : 14;
   const updateRow = (i: number, fn: (r: FlowReading) => void) => change((t) => fn(t.sections[current].rows[i]));
   const kindNote = { sprinkler: "Goes into the site's Excel as a SPRINKLER tab", hydrant: "Goes into the site's Excel as a HYDRANT tab", combined: "Goes into the site's Excel as a Combined System tab" }[test.kind];
   const unitLabel = unit === "sec" ? "L/s" : "L/min";
@@ -412,6 +414,15 @@ export default function FlowTest() {
       <br />
       L/s
     </div>
+  ) : split ? (
+    <>
+      <div style={th}>" Hg</div>
+      <div style={th}>
+        Flow
+        <br />
+        {unitLabel}
+      </div>
+    </>
   ) : (
     <div className="flip">
       <div className="flip-in" style={{ transform: flipTo }}>
@@ -429,6 +440,11 @@ export default function FlowTest() {
   const stepCell = (r: FlowReading, i: number, f: number) =>
     hydrant ? (
       flowCell(r, i, f)
+    ) : split ? (
+      <>
+        {hgCell(r, i, f)}
+        {flowCell(r, i, f)}
+      </>
     ) : (
       <div className="flip">
         <div className="flip-in" style={{ transform: flipTo, transitionDelay: `${i * 45}ms` }}>
@@ -635,7 +651,7 @@ export default function FlowTest() {
           </div>
         )}
         <div style={{ fontSize: 11.5, color: "var(--muted-2)", lineHeight: 1.45 }}>
-          {hydrant ? "Flows in L/s. " : `Flow in ${unitLabel} works out from " Hg; tap ⇄ ${unitLabel} to see it or type your own. `}
+          {hydrant ? "Flows in L/s. " : split ? 'Flow in L/min works out from " Hg, or type your own. ' : `Flow in ${unitLabel} works out from " Hg; tap ⇄ ${unitLabel} to see it or type your own. `}
           {test.kind === "combined" ? "RPM shows for diesel pumps, Amps for electric." : "RPM shows for a diesel pump, Amps for an electric pump."}
         </div>
       </div>
@@ -648,6 +664,7 @@ export default function FlowTest() {
           onClose={() => setWide(false)}
           stepHead={stepHead}
           stepCell={stepCell}
+          stepCols={split ? 2 : 1}
           pumpHeads={pumpHeads}
           pumpCells={pumpCells}
           updateRow={updateRow}
@@ -855,7 +872,7 @@ function TurnIcon() {
 
 // The readings full screen (canvas FlowWide): on an upright phone it twists
 // a quarter-turn to lie sideways, with room to type and to add columns. The
-// same columns as the card (" Hg ⇄ L/min, or a hydrant's L/s; Discharge;
+// same columns as the card (" Hg and L/min, " Hg ⇄ L/s, or a hydrant's L/s; Discharge;
 // Suction; RPM or Amps), then any added ones. Done or the back button twists
 // it back; everything is already saved.
 function WideReadings({
@@ -865,6 +882,7 @@ function WideReadings({
   onClose,
   stepHead,
   stepCell,
+  stepCols,
   pumpHeads,
   pumpCells,
   updateRow,
@@ -879,6 +897,7 @@ function WideReadings({
   onClose: () => void;
   stepHead: ReactNode;
   stepCell: (r: FlowReading, i: number, f: number) => ReactNode;
+  stepCols: number; // 2: a sprinkler's " Hg and L/min side by side
   pumpHeads: ReactNode;
   pumpCells: (r: FlowReading, i: number, style: CSSProperties) => ReactNode;
   updateRow: (i: number, fn: (r: FlowReading) => void) => void;
@@ -904,7 +923,7 @@ function WideReadings({
   const rows = test.sections[current].rows;
   const extras = test.extraCols ?? [];
   const pumps = pumpColumns(test, current);
-  const cols = "1fr 1fr 1fr" + " 1fr".repeat(Number(pumps.rpm) + Number(pumps.amps) + extras.length) + " 28px";
+  const cols = "1fr 1fr 1fr" + " 1fr".repeat(stepCols - 1 + Number(pumps.rpm) + Number(pumps.amps) + extras.length) + " 28px";
   const headBtn: CSSProperties = { ...th, position: "relative", border: "1px dashed #2e6a8e", background: "#0b2238", borderRadius: 7, padding: "3px 2px", color: "var(--text)" };
   const pump: CSSProperties = { ...cellStyle(15), borderColor: "rgba(245,165,92,.4)" };
   return (

@@ -129,9 +129,12 @@ test("a new sprinkler test: readings fill the flow, the result follows, and it's
   assert.equal(await hg.count(), 6);
   assert.deepEqual(await hg.evaluateAll((els) => els.map((e) => e.value)), ["", "", "", "", "", ""]);
   for (const [i, v] of ["0", "2", "4", "6", "8"].entries()) await hg.nth(i).fill(v);
-  // flow from " Hg: 534.15 × √2, in L/min behind the " Hg ⇄ L/min heading
+  // flow from " Hg: 534.15 × √2, in its own L/min column beside " Hg (no flip)
   assert.equal(await page.locator('[aria-label="Flow"]').nth(1).inputValue(), "755.4");
-  assert.equal(await page.locator('[aria-label="Show flow in L/min"]').count(), 1);
+  assert.equal(await page.locator('[aria-label^="Show flow in"]').count(), 0);
+  const hgBox = await hg.nth(1).boundingBox();
+  const flowBox = await page.locator('[aria-label="Flow"]').nth(1).boundingBox();
+  assert.ok(flowBox.x > hgBox.x + hgBox.width - 1 && Math.abs(flowBox.y - hgBox.y) < 2, "side by side");
   assert.equal(await page.locator('[aria-label="Change flow unit"]').count(), 0, "no L/s for sprinklers");
   // an unnamed supply: no RPM or Amps
   assert.equal(await page.locator('[aria-label="RPM"], [aria-label="Amps"]').count(), 0);
@@ -362,6 +365,9 @@ test("the Excel gets a SPRINKLER and a HYDRANT tab in the template layout, with 
   // Town main block, then Electric pump; the untested diesel is left out
   assert.equal(s.getCell("C9").value, "Town main");
   assert.equal(s.getCell("D12").value, 755.4);
+  // sprinklers in L/min
+  assert.equal(s.getCell("D10").value, "Flow Rate (L/min)");
+  assert.equal(s.getCell("I4").value, " (L/min)");
   assert.equal(s.getCell("F12").value, 250);
   // the town main gets no PASS or FAIL
   assert.equal(s.getCell("N12").value, "Conclusion:");
@@ -377,8 +383,11 @@ test("the Excel gets a SPRINKLER and a HYDRANT tab in the template layout, with 
   assert.notEqual(s.getCell("C33").value, "Diesel pump");
   const h = wb.getWorksheet("HYDRANT");
   assert.equal(h.getCell("B9").value, "Town main");
-  assert.equal(h.getCell("B13").value, 270); // 4.5 L/s
-  assert.equal(h.getCell("H5").value, 270);
+  // hydrants in L/s, as typed in the app
+  assert.equal(h.getCell("B13").value, 4.5);
+  assert.equal(h.getCell("B10").value, "Flow Rate (L/s)");
+  assert.equal(h.getCell("H4").value, " (L/s)");
+  assert.equal(h.getCell("H5").value, 4.5);
 
   const zip = await JSZip.loadAsync(buf);
   const charts = Object.keys(zip.files).filter((n) => /^xl\/charts\/chart\d+\.xml$/.test(n));
@@ -386,6 +395,8 @@ test("the Excel gets a SPRINKLER and a HYDRANT tab in the template layout, with 
   const chart = await zip.file(charts[0]).async("string");
   assert.match(chart, /'SPRINKLER'!\$D\$11:\$D\$15/);
   assert.match(chart, /Electric pump - 2026/);
+  assert.match(chart, /Flow \(L\/min\)/);
+  assert.match(await zip.file(charts[1]).async("string"), /Flow \(L\/s\)/);
   assert.match(await zip.file("[Content_Types].xml").async("string"), /drawingml\.chart\+xml/);
 });
 
@@ -406,7 +417,9 @@ test("a combined system goes on a Combined System tab like their sheet", async (
   const s = wb.getWorksheet("Combined System");
   assert.equal(s.getCell("C1").value, "COMBINED SYSTEM FLOW TEST RESULTS");
   assert.equal(s.getCell("C9").value, "Diesel 1");
-  assert.equal(s.getCell("D12").value, 7693.2);
+  // combined systems in L/s, like hydrants (5" Hg × 3440.5 = 7693.2 L/min)
+  assert.equal(s.getCell("D12").value, 128.22);
+  assert.equal(s.getCell("D10").value, "Flow Rate (L/s)");
   assert.equal(s.getCell("C21").value, "Diesel 2");
   assert.equal(s.getCell("N14").value, "PASS");
   assert.equal(s.getCell("N26").value, "PASS");

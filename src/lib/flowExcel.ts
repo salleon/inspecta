@@ -1,6 +1,6 @@
 import type { Workbook, Worksheet } from "exceljs";
 import type { FlowTest, Site } from "../db/types";
-import { demandPoints, extraHeading, flowOf, hasData, isTested, num, sectionName, sectionVerdicts } from "./flowTest";
+import { demandPoints, extraHeading, flowOf, flowUnitFor, hasData, isTested, num, sectionName, sectionVerdicts } from "./flowTest";
 import { ZipWriter } from "./zip";
 // EnFact's own flow test sheets, cut down to the one tab each (their
 // Combined System tab, which is the sprinkler tab with suction and RPM
@@ -227,6 +227,11 @@ function fillSheet(wb: Workbook, tplWb: Workbook, L: Layout, test: FlowTest, sit
   const series: { name: string; flow: string; dis: string; pts: { x: number; y: number }[] }[] = [];
   const hasAmps = sections.some(({ s }) => s.rows.some((r) => (r.amps ?? "").trim()));
   const hasRpm = sections.some(({ s }) => s.rows.some((r) => (r.rpm ?? "").trim()));
+  // flows as the app shows them: L/s for hydrants and combined systems,
+  // L/min for sprinklers (worked out in L/min)
+  const perSec = flowUnitFor(test) === "sec";
+  const unit = perSec ? "L/s" : "L/min";
+  const inUnit = (lmin: number) => Math.round((perSec ? lmin / 60 : lmin) * 100) / 100;
 
   for (const { s, i } of sections) {
     const top = out;
@@ -247,6 +252,7 @@ function fillSheet(wb: Workbook, tplWb: Workbook, L: Layout, test: FlowTest, sit
       cell.value = text;
       cell.style = structuredClone(headStyle);
     };
+    heading(L.col.flow, `Flow Rate (${unit})`);
     heading(L.col.suc, "Suction\n (kPa)");
     if (hasRpm || test.kind !== "hydrant") heading(L.col.rpm, "RPM");
     if (hasAmps) heading(L.col.amps, "Amps");
@@ -268,7 +274,7 @@ function fillSheet(wb: Workbook, tplWb: Workbook, L: Layout, test: FlowTest, sit
       put(L.col.hg, r.hg);
       const flow = flowOf(test, r);
       const flowCell = ws.getCell(row, L.col.flow);
-      flowCell.value = flow === null ? null : Math.round(flow * 100) / 100;
+      flowCell.value = flow === null ? null : inUnit(flow);
       flowCell.numFmt = "0.00";
       put(L.col.dis, r.dis);
       put(L.col.suc, r.suc);
@@ -276,7 +282,7 @@ function fillSheet(wb: Workbook, tplWb: Workbook, L: Layout, test: FlowTest, sit
       if (hasAmps) put(L.col.amps, r.amps);
       extras.forEach((_, j) => put(L.col.amps + 1 + j, r.extra?.[j]));
       const y = num(r.dis);
-      if (flow !== null && y !== null) pts.push({ x: flow, y });
+      if (flow !== null && y !== null) pts.push({ x: inUnit(flow), y });
     });
     const first = top + L.dataOffset;
     const last = first + Math.max(readings.length, 1) - 1;
@@ -328,9 +334,12 @@ function fillSheet(wb: Workbook, tplWb: Workbook, L: Layout, test: FlowTest, sit
   }
   ws.getCell(L.equipment).value = test.equipment?.trim() || null;
   ws.getCell(L.testedBy).value = test.testedBy?.trim() || null;
-  const dem = demandPoints(test.demand).slice(0, 4);
+  const dem = demandPoints(test.demand)
+    .slice(0, 4)
+    .map((d) => ({ x: inUnit(d.x), y: d.y }));
+  ws.getCell(4, L.demandCols[0]).value = ` (${unit})`;
   dem.forEach((d, j) => {
-    ws.getCell(5 + j, L.demandCols[0]).value = Math.round(d.x * 100) / 100;
+    ws.getCell(5 + j, L.demandCols[0]).value = d.x;
     ws.getCell(5 + j, L.demandCols[1]).value = d.y;
   });
   const commentRef = /^([A-Z]+)(\d+)$/.exec(L.comment)!;
@@ -360,6 +369,7 @@ function fillSheet(wb: Workbook, tplWb: Workbook, L: Layout, test: FlowTest, sit
         kpa: `$${colLetter(L.demandCols[1])}$5:$${colLetter(L.demandCols[1])}$${4 + Math.max(dem.length, 1)}`,
         pts: dem,
       },
+      unit,
     ),
   };
 }
@@ -390,6 +400,7 @@ export function chartXml(
   sheet: string,
   series: { name: string; flow: string; dis: string; pts: { x: number; y: number }[] }[],
   demand: { name: string; flow: string; kpa: string; pts: { x: number; y: number }[] },
+  unit = "L/min",
 ): string {
   const sers = series.map((s, i) => {
     const colour = EXCEL_COLOURS[i % EXCEL_COLOURS.length];
@@ -400,7 +411,7 @@ export function chartXml(
     `<c:ser><c:idx val="${d}"/><c:order val="${d}"/><c:tx><c:v>${esc(demand.name)}</c:v></c:tx><c:spPr><a:ln w="19050"><a:noFill/></a:ln></c:spPr><c:marker><c:symbol val="diamond"/><c:size val="9"/><c:spPr><a:noFill/><a:ln w="19050"><a:solidFill><a:srgbClr val="E0301E"/></a:solidFill></a:ln></c:spPr></c:marker><c:xVal>${numRef(sheet, demand.flow, demand.pts.map((p) => p.x))}</c:xVal><c:yVal>${numRef(sheet, demand.kpa, demand.pts.map((p) => p.y))}</c:yVal><c:smooth val="0"/></c:ser>`,
   );
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><c:roundedCorners val="0"/><c:chart><c:title>${richText(title, 1400)}<c:overlay val="0"/></c:title><c:autoTitleDeleted val="0"/><c:plotArea><c:layout/><c:scatterChart><c:scatterStyle val="lineMarker"/><c:varyColors val="0"/>${sers.join("")}<c:axId val="510001"/><c:axId val="510002"/></c:scatterChart>${axis(510001, 510002, "b", "Flow (L/min)")}${axis(510002, 510001, "l", "Pressure (kPa)")}</c:plotArea><c:legend><c:legendPos val="r"/><c:overlay val="0"/><c:spPr><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill><a:ln w="9525"><a:solidFill><a:srgbClr val="B8C6D2"/></a:solidFill></a:ln></c:spPr></c:legend><c:plotVisOnly val="1"/><c:dispBlanksAs val="gap"/></c:chart><c:spPr><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill><a:ln w="9525"><a:solidFill><a:srgbClr val="D9D9D9"/></a:solidFill></a:ln></c:spPr></c:chartSpace>`;
+<c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><c:roundedCorners val="0"/><c:chart><c:title>${richText(title, 1400)}<c:overlay val="0"/></c:title><c:autoTitleDeleted val="0"/><c:plotArea><c:layout/><c:scatterChart><c:scatterStyle val="lineMarker"/><c:varyColors val="0"/>${sers.join("")}<c:axId val="510001"/><c:axId val="510002"/></c:scatterChart>${axis(510001, 510002, "b", `Flow (${unit})`)}${axis(510002, 510001, "l", "Pressure (kPa)")}</c:plotArea><c:legend><c:legendPos val="r"/><c:overlay val="0"/><c:spPr><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill><a:ln w="9525"><a:solidFill><a:srgbClr val="B8C6D2"/></a:solidFill></a:ln></c:spPr></c:legend><c:plotVisOnly val="1"/><c:dispBlanksAs val="gap"/></c:chart><c:spPr><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill><a:ln w="9525"><a:solidFill><a:srgbClr val="D9D9D9"/></a:solidFill></a:ln></c:spPr></c:chartSpace>`;
 }
 
 // ---- adding the charts to the written file ----

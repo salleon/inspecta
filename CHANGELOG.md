@@ -7,6 +7,15 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Flow test Excel in the same units as the app.** The Hydrant and
+  Combined System tabs now give flows, demand points and the chart's flow
+  axis in L/s (e.g. 4.5 L/s, not 270 L/min); the Sprinkler tab stays in
+  L/min. Each block's heading says which ("Flow Rate (L/s)"), replacing the
+  templates' fixed "l/min".
+- **Sprinkler readings: " Hg and L/min side by side.** Instead of flipping
+  between them, a sprinkler test shows " Hg and Flow L/min as two columns,
+  upright and full screen. Combined systems keep the flip (" Hg ⇄ L/s).
+
 - **Combined systems in L/s.** A combined system's flows are now shown in
   L/s like a hydrant's (the readings' " Hg ⇄ L/s column, demand points,
   graph, export preview and PDF). Sprinklers stay in L/min.
