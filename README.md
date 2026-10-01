@@ -84,6 +84,8 @@ Ideas agreed but not started yet:
    a table per supply with PASS / FAIL, graph, comments). Export PDF: a full
    page per flow test. Export Excel: one sheet per flow test, named after the
    test. AFSS / project sites keep flow tests in their Excel as now.
+   Both exports are mocked up on canvas board FlowExports; the chart legend
+   sits in a vertical box on the right of the graph.
 2. **Add your own columns to flow test readings, and comments** (canvas board
    FlowColumns) — columns are added only in full screen, with a + at the end
    of the headings (name + unit, quick picks like oil pressure, engine temp);
