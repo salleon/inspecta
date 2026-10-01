@@ -340,8 +340,8 @@ export default function Dashboard() {
                 Just flow tests: no findings or photos. Exports its flow test results as a PDF or Excel.
               </div>
             )}
+            {/* no autofocus: pick the kind first, then tap here (the keyboard waits) */}
             <input
-              autoFocus
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Site name"

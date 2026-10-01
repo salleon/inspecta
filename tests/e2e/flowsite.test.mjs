@@ -50,6 +50,9 @@ test("New site offers Flow testing; the home page groups flow testing sites", as
   assert.equal(await page.getByText("Flow testing", { exact: true }).count(), 1, "the group heading");
   assert.equal(await page.getByText("2 flow tests").count(), 1);
   await page.click('[aria-label="Start new site inspection"]');
+  await page.waitForTimeout(300);
+  // the keyboard waits: nothing is focused until Site name is tapped
+  assert.notEqual(await page.evaluate(() => document.activeElement?.tagName), "INPUT");
   await page.click('button:has-text("Flow testing")');
   assert.equal(await page.getByText("Just flow tests: no findings or photos.", { exact: false }).count(), 1);
   await page.fill('input[placeholder="Site name"]', "Aldi Gordon");

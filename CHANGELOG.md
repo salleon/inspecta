@@ -7,6 +7,8 @@ the technical detail.
 
 ## 1 October 2026
 
+- **New site: the keyboard waits.** The + no longer opens the keyboard
+  straight away; pick AFSS, Projects or Flow testing, then tap Site name.
 - **Flows are typed, not worked out from " Hg.** The flow depends on the
   test equipment, so sprinkler and combined tests no longer fill the Flow
   column from " Hg (534.15 / 3440.5 × √" Hg) until each rig's figures are
