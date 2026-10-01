@@ -7,6 +7,9 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Full screen readings scroll from anywhere.** A drag that starts on a
+  cell now scrolls the table (before, only the blank space did on Android,
+  because a drag on a text box went to the box). A tap still picks the cell.
 - The **Flow tests** tab on an AFSS / project site no longer says ALPHA TEST.
 - **Full screen readings: the app's own number pad (canvas FlowKeypadB).**
   The phone's keyboard no longer comes up sideways. Tap a cell and a number

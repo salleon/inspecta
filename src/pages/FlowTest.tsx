@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties, type FocusEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type FocusEvent, type MouseEvent, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import type { FlowTest as FlowTestRecord, FlowReading, FlowUnit, Site } from "../db/types";
 import { deleteFlowTest, getFlowTest, getSite, saveFlowTest } from "../db/db";
@@ -1142,6 +1142,18 @@ function WideReadings({
     }
     window.setTimeout(() => reveal(el), 0);
   };
+  // The cells can't be touched themselves (index.css): on Android a drag
+  // that starts on a text box goes to the box, not the table, so the table
+  // wouldn't scroll. A tap lands on the table instead and picks the cell
+  // under the finger here.
+  const onTapTable = (e: MouseEvent) => {
+    if ((e.target as HTMLElement).closest("button")) return;
+    const cell = [...(scrollRef.current?.querySelectorAll<HTMLInputElement>(".wide-grid input") ?? [])].find((el) => {
+      const r = el.getBoundingClientRect();
+      return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+    });
+    cell?.focus({ preventScroll: true });
+  };
   // a key goes into the cell as if typed, so the cell's own rules apply
   const press = (key: string) => {
     const el = active.current;
@@ -1240,7 +1252,7 @@ function WideReadings({
           </button>
         </div>
         <div ref={bodyRef} style={{ flexGrow: 1, minHeight: 0, position: "relative", overflow: "hidden" }}>
-          <div ref={scrollRef} className="wide-scroll" onFocus={onFocusCell}>
+          <div ref={scrollRef} className="wide-scroll" onFocus={onFocusCell} onClick={onTapTable}>
             <div className="wide-grid" style={{ gridTemplateColumns: cols }}>
               {stepHeads.map((h, j) => (
                 <div key={`h${j}`} className={j === 0 ? "wide-head wide-pin" : "wide-head"}>

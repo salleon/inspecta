@@ -241,14 +241,17 @@ test("a new hydrant test: flows in L/s, PASS / FAIL at the bottom, RPM for a die
   assert.equal(await keypad.evaluate((e) => e.classList.contains("off")), true, "no keypad until a cell is tapped");
   const rpm = wide.locator('[aria-label="RPM"]').first();
   assert.equal(await rpm.getAttribute("inputmode"), "none");
-  await rpm.click();
+  // a touch on a cell goes to the table (so a drag scrolls it); a tap still picks the cell
+  assert.equal(await rpm.evaluate((e) => getComputedStyle(e).pointerEvents), "none");
+  await rpm.click({ force: true });
   await page.waitForTimeout(400);
+  assert.equal(await rpm.evaluate((e) => e === document.activeElement), true, "the tap picked the cell under it");
   assert.equal(await keypad.evaluate((e) => e.classList.contains("off")), false, "tapping a cell brings the keypad in");
   for (const k of ["1", "9", "2", "2", "Backspace", "0"]) await keypad.locator(`[aria-label="${k}"]`).click();
   assert.equal(await rpm.inputValue(), "1920");
   // the first key after tapping a cell replaces what's there
-  await rpm.click();
-  await wide.locator('[aria-label="Discharge"]').first().click();
+  await rpm.click({ force: true });
+  await wide.locator('[aria-label="Discharge"]').first().click({ force: true });
   await keypad.locator('[aria-label="7"]').click();
   assert.equal(await wide.locator('[aria-label="Discharge"]').first().inputValue(), "7");
   await keypad.locator('[aria-label="Backspace"]').click();

@@ -488,6 +488,11 @@ button:active:not(:disabled) {
   padding-top: 0 !important;
   padding-bottom: 0 !important;
   caret-color: transparent;
+  /* touches go to the table, so a drag from a cell scrolls it; a tap picks
+     the cell (FlowTest's onTapTable) */
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 .wide-grid input:focus {
   border: 2px solid var(--accent) !important;
