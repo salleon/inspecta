@@ -7,6 +7,11 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Prefilled steps: faint numbers that clear when tapped.** The prefilled
+  " Hg / L/s numbers no longer have a dashed teal outline or a PREFILL label;
+  they're just shown in faint teal until something is read on their row.
+  Tapping one clears it, ready to type; leave it without typing a new number
+  and the prefilled value comes back.
 - **Flow testing as its own site type (canvas FlowSiteType / FlowExports).**
   New site now offers AFSS, Projects and **Flow testing**; flow testing sites
   get their own group on the home page (with a count of flow tests). Opening

@@ -183,11 +183,24 @@ test("a new hydrant test: flows prefilled in L/s, PASS / FAIL at the bottom, no 
   await page.waitForTimeout(800);
   const flow = page.locator('[aria-label="Flow"]');
   assert.deepEqual(await Promise.all([0, 1, 2, 3, 4].map((i) => flow.nth(i).inputValue())), ["0", "5", "10", "15", "20"]);
-  assert.equal(await page.getByText("PREFILL", { exact: true }).count(), 5);
+  // a prefilled number clears when tapped, and comes back if nothing's typed
+  await flow.nth(1).focus();
+  assert.equal(await flow.nth(1).inputValue(), "");
+  assert.equal(await flow.nth(1).getAttribute("placeholder"), "5");
+  await flow.nth(2).focus();
+  assert.equal(await flow.nth(1).inputValue(), "5");
+  await flow.nth(2).fill("12");
+  await flow.nth(3).focus();
+  assert.equal(await flow.nth(2).inputValue(), "12");
+  await flow.nth(2).focus();
+  await flow.nth(2).fill("10");
+  const faint = () => flow.evaluateAll((els) => els.filter((e) => getComputedStyle(e).color === "rgba(46, 196, 182, 0.55)").length);
+  assert.equal(await faint(), 5, "prefilled numbers in faint teal until the row is read");
   assert.equal(await page.getByText("+ Add reading (25 L/s)").count(), 1);
   const dis = page.locator('[aria-label="Discharge"]');
   for (const [i, v] of ["640", "585", "500"].entries()) await dis.nth(i).fill(v);
-  assert.equal(await page.getByText("PREFILL", { exact: true }).count(), 2, "read rows aren't prefills any more");
+  await page.locator("body").click({ position: { x: 5, y: 5 } });
+  assert.equal(await faint(), 2, "read rows aren't prefills any more");
   await page.fill('[aria-label="Demand flow"]', "10");
   await page.fill('[aria-label="Demand pressure"]', "350");
   await page.waitForTimeout(300);

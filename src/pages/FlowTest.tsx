@@ -61,8 +61,7 @@ const cellStyle = (font: number, auto = false): CSSProperties => ({
 const addButton: CSSProperties = { width: "100%", padding: "10px 0", borderRadius: 10, background: "none", border: "1px dashed var(--border-strong)", color: "var(--accent)", fontSize: 13, fontWeight: 800 };
 const xButton: CSSProperties = { width: 26, height: 26, borderRadius: "50%", border: "none", background: "none", color: "var(--muted-2)", fontSize: 13, padding: 0 };
 // a prefilled step (" Hg, or a hydrant's L/s) on a row with nothing read yet
-const prefillStyle: CSSProperties = { color: "#7fb8b3", fontWeight: 600, background: "#0f2d47", border: "1px dashed rgba(46,196,182,.45)" };
-const prefillTag: CSSProperties = { position: "absolute", top: -6, right: 3, padding: "0 3px", borderRadius: 4, background: "var(--panel)", color: "var(--accent)", fontSize: 7.5, fontWeight: 800, letterSpacing: "0.04em", lineHeight: "11px", pointerEvents: "none" };
+const prefillStyle: CSSProperties = { color: "rgba(46,196,182,.55)", fontWeight: 600 };
 const resultBox = (colour: string): CSSProperties => ({
   display: "inline-flex",
   alignItems: "center",
@@ -78,13 +77,28 @@ const resultBox = (colour: string): CSSProperties => ({
   whiteSpace: "nowrap",
 });
 
-// a cell for the prefilled step column: dashed and dimmed, with a small
-// PREFILL tag, until something is read on its row; always editable
-function StepCell({ prefill, className, style, ...input }: { prefill: boolean; className?: string; style: CSSProperties } & InputHTMLAttributes<HTMLInputElement>) {
+// a cell for the prefilled step column: the number in faint teal until
+// something is read on its row. Tapping a prefilled number clears it, ready
+// to type; leave it without typing (or empty) and the prefill comes back.
+function StepCell({ prefill, className, style, value, onValue, ...input }: { prefill: boolean; className?: string; style: CSSProperties; value: string; onValue: (v: string) => void } & Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "onChange">) {
+  // the prefill being stood in for while it's tapped
+  const [held, setHeld] = useState<string | null>(null);
+  const cleared = held !== null && value === held;
   return (
     <div className={className} style={{ position: "relative", minWidth: 0 }}>
-      <input {...input} inputMode="decimal" style={{ ...style, ...(prefill && input.value !== "" ? prefillStyle : null) }} />
-      {prefill && input.value !== "" && <span style={prefillTag}>PREFILL</span>}
+      <input
+        {...input}
+        inputMode="decimal"
+        value={cleared ? "" : value}
+        placeholder={cleared ? held : undefined}
+        onFocus={() => setHeld(prefill && value !== "" ? value : null)}
+        onChange={(e) => onValue(e.target.value)}
+        onBlur={() => {
+          if (held !== null && value === "") onValue(held);
+          setHeld(null);
+        }}
+        style={{ ...style, ...(prefill && !cleared ? prefillStyle : null) }}
+      />
     </div>
   );
 }
@@ -385,7 +399,7 @@ export default function FlowTest() {
 
   // the cells, shared by the card and the full-screen view
   const hgCell = (r: FlowReading, i: number, f: number, props: { className?: string; tabIndex?: number } = {}) => (
-    <StepCell {...props} prefill={!hydrant && !hasData(r)} style={cellStyle(f)} value={r.hg} aria-label='" Hg' onChange={(e) => updateRow(i, (x) => void (x.hg = e.target.value))} />
+    <StepCell {...props} prefill={!hydrant && !hasData(r)} style={cellStyle(f)} value={r.hg} aria-label='" Hg' onValue={(v) => updateRow(i, (x) => void (x.hg = v))} />
   );
   const flowCell = (r: FlowReading, i: number, f: number, props: { className?: string; tabIndex?: number } = {}) => {
     if (hydrant)
@@ -396,7 +410,7 @@ export default function FlowTest() {
           style={cellStyle(f)}
           value={shown(r.flow, r.flowUnit)}
           aria-label="Flow"
-          onChange={(e) => updateRow(i, (x) => void Object.assign(x, { flow: e.target.value, flowUnit: unit }))}
+          onValue={(v) => updateRow(i, (x) => void Object.assign(x, { flow: v, flowUnit: unit }))}
         />
       );
     const auto = r.flow === "";
