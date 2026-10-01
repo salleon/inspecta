@@ -63,6 +63,8 @@ test("Settings shows the build label from BUILD_LABEL", async () => {
   await go(page, app, "/");
   await page.click('button[aria-label="Settings"]');
   const label = (await readFile(new URL("../../BUILD_LABEL", import.meta.url), "utf8")).trim();
+  // Settings is its own page now: wait for it to slide in
+  await page.locator(`text=Inspecta · Build ${label}`).waitFor();
   assert.equal(await page.locator(`text=Inspecta · Build ${label}`).count(), 1);
 });
 
