@@ -1,6 +1,7 @@
 import type { Workbook, Worksheet } from "exceljs";
 import type { FlowTest, Site } from "../db/types";
-import { demandPoints, extraHeading, flowOf, flowUnitFor, hasData, isTested, num, sectionName, sectionVerdicts } from "./flowTest";
+import { demandPoints, extraHeading, flowOf, flowUnitFor, hasData, isTested, num, sectionHeading, sectionName, sectionVerdicts } from "./flowTest";
+import type { FlowReading } from "../db/types";
 import { ZipWriter } from "./zip";
 // EnFact's own flow test sheets, cut down to the one tab each (their
 // Combined System tab, which is the sprinkler tab with suction and RPM
@@ -243,7 +244,9 @@ function fillSheet(wb: Workbook, tplWb: Workbook, L: Layout, test: FlowTest, sit
     for (let j = 0; j < dataRows; j++) copyRow(tpl, ws, L.blockStart + L.dataOffset + Math.min(j, L.dataRows - 1), out++, L.lastCol);
     for (let r = L.dataOffset + L.dataRows; r < L.blockRows; r++) copyRow(tpl, ws, L.blockStart + r, out++, L.lastCol);
 
-    ws.getCell(top, L.col.name).value = sectionName(test, i);
+    // "Diesel pump 1 - TANK", and its cut-in when recorded
+    const cutIn = s.cutIn?.trim();
+    ws.getCell(top, L.col.name).value = sectionHeading(test, i) + (cutIn ? ` (cut-in ${cutIn} kPa)` : "");
     ws.getCell(top, L.col.year).value = year;
     const head = top + 1;
     const headStyle = ws.getCell(head, L.col.dis).style;
@@ -257,7 +260,13 @@ function fillSheet(wb: Workbook, tplWb: Workbook, L: Layout, test: FlowTest, sit
     if (hasRpm || test.kind !== "hydrant") heading(L.col.rpm, "RPM");
     if (hasAmps) heading(L.col.amps, "Amps");
     // added columns after Amps, as many as fit before the result column
-    const extras = (test.extraCols ?? []).slice(0, L.col.result - L.col.amps - 1);
+    // after Amps: a combined system's engine temp and oil pressure, when
+    // read, then the inspector's own columns, as many as fit before the result
+    const engine: { name: string; unit?: string; get: (r: FlowReading) => string | undefined }[] = [
+      ...(sections.some(({ s: x }) => x.rows.some((r) => (r.temp ?? "").trim())) ? [{ name: "Temp", unit: "°C", get: (r: FlowReading) => r.temp }] : []),
+      ...(sections.some(({ s: x }) => x.rows.some((r) => (r.oil ?? "").trim())) ? [{ name: "Oil pressure", unit: "kPa", get: (r: FlowReading) => r.oil }] : []),
+    ];
+    const extras = [...engine, ...(test.extraCols ?? []).map((c, j) => ({ ...c, get: (r: FlowReading) => r.extra?.[j] }))].slice(0, L.col.result - L.col.amps - 1);
     extras.forEach((c, j) => {
       heading(L.col.amps + 1 + j, extraHeading(c));
       // added columns stand out, as on the canvas (FlowExports)
@@ -280,7 +289,7 @@ function fillSheet(wb: Workbook, tplWb: Workbook, L: Layout, test: FlowTest, sit
       put(L.col.suc, r.suc);
       if (hasRpm || test.kind !== "hydrant") put(L.col.rpm, r.rpm);
       if (hasAmps) put(L.col.amps, r.amps);
-      extras.forEach((_, j) => put(L.col.amps + 1 + j, r.extra?.[j]));
+      extras.forEach((c, j) => put(L.col.amps + 1 + j, c.get(r)));
       const y = num(r.dis);
       if (flow !== null && y !== null) pts.push({ x: inUnit(flow), y });
     });
@@ -332,7 +341,8 @@ function fillSheet(wb: Workbook, tplWb: Workbook, L: Layout, test: FlowTest, sit
     ws.getCell(L.date).value = excelDate(test.testedAt);
     ws.getCell(L.date).numFmt = "dd-mmm-yy";
   }
-  ws.getCell(L.equipment).value = test.equipment?.trim() || null;
+  const installed = test.kind === "combined" && test.yearInstalled?.trim() ? `installed ${test.yearInstalled.trim()}` : "";
+  ws.getCell(L.equipment).value = [test.equipment?.trim(), installed].filter(Boolean).join(" · ") || null;
   ws.getCell(L.testedBy).value = test.testedBy?.trim() || null;
   const dem = demandPoints(test.demand)
     .slice(0, 4)

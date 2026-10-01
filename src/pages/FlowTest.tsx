@@ -77,6 +77,30 @@ const resultBox = (colour: string): CSSProperties => ({
   whiteSpace: "nowrap",
 });
 
+// a small two-way switch (unit, suction source); value null = neither picked
+function Segmented<T extends string>({ label, value, options, onChange, grow = false }: { label: string; value: T | null; options: [T, string][]; onChange: (v: T) => void; grow?: boolean }) {
+  return (
+    <div role="radiogroup" aria-label={label} style={{ display: "flex", gap: 3, padding: 3, borderRadius: 10, background: "var(--bg)", border: "1px solid var(--border)", flex: grow ? 1 : "0 0 auto" }}>
+      {options.map(([v, text]) => {
+        const on = value === v;
+        return (
+          <button
+            key={v}
+            role="radio"
+            aria-checked={on}
+            onClick={() => onChange(v)}
+            style={{ flex: 1, padding: "6px 12px", borderRadius: 8, border: `1px solid ${on ? "rgba(46,196,182,.6)" : "transparent"}`, background: on ? "rgba(46,196,182,.14)" : "none", color: on ? "var(--accent)" : "var(--muted)", fontSize: 12, fontWeight: 800, whiteSpace: "nowrap" }}
+          >
+            {text}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+const dutyTag: CSSProperties = { padding: "4px 0", borderRadius: 999, border: "1px solid rgba(255,90,74,.5)", background: "rgba(255,90,74,.1)", color: "#ff7a6a", fontSize: 10.5, fontWeight: 800, textAlign: "center", whiteSpace: "nowrap" };
+
 // PASS / FAIL against the demand (duty) points (none for town main)
 function ResultBox({ test, index, unit }: { test: FlowTestRecord; index: number; unit: FlowUnit }) {
   if (isReference(test, index)) return null;
@@ -435,6 +459,29 @@ export default function FlowTest() {
       {pumps.amps && <div style={th}>Amps</div>}
     </>
   );
+  // full screen only: a combined system's engine temp and oil pressure (Contractor)
+  const engine = combined && !enfact;
+  const engineHeads = engine && (
+    <>
+      <div style={th}>
+        Temp
+        <br />
+        °C
+      </div>
+      <div style={th}>
+        Oil pressure
+        <br />
+        kPa
+      </div>
+    </>
+  );
+  const engineCells = (r: FlowReading, i: number, style: CSSProperties) =>
+    engine && (
+      <>
+        <input style={style} inputMode="decimal" value={r.temp ?? ""} aria-label="Temp" onChange={(e) => updateRow(i, (x) => void (x.temp = e.target.value))} />
+        <input style={style} inputMode="decimal" value={r.oil ?? ""} aria-label="Oil pressure" onChange={(e) => updateRow(i, (x) => void (x.oil = e.target.value))} />
+      </>
+    );
   const pumpCells = (r: FlowReading, i: number, style: CSSProperties) => (
     <>
       {pumps.rpm && <input style={style} inputMode="decimal" value={r.rpm ?? ""} aria-label="RPM" onChange={(e) => updateRow(i, (x) => void (x.rpm = e.target.value))} />}
@@ -477,19 +524,49 @@ export default function FlowTest() {
             )}
           </label>
         ))}
+        {combined && !enfact && (
+          <label style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ width: 78, flexShrink: 0, fontSize: 12.5, fontWeight: 700, color: "var(--muted)" }}>Year installed</span>
+            <input
+              value={test.yearInstalled ?? ""}
+              inputMode="numeric"
+              aria-label="Year installed"
+              placeholder="e.g. 2006"
+              onChange={(e) => change((t) => void (t.yearInstalled = e.target.value))}
+              style={{ ...cellStyle(14), textAlign: "left", padding: "8px 10px" }}
+            />
+          </label>
+        )}
       </div>
       {/* demand points */}
       <div style={card}>
-        <div style={lbl}>Demand points</div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 26px", gap: 6 }}>
+        {combined ? (
+          // a combined system's duty: its own unit (the readings follow it), the first point the pump duty
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ ...lbl, flexGrow: 1 }}>System pump duty</div>
+            <Segmented
+              label="Pump duty unit"
+              value={unit}
+              options={[
+                ["min", "L/min"],
+                ["sec", "L/s"],
+              ]}
+              onChange={(u) => change((t) => void (t.unit = u))}
+            />
+          </div>
+        ) : (
+          <div style={lbl}>Demand points</div>
+        )}
+        <div style={{ display: "grid", gridTemplateColumns: combined ? "1fr 1fr 76px 26px" : "1fr 1fr 26px", gap: 6 }}>
           <div style={th}>
             Flow {unitLabel}
           </div>
           <div style={th}>Pressure kPa</div>
+          {combined && <div />}
           <div />
         </div>
         {test.demand.map((d, i) => (
-          <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 1fr 26px", gap: 6, alignItems: "center" }}>
+          <div key={i} style={{ display: "grid", gridTemplateColumns: combined ? "1fr 1fr 76px 26px" : "1fr 1fr 26px", gap: 6, alignItems: "center" }}>
             <input
               style={cellStyle(14)}
               inputMode="decimal"
@@ -498,6 +575,7 @@ export default function FlowTest() {
               onChange={(e) => change((t) => void Object.assign(t.demand[i], { flow: e.target.value, flowUnit: unit }))}
             />
             <input style={cellStyle(14)} inputMode="decimal" value={d.kpa} aria-label="Demand pressure" onChange={(e) => change((t) => void (t.demand[i].kpa = e.target.value))} />
+            {combined && (i === 0 ? <span style={dutyTag}>Pump duty</span> : <span />)}
             <button style={xButton} aria-label="Remove demand point" onClick={() => change((t) => void t.demand.splice(i, 1))}>
               ✕
             </button>
@@ -523,9 +601,22 @@ export default function FlowTest() {
               </span>
             ),
           )}
-          <span>
-            <span style={{ color: "#ff5a4a" }}>◆</span> Demand
-          </span>
+          {combined ? (
+            <>
+              <span>
+                <span style={{ color: "#ff5a4a" }}>◆</span> Pump duty
+              </span>
+              {test.demand.length > 1 && (
+                <span>
+                  <span style={{ color: "#ff5a4a" }}>◇</span> Demand
+                </span>
+              )}
+            </>
+          ) : (
+            <span>
+              <span style={{ color: "#ff5a4a" }}>◆</span> Demand
+            </span>
+          )}
           {sucShown && (
             <span>
               <span style={{ color: NEUTRAL_COLOUR }}>····</span> Suction
@@ -581,6 +672,36 @@ export default function FlowTest() {
           />
         </div>
 
+        {/* where the pump's suction comes from (not for the town main
+            itself), and a combined system's cut-in (Contractor) */}
+        {!isReference(test, current) && (
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ width: 64, flexShrink: 0, fontSize: 12.5, fontWeight: 700, color: "var(--muted)" }}>Suction</span>
+            <Segmented
+              label="Suction from"
+              value={section.suction ?? null}
+              options={[
+                ["tank", "Tank"],
+                ["town", "Town main"],
+              ]}
+              onChange={(v) => change((t) => void (t.sections[current].suction = t.sections[current].suction === v ? undefined : v))}
+              grow
+            />
+          </div>
+        )}
+        {combined && !enfact && (
+          <label style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ width: 64, flexShrink: 0, fontSize: 12.5, fontWeight: 700, color: "var(--muted)" }}>Cut-in</span>
+            <input
+              value={section.cutIn ?? ""}
+              inputMode="decimal"
+              aria-label="Cut-in kPa"
+              placeholder="kPa"
+              onChange={(e) => change((t) => void (t.sections[current].cutIn = e.target.value))}
+              style={{ ...cellStyle(14), textAlign: "left", padding: "8px 10px" }}
+            />
+          </label>
+        )}
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <div style={{ ...lbl, flexGrow: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Readings · {sectionName(test, current)}</div>
           <button
@@ -641,6 +762,9 @@ export default function FlowTest() {
           stepHead={stepHead}
           stepCell={stepCell}
           stepCols={split ? 2 : 1}
+          engineHeads={engineHeads}
+          engineCells={engineCells}
+          engineCols={engine ? 2 : 0}
           pumpHeads={pumpHeads}
           pumpCells={pumpCells}
           updateRow={updateRow}
@@ -859,6 +983,9 @@ function WideReadings({
   stepHead,
   stepCell,
   stepCols,
+  engineHeads,
+  engineCells,
+  engineCols,
   pumpHeads,
   pumpCells,
   updateRow,
@@ -874,6 +1001,9 @@ function WideReadings({
   stepHead: ReactNode;
   stepCell: (r: FlowReading, i: number, f: number) => ReactNode;
   stepCols: number; // 2: " Hg and the flow side by side
+  engineHeads: ReactNode;
+  engineCells: (r: FlowReading, i: number, style: CSSProperties) => ReactNode;
+  engineCols: number;
   pumpHeads: ReactNode;
   pumpCells: (r: FlowReading, i: number, style: CSSProperties) => ReactNode;
   updateRow: (i: number, fn: (r: FlowReading) => void) => void;
@@ -899,7 +1029,7 @@ function WideReadings({
   const rows = test.sections[current].rows;
   const extras = test.extraCols ?? [];
   const pumps = pumpColumns(test, current);
-  const cols = "1fr 1fr 1fr" + " 1fr".repeat(stepCols - 1 + Number(pumps.rpm) + Number(pumps.amps) + extras.length) + " 28px";
+  const cols = "1fr 1fr 1fr" + " 1fr".repeat(stepCols - 1 + engineCols + Number(pumps.rpm) + Number(pumps.amps) + extras.length) + " 28px";
   const headBtn: CSSProperties = { ...th, position: "relative", border: "1px dashed #2e6a8e", background: "#0b2238", borderRadius: 7, padding: "3px 2px", color: "var(--text)" };
   const pump: CSSProperties = { ...cellStyle(15), borderColor: "rgba(245,165,92,.4)" };
   return (
@@ -940,6 +1070,12 @@ function WideReadings({
               );
             })}
           </div>
+          {/* the pump's cut-in and suction source, as recorded */}
+          {(() => {
+            const sec = test.sections[current];
+            const bits = [sec.cutIn?.trim() && test.kind === "combined" ? `cut-in ${sec.cutIn.trim()} kPa` : "", sec.suction ? `suction from ${sec.suction === "tank" ? "tank" : "town main"}` : ""].filter(Boolean);
+            return bits.length ? <span style={{ flexShrink: 0, fontSize: 11.5, fontWeight: 700, color: "var(--muted)" }}>{bits.join(" · ")}</span> : null;
+          })()}
           <div style={{ flexGrow: 1 }} />
           <button onClick={close} style={{ flexShrink: 0, padding: "7px 14px", borderRadius: 10, border: "none", background: "var(--accent)", color: "var(--accent-text)", fontSize: 12.5, fontWeight: 800 }}>
             Done
@@ -958,6 +1094,7 @@ function WideReadings({
             kPa
           </div>
           {pumpHeads}
+          {engineHeads}
           {extras.map((c, j) => (
             <button key={j} style={headBtn} aria-label={`Edit column ${c.name}`} onClick={() => setColEdit(j)}>
               {c.name}
@@ -985,6 +1122,7 @@ function WideReadings({
               <input style={cellStyle(15)} inputMode="decimal" value={r.dis} aria-label="Discharge" onChange={(e) => updateRow(i, (x) => void (x.dis = e.target.value))} />
               <input style={cellStyle(15)} inputMode="decimal" value={r.suc} aria-label="Suction" onChange={(e) => updateRow(i, (x) => void (x.suc = e.target.value))} />
               {pumpCells(r, i, pump)}
+              {engineCells(r, i, cellStyle(15))}
               {extras.map((c, j) => (
                 <input
                   key={j}

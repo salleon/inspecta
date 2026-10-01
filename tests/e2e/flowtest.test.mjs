@@ -410,13 +410,56 @@ test("more supplies than the template has get their own blocks", async () => {
   assert.equal(wb.getWorksheet("Drencher valve test").getCell("C6").value, 300);
 });
 
+test("a combined system: pump duty with its own unit, Tank / Town main per pump; Contractor adds year installed, cut-in, temp and oil", async () => {
+  await go(page, app, "/site/s3/flow/t5", 900);
+  // the duty card: the first point is the pump duty; L/s to start, like hydrants
+  assert.equal(await page.getByText("System pump duty").count(), 1);
+  assert.equal(await page.getByText("Pump duty", { exact: true }).count(), 1);
+  const unitIs = (u) => page.getAttribute(`[role="radiogroup"][aria-label="Pump duty unit"] [role="radio"]:has-text("${u}")`, "aria-checked");
+  assert.equal(await unitIs("L/s"), "true");
+  assert.equal(await page.inputValue('[aria-label="Demand flow"] >> nth=0'), "166.2");
+  // switching the duty's unit switches the readings' flow too, nothing lost
+  await page.click('[aria-label="Pump duty unit"] [role="radio"]:has-text("L/min")');
+  assert.equal(await page.inputValue('[aria-label="Demand flow"] >> nth=0'), "9970");
+  assert.equal(await page.inputValue('[aria-label="Flow"] >> nth=1'), "7693.2");
+  assert.equal(await page.locator("text=Flow L/min").count() > 0, true);
+  await page.click('[aria-label="Pump duty unit"] [role="radio"]:has-text("L/s")');
+  assert.equal(await page.inputValue('[aria-label="Flow"] >> nth=1'), "128.2");
+  // suction from tank (any test type); EnFact has no cut-in or year installed
+  await page.click('[aria-label="Suction from"] [role="radio"]:has-text("Tank")');
+  assert.equal(await page.locator('[aria-label="Cut-in kPa"]').count(), 0);
+  assert.equal(await page.locator('[aria-label="Year installed"]').count(), 0);
+  // Contractor: year installed, cut-in, and temp and oil pressure in full screen
+  await page.waitForTimeout(600); // saved
+  await page.evaluate(() => localStorage.setItem("inspecta.flowMode", "contractor"));
+  await page.reload();
+  await page.waitForTimeout(900);
+  await page.fill('[aria-label="Year installed"]', "2006");
+  await page.fill('[aria-label="Cut-in kPa"]', "790");
+  await page.click('[aria-label="Full screen, sideways"]');
+  await page.waitForTimeout(700);
+  const wide = page.locator('[role="dialog"][aria-label="Readings, full screen"]');
+  const heads = await wide.evaluate((d) => [...d.querySelectorAll("div")].filter((e) => e.children.length <= 1 && /^(" Hg|Flow|Discharge|Suction|RPM|Temp|Oil pressure)/.test(e.textContent.trim()) && e.closest("[style*=grid]") && !e.querySelector("input")).map((e) => /^(" Hg|Flow|Discharge|Suction|RPM|Temp|Oil)/.exec(e.textContent.trim())[1]));
+  assert.deepEqual([...new Set(heads)].slice(0, 7), ['" Hg', "Flow", "Discharge", "Suction", "RPM", "Temp", "Oil"]);
+  await wide.locator('[aria-label="Temp"]').first().fill("52");
+  await wide.locator('[aria-label="Oil pressure"]').first().fill("300");
+  await pressBack(page);
+  await page.waitForTimeout(700);
+  await page.evaluate(() => localStorage.setItem("inspecta.flowMode", "enfact"));
+});
+
 test("a combined system goes on a Combined System tab like their sheet", async () => {
   const buf = await exportExcel("s3");
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(buf);
   const s = wb.getWorksheet("Combined System");
   assert.equal(s.getCell("C1").value, "COMBINED SYSTEM FLOW TEST RESULTS");
-  assert.equal(s.getCell("C9").value, "Diesel 1");
+  // headed with where its suction comes from, and its cut-in
+  assert.equal(s.getCell("C9").value, "Diesel 1 - TANK (cut-in 790 kPa)");
+  assert.equal(s.getCell("J10").value, "Temp (°C)");
+  assert.equal(s.getCell("J11").value, 52);
+  assert.equal(s.getCell("K10").value, "Oil pressure (kPa)");
+  assert.match(String(s.getCell("F5").value ?? ""), /installed 2006/);
   // combined systems in L/s, like hydrants (5" Hg × 3440.5 = 7693.2 L/min)
   assert.equal(s.getCell("D12").value, 128.22);
   assert.equal(s.getCell("D10").value, "Flow Rate (L/s)");

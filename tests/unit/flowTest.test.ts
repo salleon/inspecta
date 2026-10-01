@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { setFlowMode } from "../../src/lib/settings";
-import { flowOf, newFlowTest, sectionVerdicts, summary, verdict, chartSvg, renumber, nameOptions, SUPPLY_KINDS, blankRows, nextReading, hasData, flowUnitFor, pumpColumns, isReference, lineShown, graphLines } from "../../src/lib/flowTest";
+import { flowOf, newFlowTest, sectionVerdicts, summary, verdict, chartSvg, renumber, nameOptions, SUPPLY_KINDS, blankRows, nextReading, hasData, flowUnitFor, pumpColumns, sectionHeading, isReference, lineShown, graphLines } from "../../src/lib/flowTest";
 import type { FlowTest } from "../../src/db/types";
 
 const make = (over: Partial<FlowTest>): FlowTest => ({ ...newFlowTest("s1", "sprinkler"), id: "t", order: 0, createdAt: 0, updatedAt: 0, ...over });
@@ -163,4 +163,21 @@ test("supply names: EnFact mode offers Town main, Electric and Diesel; Contracto
 test("flow testing exports are named after the site", async () => {
   const { flowFileName } = await import("../../src/lib/flowPrint");
   assert.match(flowFileName({ name: "Woolworths / Pymble" }, "pdf", new Date(2026, 9, 1).getTime()), /^Woolworths   Pymble – Flow tests – 1 Oct 2026\.pdf$/);
+});
+
+test("combined systems: L/s to start, the pump duty's unit when switched; headings say where suction comes from; the pump duty is a filled diamond", () => {
+  assert.equal(flowUnitFor({ kind: "combined" }), "sec");
+  assert.equal(flowUnitFor({ kind: "combined", unit: "min" }), "min");
+  assert.equal(flowUnitFor({ kind: "hydrant", unit: "min" }), "sec", "only combined systems switch");
+  const t = make({
+    kind: "combined",
+    sections: [
+      { name: "Diesel pump 1", suction: "tank", rows: rows([[0, 1120], [5, 1080], [10, 1010]]) },
+      { name: "Diesel pump 2", suction: "town", rows: rows([[0, 1070], [5, 1020]]) },
+      { name: "", rows: [] },
+    ],
+    demand: [{ flow: "7535", kpa: "961" }, { flow: "9000", kpa: "585" }],
+  });
+  assert.deepEqual([0, 1, 2].map((i) => sectionHeading(t, i)), ["Diesel pump 1 - TANK", "Diesel pump 2 - TOWN MAIN", "Pump 3"]);
+  assert.equal(chartSvg(t, 300, 200).match(/fill="#ff5a4a"/g)?.length, 1, "one filled diamond: the pump duty");
 });

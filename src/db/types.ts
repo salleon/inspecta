@@ -101,12 +101,17 @@ export interface FlowReading {
   suc: string; // suction kPa
   rpm?: string;
   amps?: string;
+  temp?: string; // engine temp °C (combined, Contractor)
+  oil?: string; // oil pressure kPa (combined, Contractor)
   extra?: string[]; // the test's added columns (FlowTest.extraCols), in order
 }
 
 export interface FlowSection {
   name: string;
   rows: FlowReading[];
+  // where a pump's suction comes from (any test); absent = not picked
+  suction?: "tank" | "town";
+  cutIn?: string; // a pump's cut-in pressure, kPa (combined, Contractor)
 }
 
 export interface DemandPoint {
@@ -125,6 +130,10 @@ export interface FlowTest {
   k: number;
   sections: FlowSection[];
   demand: DemandPoint[];
+  // the flow unit the test is read in, when it was switched (combined: the
+  // pump duty's unit; absent = the kind's own, see flowUnitFor)
+  unit?: FlowUnit;
+  yearInstalled?: string; // combined, Contractor
   // the template's header and comment lines
   equipment?: string;
   testedBy?: string;

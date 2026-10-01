@@ -107,7 +107,7 @@ export function verdict(test: FlowTest, rows: FlowReading[], unit: FlowUnit = "m
 
 // A reading counts once something has been read on it: a row with only
 // its " Hg or flow typed is left off the graph and the Excel.
-export const hasData = (r: FlowReading) => [r.dis, r.suc, r.rpm ?? "", r.amps ?? "", ...(r.extra ?? [])].some((v) => v.trim() !== "");
+export const hasData = (r: FlowReading) => [r.dis, r.suc, r.rpm ?? "", r.amps ?? "", r.temp ?? "", r.oil ?? "", ...(r.extra ?? [])].some((v) => v.trim() !== "");
 
 // Has anything been read on the test (a reading, or a cell of a blank
 // sheet)? Only these go into an AFSS / project Excel as tabs.
@@ -174,7 +174,7 @@ export const KIND_LABEL: Record<FlowKind, string> = {
 export const KIND_HINT: Record<FlowKind, string> = {
   sprinkler: "One tab per supply (town main, electric, diesel…); + adds more",
   hydrant: "One tab per supply (town main, electric, diesel…); + adds more",
-  combined: "Two pumps on one graph, e.g. Diesel 1 and Diesel 2",
+  combined: "Pumps on one graph against the pump duty, e.g. Diesel pump 1 and 2",
   blank: "Your own columns and rows, all editable, for anything that doesn't fit",
 };
 
@@ -188,9 +188,18 @@ export function blankRows(kind: FlowKind): FlowReading[] {
 
 const blankReading = (kind: FlowKind): FlowReading => (kind === "hydrant" ? { hg: "", flow: "", flowUnit: "sec", dis: "", suc: "" } : { hg: "", flow: "", dis: "", suc: "" });
 
-// The flow unit a test is read in: L/s for hydrants and combined systems,
-// L/min for sprinklers (sums are done in L/min either way).
-export const flowUnitFor = (test: Pick<FlowTest, "kind">): FlowUnit => (test.kind === "hydrant" || test.kind === "combined" ? "sec" : "min");
+// The flow unit a test is read in: L/s for hydrants, L/min for sprinklers;
+// a combined system starts in L/s and follows its pump duty's unit switch
+// (FlowTest.unit). Sums are done in L/min either way.
+export const flowUnitFor = (test: Pick<FlowTest, "kind" | "unit">): FlowUnit =>
+  test.kind === "combined" ? (test.unit ?? "sec") : test.kind === "hydrant" ? "sec" : "min";
+
+// A section's heading in the Excel / PDF, with where its suction comes
+// from: "Diesel pump 1 - TANK"
+export function sectionHeading(test: FlowTest, i: number): string {
+  const s = test.sections[i]?.suction;
+  return sectionName(test, i) + (s === "tank" ? " - TANK" : s === "town" ? " - TOWN MAIN" : "");
+}
 
 // The pump column a supply has: RPM for a diesel pump, Amps for an electric
 // (or jockey) pump, neither for town main or anything else. A column that
@@ -232,7 +241,7 @@ export function newFlowTest(siteId: string, kind: FlowKind): Omit<FlowTest, "id"
 // ("Diesel pump"); two or more are numbered 1, 2, 3… in tab order, so
 // there's only ever one of each number (see renumber).
 export const SUPPLY_KINDS = ["Town main", "Electric pump", "Diesel pump", "Booster pump", "Jockey pump"];
-export const PUMP_KINDS = ["Diesel", "Electric"];
+export const PUMP_KINDS = ["Diesel pump", "Electric pump"];
 export const nameKinds = (test: Pick<FlowTest, "kind">) => (test.kind === "combined" ? PUMP_KINDS : SUPPLY_KINDS);
 // what a supply tab's list offers: in EnFact mode (Admin) just these three
 // (Custom… covers anything else); numbering still goes by every kind
@@ -372,7 +381,11 @@ export function chartSvg(test: FlowTest, w: number, h: number, opts: { small?: b
     if (!small) for (const p of sr.pts) s += `<circle cx="${X(p.x)}" cy="${Y(p.y)}" r="3.5" fill="#071b2c" stroke="${sr.colour}" stroke-width="2"/>`;
   }
   const r = small ? 3 : 5;
-  for (const p of dem) s += `<path d="M${X(p.x)} ${Y(p.y) - r} l${r} ${r} l${-r} ${r} l${-r} ${-r} z" fill="none" stroke="#ff5a4a" stroke-width="2"/>`;
+  // a combined system's first demand point is its pump duty: filled
+  dem.forEach((p, i) => {
+    const duty = test.kind === "combined" && i === 0;
+    s += `<path d="M${X(p.x)} ${Y(p.y) - r} l${r} ${r} l${-r} ${r} l${-r} ${-r} z" fill="${duty ? "#ff5a4a" : "none"}" stroke="#ff5a4a" stroke-width="2"/>`;
+  });
   return `${s}</svg>`;
 }
 

@@ -1,5 +1,5 @@
 import type { FlowTest, Site } from "../db/types";
-import { demandPoints, extraHeading, fit, flowOf, flowUnitFor, hasData, isReference, isTested, KIND_LABEL, lineShown, points, sectionName, verdict, type Point } from "./flowTest";
+import { demandPoints, extraHeading, fit, flowOf, flowUnitFor, hasData, sectionHeading, isReference, isTested, KIND_LABEL, lineShown, points, sectionName, verdict, type Point } from "./flowTest";
 
 // What a flow test looks like printed (design canvas FlowExports): one page
 // per test with its title, the site details and demand, a table per supply
@@ -41,11 +41,13 @@ export function printDetails(test: FlowTest, site: Pick<Site, "name" | "address"
     { label: "Date", value: printDate(test.testedAt) },
     { label: "Equipment", value: test.equipment?.trim() ?? "" },
     { label: "Tested by", value: test.testedBy?.trim() ?? "" },
+    ...(test.kind === "combined" && test.yearInstalled?.trim() ? [{ label: "Year installed", value: test.yearInstalled.trim() }] : []),
   ];
 }
 
 export function printDemand(test: FlowTest): string[] {
-  return demandPoints(test.demand).map((p) => `${r1(p.x / div(test))} ${printUnit(test)} @ ${r1(p.y)} kPa`);
+  // a combined system's first point is its pump duty
+  return demandPoints(test.demand).map((p, i) => `${test.kind === "combined" && i === 0 ? "Pump duty: " : ""}${r1(p.x / div(test))} ${printUnit(test)} @ ${r1(p.y)} kPa`);
 }
 
 export interface PrintTable {
@@ -63,6 +65,8 @@ export function printTables(test: FlowTest): PrintTable[] {
   const anyHg = all.some((r) => r.hg.trim() !== "");
   const anyRpm = all.some((r) => (r.rpm ?? "").trim() !== "");
   const anyAmps = all.some((r) => (r.amps ?? "").trim() !== "");
+  const anyTemp = all.some((r) => (r.temp ?? "").trim() !== "");
+  const anyOil = all.some((r) => (r.oil ?? "").trim() !== "");
   const extras = test.extraCols ?? [];
   const hyd = test.kind === "hydrant";
   const head = [
@@ -73,6 +77,8 @@ export function printTables(test: FlowTest): PrintTable[] {
     "Suction kPa",
     ...(anyRpm ? ["RPM"] : []),
     ...(anyAmps ? ["Amps"] : []),
+    ...(anyTemp ? ["Temp °C"] : []),
+    ...(anyOil ? ["Oil pressure kPa"] : []),
     ...extras.map(extraHeading),
   ];
   return test.sections
@@ -91,10 +97,13 @@ export function printTables(test: FlowTest): PrintTable[] {
           r.suc,
           ...(anyRpm ? [r.rpm ?? ""] : []),
           ...(anyAmps ? [r.amps ?? ""] : []),
+          ...(anyTemp ? [r.temp ?? ""] : []),
+          ...(anyOil ? [r.oil ?? ""] : []),
           ...extras.map((_, j) => r.extra?.[j] ?? ""),
         ];
       });
-      return { name: `${sectionName(test, i)} – ${year}`, result: v === true ? "PASS" : v === false ? "FAIL" : null, head, rows };
+      const cutIn = s.cutIn?.trim();
+      return { name: `${sectionHeading(test, i)}${cutIn ? ` (cut-in ${cutIn} kPa)` : ""} – ${year}`, result: v === true ? "PASS" : v === false ? "FAIL" : null, head, rows };
     });
 }
 

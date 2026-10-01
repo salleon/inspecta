@@ -7,6 +7,22 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Combined systems (canvas FlowCombined / FlowCombinedDuty).**
+  - **System pump duty**: the demand points, the first marked **Pump duty**
+    (a filled diamond on the graph). A **L/min / L/s switch** on the card
+    sets the unit for the duty, the readings' flow, the graph and the
+    results; it starts on L/s, like hydrants. Switching converts what's
+    entered. Every pump must clear every demand point on its own.
+  - Pump names are now **Diesel pump / Electric pump** (numbered as before).
+  - **Contractor mode** adds Year installed (test details), each pump's
+    **cut-in** (recorded, not graphed), and **Temp °C and Oil pressure kPa**
+    in full screen after RPM / Amps.
+- **Suction from Tank / Town main** on every pump in every flow test (both
+  modes). The Excel and PDF head each pump's results with it, e.g.
+  "Diesel pump 1 - TANK (cut-in 790 kPa)"; full screen shows it at the top.
+- Excel / PDF also carry Temp and Oil pressure columns and the year
+  installed when they're filled in.
+
 - **Flow test Excel in the same units as the app.** The Hydrant and
   Combined System tabs now give flows, demand points and the chart's flow
   axis in L/s (e.g. 4.5 L/s, not 270 L/min); the Sprinkler tab stays in
