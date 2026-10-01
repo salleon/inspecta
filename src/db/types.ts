@@ -1,4 +1,5 @@
-export type SiteKind = "afss" | "project";
+// flow: a site that's only flow testing (no findings or photos)
+export type SiteKind = "afss" | "project" | "flow";
 
 // Advanced-controls field — see lib/defectTypes.ts for labels and colours.
 export type DefectType = "critical" | "non-critical" | "non-compliance" | "recommend" | "note-only" | "rectified" | "outstanding";

@@ -58,6 +58,8 @@ export default function Findings() {
   // Findings / Flow tests tabs (?tab=flow, so back from a flow test lands here)
   const [searchParams, setSearchParams] = useSearchParams();
   const flowTab = searchParams.get("tab") === "flow";
+  // a flow testing site is just its flow tests: no Findings tab
+  const flowSite = site?.kind === "flow";
   const [flowCount, setFlowCount] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [editingSite, setEditingSite] = useState(false);
@@ -397,18 +399,23 @@ export default function Findings() {
           style={{ background: "none", border: "none", display: "flex", alignItems: "center", gap: 6, color: "inherit", padding: "4px 6px" }}
         >
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-            <div style={{ fontSize: 14, fontWeight: 700 }}>Findings</div>
+            <div style={{ fontSize: 14, fontWeight: 700 }}>{flowSite ? "Flow tests" : "Findings"}</div>
             <div style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)" }}>{site?.name ?? ""}</div>
           </div>
           <IconEdit size={13} color="var(--muted-2)" />
         </button>
-        <RoundIconButton ariaLabel="Export PDF" onClick={() => navigate(`/site/${siteId}/export`)}>
-          <IconShare />
-        </RoundIconButton>
+        {flowSite ? (
+          <div style={{ width: 40, height: 40 }} />
+        ) : (
+          <RoundIconButton ariaLabel="Export PDF" onClick={() => navigate(`/site/${siteId}/export`)}>
+            <IconShare />
+          </RoundIconButton>
+        )}
       </div>
 
       {/* Findings / Flow tests (canvas option E1): Findings takes most of
           the bar; flow tests are a smaller part of the day, so a compact tab */}
+      {!flowSite && site && (
       <div style={{ flexShrink: 0, margin: "0 16px 8px", display: "flex", gap: 4, padding: 4, borderRadius: 12, background: "var(--panel)", border: "1px solid var(--border)" }}>
         <button
           disabled={reordering}
@@ -426,8 +433,11 @@ export default function Findings() {
           <span style={{ padding: "0 5px", borderRadius: 999, border: "1px solid currentColor", fontSize: 8, letterSpacing: "0.04em", opacity: 0.85 }}>ALPHA TEST</span>
         </button>
       </div>
+      )}
 
-      {flowTab ? (
+      {!site ? null : flowSite ? (
+        <FlowTestList siteId={siteId} onCount={setFlowCount} onExport={() => navigate(`/site/${siteId}/flow-export`)} />
+      ) : flowTab ? (
         <FlowTestList siteId={siteId} onCount={setFlowCount} />
       ) : (
       <>

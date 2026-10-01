@@ -7,6 +7,21 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Flow testing as its own site type (canvas FlowSiteType / FlowExports).**
+  New site now offers AFSS, Projects and **Flow testing**; flow testing sites
+  get their own group on the home page (with a count of flow tests). Opening
+  one goes straight to its flow tests: no Findings tab, no photos. Its bottom
+  bar has **Export** (above + New flow test), which shows a preview of the
+  results, one page per flow test (swipe between them), laid out like the
+  template: title and logo, location, date, equipment, tested by, demand, a
+  table per supply with PASS / FAIL, the graph with its legend in a box on the
+  right, and comments.
+  - **Export PDF**: one A4 page per flow test, as previewed, with page
+    numbers in the footer.
+  - **Export Excel**: one sheet per flow test, named after the test, in the
+    template layout with its chart (legend on the right, now boxed).
+  - AFSS and project sites carry on as before (flow tests in the site's
+    Excel).
 - **Flow test readings: add your own columns, and a Comments box (canvas
   FlowColumns).** In full screen, a **+** after the headings adds a column
   (name and unit, or a quick pick: oil pressure, engine temp, fuel level,

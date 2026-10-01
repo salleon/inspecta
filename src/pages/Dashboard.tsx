@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Site, SiteKind } from "../db/types";
-import { createSite, deleteSite, findingCount, firstSitePhoto, getThumbnail, listSites } from "../db/db";
+import { createSite, deleteSite, findingCount, firstSitePhoto, flowTestCount, getThumbnail, listSites } from "../db/db";
 import { IconSearch, IconBuilding, IconPlus, IconTrash, IconSettings, IconChevronRight, IconLock } from "../components/Icons";
 import CountUp from "../components/CountUp";
 import ConfirmDialog from "../components/ConfirmDialog";
@@ -19,6 +19,7 @@ import Switch from "../components/Switch";
 
 interface SiteRow extends Site {
   findings: number;
+  flowTests: number;
 }
 
 export default function Dashboard() {
@@ -47,7 +48,7 @@ export default function Dashboard() {
   async function refresh() {
     const list = await listSites();
     const withCounts = await Promise.all(
-      list.map(async (s) => ({ ...s, findings: await findingCount(s.id) })),
+      list.map(async (s) => ({ ...s, findings: await findingCount(s.id), flowTests: s.kind === "flow" ? await flowTestCount(s.id) : 0 })),
     );
     setSites(withCounts);
     await loadThumbs(withCounts.map((s) => s.id));
@@ -97,6 +98,7 @@ export default function Dashboard() {
   );
   const afssSites = filtered.filter((s) => s.kind === "afss");
   const projectSites = filtered.filter((s) => s.kind === "project");
+  const flowSites = filtered.filter((s) => s.kind === "flow");
 
   function openEditName() {
     setSettingsOpen(false);
@@ -243,6 +245,7 @@ export default function Dashboard() {
         )}
         {renderSiteGroup("AFSS", afssSites)}
         {renderSiteGroup("Projects", projectSites)}
+        {renderSiteGroup("Flow testing", flowSites)}
       </div>
 
       {/* new site fab */}
@@ -312,7 +315,19 @@ export default function Dashboard() {
               >
                 Projects
               </button>
+              <button
+                type="button"
+                onClick={() => setKind("flow")}
+                style={kindToggleStyle(kind === "flow")}
+              >
+                Flow testing
+              </button>
             </div>
+            {kind === "flow" && (
+              <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.45, marginTop: -4 }}>
+                Just flow tests: no findings or photos. Exports its flow test results as a PDF or Excel.
+              </div>
+            )}
             <input
               autoFocus
               value={name}
@@ -686,7 +701,15 @@ function SiteButton({
             {formatInspectedDate(site.createdAt)}
           </span>
           <span style={{ fontSize: 11, fontWeight: 600, color: "var(--muted-2)" }}>
-            <CountUp value={site.findings} /> finding{site.findings === 1 ? "" : "s"}
+            {site.kind === "flow" ? (
+              <>
+                <CountUp value={site.flowTests} /> flow test{site.flowTests === 1 ? "" : "s"}
+              </>
+            ) : (
+              <>
+                <CountUp value={site.findings} /> finding{site.findings === 1 ? "" : "s"}
+              </>
+            )}
           </span>
         </div>
       </button>

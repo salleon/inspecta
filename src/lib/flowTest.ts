@@ -288,7 +288,7 @@ function nice(raw: number) {
   const f = raw / mag;
   return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * mag;
 }
-function fit(lo: number, hi: number) {
+export function fit(lo: number, hi: number) {
   let best: { min: number; max: number; step: number } | null = null;
   for (let n = 4; n <= 7; n++) {
     const step = nice((hi * 1.04 - lo) / n);

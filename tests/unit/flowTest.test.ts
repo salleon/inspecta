@@ -119,3 +119,8 @@ test("graph lines: discharge shown, suction hidden until ticked, per line", () =
   assert.equal(dotted(svg), 1, "only Diesel 2's suction");
   assert.equal(svg.match(/stroke-dasharray="5 4"/g), null, "town main hidden");
 });
+
+test("flow testing exports are named after the site", async () => {
+  const { flowFileName } = await import("../../src/lib/flowPrint");
+  assert.match(flowFileName({ name: "Woolworths / Pymble" }, "pdf", new Date(2026, 9, 1).getTime()), /^Woolworths   Pymble – Flow tests – 1 Oct 2026\.pdf$/);
+});

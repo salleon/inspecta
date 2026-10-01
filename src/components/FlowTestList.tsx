@@ -17,7 +17,8 @@ function formatDay(ms: number) {
   return new Date(ms).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" });
 }
 
-export default function FlowTestList({ siteId, onCount }: { siteId: string; onCount: (n: number) => void }) {
+// onExport: a flow testing site's Export (its only export), above + New flow test
+export default function FlowTestList({ siteId, onCount, onExport }: { siteId: string; onCount: (n: number) => void; onExport?: () => void }) {
   const navigate = useNavigate();
   const [tests, setTests] = useState<FlowTest[] | null>(null);
   const [picking, setPicking] = useState(false);
@@ -91,6 +92,14 @@ export default function FlowTestList({ siteId, onCount }: { siteId: string; onCo
 
       <div style={{ flexShrink: 0, padding: "12px 16px calc(28px + env(safe-area-inset-bottom))", borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 10 }}>
         <FlowConverter />
+        {onExport && !!tests?.length && (
+          <button
+            onClick={onExport}
+            style={{ width: "100%", padding: "13px 0", borderRadius: 12, border: "1px solid rgba(90,176,255,.55)", background: "rgba(90,176,255,.1)", color: "#5ab0ff", fontSize: 14.5, fontWeight: 800 }}
+          >
+            Export
+          </button>
+        )}
         <button
           onClick={() => setPicking(true)}
           className="glow-sweep"

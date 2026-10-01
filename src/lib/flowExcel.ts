@@ -136,7 +136,9 @@ async function loadTemplate(ExcelJS: typeof import("exceljs"), cache: TemplateCa
 
 // Adds a tab per flow test to `wb` and returns the charts to add once it's
 // written (see addFlowCharts). Blank sheets get a plain table.
-export async function addFlowSheets(wb: Workbook, tests: FlowTest[], site: Pick<Site, "name" | "address">): Promise<FlowChart[]> {
+// byTest: each sheet named after its test (a flow testing site's own
+// workbook) rather than SPRINKLER / HYDRANT (a tab in the site's report)
+export async function addFlowSheets(wb: Workbook, tests: FlowTest[], site: Pick<Site, "name" | "address">, byTest = false): Promise<FlowChart[]> {
   const ExcelJS = (await import("exceljs")).default;
   const cache: TemplateCache = new Map();
   const charts: FlowChart[] = [];
@@ -149,7 +151,7 @@ export async function addFlowSheets(wb: Workbook, tests: FlowTest[], site: Pick<
     const layout = test.kind === "hydrant" ? HYDRANT : SPRINKLER;
     const tplWb = await loadTemplate(ExcelJS as never, cache, layout.url);
     logo ??= wb.addImage({ buffer: new Uint8Array(await (await fetch(logoUrl)).arrayBuffer()) as never, extension: "png" });
-    const chart = fillSheet(wb, tplWb, layout, test, site, logo);
+    const chart = fillSheet(wb, tplWb, layout, test, site, logo, byTest);
     if (chart) charts.push(chart);
   }
   return charts;
@@ -202,9 +204,9 @@ function copyRow(tpl: Worksheet, ws: Worksheet, from: number, to: number, lastCo
   }
 }
 
-function fillSheet(wb: Workbook, tplWb: Workbook, L: Layout, test: FlowTest, site: Pick<Site, "name" | "address">, logo: number): FlowChart | null {
+function fillSheet(wb: Workbook, tplWb: Workbook, L: Layout, test: FlowTest, site: Pick<Site, "name" | "address">, logo: number, byTest: boolean): FlowChart | null {
   const tpl = tplWb.worksheets[0];
-  const name = sheetName(wb, SHEET[test.kind as keyof typeof TITLE]);
+  const name = sheetName(wb, byTest ? test.name.trim() || SHEET[test.kind as keyof typeof TITLE] : SHEET[test.kind as keyof typeof TITLE]);
   const ws = wb.addWorksheet(name, { views: structuredClone(tpl.views), pageSetup: structuredClone(tpl.pageSetup), properties: structuredClone(tpl.properties) });
   for (let c = 1; c <= L.lastCol; c++) {
     const w = tpl.getColumn(c).width;
@@ -394,7 +396,7 @@ export function chartXml(
     `<c:ser><c:idx val="${d}"/><c:order val="${d}"/><c:tx><c:v>${esc(demand.name)}</c:v></c:tx><c:spPr><a:ln w="19050"><a:noFill/></a:ln></c:spPr><c:marker><c:symbol val="diamond"/><c:size val="9"/><c:spPr><a:noFill/><a:ln w="19050"><a:solidFill><a:srgbClr val="E0301E"/></a:solidFill></a:ln></c:spPr></c:marker><c:xVal>${numRef(sheet, demand.flow, demand.pts.map((p) => p.x))}</c:xVal><c:yVal>${numRef(sheet, demand.kpa, demand.pts.map((p) => p.y))}</c:yVal><c:smooth val="0"/></c:ser>`,
   );
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><c:roundedCorners val="0"/><c:chart><c:title>${richText(title, 1400)}<c:overlay val="0"/></c:title><c:autoTitleDeleted val="0"/><c:plotArea><c:layout/><c:scatterChart><c:scatterStyle val="lineMarker"/><c:varyColors val="0"/>${sers.join("")}<c:axId val="510001"/><c:axId val="510002"/></c:scatterChart>${axis(510001, 510002, "b", "Flow (L/min)")}${axis(510002, 510001, "l", "Pressure (kPa)")}</c:plotArea><c:legend><c:legendPos val="r"/><c:overlay val="0"/></c:legend><c:plotVisOnly val="1"/><c:dispBlanksAs val="gap"/></c:chart><c:spPr><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill><a:ln w="9525"><a:solidFill><a:srgbClr val="D9D9D9"/></a:solidFill></a:ln></c:spPr></c:chartSpace>`;
+<c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><c:roundedCorners val="0"/><c:chart><c:title>${richText(title, 1400)}<c:overlay val="0"/></c:title><c:autoTitleDeleted val="0"/><c:plotArea><c:layout/><c:scatterChart><c:scatterStyle val="lineMarker"/><c:varyColors val="0"/>${sers.join("")}<c:axId val="510001"/><c:axId val="510002"/></c:scatterChart>${axis(510001, 510002, "b", "Flow (L/min)")}${axis(510002, 510001, "l", "Pressure (kPa)")}</c:plotArea><c:legend><c:legendPos val="r"/><c:overlay val="0"/><c:spPr><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill><a:ln w="9525"><a:solidFill><a:srgbClr val="B8C6D2"/></a:solidFill></a:ln></c:spPr></c:legend><c:plotVisOnly val="1"/><c:dispBlanksAs val="gap"/></c:chart><c:spPr><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill><a:ln w="9525"><a:solidFill><a:srgbClr val="D9D9D9"/></a:solidFill></a:ln></c:spPr></c:chartSpace>`;
 }
 
 // ---- adding the charts to the written file ----
@@ -543,4 +545,15 @@ export async function addFlowCharts(xlsx: Uint8Array, charts: FlowChart[]): Prom
     o += p.length;
   }
   return outBytes;
+}
+
+// A flow testing site's own workbook: a sheet per flow test, named after it
+// (design canvas FlowExports), in the template layout with its chart.
+export async function buildFlowWorkbook(tests: FlowTest[], site: Pick<Site, "name" | "address">): Promise<Blob> {
+  const ExcelJS = (await import("exceljs")).default;
+  const wb = new ExcelJS.Workbook();
+  const charts = await addFlowSheets(wb, tests, site, true);
+  const buffer = await wb.xlsx.writeBuffer({ zip: { compression: "STORE" } } as never);
+  const bytes = await addFlowCharts(new Uint8Array(buffer as ArrayBuffer), charts);
+  return new Blob([bytes as BlobPart], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
 }
