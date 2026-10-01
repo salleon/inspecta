@@ -1018,27 +1018,28 @@ function WideReadings({
           <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: 800, color: verdictLine?.colour }}>{verdictLine && `● ${verdictLine.text}`}</div>
           {ResultBox({ test, index: current, unit: flowUnitFor(test) })}
         </div>
-        {colEdit !== null && (
-          <ColumnBox
-            test={test}
-            index={colEdit}
-            onClose={() => setColEdit(null)}
-            onSave={(col) =>
-              onColumns((t) => {
-                t.extraCols = [...(t.extraCols ?? [])];
-                if (colEdit < 0) t.extraCols.push(col);
-                else t.extraCols[colEdit] = col;
-              })
-            }
-            onRemove={() =>
-              onColumns((t) => {
-                t.extraCols = (t.extraCols ?? []).filter((_, k) => k !== colEdit);
-                for (const sec of t.sections) for (const r of sec.rows) if (r.extra) r.extra = r.extra.filter((_, k) => k !== colEdit);
-              })
-            }
-          />
-        )}
       </div>
+      {/* upright, not turned with the readings: the keyboard comes up upright */}
+      {colEdit !== null && (
+        <ColumnBox
+          test={test}
+          index={colEdit}
+          onClose={() => setColEdit(null)}
+          onSave={(col) =>
+            onColumns((t) => {
+              t.extraCols = [...(t.extraCols ?? [])];
+              if (colEdit < 0) t.extraCols.push(col);
+              else t.extraCols[colEdit] = col;
+            })
+          }
+          onRemove={() =>
+            onColumns((t) => {
+              t.extraCols = (t.extraCols ?? []).filter((_, k) => k !== colEdit);
+              for (const sec of t.sections) for (const r of sec.rows) if (r.extra) r.extra = r.extra.filter((_, k) => k !== colEdit);
+            })
+          }
+        />
+      )}
     </div>
   );
 }
@@ -1067,8 +1068,8 @@ function ColumnBox({ test, index, onClose, onSave, onRemove }: { test: FlowTestR
   const field: CSSProperties = { ...cellStyle(14), textAlign: "left", padding: "9px 12px" };
   const quiet: CSSProperties = { padding: "9px 14px", borderRadius: 10, border: "1px solid var(--border-strong)", background: "none", color: "var(--muted)", fontSize: 13, fontWeight: 800 };
   return (
-    <div style={{ position: "absolute", inset: 0, background: "rgba(3,13,22,.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2 }} onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} role="dialog" aria-label={existing ? "Edit column" : "Add a column"} style={{ width: 340, background: "var(--panel)", border: "1px solid #2e6a8e", borderRadius: 16, padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+    <div style={{ position: "absolute", inset: 0, background: "rgba(3,13,22,.6)", display: "flex", alignItems: "center", justifyContent: "center", padding: "calc(16px + var(--sa-top)) 16px calc(16px + var(--sa-bottom))", zIndex: 2 }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} role="dialog" aria-label={existing ? "Edit column" : "Add a column"} style={{ width: 340, maxWidth: "100%", boxSizing: "border-box", background: "var(--panel)", border: "1px solid #2e6a8e", borderRadius: 16, padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
         <div style={{ fontSize: 15, fontWeight: 800 }}>{existing ? "Column" : "Add a column"}</div>
         <div style={{ display: "flex", gap: 8 }}>
           <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Name, e.g. Oil pressure" aria-label="Column name" style={{ ...field, flex: 2 }} />

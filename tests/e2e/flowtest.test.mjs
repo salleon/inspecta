@@ -251,13 +251,16 @@ test("a new hydrant test: flows in L/s, PASS / FAIL at the bottom, RPM for a die
   await page.click('[aria-label="Full screen, sideways"]');
   await page.waitForTimeout(700);
   await wide.locator('[aria-label="Add a column"]').click();
-  await wide.locator('button:has-text("Oil pressure (kPa)")').click();
-  await wide.locator('[role="dialog"][aria-label="Add a column"] button:has-text("Add")').click();
+  // the box is upright, not turned with the readings, so the keyboard matches it
+  const box = page.locator('[role="dialog"][aria-label="Add a column"]');
+  assert.equal(await box.evaluate((e) => !!e.closest(".wide-turn")), false);
+  await page.locator('button:has-text("Oil pressure (kPa)")').click();
+  await box.locator('button:has-text("Add")').click();
   assert.equal(await wide.locator('[aria-label="Oil pressure"]').count(), 5);
   await wide.locator('[aria-label="Oil pressure"]').first().fill("420");
   await wide.locator('[aria-label="Edit column Oil pressure"]').click();
-  await wide.locator('[aria-label="Column name"]').fill("Oil press");
-  await wide.locator('button:has-text("Save")').click();
+  await page.locator('[aria-label="Column name"]').fill("Oil press");
+  await page.locator('button:has-text("Save")').click();
   assert.equal(await wide.locator('[aria-label="Oil press"]').first().inputValue(), "420");
   await pressBack(page);
   await page.waitForTimeout(600);

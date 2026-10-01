@@ -7,6 +7,14 @@ the technical detail.
 
 ## 1 October 2026
 
+- **PDF: lots of photos on one finding carry on over the page.** A finding
+  with more photos than fit on a page (AFSS and project reports) used to run
+  off the bottom and get cut off. The photos now carry on onto the next page,
+  two across, under the finding's title marked "(continued)".
+- **Flow tests: Add a column is upright.** In the sideways full screen view,
+  Add a column (and editing a column) now opens upright, the same way up as
+  the keyboard, instead of turned with the readings.
+
 - **Flow testing mode: EnFact or Contractor (Admin, canvas FlowModes).**
   Admin has a new Flow testing mode switch, starting on EnFact. In **EnFact**
   mode the graph always shows the discharge for every supply and the town

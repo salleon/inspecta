@@ -392,7 +392,12 @@ export default function ExportPreview() {
       const blockH = Math.max(photosBlockH, textBlockH);
       const headingsH = headings.reduce((h, r) => h + pdfHeadingHeight(doc, r, pageW - margin * 2), 0);
 
-      if (y + headingsH + blockH > pageH - margin) {
+      // a new page if it doesn't fit; one with more photos than a page
+      // holds starts here if its text and first row of photos fit, and its
+      // photos carry on over the next pages
+      const bottom = pageH - margin;
+      const firstH = Math.max(textBlockH, tiles.length ? tileH : NO_PHOTO_H);
+      if (y + headingsH + blockH > bottom && (headingsH + blockH <= bottom - margin || y + headingsH + firstH > bottom)) {
         doc.addPage();
         y = margin;
       }
@@ -411,13 +416,6 @@ export default function ExportPreview() {
         doc.setFontSize(9);
         doc.setTextColor(140, 140, 140);
         doc.text("No photo", margin + tileW / 2, rowTop + NO_PHOTO_H / 2, { align: "center", baseline: "middle" });
-      }
-      for (let i = 0; i < tiles.length; i++) {
-        const row = Math.floor(i / 2);
-        const col = i % 2;
-        const tx = margin + col * (tileW + tileGap);
-        const ty = rowTop + row * (tileH + tileGap);
-        doc.addImage(tiles[i], "JPEG", tx, ty, tileW, tileH);
       }
 
       // defect type bubble — above the title, when the finding has one
@@ -456,7 +454,27 @@ export default function ExportPreview() {
         placeLines.forEach((line, i) => doc.text(line, textX, ty + i * 13));
       }
 
-      y = rowTop + blockH + blockGap;
+      // the photos, two across; a row that won't fit goes on the next page,
+      // under the finding's title marked (continued)
+      const startPage = doc.getNumberOfPages();
+      let rowY = rowTop;
+      let photosEnd = tiles.length ? rowTop : rowTop + NO_PHOTO_H;
+      for (let i = 0; i < tiles.length; i += 2) {
+        if (i > 0) rowY += tileH + tileGap;
+        if (rowY + tileH > bottom) {
+          doc.addPage();
+          rowY = margin;
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(12);
+          doc.setTextColor(28, 30, 36);
+          const cont = doc.splitTextToSize(`${item.finding.note || "Untitled finding"} (continued)`, textColW);
+          doc.text(cont, textX, rowY + 14);
+        }
+        for (let k = i; k < Math.min(i + 2, tiles.length); k++) doc.addImage(tiles[k], "JPEG", margin + (k - i) * (tileW + tileGap), rowY, tileW, tileH);
+        photosEnd = rowY + tileH;
+      }
+      // past the text too, if the photos stayed on the finding's first page
+      y = (doc.getNumberOfPages() === startPage ? Math.max(photosEnd, rowTop + textBlockH) : photosEnd) + blockGap;
     }
 
     setExportProgress({ percent: 88, step: "Building PDF…" });
