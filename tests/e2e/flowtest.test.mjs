@@ -103,7 +103,7 @@ test("the Flow tests tab lists the site's tests with their results", async () =>
   await page.click("text=Flow tests");
   await page.waitForTimeout(500);
   assert.ok(page.url().endsWith("?tab=flow"));
-  assert.equal(await page.locator("text=ALPHA TEST").count(), 1);
+  assert.equal(await page.locator("text=ALPHA TEST").count(), 0);
   // the town main is only a reference, so the line is the electric pump's
   assert.equal(await page.locator("text=Electric pump above all demand points").count(), 1);
   // the converter is hidden until it's switched on in Settings

@@ -430,10 +430,9 @@ export default function Findings() {
         <button
           disabled={reordering}
           onClick={() => setSearchParams({ tab: "flow" }, { replace: true })}
-          style={{ flex: "0 0 auto", padding: "6px 10px", borderRadius: 10, border: "none", fontSize: 11.5, fontWeight: 800, lineHeight: 1.2, whiteSpace: "nowrap", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, background: flowTab ? "var(--accent)" : "none", color: flowTab ? "var(--accent-text)" : "var(--muted)" }}
+          style={{ flex: "0 0 auto", padding: "11px 12px", borderRadius: 10, border: "none", fontSize: 14.5, fontWeight: 800, whiteSpace: "nowrap", background: flowTab ? "var(--accent)" : "none", color: flowTab ? "var(--accent-text)" : "var(--muted)" }}
         >
-          <span>Flow tests{flowCount === null ? "" : ` · ${flowCount}`}</span>
-          <span style={{ padding: "0 5px", borderRadius: 999, border: "1px solid currentColor", fontSize: 8, letterSpacing: "0.04em", opacity: 0.85 }}>ALPHA TEST</span>
+          Flow tests{flowCount === null ? "" : ` · ${flowCount}`}
         </button>
       </div>
       )}

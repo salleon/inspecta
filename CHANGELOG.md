@@ -7,6 +7,7 @@ the technical detail.
 
 ## 1 October 2026
 
+- The **Flow tests** tab on an AFSS / project site no longer says ALPHA TEST.
 - **Full screen readings: the app's own number pad (canvas FlowKeypadB).**
   The phone's keyboard no longer comes up sideways. Tap a cell and a number
   pad slides in from the right (7 8 9 / 4 5 6 / 1 2 3 / . 0 ⌫);
