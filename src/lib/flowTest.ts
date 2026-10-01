@@ -183,8 +183,9 @@ export function blankRows(kind: FlowKind): FlowReading[] {
 
 const blankReading = (kind: FlowKind): FlowReading => (kind === "hydrant" ? { hg: "", flow: "", flowUnit: "sec", dis: "", suc: "" } : { hg: "", flow: "", dis: "", suc: "" });
 
-// The flow unit a test is read in: L/s for hydrants, L/min otherwise.
-export const flowUnitFor = (test: Pick<FlowTest, "kind">): FlowUnit => (test.kind === "hydrant" ? "sec" : "min");
+// The flow unit a test is read in: L/s for hydrants and combined systems,
+// L/min for sprinklers (sums are done in L/min either way).
+export const flowUnitFor = (test: Pick<FlowTest, "kind">): FlowUnit => (test.kind === "hydrant" || test.kind === "combined" ? "sec" : "min");
 
 // The pump column a supply has: RPM for a diesel pump, Amps for an electric
 // (or jockey) pump, neither for town main or anything else. A column that

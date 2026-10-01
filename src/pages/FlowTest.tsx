@@ -175,7 +175,7 @@ export default function FlowTest() {
   }, [test !== null]);
 
   if (!test || !siteId) return null;
-  // hydrants are read in L/s, everything else in L/min
+  // hydrants and combined systems are read in L/s, sprinklers in L/min
   const unit: FlowUnit = flowUnitFor(test);
 
   function change(fn: (t: FlowTestRecord) => void) {
@@ -415,12 +415,12 @@ export default function FlowTest() {
   ) : (
     <div className="flip">
       <div className="flip-in" style={{ transform: flipTo }}>
-        <button onClick={() => setFlowSide(true)} aria-label="Show flow in L/min" style={headFlip}>
+        <button onClick={() => setFlowSide(true)} aria-label={`Show flow in ${unitLabel}`} style={headFlip}>
           " Hg
-          <span style={unitPill}>⇄ L/min</span>
+          <span style={unitPill}>⇄ {unitLabel}</span>
         </button>
         <button className="back" onClick={() => setFlowSide(false)} aria-label='Show " Hg' style={headFlip}>
-          L/min
+          {unitLabel}
           <span style={unitPill}>⇄ " Hg</span>
         </button>
       </div>
@@ -635,7 +635,7 @@ export default function FlowTest() {
           </div>
         )}
         <div style={{ fontSize: 11.5, color: "var(--muted-2)", lineHeight: 1.45 }}>
-          {hydrant ? "Flows in L/s. " : 'Flow in L/min works out from " Hg; tap ⇄ L/min to see it or type your own. '}
+          {hydrant ? "Flows in L/s. " : `Flow in ${unitLabel} works out from " Hg; tap ⇄ ${unitLabel} to see it or type your own. `}
           {test.kind === "combined" ? "RPM shows for diesel pumps, Amps for electric." : "RPM shows for a diesel pump, Amps for an electric pump."}
         </div>
       </div>

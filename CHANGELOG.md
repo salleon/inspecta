@@ -7,6 +7,10 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Combined systems in L/s.** A combined system's flows are now shown in
+  L/s like a hydrant's (the readings' " Hg ⇄ L/s column, demand points,
+  graph, export preview and PDF). Sprinklers stay in L/min.
+
 - **README: the plan for splitting into EnFact and Contractor apps** (one
   codebase, two editions), noted for later. No change to the app.
 - **Home page: last site clear of the + button, and a bump at the ends.**

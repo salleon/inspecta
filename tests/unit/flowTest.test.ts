@@ -64,6 +64,7 @@ test("new tests start empty, with no suggested steps; + Add reading adds an empt
   assert.equal(nextReading(make({})).hg, "");
   assert.equal(flowUnitFor(ht), "sec");
   assert.equal(flowUnitFor(make({})), "min");
+  assert.equal(flowUnitFor({ kind: "combined" }), "sec", "combined systems in L/s, like hydrants");
   // a row with only its " Hg or flow typed isn't a reading: off the graph
   assert.equal(hasData({ ...h[0], flow: "5" }), false);
   assert.equal(hasData({ ...h[0], flow: "5", dis: "640" }), true);

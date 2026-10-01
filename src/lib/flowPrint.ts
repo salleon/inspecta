@@ -1,5 +1,5 @@
 import type { FlowTest, Site } from "../db/types";
-import { demandPoints, extraHeading, fit, flowOf, hasData, isReference, isTested, KIND_LABEL, lineShown, points, sectionName, verdict, type Point } from "./flowTest";
+import { demandPoints, extraHeading, fit, flowOf, flowUnitFor, hasData, isReference, isTested, KIND_LABEL, lineShown, points, sectionName, verdict, type Point } from "./flowTest";
 
 // What a flow test looks like printed (design canvas FlowExports): one page
 // per test with its title, the site details and demand, a table per supply
@@ -30,9 +30,9 @@ export function printSubtitle(test: FlowTest): string {
 
 export const printDate = (ms: number) => new Date(ms).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" });
 
-// hydrants in L/s, the rest in L/min
-export const printUnit = (test: FlowTest) => (test.kind === "hydrant" ? "L/s" : "L/min");
-const div = (test: FlowTest) => (test.kind === "hydrant" ? 60 : 1);
+// as the app shows them: hydrants and combined systems in L/s, sprinklers in L/min
+export const printUnit = (test: FlowTest) => (flowUnitFor(test) === "sec" ? "L/s" : "L/min");
+const div = (test: FlowTest) => (flowUnitFor(test) === "sec" ? 60 : 1);
 const r1 = (n: number) => String(Math.round(n * 10) / 10);
 
 export function printDetails(test: FlowTest, site: Pick<Site, "name" | "address">): { label: string; value: string }[] {
