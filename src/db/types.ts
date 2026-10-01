@@ -95,7 +95,7 @@ export type FlowUnit = "min" | "sec";
 // one reading, every figure kept as typed ("" = not filled in)
 export interface FlowReading {
   hg: string; // " Hg
-  flow: string; // blank: worked out from " Hg (see FlowTest.k)
+  flow: string; // typed (FlowTest.k, working it out from " Hg, isn't used yet)
   flowUnit?: FlowUnit;
   dis: string; // discharge kPa
   suc: string; // suction kPa

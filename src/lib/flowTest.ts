@@ -6,11 +6,8 @@ import { getFlowMode } from "./settings";
 // points, and a graph and a pass line that follow them as they're typed.
 // Everything is kept as typed; the sums here work in L/min.
 
-// L/min per √(" Hg) for flows worked out from " Hg: EnFact's sprinkler
-// sheet (534.15) and the bigger rig on their combined system sheet
-// (3440.5, e.g. 7693 L/min at 5" Hg). Hydrant flows are typed (0).
-export const K_SPRINKLER = 534.15;
-export const K_COMBINED = 3440.5;
+// Flows are always typed. Working them out from " Hg depends on the test
+// equipment, so it waits for each rig's figures (FlowTest.k stays 0).
 
 export const SECTION_COLOURS = ["#2ec4b6", "#f5a55c", "#b48cff", "#5ab0ff", "#ff7ab8", "#e8d44d"];
 export const sectionColour = (i: number) => SECTION_COLOURS[i % SECTION_COLOURS.length];
@@ -34,11 +31,8 @@ export function lmin(val: string, unit: FlowUnit | undefined): number | null {
 }
 
 // the flow for a reading (L/min): typed, or from " Hg × k
-export function flowOf(test: Pick<FlowTest, "k">, r: FlowReading): number | null {
-  if (r.flow !== "" && num(r.flow) !== null) return lmin(r.flow, r.flowUnit);
-  if (!test.k) return null;
-  const hg = num(r.hg);
-  return hg === null ? null : r1(test.k * Math.sqrt(Math.max(0, hg)));
+export function flowOf(_test: Pick<FlowTest, "k">, r: FlowReading): number | null {
+  return r.flow !== "" && num(r.flow) !== null ? lmin(r.flow, r.flowUnit) : null;
 }
 
 export interface Point {
@@ -230,7 +224,7 @@ export function newFlowTest(siteId: string, kind: FlowKind): Omit<FlowTest, "id"
   const names = kind === "combined" ? ["", ""] : [""];
   return {
     ...base,
-    k: kind === "combined" ? K_COMBINED : kind === "hydrant" ? 0 : K_SPRINKLER,
+    k: 0,
     sections: names.map((name) => ({ name, rows: blankRows(kind) })),
   };
 }

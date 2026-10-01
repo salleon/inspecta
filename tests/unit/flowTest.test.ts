@@ -5,20 +5,22 @@ import { flowOf, newFlowTest, sectionVerdicts, summary, verdict, chartSvg, renum
 import type { FlowTest } from "../../src/db/types";
 
 const make = (over: Partial<FlowTest>): FlowTest => ({ ...newFlowTest("s1", "sprinkler"), id: "t", order: 0, createdAt: 0, updatedAt: 0, ...over });
-const rows = (pairs: [number, number][]) => pairs.map(([hg, dis]) => ({ hg: String(hg), flow: "", dis: String(dis), suc: "" }));
+// the flows as an inspector would type them (534.15 × √" Hg on the rig these came from)
+const rows = (pairs: [number, number][]) => pairs.map(([hg, dis]) => ({ hg: String(hg), flow: String(Math.round(534.15 * Math.sqrt(hg) * 10) / 10), dis: String(dis), suc: "" }));
 
-test("flow comes from \" Hg × 534.15 unless typed (L/s typed flows count ×60)", () => {
+test("flow is only what's typed: never worked out from \" Hg (that depends on the rig)", () => {
   const t = make({});
-  assert.equal(flowOf(t, { hg: "2", flow: "", dis: "", suc: "" }), 755.4);
+  assert.equal(t.k, 0);
+  assert.equal(flowOf(t, { hg: "2", flow: "", dis: "", suc: "" }), null);
+  assert.equal(flowOf({ k: 534.15 }, { hg: "2", flow: "", dis: "", suc: "" }), null, "even an older test with a factor saved");
   assert.equal(flowOf(t, { hg: "2", flow: "900", dis: "", suc: "" }), 900);
   assert.equal(flowOf(t, { hg: "", flow: "4.5", flowUnit: "sec", dis: "", suc: "" }), 270);
-  // hydrants have no " Hg flow: typed only
-  assert.equal(flowOf(make({ k: 0 }), { hg: "2", flow: "", dis: "", suc: "" }), null);
 });
 
-test("combined systems use their sheet's 3440.5", () => {
+test("combined systems start with two unnamed pumps and no factor", () => {
   const t = { ...newFlowTest("s1", "combined"), id: "t", order: 0, createdAt: 0, updatedAt: 0 } as FlowTest;
-  assert.equal(flowOf(t, { hg: "5", flow: "", dis: "", suc: "" }), 7693.2);
+  assert.equal(t.k, 0);
+  assert.equal(flowOf(t, { hg: "5", flow: "", dis: "", suc: "" }), null);
   assert.deepEqual(t.sections.map((s) => s.name), ["", ""], "pumps start unnamed");
 });
 
@@ -126,7 +128,7 @@ test("the name list says what a pick would be called and what it renames", () =>
 
 test("graph lines (Contractor mode): discharge shown, suction hidden until ticked, per line", () => {
   setFlowMode("contractor");
-  const withSuc = (pairs: [number, number, number][]) => pairs.map(([hg, dis, suc]) => ({ hg: String(hg), flow: "", dis: String(dis), suc: String(suc) }));
+  const withSuc = (pairs: [number, number, number][]) => pairs.map(([hg, dis, suc]) => ({ hg: String(hg), flow: String(Math.round(534.15 * Math.sqrt(hg) * 10) / 10), dis: String(dis), suc: String(suc) }));
   const t = make({
     demand: [],
     sections: [

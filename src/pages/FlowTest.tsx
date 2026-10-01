@@ -9,7 +9,6 @@ import {
   lineShown,
   type LineKind,
   extraHeading,
-  flowOf,
   flowUnitFor,
   isReference,
   lmin,
@@ -413,38 +412,17 @@ export default function FlowTest() {
   const hgCell = (r: FlowReading, i: number, f: number, props: { tabIndex?: number } = {}) => (
     <input {...props} style={cellStyle(f)} inputMode="decimal" value={r.hg} aria-label='" Hg' onChange={(e) => updateRow(i, (x) => void (x.hg = e.target.value))} />
   );
-  const flowCell = (r: FlowReading, i: number, f: number, props: { className?: string; tabIndex?: number } = {}) => {
-    if (hydrant)
-      return (
-        <input
-          {...props}
-          style={cellStyle(f)}
-          inputMode="decimal"
-          value={shown(r.flow, r.flowUnit)}
-          aria-label="Flow"
-          onChange={(e) => updateRow(i, (x) => void Object.assign(x, { flow: e.target.value, flowUnit: unit }))}
-        />
-      );
-    const auto = r.flow === "";
-    const autoFlow = flowOf(test, { ...r, flow: "" });
-    return (
-      <input
-        {...props}
-        style={{ ...cellStyle(f, auto && autoFlow !== null), borderColor: "rgba(46,196,182,.35)" }}
-        inputMode="decimal"
-        value={auto ? show(autoFlow) : shown(r.flow, r.flowUnit)}
-        aria-label="Flow"
-        onChange={(e) =>
-          updateRow(i, (x) => {
-            const v = e.target.value;
-            // clearing it (or typing the " Hg figure) goes back to automatic
-            x.flow = v === "" || (autoFlow !== null && v === show(autoFlow)) ? "" : v;
-            x.flowUnit = unit;
-          })
-        }
-      />
-    );
-  };
+  // typed, in the test's unit (working it out from " Hg depends on the rig)
+  const flowCell = (r: FlowReading, i: number, f: number, props: { className?: string; tabIndex?: number } = {}) => (
+    <input
+      {...props}
+      style={hydrant ? cellStyle(f) : { ...cellStyle(f), borderColor: "rgba(46,196,182,.35)" }}
+      inputMode="decimal"
+      value={shown(r.flow, r.flowUnit)}
+      aria-label="Flow"
+      onChange={(e) => updateRow(i, (x) => void Object.assign(x, { flow: e.target.value, flowUnit: unit }))}
+    />
+  );
   const stepHead = hydrant ? (
     <div style={th}>
       Flow
@@ -529,7 +507,7 @@ export default function FlowTest() {
   // what's in a reading, for "Delete reading 3?"
   const rowSummary = (r: FlowReading) => {
     const v = (x: string | undefined) => x?.trim() || "–";
-    const flow = r.flow === "" ? show(flowOf(test, { ...r, flow: "" })) : shown(r.flow, r.flowUnit);
+    const flow = shown(r.flow, r.flowUnit);
     return [
       ...(hydrant ? [] : [`" Hg ${v(r.hg)}`]),
       `Flow ${v(flow)} ${unitLabel}`,
@@ -798,7 +776,7 @@ export default function FlowTest() {
           </div>
         )}
         <div style={{ fontSize: 11.5, color: "var(--muted-2)", lineHeight: 1.45 }}>
-          {hydrant ? "Flows in L/s. " : `Flow in ${unitLabel} works out from " Hg, or type your own. `}
+          {hydrant ? "Flows in L/s. " : `Type the flow in ${unitLabel}. `}
           {test.kind === "combined" ? "RPM shows for diesel pumps, Amps for electric." : "RPM shows for a diesel pump, Amps for an electric pump."}
         </div>
       </div>

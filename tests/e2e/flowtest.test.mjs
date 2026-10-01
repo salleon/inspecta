@@ -14,6 +14,9 @@ let page;
 let errors;
 
 const rows = (list) => list.map(([hg, dis, suc = "", rpm = "", amps = "", flow = "", flowUnit]) => ({ hg: String(hg), flow: String(flow), flowUnit, dis: String(dis), suc: String(suc), rpm: String(rpm), amps: String(amps) }));
+// flows are typed, never worked out from " Hg: these are what the inspector
+// typed off each rig (k × √" Hg, in L/min)
+const typedFlows = (k, list) => list.map((r) => (r.flow === "" && r.hg !== "" ? { ...r, flow: String(Math.round(k * Math.sqrt(+r.hg) * 10) / 10) } : r));
 const day = (y, m, d) => new Date(y, m - 1, d, 12).getTime();
 
 // Three sites, also used for the example exports (FLOW_EXAMPLES=<dir>
@@ -77,6 +80,8 @@ export const FLOW_TESTS = [
   },
 ];
 
+for (const t of FLOW_TESTS) if (t.k) for (const sec of t.sections) sec.rows = typedFlows(t.k, sec.rows);
+
 before(async () => {
   app = await startApp(import.meta.url);
   ({ page, errors } = await openPage(app));
@@ -118,7 +123,7 @@ test("the Flow tests tab lists the site's tests with their results", async () =>
   assert.equal(await page.inputValue('[aria-label="Litres per minute"]'), "270");
 });
 
-test("a new sprinkler test: readings fill the flow, the result follows, and it's saved", async () => {
+test("a new sprinkler test: flows are typed (never worked out from \" Hg), the result follows, and it's saved", async () => {
   await go(page, app, "/site/s1/findings?tab=flow");
   await page.click("text=+ New flow test");
   await page.click("text=Sprinkler >> nth=-1");
@@ -129,8 +134,12 @@ test("a new sprinkler test: readings fill the flow, the result follows, and it's
   assert.equal(await hg.count(), 6);
   assert.deepEqual(await hg.evaluateAll((els) => els.map((e) => e.value)), ["", "", "", "", "", ""]);
   for (const [i, v] of ["0", "2", "4", "6", "8"].entries()) await hg.nth(i).fill(v);
-  // flow from " Hg: 534.15 × √2, in its own L/min column beside " Hg (no flip)
-  assert.equal(await page.locator('[aria-label="Flow"]').nth(1).inputValue(), "755.4");
+  // nothing is worked out from " Hg (that depends on the rig): the flow is typed,
+  // in its own L/min column beside " Hg (no flip)
+  const flow = page.locator('[aria-label="Flow"]');
+  assert.deepEqual(await flow.evaluateAll((els) => els.map((e) => e.value)), ["", "", "", "", "", ""]);
+  for (const [i, v] of ["0", "755.4", "1068.3", "1308.4", "1510.8"].entries()) await flow.nth(i).fill(v);
+  assert.equal(await flow.nth(1).inputValue(), "755.4");
   assert.equal(await page.locator('[aria-label^="Show flow in"]').count(), 0);
   const hgBox = await hg.nth(1).boundingBox();
   const flowBox = await page.locator('[aria-label="Flow"]').nth(1).boundingBox();

@@ -12,7 +12,8 @@ let page;
 let errors;
 
 const day = (y, m, d) => new Date(y, m - 1, d, 12).getTime();
-const rows = (list) => list.map(([hg, dis, flow = "", flowUnit]) => ({ hg: String(hg), flow: String(flow), flowUnit, dis: String(dis), suc: "" }));
+// flows as typed (534.15 × √" Hg on that rig), unless given
+const rows = (list) => list.map(([hg, dis, flow = hg === "" ? "" : Math.round(534.15 * Math.sqrt(hg) * 10) / 10, flowUnit]) => ({ hg: String(hg), flow: String(flow), flowUnit, dis: String(dis), suc: "" }));
 
 before(async () => {
   app = await startApp(import.meta.url);

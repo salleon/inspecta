@@ -7,6 +7,10 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Flows are typed, not worked out from " Hg.** The flow depends on the
+  test equipment, so sprinkler and combined tests no longer fill the Flow
+  column from " Hg (534.15 / 3440.5 × √" Hg) until each rig's figures are
+  set up. Type the flow; tests already saved keep the flows typed in them.
 - **No more getting stuck sideways.** Inspecta is locked upright on Android
   (full screen readings do their own turning), and the full screen checks
   again if the screen changes shape, laying itself flat on a sideways screen
