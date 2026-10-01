@@ -7,6 +7,10 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Flow test tabs only when something was read.** An AFSS or project Excel
+  (whole site or a customised report) now only gets a tab for a flow test
+  that has readings in it; one started but left empty is left out.
+
 - **Customised reports (export page, canvas ExportReports).** AFSS and
   project sites can export a chosen group of findings as its own report.
   **✎ Create Customised Report** on the export preview opens a sheet: name

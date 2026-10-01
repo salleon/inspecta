@@ -5,6 +5,7 @@
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import ExcelJS from "exceljs";
 import { startApp, openPage, go, seed, download, pressBack } from "./helpers.mjs";
 
 let app;
@@ -26,6 +27,8 @@ before(async () => {
     sites: [{ id: "s1", name: "Harbour Tower", address: "1 Harbour St" }],
     findings: F.map(([id, note, level, location, esrCategory, defectType]) => ({ id, siteId: "s1", note, level, location, esrCategory, defectType })),
     photos: F.map(([id], i) => ({ id: `p${i}`, findingId: id, siteId: "s1", color: `hsl(${i * 60},40%,45%)` })),
+    // a flow test started but nothing read: no tab in the Excel
+    flowTests: [{ id: "t1", siteId: "s1", kind: "sprinkler", name: "Sprinkler", k: 534.15, testedAt: 0, order: 0, createdAt: 0, updatedAt: 0, sections: [{ name: "", rows: [{ hg: "2", flow: "", dis: "", suc: "" }] }], demand: [] }],
   });
 });
 
@@ -74,6 +77,16 @@ test("its PDF is named after it and has only its findings; Whole site still has 
   assert.ok(!text.includes("Extinguisher service tag expired"));
   await page.click('button:has-text("Whole site · 5")');
   assert.equal(await page.locator("text=Extinguisher service tag expired").count(), 1);
+});
+
+test("the Excel has no flow test tab when the site's flow tests have nothing read", async () => {
+  const xl = await download(page, async () => {
+    await page.click("text=Share Excel");
+    if (await page.locator("text=Export anyway").count()) await page.click("text=Export anyway");
+  });
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.load(await readFile(xl.path));
+  assert.equal(wb.worksheets.length, 1, wb.worksheets.map((w) => w.name).join(", "));
 });
 
 test("kept after a restart; long-press to change it or delete it", async () => {

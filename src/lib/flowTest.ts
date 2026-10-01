@@ -104,6 +104,11 @@ export function verdict(test: FlowTest, rows: FlowReading[], unit: FlowUnit = "m
 // its " Hg or flow typed is left off the graph and the Excel.
 export const hasData = (r: FlowReading) => [r.dis, r.suc, r.rpm ?? "", r.amps ?? "", ...(r.extra ?? [])].some((v) => v.trim() !== "");
 
+// Has anything been read on the test (a reading, or a cell of a blank
+// sheet)? Only these go into an AFSS / project Excel as tabs.
+export const flowTestHasData = (test: Pick<FlowTest, "kind" | "sections" | "cells">) =>
+  test.kind === "blank" ? (test.cells ?? []).some((r) => r.some((c) => c.trim() !== "")) : test.sections.some((s) => s.rows.some(hasData));
+
 // an added column's heading, with its unit
 export const extraHeading = (c: { name: string; unit?: string }) => (c.unit?.trim() ? `${c.name} (${c.unit.trim()})` : c.name);
 

@@ -20,6 +20,7 @@ import CategoriseFlow from "../components/CategoriseFlow";
 import { reportRows, type ReportRow } from "../lib/esrGrouping";
 import { forProjectReport } from "../lib/projectReport";
 import { newSince, reportEntries } from "../lib/customReports";
+import { flowTestHasData } from "../lib/flowTest";
 import CustomReport, { ReportChips } from "../components/CustomReport";
 import { esrItem } from "../lib/esrCategories";
 import { learnCategory, unlearnCategory } from "../lib/esrSuggest";
@@ -568,9 +569,10 @@ export default function ExportPreview() {
           const { buildFindingsWorkbook, buildProjectWorkbook } = await import("../lib/excelExport");
           const onProgress = (p: { stage: "photos"; done: number; total: number } | { stage: "building" }) =>
             p.stage === "photos" ? photoProgress(p.done, p.total) : setExportProgress({ percent: 88, step: "Building spreadsheet…" });
-          // the site's flow tests go in as tabs after the findings (the
-          // whole site's report only)
-          const flow = site && !report ? { tests: await listFlowTests(site.id), site } : undefined;
+          // the site's flow tests go in as tabs after the findings, the
+          // ones with readings only
+          const flowTests = site ? (await listFlowTests(site.id)).filter(flowTestHasData) : [];
+          const flow = site && flowTests.length ? { tests: flowTests, site } : undefined;
           blob = site?.kind === "project" ? await buildProjectWorkbook(items, onProgress, flow) : await buildFindingsWorkbook(items, inspectionMs, onProgress, flow);
         }
         timer.mark("building");
