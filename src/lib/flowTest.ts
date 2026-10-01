@@ -82,16 +82,21 @@ export interface Verdict {
   pass: boolean | null; // null: not enough to say
 }
 
-// Does a section's discharge curve clear every demand point?
+// Does a section's discharge curve clear every demand point? A test that
+// can't be taken up to a demand point's flow fails (it isn't left open).
 export function verdict(test: FlowTest, rows: FlowReading[], unit: FlowUnit = "min"): Verdict {
   const u = unit === "sec" ? " L/s" : " L/min";
   const pts = points(test, rows, "dis");
   const dem = demandPoints(test.demand);
   if (pts.length < 2 || !dem.length) return { text: "Add readings and demand points to compare", colour: NEUTRAL_COLOUR, pass: null };
+  const top = pts[pts.length - 1];
+  const short = dem.filter((d) => d.x > top.x).sort((a, b) => b.x - a.x)[0];
+  if (short) return { text: `Doesn't reach the demand of ${showFlow(short.x, unit)}${u} (readings stop at ${showFlow(top.x, unit)}${u})`, colour: FAIL_COLOUR, pass: false };
   let worst: { m: number; d: Point } | null = null;
   for (const d of dem) {
-    const y = at(pts, d.x);
-    if (y === null) return { text: `Readings don't reach ${showFlow(d.x, unit)}${u} yet`, colour: NEUTRAL_COLOUR, pass: null };
+    // below the first reading's flow: its pressure (it only falls as flow rises)
+    const y = d.x < pts[0].x ? pts[0].y : at(pts, d.x);
+    if (y === null) continue;
     const m = y - d.y;
     if (!worst || m < worst.m) worst = { m, d };
   }

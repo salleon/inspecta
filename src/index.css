@@ -394,25 +394,6 @@ button:active:not(:disabled) {
   }
 }
 
-/* flow test readings: the first column flips between " Hg and Flow */
-.flip {
-  perspective: 600px;
-}
-.flip-in {
-  position: relative;
-  display: grid;
-  transition: transform 460ms cubic-bezier(0.3, 0.7, 0.25, 1);
-  transform-style: preserve-3d;
-}
-.flip-in > * {
-  grid-area: 1 / 1;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-}
-.flip-in > .back {
-  transform: rotateY(180deg);
-}
-
 /* flow test readings full screen: twists a quarter-turn to lie sideways.
    Turned clockwise, its left edge is the phone's top (status bar) and its
    right edge the phone's bottom (navigation buttons), so each side keeps

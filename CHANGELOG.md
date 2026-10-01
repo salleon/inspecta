@@ -12,9 +12,12 @@ the technical detail.
   axis in L/s (e.g. 4.5 L/s, not 270 L/min); the Sprinkler tab stays in
   L/min. Each block's heading says which ("Flow Rate (L/s)"), replacing the
   templates' fixed "l/min".
-- **Sprinkler readings: " Hg and L/min side by side.** Instead of flipping
-  between them, a sprinkler test shows " Hg and Flow L/min as two columns,
-  upright and full screen. Combined systems keep the flip (" Hg ⇄ L/s).
+- **" Hg and flow side by side.** Instead of flipping between them,
+  sprinkler (L/min) and combined system (L/s) tests show " Hg and Flow as two
+  columns, upright and full screen, in EnFact and Contractor mode.
+- **Not reaching the duty is a FAIL.** A pump whose readings stop short of a
+  demand point's flow now fails ("Doesn't reach the demand of 1350 L/min
+  (readings stop at 755.4 L/min)") instead of being left undecided.
 
 - **Combined systems in L/s.** A combined system's flows are now shown in
   L/s like a hydrant's (the readings' " Hg ⇄ L/s column, demand points,

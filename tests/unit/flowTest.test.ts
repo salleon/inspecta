@@ -29,7 +29,11 @@ test("verdict: pass when the curve clears every demand point, read between readi
   assert.equal(verdict(t, town).pass, false);
   assert.match(verdict(t, town).text, /Below demand at 1350 L\/min \(-40 kPa\)/);
   assert.equal(verdict(t, pump).pass, true);
-  assert.equal(verdict(t, rows([[0, 500], [2, 400]])).pass, null); // doesn't reach 1100
+  // a test that can't be taken up to the demand fails, not left open
+  const short = verdict(t, rows([[0, 500], [2, 400]]));
+  assert.equal(short.pass, false);
+  assert.match(short.text, /Doesn't reach the demand of 1350 L\/min \(readings stop at 755.4 L\/min\)/);
+  assert.equal(verdict(t, rows([[0, 500]])).pass, null, "one reading: nothing to compare yet");
 });
 
 test("untested supplies and the town main (a reference) stay out of the results; the list line names who's below", () => {
