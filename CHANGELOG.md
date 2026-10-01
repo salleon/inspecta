@@ -7,6 +7,28 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Flow test readings: prefilled steps, PASS / FAIL, town main as a
+  reference, and full screen (from the canvas FlowPrefill board).**
+  - New sprinkler tests start with " Hg 0, 2, 4, 6, 8, 10 filled in;
+    new hydrant tests start with flows 0, 5, 10, 15, 20 L/s (hydrants now
+    open in L/s). These are a prefill: dashed and dimmed with a small
+    PREFILL tag until something is read on that row, and any of them can
+    be changed. Rows still holding only the prefill stay off the graph and
+    out of the Excel.
+  - Hydrant readings lead with Flow (no " Hg flip on hydrants; the switch
+    under Flow changes L/s and L/min). + Add reading carries on the steps
+    and says what's next, e.g. (12 " Hg) or (25 L/s).
+  - A PASS / FAIL box sits at the bottom of the screen for the supply
+    you're on, judged against the demand (duty) points; the green line
+    under the graph keeps the detail.
+  - Town main is a reference only: it's drawn on the graph as a grey dashed
+    line, marked REF in full screen, never passed or failed (its box reads
+    REFERENCE), and its Excel block says "Conclusion: reference only".
+  - **Full screen** button on the Readings card: the readings twist a
+    quarter-turn to lie sideways with every column out (Flow, " Hg,
+    Discharge, Suction, RPM, Amps; " Hg is marked optional for hydrants),
+    the other supplies alongside to switch between, + Add reading, the
+    result line and PASS / FAIL. Done or the back button twists it back.
 - **Flow test readings: " Hg and Flow share a column that flips.** The
   readings now show just " Hg, Discharge and Suction (canvas option D).
   Tap **⇄ Flow** under " Hg and that column flips over, row by row, to

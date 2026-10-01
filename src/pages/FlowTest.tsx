@@ -1,14 +1,19 @@
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type InputHTMLAttributes, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import type { FlowTest as FlowTestRecord, FlowReading, FlowUnit, Site } from "../db/types";
 import { deleteFlowTest, getFlowTest, getSite, saveFlowTest } from "../db/db";
 import {
   chartSvg,
+  FAIL_COLOUR,
   flowOf,
+  hasData,
+  isReference,
   isTested,
   lmin,
   nextReading,
   NEUTRAL_COLOUR,
+  PASS_COLOUR,
+  REFERENCE_COLOUR,
   sectionColour,
   sectionName,
   sectionVerdicts,
@@ -52,6 +57,44 @@ const cellStyle = (font: number, auto = false): CSSProperties => ({
 });
 const addButton: CSSProperties = { width: "100%", padding: "10px 0", borderRadius: 10, background: "none", border: "1px dashed var(--border-strong)", color: "var(--accent)", fontSize: 13, fontWeight: 800 };
 const xButton: CSSProperties = { width: 26, height: 26, borderRadius: "50%", border: "none", background: "none", color: "var(--muted-2)", fontSize: 13, padding: 0 };
+// a prefilled step (" Hg, or a hydrant's L/s) on a row with nothing read yet
+const prefillStyle: CSSProperties = { color: "#7fb8b3", fontWeight: 600, background: "#0f2d47", border: "1px dashed rgba(46,196,182,.45)" };
+const prefillTag: CSSProperties = { position: "absolute", top: -6, right: 3, padding: "0 3px", borderRadius: 4, background: "var(--panel)", color: "var(--accent)", fontSize: 7.5, fontWeight: 800, letterSpacing: "0.04em", lineHeight: "11px", pointerEvents: "none" };
+const resultBox = (colour: string): CSSProperties => ({
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  padding: "6px 16px",
+  borderRadius: 999,
+  border: `1px solid ${colour}99`,
+  background: `${colour}1f`,
+  color: colour,
+  fontSize: 12.5,
+  fontWeight: 800,
+  letterSpacing: "0.06em",
+  whiteSpace: "nowrap",
+});
+const refTag: CSSProperties = { marginLeft: 2, padding: "1px 5px", borderRadius: 999, border: "1px solid #2e4a63", color: REFERENCE_COLOUR, fontSize: 8.5, fontWeight: 800, letterSpacing: "0.06em" };
+
+// a cell for the prefilled step column: dashed and dimmed, with a small
+// PREFILL tag, until something is read on its row; always editable
+function StepCell({ prefill, className, style, ...input }: { prefill: boolean; className?: string; style: CSSProperties } & InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <div className={className} style={{ position: "relative", minWidth: 0 }}>
+      <input {...input} inputMode="decimal" style={{ ...style, ...(prefill && input.value !== "" ? prefillStyle : null) }} />
+      {prefill && input.value !== "" && <span style={prefillTag}>PREFILL</span>}
+    </div>
+  );
+}
+
+// PASS / FAIL against the demand (duty) points, or REFERENCE for town main
+function ResultBox({ test, index, unit }: { test: FlowTestRecord; index: number; unit: FlowUnit }) {
+  if (isReference(test, index)) return isTested(test, index) ? <span style={resultBox(REFERENCE_COLOUR)}>REFERENCE</span> : null;
+  const v = verdict(test, test.sections[index].rows, unit);
+  if (v.pass === null) return null;
+  return <span style={resultBox(v.pass ? PASS_COLOUR : FAIL_COLOUR)}>{v.pass ? "✓ PASS" : "✕ FAIL"}</span>;
+}
+
 const unitPill: CSSProperties = { marginTop: 3, padding: "2px 7px", borderRadius: 999, border: "1px solid rgba(46,196,182,.5)", background: "rgba(46,196,182,.12)", color: "var(--accent)", fontSize: 10.5, fontWeight: 800 };
 
 function PencilIcon({ size = 15 }: { size?: number }) {
@@ -95,6 +138,7 @@ export default function FlowTest() {
   const [unit, setUnit] = useState<FlowUnit>("min");
   const [more, setMore] = useState(false); // RPM and Amps columns
   const [flowSide, setFlowSide] = useState(false); // first column shows Flow, not " Hg
+  const [wide, setWide] = useState(false); // readings full screen, sideways
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [confirmingRemove, setConfirmingRemove] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -125,8 +169,8 @@ export default function FlowTest() {
       setSite(s ?? null);
       setTest(t);
       setMore(t.sections.some((sec) => sec.rows.some((r) => r.rpm || r.amps)));
-      // hydrant flows are typed, so those start on the Flow side
-      setFlowSide(!t.k);
+      // hydrants are read in L/s
+      if (t.kind === "hydrant") setUnit("sec");
     })();
     return () => {
       cancelled = true;
@@ -231,10 +275,10 @@ export default function FlowTest() {
     />
   );
 
-  const shell = (body: ReactNode, note: string) => (
+  const shell = (body: ReactNode, note: string, bottom?: ReactNode) => (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
       {header}
-      <div style={{ flexGrow: 1, overflowY: "auto", padding: "4px 16px 24px", display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ flexGrow: 1, overflowY: "auto", padding: `4px 16px ${bottom ? 64 : 24}px`, display: "flex", flexDirection: "column", gap: 12 }}>
         {body}
         {footer}
         {/* where it goes: at the end of the page, not a fixed bar */}
@@ -244,6 +288,12 @@ export default function FlowTest() {
           (Export → Share Excel)
         </div>
       </div>
+      {/* pass / fail at the bottom of the screen, for a quick look */}
+      {bottom && (
+        <div style={{ position: "absolute", left: 0, right: 0, bottom: "calc(14px + env(safe-area-inset-bottom))", display: "flex", justifyContent: "center", pointerEvents: "none" }}>
+          <div style={{ borderRadius: 999, background: "var(--bg)", boxShadow: "0 6px 18px rgba(0,0,0,.45)" }}>{bottom}</div>
+        </div>
+      )}
       {dialog}
       {removeDialog}
     </div>
@@ -303,6 +353,7 @@ export default function FlowTest() {
 
   // ---- sprinkler / hydrant / combined ----
   const combined = test.kind === "combined";
+  const hydrant = test.kind === "hydrant";
   const current = Math.min(sel, test.sections.length - 1);
   const section = test.sections[current];
   const rows = section.rows;
@@ -310,16 +361,60 @@ export default function FlowTest() {
   // a typed value: as typed if typed in the unit shown now, else converted
   const shown = (val: string, u: FlowUnit | undefined) => (val === "" ? "" : (u ?? "min") === unit ? val : show(lmin(val, u)));
   const verdicts = sectionVerdicts(test, unit);
-  const lineVerdicts = verdicts.length ? verdicts : [{ index: current, name: sectionName(test, current), ...verdict(test, rows, unit) }];
+  const lineVerdicts = verdicts.length || isReference(test, current) ? verdicts : [{ index: current, name: sectionName(test, current), ...verdict(test, rows, unit) }];
   const legend = test.sections.map((_, i) => i).filter((i) => isTested(test, i) || i === current);
   const hasSuction = !combined && rows.some((r) => r.suc.trim() !== "");
-  // the first column flips between " Hg and Flow (canvas option D); + RPM & Amps adds two columns (P4)
+  // hydrants: the first column is the flow (typed, prefilled in L/s). Others:
+  // it flips between " Hg and Flow (canvas option D). + RPM & Amps adds two columns (P4)
   const gridCols = more ? "58px 1fr 1fr 1fr 1fr 22px" : "70px 1fr 1fr 26px";
   const flipTo = flowSide ? "rotateY(180deg)" : "none";
   const gap = more ? 4 : 6;
   const font = more ? 12 : 14;
   const updateRow = (i: number, fn: (r: FlowReading) => void) => change((t) => fn(t.sections[current].rows[i]));
   const kindNote = { sprinkler: "Goes into the site's Excel as a SPRINKLER tab", hydrant: "Goes into the site's Excel as a HYDRANT tab", combined: "Goes into the site's Excel as a Combined System tab" }[test.kind];
+  const unitLabel = unit === "sec" ? "L/s" : "L/min";
+  const toggleUnit = () => setUnit(unit === "sec" ? "min" : "sec");
+  const next = nextReading(test, rows);
+  const nextLabel = hydrant ? (next.flow ? `${shown(next.flow, next.flowUnit)} ${unitLabel}` : "") : next.hg ? `${next.hg} " Hg` : "";
+  const addReading = () => change((t) => void t.sections[current].rows.push(nextReading(t, t.sections[current].rows)));
+
+  // the cells, shared by the card and the full-screen view
+  const hgCell = (r: FlowReading, i: number, f: number, props: { className?: string; tabIndex?: number } = {}) => (
+    <StepCell {...props} prefill={!hydrant && !hasData(r)} style={cellStyle(f)} value={r.hg} aria-label='" Hg' onChange={(e) => updateRow(i, (x) => void (x.hg = e.target.value))} />
+  );
+  const flowCell = (r: FlowReading, i: number, f: number, props: { className?: string; tabIndex?: number } = {}) => {
+    if (hydrant)
+      return (
+        <StepCell
+          {...props}
+          prefill={!hasData(r)}
+          style={cellStyle(f)}
+          value={shown(r.flow, r.flowUnit)}
+          aria-label="Flow"
+          onChange={(e) => updateRow(i, (x) => void Object.assign(x, { flow: e.target.value, flowUnit: unit }))}
+        />
+      );
+    const auto = r.flow === "";
+    const autoFlow = flowOf(test, { ...r, flow: "" });
+    return (
+      <input
+        {...props}
+        style={{ ...cellStyle(f, auto && autoFlow !== null), borderColor: "rgba(46,196,182,.35)", ...(auto && !hasData(r) ? { color: "#3f5a73" } : null) }}
+        inputMode="decimal"
+        value={auto ? show(autoFlow) : shown(r.flow, r.flowUnit)}
+        aria-label="Flow"
+        onChange={(e) =>
+          updateRow(i, (x) => {
+            const v = e.target.value;
+            // clearing it (or typing the " Hg figure) goes back to automatic
+            x.flow = v === "" || (autoFlow !== null && v === show(autoFlow)) ? "" : v;
+            x.flowUnit = unit;
+          })
+        }
+      />
+    );
+  };
+  const removeRow = (i: number) => change((t) => void t.sections[current].rows.splice(i, 1));
 
   return shell(
     <>
@@ -327,11 +422,17 @@ export default function FlowTest() {
       <div style={{ ...card, padding: "10px 8px 6px", gap: 2 }}>
         <div ref={chartBox} style={{ width: "100%", height: 210 }} dangerouslySetInnerHTML={{ __html: chartSvg(test, chartW, 210, { unit, current }) }} />
         <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap", fontSize: 11, fontWeight: 700, color: "var(--muted)", paddingTop: 2 }}>
-          {legend.map((i) => (
-            <span key={i}>
-              <span style={{ color: sectionColour(i) }}>●</span> {sectionName(test, i)}
-            </span>
-          ))}
+          {legend.map((i) =>
+            isReference(test, i) ? (
+              <span key={i}>
+                <span style={{ color: REFERENCE_COLOUR }}>- -</span> {sectionName(test, i)} (reference)
+              </span>
+            ) : (
+              <span key={i}>
+                <span style={{ color: sectionColour(i) }}>●</span> {sectionName(test, i)}
+              </span>
+            ),
+          )}
           <span>
             <span style={{ color: "#ff5a4a" }}>◆</span> Demand
           </span>
@@ -348,6 +449,11 @@ export default function FlowTest() {
             <span style={{ color: sectionColour(v.index) }}>●</span> {v.name}: {v.text}
           </div>
         ))}
+        {isReference(test, current) && (
+          <div style={{ fontSize: 12.5, fontWeight: 800, color: REFERENCE_COLOUR, textAlign: "center" }}>
+            - - {sectionName(test, current)}: reference only, not passed or failed
+          </div>
+        )}
       </div>
 
       {/* readings */}
@@ -373,11 +479,12 @@ export default function FlowTest() {
           />
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={lbl}>Readings · {sectionName(test, current)}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <div style={{ ...lbl, flexGrow: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Readings · {sectionName(test, current)}</div>
           <button
             onClick={() => setMore(!more)}
             style={{
+              flexShrink: 0,
               padding: "4px 10px",
               borderRadius: 999,
               border: `1px solid ${more ? "rgba(46,196,182,.5)" : "var(--border-strong)"}`,
@@ -389,24 +496,41 @@ export default function FlowTest() {
           >
             {more ? "− RPM & Amps" : "+ RPM & Amps"}
           </button>
+          <button
+            onClick={() => setWide(true)}
+            aria-label="Full screen, sideways"
+            style={{ flexShrink: 0, height: 28, display: "flex", alignItems: "center", gap: 5, padding: "0 9px", borderRadius: 9, border: "1px solid rgba(46,196,182,.55)", background: "rgba(46,196,182,.14)", color: "var(--accent)", fontSize: 11.5, fontWeight: 800 }}
+          >
+            <TurnIcon />
+            Full screen
+          </button>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: gridCols, gap, alignItems: "end" }}>
-          <div className="flip">
-            <div className="flip-in" style={{ transform: flipTo }}>
-              <button onClick={() => setFlowSide(true)} aria-label="Show flow" style={{ ...th, border: "none", background: "none", padding: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
-                " Hg
-                <span style={unitPill}>⇄ Flow</span>
+          {hydrant ? (
+            <div style={{ ...th, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
+              Flow
+              <button style={{ ...unitPill, marginTop: 0 }} onClick={toggleUnit} aria-label="Change flow unit">
+                {unitLabel} ⇄
               </button>
-              <div className="back" style={{ ...th, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
-                <button onClick={() => setFlowSide(false)} aria-label='Show " Hg' style={{ ...th, border: "none", background: "none", padding: 0 }}>
-                  Flow ⇄
+            </div>
+          ) : (
+            <div className="flip">
+              <div className="flip-in" style={{ transform: flipTo }}>
+                <button onClick={() => setFlowSide(true)} aria-label="Show flow" style={{ ...th, border: "none", background: "none", padding: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
+                  " Hg
+                  <span style={unitPill}>⇄ Flow</span>
                 </button>
-                <button style={{ ...unitPill, marginTop: 0 }} onClick={() => setUnit(unit === "sec" ? "min" : "sec")} aria-label="Change flow unit">
-                  {unit === "sec" ? "L/s" : "L/min"} ⇄
-                </button>
+                <div className="back" style={{ ...th, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
+                  <button onClick={() => setFlowSide(false)} aria-label='Show " Hg' style={{ ...th, border: "none", background: "none", padding: 0 }}>
+                    Flow ⇄
+                  </button>
+                  <button style={{ ...unitPill, marginTop: 0 }} onClick={toggleUnit} aria-label="Change flow unit">
+                    {unitLabel} ⇄
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
+          )}
           <div style={th}>
             Discharge
             <br />
@@ -421,51 +545,66 @@ export default function FlowTest() {
           {more && <div style={th}>Amps</div>}
           <div />
         </div>
-        {rows.map((r, i) => {
-          const auto = r.flow === "";
-          const autoFlow = flowOf(test, { ...r, flow: "" });
-          return (
-            <div key={i} style={{ display: "grid", gridTemplateColumns: gridCols, gap, alignItems: "center" }}>
+        {rows.map((r, i) => (
+          <div key={i} style={{ display: "grid", gridTemplateColumns: gridCols, gap, alignItems: "center" }}>
+            {hydrant ? (
+              flowCell(r, i, font)
+            ) : (
               <div className="flip">
                 <div className="flip-in" style={{ transform: flipTo, transitionDelay: `${i * 45}ms` }}>
-              <input style={cellStyle(font)} inputMode="decimal" value={r.hg} aria-label='" Hg' tabIndex={flowSide ? -1 : 0} onChange={(e) => updateRow(i, (x) => void (x.hg = e.target.value))} />
-              <input
-                className="back"
-                tabIndex={flowSide ? 0 : -1}
-                style={{ ...cellStyle(font, auto && autoFlow !== null), borderColor: "rgba(46,196,182,.35)" }}
-                inputMode="decimal"
-                value={auto ? show(autoFlow) : shown(r.flow, r.flowUnit)}
-                aria-label="Flow"
-                onChange={(e) =>
-                  updateRow(i, (x) => {
-                    const v = e.target.value;
-                    // clearing it (or typing the " Hg figure) goes back to automatic
-                    x.flow = v === "" || (autoFlow !== null && v === show(autoFlow)) ? "" : v;
-                    x.flowUnit = unit;
-                  })
-                }
-              />
+                  {hgCell(r, i, font, { tabIndex: flowSide ? -1 : 0 })}
+                  {flowCell(r, i, font, { className: "back", tabIndex: flowSide ? 0 : -1 })}
                 </div>
               </div>
-              <input style={cellStyle(font)} inputMode="decimal" value={r.dis} aria-label="Discharge" onChange={(e) => updateRow(i, (x) => void (x.dis = e.target.value))} />
-              <input style={cellStyle(font)} inputMode="decimal" value={r.suc} aria-label="Suction" onChange={(e) => updateRow(i, (x) => void (x.suc = e.target.value))} />
-              {more && <input style={cellStyle(font)} inputMode="decimal" value={r.rpm ?? ""} aria-label="RPM" onChange={(e) => updateRow(i, (x) => void (x.rpm = e.target.value))} />}
-              {more && <input style={cellStyle(font)} inputMode="decimal" value={r.amps ?? ""} aria-label="Amps" onChange={(e) => updateRow(i, (x) => void (x.amps = e.target.value))} />}
-              <button style={xButton} aria-label="Remove reading" onClick={() => change((t) => void t.sections[current].rows.splice(i, 1))}>
-                ✕
-              </button>
-            </div>
-          );
-        })}
-        <button style={addButton} onClick={() => change((t) => void t.sections[current].rows.push(nextReading(t, t.sections[current].rows)))}>
-          + Add reading
+            )}
+            <input style={cellStyle(font)} inputMode="decimal" value={r.dis} aria-label="Discharge" onChange={(e) => updateRow(i, (x) => void (x.dis = e.target.value))} />
+            <input style={cellStyle(font)} inputMode="decimal" value={r.suc} aria-label="Suction" onChange={(e) => updateRow(i, (x) => void (x.suc = e.target.value))} />
+            {more && <input style={cellStyle(font)} inputMode="decimal" value={r.rpm ?? ""} aria-label="RPM" onChange={(e) => updateRow(i, (x) => void (x.rpm = e.target.value))} />}
+            {more && <input style={cellStyle(font)} inputMode="decimal" value={r.amps ?? ""} aria-label="Amps" onChange={(e) => updateRow(i, (x) => void (x.amps = e.target.value))} />}
+            <button style={xButton} aria-label="Remove reading" onClick={() => removeRow(i)}>
+              ✕
+            </button>
+          </div>
+        ))}
+        <button style={addButton} onClick={addReading}>
+          + Add reading{nextLabel && <span style={{ color: "var(--muted-2)", fontWeight: 700 }}> ({nextLabel})</span>}
         </button>
         <div style={{ fontSize: 11.5, color: "var(--muted-2)", lineHeight: 1.45 }}>
-          {test.k ? 'Flow fills in from " Hg; tap ⇄ Flow to see it or type your own. ' : "Type each flow. "}
+          {hydrant
+            ? "Flows start prefilled at 0, 5, 10, 15, 20 L/s; change any of them. Rows with nothing read stay off the graph and the Excel. "
+            : 'The " Hg steps start prefilled; change any of them. Flow fills in from " Hg; tap ⇄ Flow to see it or type your own. '}
           Tap the unit under Flow to switch between L/min and L/s.
         </div>
       </div>
 
+      {wide && (
+        <WideReadings
+          test={test}
+          current={current}
+          unit={unit}
+          onSelect={setSel}
+          onUnit={toggleUnit}
+          onClose={() => {
+            setWide(false);
+            // RPM or Amps typed full screen: keep those columns showing
+            if (test.sections.some((x) => x.rows.some((r) => r.rpm || r.amps))) setMore(true);
+          }}
+          hgCell={hgCell}
+          flowCell={flowCell}
+          updateRow={updateRow}
+          removeRow={removeRow}
+          addReading={addReading}
+          nextLabel={nextLabel}
+          verdictLine={
+            isReference(test, current)
+              ? { colour: REFERENCE_COLOUR, text: `${sectionName(test, current)}: reference only, not passed or failed` }
+              : (() => {
+                  const v = verdict(test, rows, unit);
+                  return { colour: v.colour, text: `${sectionName(test, current)}: ${v.text}` };
+                })()
+          }
+        />
+      )}
       {/* demand points */}
       <div style={card}>
         <div style={lbl}>Demand points</div>
@@ -535,6 +674,7 @@ export default function FlowTest() {
       </div>
     </>,
     kindNote,
+    ResultBox({ test, index: current, unit }),
   );
 }
 
@@ -690,6 +830,174 @@ function SectionTabs({
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+function TurnIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+      <rect x="3" y="8" width="13" height="8" rx="1.6" />
+      <path d="M8 4.5A7 7 0 0 1 19.5 8" />
+      <path d="M19.8 4.6 19.5 8l-3.3-.6" />
+    </svg>
+  );
+}
+
+type CellFn = (r: FlowReading, i: number, f: number) => ReactNode;
+
+// The readings full screen (canvas FlowWide / FlowPrefill): on an upright
+// phone it twists a quarter-turn to lie sideways, so every column is out
+// at once, with room to type. Sprinkler / combined: Flow, " Hg, Discharge,
+// Suction, RPM, Amps. Hydrant: Flow, " Hg (optional), then the same.
+// Done or the back button twists it back; everything is already saved.
+function WideReadings({
+  test,
+  current,
+  unit,
+  onSelect,
+  onUnit,
+  onClose,
+  hgCell,
+  flowCell,
+  updateRow,
+  removeRow,
+  addReading,
+  nextLabel,
+  verdictLine,
+}: {
+  test: FlowTestRecord;
+  current: number;
+  unit: FlowUnit;
+  onSelect: (i: number) => void;
+  onUnit: () => void;
+  onClose: () => void;
+  hgCell: CellFn;
+  flowCell: CellFn;
+  updateRow: (i: number, fn: (r: FlowReading) => void) => void;
+  removeRow: (i: number) => void;
+  addReading: () => void;
+  nextLabel: string;
+  verdictLine: { colour: string; text: string };
+}) {
+  const [closing, setClosing] = useState(false);
+  const [turn] = useState(() => window.innerHeight > window.innerWidth);
+  const close = () => {
+    if (closing) return;
+    setClosing(true);
+    window.setTimeout(onClose, 380);
+  };
+  useBackHandler(() => {
+    close();
+    return true;
+  });
+  const hydrant = test.kind === "hydrant";
+  const rows = test.sections[current].rows;
+  const cols = hydrant ? "1.2fr 64px 1fr 1fr 1fr 1fr 28px" : "0.95fr 1.1fr 1fr 1fr 1fr 1fr 28px";
+  const pump: CSSProperties = { ...cellStyle(15), borderColor: "rgba(245,165,92,.4)" };
+  const unitLabel = unit === "sec" ? "L/s" : "L/min";
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 40 }}>
+      <div className={closing ? "wide-dim out" : "wide-dim"} onClick={close} style={{ position: "absolute", inset: 0, background: "rgba(3,13,22,.78)" }} />
+      <div
+        className={`${turn ? "wide-turn" : "wide-flat"}${closing ? " closing" : ""}`}
+        role="dialog"
+        aria-label="Readings, full screen"
+        style={{
+          position: "absolute",
+          left: "50%",
+          top: "50%",
+          width: turn ? "100vh" : "100vw",
+          height: turn ? "100vw" : "100vh",
+          boxSizing: "border-box",
+          padding: "calc(10px + env(safe-area-inset-top)) 16px 10px",
+          background: "var(--panel)",
+          display: "flex",
+          flexDirection: "column",
+          gap: 8,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+          <div style={{ fontSize: 15, fontWeight: 800 }}>Readings</div>
+          <div style={{ display: "flex", gap: 4, padding: 3, borderRadius: 10, background: "var(--bg)", border: "1px solid var(--border)", overflowX: "auto", minWidth: 0 }}>
+            {test.sections.map((_, i) => {
+              const on = i === current;
+              const ref = isReference(test, i);
+              return (
+                <button
+                  key={i}
+                  onClick={() => onSelect(i)}
+                  style={{ flexShrink: 0, padding: "6px 10px", borderRadius: 8, border: "none", background: on ? "var(--panel-2)" : "none", color: on ? "var(--text)" : "var(--muted)", fontSize: 12, fontWeight: 800, whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 5 }}
+                >
+                  <span style={{ color: ref ? REFERENCE_COLOUR : sectionColour(i) }}>●</span>
+                  {sectionName(test, i)}
+                  {ref && <span style={refTag}>REF</span>}
+                </button>
+              );
+            })}
+          </div>
+          <div style={{ flexGrow: 1 }} />
+          <button onClick={close} style={{ flexShrink: 0, padding: "7px 14px", borderRadius: 10, border: "none", background: "var(--accent)", color: "var(--accent-text)", fontSize: 12.5, fontWeight: 800 }}>
+            Done
+          </button>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: cols, gap: 8, alignItems: "end", flexShrink: 0 }}>
+          <div style={{ ...th, display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+            Flow
+            <button style={{ ...unitPill, marginTop: 0 }} onClick={onUnit} aria-label="Change flow unit">
+              {unitLabel} ⇄
+            </button>
+          </div>
+          <div style={th}>
+            " Hg
+            {hydrant && (
+              <>
+                <br />
+                <span style={{ color: "var(--muted-2)" }}>optional</span>
+              </>
+            )}
+          </div>
+          <div style={th}>
+            Discharge
+            <br />
+            kPa
+          </div>
+          <div style={th}>
+            Suction
+            <br />
+            kPa
+          </div>
+          <div style={th}>RPM</div>
+          <div style={th}>Amps</div>
+          <div />
+        </div>
+        <div className="wide-rows" style={{ flexGrow: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: 5, paddingTop: 6 }}>
+          {rows.map((r, i) => (
+            <div key={i} style={{ display: "grid", gridTemplateColumns: cols, gap: 8, alignItems: "center" }}>
+              {flowCell(r, i, 15)}
+              {hydrant ? (
+                <input style={cellStyle(15)} inputMode="decimal" value={r.hg} aria-label='" Hg' onChange={(e) => updateRow(i, (x) => void (x.hg = e.target.value))} />
+              ) : (
+                hgCell(r, i, 15)
+              )}
+              <input style={cellStyle(15)} inputMode="decimal" value={r.dis} aria-label="Discharge" onChange={(e) => updateRow(i, (x) => void (x.dis = e.target.value))} />
+              <input style={cellStyle(15)} inputMode="decimal" value={r.suc} aria-label="Suction" onChange={(e) => updateRow(i, (x) => void (x.suc = e.target.value))} />
+              <input style={pump} inputMode="decimal" value={r.rpm ?? ""} aria-label="RPM" onChange={(e) => updateRow(i, (x) => void (x.rpm = e.target.value))} />
+              <input style={pump} inputMode="decimal" value={r.amps ?? ""} aria-label="Amps" onChange={(e) => updateRow(i, (x) => void (x.amps = e.target.value))} />
+              <button style={xButton} aria-label="Remove reading" onClick={() => removeRow(i)}>
+                ✕
+              </button>
+            </div>
+          ))}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 14, flexShrink: 0 }}>
+          <button style={{ ...addButton, width: 240, flexShrink: 0 }} onClick={addReading}>
+            + Add reading{nextLabel && <span style={{ color: "var(--muted-2)", fontWeight: 700 }}> ({nextLabel})</span>}
+          </button>
+          <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: 800, color: verdictLine.colour }}>● {verdictLine.text}</div>
+          {ResultBox({ test, index: current, unit })}
+        </div>
+      </div>
     </div>
   );
 }

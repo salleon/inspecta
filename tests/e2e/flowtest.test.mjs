@@ -103,7 +103,8 @@ test("the Flow tests tab lists the site's tests with their results", async () =>
   await page.waitForTimeout(500);
   assert.ok(page.url().endsWith("?tab=flow"));
   assert.equal(await page.locator("text=ALPHA TEST").count(), 1);
-  assert.equal(await page.locator("text=Town main below demand").count(), 1);
+  // the town main is only a reference, so the line is the electric pump's
+  assert.equal(await page.locator("text=Electric pump above all demand points").count(), 1);
   assert.equal(await page.locator("text=Converter tool").count(), 1);
   await page.fill('[aria-label="Litres per second"]', "4.5");
   assert.equal(await page.inputValue('[aria-label="Litres per minute"]'), "270");
@@ -162,7 +163,51 @@ test("a new sprinkler test: readings fill the flow, the result follows, and it's
     return all.find((t) => !["t1", "t2", "t3", "t4", "t5"].includes(t.id));
   });
   assert.deepEqual(saved.sections.map((s) => s.name), ["Diesel pump", "Fire pump 3"]);
-  assert.deepEqual(saved.sections[0].rows.map((r) => r.dis), ["600", "500", "420", "350", "300"]);
+  // six prefilled " Hg steps (0-10); the last one wasn't read
+  assert.deepEqual(saved.sections[0].rows.map((r) => r.hg), ["0", "2", "4", "6", "8", "10"]);
+  assert.deepEqual(saved.sections[0].rows.map((r) => r.dis), ["600", "500", "420", "350", "300", ""]);
+});
+
+test("a new hydrant test: flows prefilled in L/s, PASS / FAIL at the bottom, town main a reference, full screen", async () => {
+  await go(page, app, "/site/s1/findings?tab=flow");
+  await page.click("text=+ New flow test");
+  await page.click("text=Hydrant >> nth=-1");
+  await page.waitForTimeout(800);
+  const flow = page.locator('[aria-label="Flow"]');
+  assert.deepEqual(await Promise.all([0, 1, 2, 3, 4].map((i) => flow.nth(i).inputValue())), ["0", "5", "10", "15", "20"]);
+  assert.equal(await page.getByText("PREFILL", { exact: true }).count(), 5);
+  assert.equal(await page.getByText("+ Add reading (25 L/s)").count(), 1);
+  const dis = page.locator('[aria-label="Discharge"]');
+  for (const [i, v] of ["640", "585", "500"].entries()) await dis.nth(i).fill(v);
+  assert.equal(await page.getByText("PREFILL", { exact: true }).count(), 2, "read rows aren't prefills any more");
+  await page.fill('[aria-label="Demand flow"]', "10");
+  await page.fill('[aria-label="Demand pressure"]', "350");
+  await page.waitForTimeout(300);
+  assert.equal(await page.getByText("✓ PASS").count(), 1);
+  await page.fill('[aria-label="Demand pressure"]', "550");
+  await page.waitForTimeout(300);
+  assert.equal(await page.getByText("✕ FAIL").count(), 1);
+  // named Town main it's a reference: graphed, never passed or failed
+  await page.click('[aria-label="Supply 1: change name"]');
+  await page.click('[role="menuitem"]:has-text("Town main")');
+  await page.waitForTimeout(300);
+  assert.equal(await page.getByText("REFERENCE", { exact: true }).count(), 1);
+  assert.equal(await page.getByText("✕ FAIL").count(), 0);
+  // full screen, sideways, with every column; Done (or back) closes it
+  await page.click('[aria-label="Full screen, sideways"]');
+  await page.waitForTimeout(700);
+  const wide = page.locator('[role="dialog"][aria-label="Readings, full screen"]');
+  assert.equal(await wide.locator('[aria-label="RPM"]').count(), 5);
+  await wide.locator('[aria-label="RPM"]').first().fill("1920");
+  await pressBack(page);
+  await page.waitForTimeout(600);
+  assert.equal(await wide.count(), 0);
+  assert.ok(page.url().includes("/flow/"), "back closed the full screen, not the test");
+  assert.equal(await page.locator('[aria-label="RPM"]').first().inputValue(), "1920");
+  // tidy up so the other tests see the site as before
+  await page.click("text=Delete flow test");
+  await page.click("button:has-text('Delete') >> nth=-1");
+  await page.waitForTimeout(700);
 });
 
 test("deleting a flow test asks first", async () => {
@@ -189,7 +234,9 @@ test("the Excel gets a SPRINKLER and a HYDRANT tab in the template layout, with 
   assert.equal(s.getCell("C9").value, "Town main");
   assert.equal(s.getCell("D12").value, 755.4);
   assert.equal(s.getCell("F12").value, 250);
-  assert.equal(s.getCell("N15").value, "FAIL");
+  // the town main is a reference: no PASS or FAIL
+  assert.equal(s.getCell("N12").value, "Conclusion: reference only");
+  assert.equal(s.getCell("N15").value, null);
   assert.equal(s.getCell("C21").value, "Electric pump");
   assert.equal(s.getCell("G23").value, 120);
   assert.equal(s.getCell("H23").value, 2950);

@@ -1,6 +1,6 @@
 import type { Workbook, Worksheet } from "exceljs";
 import type { FlowTest, Site } from "../db/types";
-import { demandPoints, flowOf, isTested, num, sectionName, sectionVerdicts } from "./flowTest";
+import { demandPoints, flowOf, hasData, isReference, isTested, num, sectionName, sectionVerdicts } from "./flowTest";
 import { ZipWriter } from "./zip";
 // EnFact's own flow test sheets, cut down to the one tab each (their
 // Combined System tab, which is the sprinkler tab with suction and RPM
@@ -228,7 +228,8 @@ function fillSheet(wb: Workbook, tplWb: Workbook, L: Layout, test: FlowTest, sit
 
   for (const { s, i } of sections) {
     const top = out;
-    const readings = s.rows.filter((r) => r.hg.trim() || r.flow.trim() || r.dis.trim() || r.suc.trim() || (r.rpm ?? "").trim() || (r.amps ?? "").trim());
+    // rows still holding only the prefilled step aren't readings
+    const readings = s.rows.filter(hasData);
     const dataRows = Math.max(L.dataRows, readings.length);
     // name and heading rows, the readings (extra ones styled like the last), then the gap
     for (let r = 0; r < L.dataOffset; r++) copyRow(tpl, ws, L.blockStart + r, out++, L.lastCol);
@@ -277,7 +278,8 @@ function fillSheet(wb: Workbook, tplWb: Workbook, L: Layout, test: FlowTest, sit
     });
 
     // "Conclusion:" then PASS (in the template's PASS cell) or FAIL (its FAIL cell)
-    ws.getCell(top + L.conclusionOffset, L.col.result).value = "Conclusion:";
+    // (town main is a reference: no pass or fail)
+    ws.getCell(top + L.conclusionOffset, L.col.result).value = isReference(test, i) ? "Conclusion: reference only" : "Conclusion:";
     const v = verdicts.get(i);
     if (v?.pass === true) ws.getCell(top + L.passOffset, L.col.result).value = "PASS";
     if (v?.pass === false) ws.getCell(top + L.passOffset + 1, L.col.result).value = "FAIL";

@@ -17,6 +17,7 @@ export const sectionColour = (i: number) => SECTION_COLOURS[i % SECTION_COLOURS.
 export const PASS_COLOUR = "#2bd47a";
 export const FAIL_COLOUR = "#ff5a4a";
 export const NEUTRAL_COLOUR = "#6a8098";
+export const REFERENCE_COLOUR = "#8ba0b5"; // town main, drawn dashed
 
 export function num(v: string | undefined): number | null {
   if (v === undefined) return null;
@@ -98,6 +99,17 @@ export function verdict(test: FlowTest, rows: FlowReading[], unit: FlowUnit = "m
     : { text: `Below demand at ${showFlow(worst!.d.x, unit)}${u} (${Math.round(worst!.m)} kPa)`, colour: FAIL_COLOUR, pass: false };
 }
 
+// A reading counts once something has been read on it. The step column
+// (" Hg, or a hydrant's flow) comes prefilled, so a row holding only that
+// is still a prefill: shown dimmed, and left off the graph and the Excel.
+export const hasData = (r: FlowReading) => [r.dis, r.suc, r.rpm ?? "", r.amps ?? ""].some((v) => v.trim() !== "");
+
+// Town main is tested as a reference (is a failure down to the main?), so
+// it's graphed but never passed or failed.
+export function isReference(test: Pick<FlowTest, "kind" | "sections">, index: number): boolean {
+  return test.kind !== "combined" && /^town main\b/i.test(test.sections[index]?.name.trim() ?? "");
+}
+
 // A section counts once it has a discharge reading (a combined system's
 // pumps always do): empty ones stay off the graph, the result and the Excel.
 export function isTested(test: FlowTest, index: number): boolean {
@@ -112,7 +124,7 @@ export interface SectionVerdict extends Verdict {
 export function sectionVerdicts(test: FlowTest, unit: FlowUnit = "min"): SectionVerdict[] {
   return test.sections
     .map((s, i) => ({ s, i }))
-    .filter(({ i }) => isTested(test, i))
+    .filter(({ i }) => isTested(test, i) && !isReference(test, i))
     .map(({ s, i }) => ({ index: i, name: sectionName(test, i), ...verdict(test, s.rows, unit) }));
 }
 
@@ -153,11 +165,15 @@ export const KIND_HINT: Record<FlowKind, string> = {
   blank: "Your own columns and rows, all editable, for anything that doesn't fit",
 };
 
-const HG_SPRINKLER = ["0", "2", "4", "6", "8"];
+// the prefilled steps: " Hg for a sprinkler pump, L/s for a hydrant
+// (around the duty, usually 10 L/s), " Hg for a combined system
+const HG_SPRINKLER = ["0", "2", "4", "6", "8", "10"];
+const LS_HYDRANT = ["0", "5", "10", "15", "20"];
 const HG_COMBINED = ["0", "5", "10", "15", "20"];
 
 export function blankRows(kind: FlowKind): FlowReading[] {
-  const hgs = kind === "combined" ? HG_COMBINED : kind === "hydrant" ? ["", "", "", ""] : HG_SPRINKLER;
+  if (kind === "hydrant") return LS_HYDRANT.map((flow) => ({ hg: "", flow, flowUnit: "sec", dis: "", suc: "" }));
+  const hgs = kind === "combined" ? HG_COMBINED : HG_SPRINKLER;
   return hgs.map((hg) => ({ hg, flow: "", dis: "", suc: "" }));
 }
 
@@ -225,11 +241,17 @@ export function nameOptions(test: FlowTest, index: number): NameOption[] {
   });
 }
 
-// the next reading's " Hg: two (sprinkler) or five (combined) on from the last
+// the next reading's step: " Hg two (sprinkler) or five (combined) on from
+// the last, or a hydrant's flow 5 L/s on
 export function nextReading(test: FlowTest, rows: FlowReading[]): FlowReading {
-  const last = rows.length ? num(rows[rows.length - 1].hg) : null;
+  const prev = rows[rows.length - 1];
+  if (test.kind === "hydrant") {
+    const ls = prev ? lmin(prev.flow, prev.flowUnit) : null;
+    return { hg: "", flow: ls === null ? "" : String(Math.round(ls / 6 + 50) / 10), flowUnit: "sec", dis: "", suc: "" };
+  }
+  const last = prev ? num(prev.hg) : null;
   const step = test.kind === "combined" ? 5 : 2;
-  return { hg: last === null || test.kind === "hydrant" ? "" : String(last + step), flow: "", dis: "", suc: "" };
+  return { hg: last === null ? "" : String(last + step), flow: "", dis: "", suc: "" };
 }
 
 // ---- the graph ----
@@ -262,7 +284,7 @@ export function chartSvg(test: FlowTest, w: number, h: number, opts: { small?: b
   const pad = small ? { l: 4, r: 4, t: 4, b: 4 } : { l: 38, r: 10, t: 10, b: 26 };
   const sc = (p: Point) => ({ x: p.x / div, y: p.y });
   const series = test.sections
-    .map((s, i) => ({ pts: isTested(test, i) || i === current ? points(test, s.rows, "dis").map(sc) : [], colour: sectionColour(i) }))
+    .map((s, i) => ({ pts: isTested(test, i) || i === current ? points(test, s.rows, "dis").map(sc) : [], colour: isReference(test, i) ? REFERENCE_COLOUR : sectionColour(i), ref: isReference(test, i) }))
     .filter((s) => s.pts.length);
   const cur = test.sections[current];
   const suc = test.kind === "combined" || !cur ? [] : points(test, cur.rows, "suc").map(sc);
@@ -298,7 +320,7 @@ export function chartSvg(test: FlowTest, w: number, h: number, opts: { small?: b
       : `<polyline points="${pts.map((p) => `${X(p.x)},${Y(p.y)}`).join(" ")}" fill="none" stroke="${colour}" stroke-width="${width}"${dash ? ' stroke-dasharray="5 4"' : ""} stroke-linejoin="round"/>`;
   s += line(suc, "#6a8098", true, small ? 1.5 : 2);
   for (const sr of series) {
-    s += line(sr.pts, sr.colour, false, small ? 2 : 2.5);
+    s += line(sr.pts, sr.colour, sr.ref, sr.ref ? (small ? 1.5 : 2) : small ? 2 : 2.5);
     if (!small) for (const p of sr.pts) s += `<circle cx="${X(p.x)}" cy="${Y(p.y)}" r="3.5" fill="#071b2c" stroke="${sr.colour}" stroke-width="2"/>`;
   }
   const r = small ? 3 : 5;

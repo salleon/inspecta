@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { flowOf, newFlowTest, sectionVerdicts, summary, verdict, chartSvg, renumber, nameOptions, SUPPLY_KINDS } from "../../src/lib/flowTest";
+import { flowOf, newFlowTest, sectionVerdicts, summary, verdict, chartSvg, renumber, nameOptions, SUPPLY_KINDS, blankRows, nextReading, hasData, isReference } from "../../src/lib/flowTest";
 import type { FlowTest } from "../../src/db/types";
 
 const make = (over: Partial<FlowTest>): FlowTest => ({ ...newFlowTest("s1", "sprinkler"), id: "t", order: 0, createdAt: 0, updatedAt: 0, ...over });
@@ -31,17 +31,41 @@ test("verdict: pass when the curve clears every demand point, read between readi
   assert.equal(verdict(t, rows([[0, 500], [2, 400]])).pass, null); // doesn't reach 1100
 });
 
-test("untested supplies stay out of the results; the list line names who's below", () => {
+test("untested supplies and the town main (a reference) stay out of the results; the list line names who's below", () => {
   const t = make({
     demand: [{ flow: "900", kpa: "270" }],
     sections: [
       { name: "Town main", rows: rows([[0, 460], [2, 250], [4, 200]]) },
+      { name: "Booster pump", rows: rows([[0, 470], [2, 260], [4, 210]]) },
       { name: "Electric pump", rows: rows([[0, 980], [2, 750], [4, 670]]) },
       { name: "Diesel pump", rows: rows([[0, NaN]]).map((r) => ({ ...r, dis: "" })) },
     ],
   });
-  assert.deepEqual(sectionVerdicts(t).map((v) => v.name), ["Town main", "Electric pump"]);
-  assert.equal(summary(t).text, "Town main below demand");
+  assert.equal(isReference(t, 0), true);
+  assert.equal(isReference(t, 1), false);
+  assert.deepEqual(sectionVerdicts(t).map((v) => v.name), ["Booster pump", "Electric pump"]);
+  assert.equal(summary(t).text, "Booster pump below demand");
+});
+
+test("the town main is graphed, dashed, but never passed or failed", () => {
+  const t = make({ demand: [{ flow: "900", kpa: "270" }], sections: [{ name: "Town main", rows: rows([[0, 460], [2, 250], [4, 200]]) }] });
+  assert.deepEqual(sectionVerdicts(t), []);
+  assert.equal(summary(t).pass, null);
+  assert.match(chartSvg(t, 300, 200), /<polyline[^>]*stroke-dasharray/);
+});
+
+test("new tests come prefilled: sprinkler \" Hg 0-10, hydrant 0-20 L/s; + Add reading carries on the steps", () => {
+  assert.deepEqual(blankRows("sprinkler").map((r) => r.hg), ["0", "2", "4", "6", "8", "10"]);
+  const h = blankRows("hydrant");
+  assert.deepEqual(h.map((r) => [r.flow, r.flowUnit]), [["0", "sec"], ["5", "sec"], ["10", "sec"], ["15", "sec"], ["20", "sec"]]);
+  const ht = { ...newFlowTest("s1", "hydrant"), id: "h", order: 0, createdAt: 0, updatedAt: 0 } as FlowTest;
+  assert.deepEqual([nextReading(ht, h).flow, nextReading(ht, h).flowUnit], ["25", "sec"]);
+  assert.equal(nextReading(make({}), blankRows("sprinkler")).hg, "12");
+  // a row holding only its step is still a prefill: off the graph
+  assert.equal(hasData(h[0]), false);
+  assert.equal(hasData({ ...h[0], dis: "640" }), true);
+  const pre = make({ demand: [], sections: [{ name: "Electric pump", rows: blankRows("sprinkler") }] });
+  assert.equal(chartSvg(pre, 300, 200).match(/<polyline/g), null);
 });
 
 test("the graph draws a curve per tested supply and the demand diamonds", () => {
