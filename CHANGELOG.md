@@ -7,6 +7,7 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Build 5.** BUILD_LABEL is now 5 (Settings shows "Inspecta · Build 5").
 - Tests: the build label check waits for the Settings page to slide in
   (it failed on GitHub's slower machine).
 - **Advanced controls switch removed.** Defect type, level and ESR category
