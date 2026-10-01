@@ -49,6 +49,13 @@ const photoCount = (findingId) =>
     return all.filter((p) => p.findingId === findingId).sort((a, b) => a.order - b.order).map((p) => p.order);
   }, findingId);
 
+// photos are saved one by one after they're picked, which can take a few
+// seconds on a slow machine: wait until they're all in
+const photosSaved = async (findingId, n) => {
+  for (let t = 0; t < 50 && (await photoCount(findingId)).length < n; t++) await page.waitForTimeout(200);
+  return photoCount(findingId);
+};
+
 const inView = (label) =>
   page.locator(`button[aria-label="${label}"]`).evaluate((b) => {
     const r = b.getBoundingClientRect();
@@ -75,13 +82,13 @@ after(async () => {
 test("the gallery tile adds several photos after the others and shows the first one added", async () => {
   await go(page, app, "/site/s1/finding/f0/note", 1500);
   await pick(() => page.click('button[aria-label="Add photos from the gallery"]'), ["#a33", "#3a3"]);
-  assert.deepEqual(await photoCount("f0"), [0, 1, 2]);
+  assert.deepEqual(await photosSaved("f0", 3), [0, 1, 2]);
   assert.equal(await page.locator("text=2 / 3").count(), 1, "the first picked photo is shown");
 });
 
 test("with lots of photos the strip scrolls, but + and gallery stay on screen", async () => {
   await pick(() => page.click('button[aria-label="Add photos from the gallery"]'), ["#33a", "#aa3", "#3aa", "#a3a", "#777", "#222"]);
-  assert.equal((await photoCount("f0")).length, 9);
+  assert.equal((await photosSaved("f0", 9)).length, 9);
   assert.equal(await inView("Add another photo to this finding"), true);
   assert.equal(await inView("Add photos from the gallery"), true);
   assert.equal(await inView("View photo 4"), true, "the first new one is scrolled into view");
@@ -95,7 +102,7 @@ test("with lots of photos the strip scrolls, but + and gallery stay on screen", 
 test("a finding with no photo: Choose from gallery on the empty photo box", async () => {
   await go(page, app, "/site/s1/finding/f1/note", 1500);
   await pick(() => page.click('button:has-text("Choose from gallery")'), ["#a33"]);
-  assert.deepEqual(await photoCount("f1"), [0]);
+  assert.deepEqual(await photosSaved("f1", 1), [0]);
   assert.equal(await page.locator('button[aria-label="View photo full screen"]').count(), 1);
   assert.equal(await page.locator('button:has-text("Choose from gallery")').count(), 0, "gone once there's a photo");
 });

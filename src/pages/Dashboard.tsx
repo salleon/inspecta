@@ -14,6 +14,8 @@ import buildLabel from "../../BUILD_LABEL?raw";
 import { IS_TEST_BUILD } from "../lib/buildInfo";
 import logo from "../assets/logo.png";
 import { getInspectorName, setInspectorName } from "../lib/profile";
+import { setConverterTool, useConverterTool } from "../lib/settings";
+import Switch from "../components/Switch";
 
 interface SiteRow extends Site {
   findings: number;
@@ -29,6 +31,7 @@ export default function Dashboard() {
   const [kind, setKind] = useState<SiteKind>("afss");
   const [inspectorName, setInspectorNameState] = useState(() => getInspectorName());
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const converterTool = useConverterTool();
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
   const [openSwipeId, setOpenSwipeId] = useState<string | null>(null);
@@ -364,6 +367,13 @@ export default function Dashboard() {
                 <span style={settingsRowHintStyle}>{inspectorName || "Not set"}</span>
               </div>
               <IconChevronRight color="var(--muted)" />
+            </button>
+            <button type="button" role="switch" aria-checked={converterTool} onClick={() => setConverterTool(!converterTool)} style={settingsRowStyle}>
+              <div style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3, textAlign: "left" }}>
+                <span style={{ fontSize: 14, fontWeight: 700 }}>Converter tool</span>
+                <span style={settingsRowHintStyle}>Show the L/s ⇄ L/min converter on the flow test screens.</span>
+              </div>
+              <Switch on={converterTool} />
             </button>
             <BackupSettings rowStyle={settingsRowStyle} hintStyle={settingsRowHintStyle} onRestored={() => void refresh()} />
             <UpdateSettingsRow rowStyle={settingsRowStyle} hintStyle={settingsRowHintStyle} onAction={() => setSettingsOpen(false)} />

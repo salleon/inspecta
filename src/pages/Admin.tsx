@@ -27,6 +27,7 @@ import { explainCategories, forgetAllLearned, forgetLearned, learnedKeywords } f
 import { checkPin, checkRecoveryCode, isAdminUnlocked, recoveryCode, setPin, unlockAdmin } from "../lib/adminPin";
 import { writeBlobToCache } from "../lib/cacheFile";
 import { useBackHandler } from "../lib/backButton";
+import Switch from "../components/Switch";
 
 // Settings → Admin: PIN-protected tools for the person who looks after the
 // app: Advanced controls, the ESR keywords that drive the category
@@ -639,33 +640,3 @@ const keyStyle: CSSProperties = { height: 54, borderRadius: 12, background: "var
 
 const editedTag: CSSProperties = { flexShrink: 0, fontSize: 10, fontWeight: 800, color: "var(--accent)", border: "1px solid rgba(46,196,182,0.5)", borderRadius: 6, padding: "2px 6px" };
 
-// Visual-only on/off pill — the row it sits in is the actual switch button.
-function Switch({ on }: { on: boolean }) {
-  return (
-    <div
-      style={{
-        flexShrink: 0,
-        position: "relative",
-        width: 44,
-        height: 26,
-        borderRadius: 13,
-        background: on ? "var(--accent)" : "var(--muted-2)",
-        transition: "background 0.18s ease",
-      }}
-    >
-      <div
-        style={{
-          position: "absolute",
-          top: 3,
-          left: 3,
-          width: 20,
-          height: 20,
-          borderRadius: "50%",
-          background: on ? "var(--accent-text)" : "var(--text)",
-          transform: `translateX(${on ? 18 : 0}px)`,
-          transition: "transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.18s ease",
-        }}
-      />
-    </div>
-  );
-}

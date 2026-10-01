@@ -7,6 +7,9 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Converter tool hidden by default.** The L/s ⇄ L/min converter no longer
+  shows on the Flow tests tab or inside a flow test. Turn it back on with the
+  new **Converter tool** switch in Settings (per phone).
 - **Flow test graph: choose the lines (canvas FlowLegend).** Under the
   graph's key, one row of small tick chips: **Discharge**, **Town main** and
   **Suction** switch a whole group on or off (Discharge and Town main start

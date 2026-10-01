@@ -1,11 +1,15 @@
 import { useState } from "react";
 import { num } from "../lib/flowTest";
+import { useConverterTool } from "../lib/settings";
 
 // L/s ⇄ L/min on the fly: a tool, not part of any test (nothing typed here
-// is saved). Dashed so it doesn't read as a box to fill in.
+// is saved). Dashed so it doesn't read as a box to fill in. Hidden unless
+// switched on in Settings.
 export default function FlowConverter() {
+  const on = useConverterTool();
   const [ls, setLs] = useState("");
   const [lmin, setLmin] = useState("");
+  if (!on) return null;
   const field = (value: string, onChange: (v: string) => void, unit: string, label: string) => (
     <div style={{ flex: 1, display: "flex", alignItems: "baseline", gap: 6, borderBottom: "2px solid rgba(46,196,182,.4)", padding: "2px 2px 4px" }}>
       <input

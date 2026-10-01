@@ -44,3 +44,28 @@ function subscribe(listener: () => void) {
 export function useAdvancedControls(): boolean {
   return useSyncExternalStore(subscribe, getAdvancedControls);
 }
+
+// Converter tool (L/s ⇄ L/min) on the flow test screens: OFF by default,
+// turned on from Settings.
+const CONVERTER_KEY = "inspecta.converterTool";
+
+function getConverterTool(): boolean {
+  try {
+    return localStorage.getItem(CONVERTER_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function setConverterTool(on: boolean) {
+  try {
+    localStorage.setItem(CONVERTER_KEY, on ? "1" : "0");
+  } catch {
+    // best-effort
+  }
+  listeners.forEach((l) => l());
+}
+
+export function useConverterTool(): boolean {
+  return useSyncExternalStore(subscribe, getConverterTool);
+}
