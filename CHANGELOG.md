@@ -7,6 +7,9 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Advanced controls switch removed.** Defect type, level and ESR category
+  are always offered (as with the switch on). Admin's switch is now just
+  Flow testing mode (EnFact / Contractor).
 - **Settings and Admin organised (canvas SettingsTidy).** Settings is its
   own page now (the gear opens it; back returns home), grouped under You,
   Flow testing, Backup, Help & updates and Admin, each row with a small

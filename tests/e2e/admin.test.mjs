@@ -41,17 +41,11 @@ test("Settings → Admin needs the PIN (2021)", async () => {
   assert.equal(await page.locator("text=Wrong PIN").count(), 1);
   await enterPin("2021");
   assert.equal(await page.locator('button:has-text("Keywords")').count(), 1);
-  assert.equal(await page.locator('button[role="switch"]:has-text("Advanced controls")').count(), 1);
+  assert.equal(await page.locator('[role="radiogroup"][aria-label="Flow testing mode"]').count(), 1);
 });
 
-test("Advanced controls are switched in Admin, not Settings", async () => {
-  const on = () => page.getAttribute('button[role="switch"]', "aria-checked");
-  assert.equal(await on(), "true");
-  await page.click('button[role="switch"]');
-  assert.equal(await on(), "false");
-  assert.equal(await page.evaluate(() => localStorage.getItem("inspecta.advancedControls")), "0");
-  await page.click('button[role="switch"]');
-  assert.equal(await on(), "true");
+test("no Advanced controls switch any more (always on); Admin's switch is Flow testing mode", async () => {
+  assert.equal(await page.getByText("Advanced controls", { exact: true }).count(), 0);
   await go(page, app, "/");
   await page.click('button[aria-label="Settings"]');
   assert.equal(await page.getByText("Advanced controls", { exact: true }).count(), 0);

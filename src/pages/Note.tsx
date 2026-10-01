@@ -21,7 +21,6 @@ import LevelField from "../components/LevelField";
 import LocationSuggestions from "../components/LocationSuggestions";
 import { siteLocations, suggestLocations } from "../lib/locationSuggestions";
 import { DEFECT_TYPES } from "../lib/defectTypes";
-import { useAdvancedControls } from "../lib/settings";
 import { learnCategory, suggestCategories, unlearnCategory, type CategorySuggestion } from "../lib/esrSuggest";
 import { EsrBrowseSheet, EsrLink, EsrSelectedCard, EsrSuggestionList } from "../components/EsrCategory";
 import { useBackHandler } from "../lib/backButton";
@@ -56,7 +55,7 @@ export default function Note() {
   // so we can say so under the field until it's changed
   const carriedLevel = (routerLocation.state as { carriedLevel?: string } | null)?.carriedLevel;
   const [pickingDefectType, setPickingDefectType] = useState(false);
-  // ESR category (advanced controls): the picked item code, the top 5
+  // ESR category: the picked item code, the top 5
   // suggestions for what's typed so far, and whether the suggestions are
   // reopened over a picked one ("Change") or the full list is open
   const [esrCategory, setEsrCategory] = useState<string | undefined>(undefined);
@@ -65,7 +64,6 @@ export default function Note() {
   // the "Quick add" box starts closed; tapping it drops the suggestions down
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [browsingCategories, setBrowsingCategories] = useState(false);
-  const advancedControls = useAdvancedControls();
   const [busy, setBusy] = useState(false);
   // when a text field has focus (keyboard is up), shrink the photo so both
   // Note and Location stay visible above the keyboard without scrolling
@@ -259,7 +257,7 @@ export default function Note() {
     startingNoteOnly.current = true;
     try {
       await persist(true);
-      const carry = advancedControls && level ? level : undefined;
+      const carry = level || undefined;
       const finding = await createFinding(siteId, carry ? { level: carry } : {});
       navigate(`/site/${siteId}/finding/${finding.id}/note`, { state: { carriedLevel: carry, noteOnly: true } });
     } finally {
@@ -280,9 +278,9 @@ export default function Note() {
         navigate(`/site/${siteId}/findings`);
         return;
       }
-      // carry the level over to the next finding (advanced controls) — a
+      // carry the level over to the next finding — a
       // cleared level carries nothing, so the next one starts empty too
-      const carry = advancedControls && level ? level : undefined;
+      const carry = level || undefined;
       const finding = await createFinding(siteId, carry ? { level: carry } : {});
       await addPhoto(finding.id, siteId, blob);
       navigate(`/site/${siteId}/finding/${finding.id}/note`, carry ? { state: { carriedLevel: carry } } : undefined);
@@ -379,12 +377,11 @@ export default function Note() {
     if (findingId) await updateFinding(findingId, { esrCategory: code });
   }
 
-  // The picker is only offered while advanced controls are on, but a type
-  // already saved on this finding stays visible (and editable) either way.
-  const showDefectType = advancedControls || defectType !== undefined;
-  const showLevel = advancedControls || level !== undefined;
-  // ESR categories are for AFSS reports only: never on a Projects site
-  const showCategory = !isProject && (advancedControls || esrCategory !== undefined);
+  // defect type and level always; ESR categories are for AFSS reports
+  // only: never on a Projects site
+  const showDefectType = true;
+  const showLevel = true;
+  const showCategory = !isProject;
 
   async function handleDelete() {
     if (!activePhoto || !findingId) return;
@@ -660,7 +657,7 @@ export default function Note() {
           )}
         </div>
 
-        {/* level — advanced controls; optional, carried to the next finding */}
+        {/* level — optional, carried to the next finding */}
         {showLevel && (
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             <label htmlFor="levelInput" style={labelStyle}>Level</label>
@@ -677,7 +674,7 @@ export default function Note() {
           </div>
         )}
 
-        {/* defect type — advanced controls */}
+        {/* defect type */}
         {showDefectType && (
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             <label htmlFor="defectTypeInput" style={labelStyle}>Defect type</label>

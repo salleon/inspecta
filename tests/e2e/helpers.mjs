@@ -38,14 +38,13 @@ export async function startApp(testFile) {
 // window.__pressBack() standing in for the Android back button: it fires
 // the app's back event and, if no screen handles it, goes to the parent
 // screen the same way App.tsx does.
-export async function openPage(app, { advanced = true, tour = false } = {}) {
+export async function openPage(app, { tour = false } = {}) {
   const context = await app.browser.newContext({ viewport: { width: 390, height: 844 }, acceptDownloads: true });
   const page = await context.newPage();
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  await page.addInitScript(({ adv, tourOn }) => {
+  await page.addInitScript(({ tourOn }) => {
     localStorage.setItem("inspecta.inspectorName", "Test Inspector");
-    if (localStorage.getItem("inspecta.advancedControls") === null) localStorage.setItem("inspecta.advancedControls", adv ? "1" : "0");
     // the first-time tour's welcome stays out of the way unless a test
     // wants it (set once per page, so a test can clear it and reload)
     if (!sessionStorage.getItem("__tourInit")) {
@@ -64,7 +63,7 @@ export async function openPage(app, { advanced = true, tour = false } = {}) {
       else if (h === "/admin") parent = "/settings";
       location.replace("#" + parent);
     };
-  }, { adv: advanced, tourOn: tour });
+  }, { tourOn: tour });
   await page.goto(app.url + "/");
   await page.waitForTimeout(2300); // splash
   return { page, errors };

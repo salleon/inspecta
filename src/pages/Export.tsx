@@ -24,7 +24,6 @@ import { flowTestHasData } from "../lib/flowTest";
 import CustomReport, { ReportChips } from "../components/CustomReport";
 import { esrItem } from "../lib/esrCategories";
 import { learnCategory, unlearnCategory } from "../lib/esrSuggest";
-import { useAdvancedControls } from "../lib/settings";
 import { useBackHandler } from "../lib/backButton";
 import coverBgAfss from "../assets/cover-bg-afss.jpg";
 import coverBgProjects from "../assets/cover-bg-projects.jpg";
@@ -160,10 +159,9 @@ export default function ExportPreview() {
   const [exportProgress, setExportProgress] = useState<{ percent: number; step: string } | null>(null);
   // when the current export started (performance.now()), for the loading screen's minimum time
   const shareStartRef = useRef(0);
-  // ESR categories (advanced controls): before a PDF / Excel export with
+  // ESR categories: before a PDF / Excel export with
   // Uncategorised findings, offer to categorise them first — the popup, then
   // the Categorise screen. Asked once per visit to this screen.
-  const advancedControls = useAdvancedControls();
   const [askCategorise, setAskCategorise] = useState<ShareKind | null>(null);
   const [categorising, setCategorising] = useState<ShareKind | null>(null);
   // the findings the Categorise screen goes through, fixed when it opens
@@ -507,7 +505,7 @@ export default function ExportPreview() {
   // (PDF and Excel only — the photos zip isn't grouped).
   function requestShare(kind: ShareKind) {
     const uncategorised = items.some((i) => !esrItem(i.finding.esrCategory));
-    if (kind !== "photos" && advancedControls && site?.kind !== "project" && !categoriseAsked && uncategorised) setAskCategorise(kind);
+    if (kind !== "photos" && site?.kind !== "project" && !categoriseAsked && uncategorised) setAskCategorise(kind);
     else void handleShare(kind);
   }
 

@@ -12,7 +12,7 @@ let errors;
 
 before(async () => {
   app = await startApp(import.meta.url);
-  ({ page, errors } = await openPage(app, { advanced: true }));
+  ({ page, errors } = await openPage(app));
   const t = (h, m) => new Date(2026, 8, 29, h, m).getTime();
   await seed(page, {
     sites: [

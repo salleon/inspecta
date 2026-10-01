@@ -1,7 +1,7 @@
 import { useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import { formatLevel, parseLevel, stepLevel } from "../lib/levels";
 
-// Level input for a finding (advanced controls): − [ Level 25 ✕ ] +
+// Level input for a finding: − [ Level 25 ✕ ] +
 // The word "Level" is pre-filled so you only type the number (number
 // keypad). Ground / Basement / Mezzanine / Roof quick buttons show while
 // the box has focus. Always optional — ✕ clears it.

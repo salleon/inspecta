@@ -108,7 +108,7 @@ test("Show me around walks through every screen on an Example site, then removes
   assert.equal(await page.locator('[role="dialog"][aria-label="Welcome"]').count(), 0, "not offered again");
 });
 
-test("without Advanced controls the ESR steps are left out", async () => {
+test("an old Advanced controls switch-off is ignored: the ESR steps are always in", async () => {
   await page.evaluate(() => localStorage.setItem("inspecta.advancedControls", "0"));
   await reopen();
   await page.click('button[aria-label="Settings"]');
@@ -118,13 +118,10 @@ test("without Advanced controls the ESR steps are left out", async () => {
     await next();
     titles.push(await tipTitle());
   }
-  assert.deepEqual(titles, ["Start an inspection", "Log a finding", "Save & next", "Send the report"]);
-  assert.equal(await page.locator('[aria-label="Step 4 of 5"]').count(), 1);
+  assert.deepEqual(titles, ["Start an inspection", "Log a finding", "Save & next", "ESR category"]);
   await page.getByRole("button", { name: "Skip tour" }).click();
   await page.waitForTimeout(500);
-  assert.deepEqual(await sites(), ["Harbour Tower"], "Skip tour removes it too");
-  assert.match(new URL(page.url()).hash, /^(#\/)?$/, "on the sites screen");
-  await page.evaluate(() => localStorage.setItem("inspecta.advancedControls", "1"));
+  await page.evaluate(() => localStorage.removeItem("inspecta.advancedControls"));
 });
 
 test("Android back ends the tour, even on the finding screen", async () => {

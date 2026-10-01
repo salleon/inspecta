@@ -32,7 +32,7 @@ export interface Finding {
   siteId: string;
   note: string;
   location: string;
-  // Optional, only offered while advanced controls are on. Absent on
+  // Optional. Absent on
   // findings that never had one set (including every pre-existing finding).
   defectType?: DefectType;
   // Optional building level, stored as its display text ("Level 25",

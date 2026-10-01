@@ -2,7 +2,6 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "re
 import { useLocation, useNavigate } from "react-router-dom";
 import { dismissWelcome, endTour, initTour, setTourStep, startTour, useTour } from "../lib/tour";
 import { getInspectorName } from "../lib/profile";
-import { useAdvancedControls } from "../lib/settings";
 import { useBackHandler } from "../lib/backButton";
 
 // The first-time tour (see lib/tour): the screen dims, one real button at a
@@ -15,7 +14,6 @@ interface Step {
   target: string; // CSS selector of the thing to light up
   title: string;
   body: ReactNode;
-  advancedOnly?: boolean;
 }
 
 const b = (t: string) => <b style={{ color: "var(--text)" }}>{t}</b>;
@@ -60,14 +58,12 @@ const STEPS: Step[] = [
         As you type the note, {b("Quick add")} suggests the category it fits: tap one to file the finding under it. {b("Browse all")} has the full list.
       </>
     ),
-    advancedOnly: true,
   },
   {
     route: (s, f) => `/site/${s}/finding/${f}/note`,
     target: '[data-tour="esr"]',
     title: "No rush",
     body: <>Busy on site? Leave the category blank. When you export, Inspecta takes you through any findings still without one.</>,
-    advancedOnly: true,
   },
   {
     route: (s) => `/site/${s}/findings`,
@@ -86,7 +82,7 @@ const STEPS: Step[] = [
     route: () => "/",
     target: '[data-tour="settings"]',
     title: "Settings",
-    body: <>Your name, backups and updates, and Admin (Advanced controls and keywords). You can replay this tour here too.</>,
+    body: <>Your name, backups and updates, and Admin (flow testing mode and keywords). You can replay this tour here too.</>,
   },
 ];
 
@@ -141,8 +137,7 @@ interface Box {
 function Walkthrough({ siteId, findingId, step }: { siteId: string; findingId: string; step: number }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const advanced = useAdvancedControls();
-  const steps = STEPS.filter((s) => advanced || !s.advancedOnly);
+  const steps = STEPS;
   const current = steps[Math.min(step, steps.length - 1)];
   const last = step >= steps.length - 1;
   const route = current.route(siteId, findingId);

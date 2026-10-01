@@ -4,7 +4,7 @@ import { Share } from "@capacitor/share";
 import { Capacitor } from "@capacitor/core";
 import RoundIconButton from "../components/RoundIconButton";
 import { describeTimings, lastExportTimings } from "../lib/exportTimings";
-import { setAdvancedControls, setFlowMode, useAdvancedControls, useFlowMode, type FlowMode } from "../lib/settings";
+import { setFlowMode, useFlowMode, type FlowMode } from "../lib/settings";
 import ConfirmDialog from "../components/ConfirmDialog";
 import { IconChevronLeft, IconChevronRight } from "../components/Icons";
 import { ESR_SECTIONS, esrItem, sectionItems } from "../lib/esrCategories";
@@ -27,11 +27,10 @@ import { explainCategories, forgetAllLearned, forgetLearned, learnedKeywords } f
 import { checkPin, checkRecoveryCode, isAdminUnlocked, recoveryCode, setPin, unlockAdmin } from "../lib/adminPin";
 import { writeBlobToCache } from "../lib/cacheFile";
 import { useBackHandler } from "../lib/backButton";
-import Switch from "../components/Switch";
 import { BLUE, GREY, Group, ORANGE, RowIcon, groupHintStyle, groupRowStyle } from "../components/SettingsList";
 
 // Settings → Admin: PIN-protected tools for the person who looks after the
-// app: Advanced controls, the ESR keywords that drive the category
+// app: Flow testing mode, the ESR keywords that drive the category
 // suggestions (see lib/esrKeywords), export timings and the PIN. Routes:
 //   /admin                     PIN, then the admin menu
 //   /admin/keywords            the keyword menu
@@ -227,7 +226,6 @@ function PinScreen({ onUnlock, start = { kind: "enter" }, onDone, back = "/setti
 
 function AdminHome() {
   const navigate = useNavigate();
-  const advancedControls = useAdvancedControls();
   const flowMode = useFlowMode();
   const [changingPin, setChangingPin] = useState(false);
   const [notice, setNotice] = useState("");
@@ -270,14 +268,6 @@ function AdminHome() {
       {notice && <div style={{ fontSize: 13, fontWeight: 700, color: "var(--accent)" }}>{notice}</div>}
       {/* grouped as on the canvas (SettingsTidy) */}
       <Group heading="Features">
-        <button type="button" role="switch" aria-checked={advancedControls} onClick={() => setAdvancedControls(!advancedControls)} style={groupRowStyle}>
-          <RowIcon name="sliders" />
-          <span style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
-            <span style={{ fontSize: 14.5, fontWeight: 700, color: "var(--text)" }}>Advanced controls</span>
-            <span style={groupHintStyle}>Defect type, level and ESR category on findings</span>
-          </span>
-          <Switch on={advancedControls} />
-        </button>
         <div className="settings-row" style={{ ...groupRowStyle, alignItems: "flex-start" }}>
           <RowIcon name="drop" colour={BLUE} />
           <span style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 8 }}>

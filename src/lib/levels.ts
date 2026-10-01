@@ -1,4 +1,4 @@
-// Building level for a finding (advanced controls). Stored on the finding
+// Building level for a finding. Stored on the finding
 // as plain display text so the list and PDF can print it as-is; this file
 // turns that text into something the Level field can edit and step.
 //
