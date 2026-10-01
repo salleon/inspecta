@@ -28,6 +28,7 @@ import { checkPin, checkRecoveryCode, isAdminUnlocked, recoveryCode, setPin, unl
 import { writeBlobToCache } from "../lib/cacheFile";
 import { useBackHandler } from "../lib/backButton";
 import Switch from "../components/Switch";
+import { BLUE, GREY, Group, ORANGE, RowIcon, groupHintStyle, groupRowStyle } from "../components/SettingsList";
 
 // Settings → Admin: PIN-protected tools for the person who looks after the
 // app: Advanced controls, the ESR keywords that drive the category
@@ -66,7 +67,7 @@ export default function Admin() {
 
 // ---- shared bits ----
 
-function Screen({ title, back, children, scroll = true }: { title: string; back: string; children: ReactNode; scroll?: boolean }) {
+function Screen({ title, back, children, scroll = true, gap = 12 }: { title: string; back: string; children: ReactNode; scroll?: boolean; gap?: number }) {
   const navigate = useNavigate();
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
@@ -74,9 +75,9 @@ function Screen({ title, back, children, scroll = true }: { title: string; back:
         <RoundIconButton size={32} ariaLabel="Back" onClick={() => navigate(back)}>
           <IconChevronLeft size={20} strokeWidth={2.2} />
         </RoundIconButton>
-        <div style={{ fontSize: 15, fontWeight: 800 }}>{title}</div>
+        <div style={{ fontSize: 20, fontWeight: 800 }}>{title}</div>
       </div>
-      <div style={{ flexGrow: 1, overflowY: scroll ? "auto" : "hidden", padding: "4px 18px calc(24px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ flexGrow: 1, overflowY: scroll ? "auto" : "hidden", padding: "4px 18px calc(24px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap }}>
         {children}
       </div>
     </div>
@@ -127,7 +128,7 @@ const cancelled = (err: unknown) => err instanceof Error && /cancell?ed/i.test(e
 type PinStep = { kind: "enter" } | { kind: "recovery" } | { kind: "new"; first?: string };
 
 // Also used to change the PIN (starting at "new").
-function PinScreen({ onUnlock, start = { kind: "enter" }, onDone, back = "/" }: { onUnlock?: () => void; start?: PinStep; onDone?: () => void; back?: string }) {
+function PinScreen({ onUnlock, start = { kind: "enter" }, onDone, back = "/settings" }: { onUnlock?: () => void; start?: PinStep; onDone?: () => void; back?: string }) {
   const [step, setStep] = useState<PinStep>(start);
   const [pin, setPinDigits] = useState("");
   const [message, setMessage] = useState("");
@@ -265,54 +266,73 @@ function AdminHome() {
   }
 
   return (
-    <Screen title="Admin" back="/">
+    <Screen title="Admin" back="/settings" gap={4}>
       {notice && <div style={{ fontSize: 13, fontWeight: 700, color: "var(--accent)" }}>{notice}</div>}
-      <button type="button" role="switch" aria-checked={advancedControls} onClick={() => setAdvancedControls(!advancedControls)} style={rowStyle}>
-        <span style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
-          <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>Advanced controls</span>
-          <span style={hintStyle}>Show extra menus for more detailed data entry.</span>
-        </span>
-        <Switch on={advancedControls} />
-      </button>
-      <div style={{ ...rowStyle, flexDirection: "column", alignItems: "stretch", gap: 10, borderColor: "rgba(46,196,182,.45)" }}>
-        <span style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-          <span style={{ fontSize: 14, fontWeight: 700 }}>Flow testing mode</span>
-          <span style={hintStyle}>Who's using the app for flow tests.</span>
-        </span>
-        <div role="radiogroup" aria-label="Flow testing mode" style={{ display: "flex", gap: 4, padding: 4, borderRadius: 12, background: "var(--bg)", border: "1px solid var(--border)" }}>
-          {(
-            [
-              ["enfact", "EnFact"],
-              ["contractor", "Contractor"],
-            ] as [FlowMode, string][]
-          ).map(([mode, label]) => {
-            const on = flowMode === mode;
-            return (
-              <button
-                key={mode}
-                type="button"
-                role="radio"
-                aria-checked={on}
-                onClick={() => setFlowMode(mode)}
-                style={{ flex: 1, padding: "9px 0", borderRadius: 9, border: `1px solid ${on ? "rgba(46,196,182,.6)" : "transparent"}`, background: on ? "rgba(46,196,182,.14)" : "none", color: on ? "var(--accent)" : "var(--muted)", fontSize: 13.5, fontWeight: 800 }}
-              >
-                {label}
-              </button>
-            );
-          })}
+      {/* grouped as on the canvas (SettingsTidy) */}
+      <Group heading="Features">
+        <button type="button" role="switch" aria-checked={advancedControls} onClick={() => setAdvancedControls(!advancedControls)} style={groupRowStyle}>
+          <RowIcon name="sliders" />
+          <span style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+            <span style={{ fontSize: 14.5, fontWeight: 700, color: "var(--text)" }}>Advanced controls</span>
+            <span style={groupHintStyle}>Defect type, level and ESR category on findings</span>
+          </span>
+          <Switch on={advancedControls} />
+        </button>
+        <div className="settings-row" style={{ ...groupRowStyle, alignItems: "flex-start" }}>
+          <RowIcon name="drop" colour={BLUE} />
+          <span style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 8 }}>
+            <span style={{ fontSize: 14.5, fontWeight: 700 }}>Flow testing mode</span>
+            <div role="radiogroup" aria-label="Flow testing mode" style={{ display: "flex", gap: 4, padding: 3, borderRadius: 10, background: "var(--bg)", border: "1px solid var(--border)" }}>
+              {(
+                [
+                  ["enfact", "EnFact"],
+                  ["contractor", "Contractor"],
+                ] as [FlowMode, string][]
+              ).map(([mode, label]) => {
+                const on = flowMode === mode;
+                return (
+                  <button
+                    key={mode}
+                    type="button"
+                    role="radio"
+                    aria-checked={on}
+                    onClick={() => setFlowMode(mode)}
+                    style={{ flex: 1, padding: "7px 0", borderRadius: 8, border: `1px solid ${on ? "rgba(46,196,182,.6)" : "transparent"}`, background: on ? "rgba(46,196,182,.14)" : "none", color: on ? "var(--accent)" : "var(--muted)", fontSize: 13, fontWeight: 800 }}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+            <span style={groupHintStyle}>Contractor adds the graph line picker, suction lines and booster / jockey pumps.</span>
+          </span>
         </div>
-        <span style={hintStyle}>
-          <b style={{ color: flowMode === "enfact" ? "var(--text)" : "var(--muted)" }}>EnFact:</b> the graph always shows discharge and town main, with no line options; supplies are Town main, Electric pump or Diesel pump (or a custom name).
-          <br />
-          <b style={{ color: flowMode === "contractor" ? "var(--text)" : "var(--muted)" }}>Contractor:</b> every option (graph line picker, suction, booster / jockey pumps).
-        </span>
-      </div>
-      <Row title="Keywords" hint={`ESR keywords, learned keywords, testing a note, sharing and loading keyword files. ${edited ? `${edited} edited on this phone.` : "Built-in list, no changes."}`} onClick={() => navigate("/admin/keywords")} />
-      <Row title="Last export timings" hint={lastTimings ? describeTimings(lastTimings) : "No export on this phone yet."} onClick={() => {}} chevron={false} />
-      <Row title="Change PIN" hint="Pick a new 4-digit admin PIN." onClick={() => setChangingPin(true)} />
-      <Row title="Email recovery code" hint="Send yourself the code that resets the PIN if you forget it." onClick={emailRecovery} />
-      <div style={{ ...hintStyle, padding: "4px 2px" }}>Changes here apply to this phone only.</div>
+      </Group>
+      <Group heading="ESR categories">
+        <GroupRow icon={<RowIcon name="tag" />} title="Keywords" hint={`${edited ? `${edited} edited on this phone` : "Built-in list, no changes"} · test a note, share, load`} onClick={() => navigate("/admin/keywords")} />
+      </Group>
+      <Group heading="Security">
+        <GroupRow icon={<RowIcon name="key" colour={ORANGE} />} title="Change PIN" hint="A new 4-digit admin PIN" onClick={() => setChangingPin(true)} />
+        <GroupRow icon={<RowIcon name="mail" colour={ORANGE} />} title="Email recovery code" hint="Resets the PIN if you forget it" onClick={emailRecovery} />
+      </Group>
+      <Group heading="Diagnostics">
+        <GroupRow icon={<RowIcon name="clock" colour={GREY} />} title="Last export timings" hint={lastTimings ? describeTimings(lastTimings) : "No export on this phone yet"} onClick={() => {}} chevron={false} />
+      </Group>
+      <div style={{ ...hintStyle, textAlign: "center", padding: "16px 2px 0" }}>Changes here apply to this phone only.</div>
     </Screen>
+  );
+}
+
+function GroupRow({ icon, title, hint, onClick, chevron = true }: { icon: ReactNode; title: string; hint: string; onClick: () => void; chevron?: boolean }) {
+  return (
+    <button type="button" onClick={onClick} style={groupRowStyle}>
+      {icon}
+      <span style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+        <span style={{ fontSize: 14.5, fontWeight: 700, color: "var(--text)" }}>{title}</span>
+        <span style={groupHintStyle}>{hint}</span>
+      </span>
+      {chevron && <IconChevronRight color="var(--muted)" />}
+    </button>
   );
 }
 

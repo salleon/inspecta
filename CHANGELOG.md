@@ -7,6 +7,14 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Settings and Admin organised (canvas SettingsTidy).** Settings is its
+  own page now (the gear opens it; back returns home), grouped under You,
+  Flow testing, Backup, Help & updates and Admin, each row with a small
+  coloured icon and a one-line hint. Admin is grouped the same way:
+  Features (Advanced controls, Flow testing mode), ESR categories
+  (Keywords), Security (Change PIN, Email recovery code) and Diagnostics
+  (Last export timings). Back from Admin goes to Settings. Nothing added
+  or removed.
 - **Flow test Comments can't be shrunk away.** The box can still be dragged
   bigger, but never smaller than about three lines.
 - **New site: the picked kind in its own colour (canvas NewSiteColours).**

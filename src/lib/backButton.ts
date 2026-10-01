@@ -14,8 +14,9 @@ export const BACK_EVENT = "inspecta:back";
 export function parentRoute(pathname: string): string | null {
   const site = /^\/site\/([^/]+)\/(findings|export|flow-export|finding\/[^/]+\/note|flow\/[^/]+)$/.exec(pathname);
   if (site) return site[2] === "findings" ? "/" : site[2].startsWith("flow/") ? `/site/${site[1]}/findings?tab=flow` : `/site/${site[1]}/findings`;
-  // admin: keyword → list → admin menu → dashboard
+  // admin: keyword → list → admin menu → settings → dashboard
   if (pathname.startsWith("/admin/")) return pathname.replace(/\/[^/]+$/, "");
+  if (pathname === "/admin") return "/settings";
   return pathname === "/" || pathname === "" ? null : "/";
 }
 

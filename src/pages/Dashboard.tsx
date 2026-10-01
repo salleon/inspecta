@@ -2,21 +2,12 @@ import { useEffect, useRef, useState, type FormEvent, type CSSProperties, type P
 import { useNavigate } from "react-router-dom";
 import type { Site, SiteKind } from "../db/types";
 import { createSite, deleteSite, findingCount, firstSitePhoto, flowTestCount, getThumbnail, listSites } from "../db/db";
-import { IconSearch, IconBuilding, IconPlus, IconTrash, IconSettings, IconChevronRight, IconLock } from "../components/Icons";
+import { IconSearch, IconBuilding, IconPlus, IconTrash, IconSettings } from "../components/Icons";
 import CountUp from "../components/CountUp";
 import ConfirmDialog from "../components/ConfirmDialog";
-import FormActions from "../components/FormActions";
-import BackupSettings from "../components/BackupSettings";
-import { UpdateSettingsRow } from "../components/UpdatePrompt";
-import { SITES_CHANGED, startTour } from "../lib/tour";
-// the build label handed out to the team (BUILD_LABEL, changed by hand)
-import buildLabel from "../../BUILD_LABEL?raw";
-import { IS_TEST_BUILD } from "../lib/buildInfo";
+import { SITES_CHANGED } from "../lib/tour";
 import { useEdgeBump } from "../lib/edgeBump";
 import logo from "../assets/logo.png";
-import { getInspectorName, setInspectorName } from "../lib/profile";
-import { setConverterTool, useConverterTool } from "../lib/settings";
-import Switch from "../components/Switch";
 import SiteKindIcon, { KIND_COLOUR, KindTag } from "../components/SiteKindIcon";
 
 interface SiteRow extends Site {
@@ -32,11 +23,6 @@ export default function Dashboard() {
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
   const [kind, setKind] = useState<SiteKind>("afss");
-  const [inspectorName, setInspectorNameState] = useState(() => getInspectorName());
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const converterTool = useConverterTool();
-  const [editingName, setEditingName] = useState(false);
-  const [nameDraft, setNameDraft] = useState("");
   const [openSwipeId, setOpenSwipeId] = useState<string | null>(null);
   const [confirmDeleteSite, setConfirmDeleteSite] = useState<SiteRow | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -104,21 +90,6 @@ export default function Dashboard() {
   const afssSites = filtered.filter((s) => s.kind === "afss");
   const projectSites = filtered.filter((s) => s.kind === "project");
   const flowSites = filtered.filter((s) => s.kind === "flow");
-
-  function openEditName() {
-    setSettingsOpen(false);
-    setNameDraft(inspectorName);
-    setEditingName(true);
-  }
-
-  function handleSaveName(e: FormEvent) {
-    e.preventDefault();
-    const trimmed = nameDraft.trim();
-    if (!trimmed) return;
-    setInspectorName(trimmed);
-    setInspectorNameState(trimmed);
-    setEditingName(false);
-  }
 
   async function handleDeleteSite() {
     if (!confirmDeleteSite || deleting) return;
@@ -192,7 +163,7 @@ export default function Dashboard() {
         <button
           aria-label="Settings"
           data-tour="settings"
-          onClick={() => setSettingsOpen(true)}
+          onClick={() => navigate("/settings")}
           style={{ position: "relative", width: 38, height: 38, background: "none", border: "none", padding: 0 }}
         >
           <div
@@ -376,90 +347,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {settingsOpen && (
-        <div
-          className="sheet-backdrop"
-          style={{ position: "absolute", inset: 0, background: "rgba(10,11,13,0.6)", display: "flex", alignItems: "flex-end" }}
-          onClick={() => setSettingsOpen(false)}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="sheet-panel"
-            style={{ width: "100%", maxHeight: "92%", overflowY: "auto", background: "var(--panel)", borderRadius: "20px 20px 0 0", padding: "22px 20px calc(28px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 14 }}
-          >
-            <div style={{ fontSize: 16, fontWeight: 800 }}>Settings</div>
-            <button type="button" onClick={openEditName} style={settingsRowStyle}>
-              <div style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
-                <span style={{ fontSize: 14, fontWeight: 700 }}>Your name</span>
-                <span style={settingsRowHintStyle}>{inspectorName || "Not set"}</span>
-              </div>
-              <IconChevronRight color="var(--muted)" />
-            </button>
-            <button type="button" role="switch" aria-checked={converterTool} onClick={() => setConverterTool(!converterTool)} style={settingsRowStyle}>
-              <div style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3, textAlign: "left" }}>
-                <span style={{ fontSize: 14, fontWeight: 700 }}>Converter tool</span>
-                <span style={settingsRowHintStyle}>Show the L/s ⇄ L/min converter on the flow test screens.</span>
-              </div>
-              <Switch on={converterTool} />
-            </button>
-            <BackupSettings rowStyle={settingsRowStyle} hintStyle={settingsRowHintStyle} onRestored={() => void refresh()} />
-            <UpdateSettingsRow rowStyle={settingsRowStyle} hintStyle={settingsRowHintStyle} onAction={() => setSettingsOpen(false)} />
-            <button
-              type="button"
-              onClick={() => {
-                setSettingsOpen(false);
-                void startTour();
-              }}
-              style={settingsRowStyle}
-            >
-              <div style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
-                <span style={{ fontSize: 14, fontWeight: 700 }}>Replay tour</span>
-                <span style={settingsRowHintStyle}>A quick walk through the app, on an example site.</span>
-              </div>
-              <IconChevronRight color="var(--muted)" />
-            </button>
-            <button type="button" onClick={() => navigate("/admin")} style={settingsRowStyle}>
-              <IconLock size={18} color="var(--muted)" style={{ flexShrink: 0 }} />
-              <div style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
-                <span style={{ fontSize: 14, fontWeight: 700 }}>Admin</span>
-                <span style={settingsRowHintStyle}>Advanced controls, keywords. PIN protected.</span>
-              </div>
-              <IconChevronRight color="var(--muted)" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setSettingsOpen(false)}
-              style={{ textAlign: "center", padding: "14px 0", borderRadius: 12, background: "var(--panel-2)", border: "1px solid var(--border)", fontSize: 14, fontWeight: 700, color: "var(--text)", marginTop: 4, flexShrink: 0 }}
-            >
-              Done
-            </button>
-            <div style={{ flexShrink: 0, textAlign: "center", fontSize: 12, fontWeight: 600, color: "var(--muted-2)" }}>Inspecta · Build {buildLabel.trim()}{IS_TEST_BUILD ? " · Test version" : ""}</div>
-          </div>
-        </div>
-      )}
-
-      {editingName && (
-        <div
-          className="sheet-backdrop"
-          style={{ position: "absolute", inset: 0, background: "rgba(10,11,13,0.6)", display: "flex", alignItems: "flex-end" }}
-          onClick={() => setEditingName(false)}
-        >
-          <form
-            onClick={(e) => e.stopPropagation()}
-            onSubmit={handleSaveName}
-            className="sheet-panel"
-            style={{ width: "100%", background: "var(--panel)", borderRadius: "20px 20px 0 0", padding: "22px 20px calc(28px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 14 }}
-          >
-            <div style={{ fontSize: 16, fontWeight: 800 }}>Your name</div>
-            <div style={{ fontSize: 13, fontWeight: 500, color: "var(--muted)", lineHeight: 1.5, marginTop: -8 }}>
-              Used to label your reports.
-            </div>
-            <input autoFocus value={nameDraft} onChange={(e) => setNameDraft(e.target.value)} style={inputStyle} />
-            <FormActions onCancel={() => setEditingName(false)} />
-          </form>
-        </div>
-      )}
-
       {confirmDeleteSite && (
         <ConfirmDialog
           title="Are you sure?"
@@ -484,29 +371,6 @@ const inputStyle: CSSProperties = {
   fontWeight: 500,
   outline: "none",
 };
-
-const settingsRowStyle: CSSProperties = {
-  // the sheet scrolls on short screens; rows keep their size
-  flexShrink: 0,
-  display: "flex",
-  alignItems: "center",
-  gap: 12,
-  width: "100%",
-  background: "var(--panel-2)",
-  border: "1px solid var(--border)",
-  borderRadius: 12,
-  padding: "13px 14px",
-  textAlign: "left",
-  color: "var(--text)",
-};
-
-const settingsRowHintStyle: CSSProperties = {
-  fontSize: 12,
-  fontWeight: 500,
-  color: "var(--muted)",
-  lineHeight: 1.4,
-};
-
 
 const sectionHeaderStyle: CSSProperties = {
   fontSize: 12,

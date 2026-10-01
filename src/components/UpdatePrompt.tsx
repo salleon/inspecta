@@ -1,4 +1,4 @@
-import { useEffect, type CSSProperties } from "react";
+import { useEffect, type CSSProperties, type ReactNode } from "react";
 import { App as CapacitorApp } from "@capacitor/app";
 import { checkForUpdate, dismissUpdate, finishUpdate, startUpdate, useAppUpdate } from "../lib/appUpdate";
 import { useBackHandler } from "../lib/backButton";
@@ -69,7 +69,7 @@ function UpdateDialog() {
 }
 
 // Settings → Check for updates: what Play says, and the next step
-export function UpdateSettingsRow({ rowStyle, hintStyle, onAction }: { rowStyle: CSSProperties; hintStyle: CSSProperties; onAction: () => void }) {
+export function UpdateSettingsRow({ rowStyle, hintStyle, onAction, icon, version }: { rowStyle: CSSProperties; hintStyle: CSSProperties; onAction: () => void; icon?: ReactNode; version?: string }) {
   const { status, progress } = useAppUpdate();
   const hint = {
     unsupported: "Updates come through Google Play.",
@@ -91,10 +91,14 @@ export function UpdateSettingsRow({ rowStyle, hintStyle, onAction }: { rowStyle:
   }
 
   return (
-    <button type="button" onClick={tap} style={{ ...rowStyle, borderColor: badge ? "var(--accent)" : (rowStyle.borderColor as string | undefined) }}>
+    <button type="button" onClick={tap} style={{ ...rowStyle, ...(badge && rowStyle.border !== "none" ? { borderColor: "var(--accent)" } : {}) }}>
+      {icon}
       <div style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
         <span style={{ fontSize: 14, fontWeight: 700 }}>Check for updates</span>
-        <span style={hintStyle}>{hint}</span>
+        <span style={hintStyle}>
+          {hint}
+          {version ? ` · ${version}` : ""}
+        </span>
       </div>
       {badge && (
         <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 800, padding: "3px 8px", borderRadius: 999, background: "var(--accent)", color: "var(--accent-text)" }}>{badge}</span>

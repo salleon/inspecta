@@ -4,6 +4,7 @@ import { App as CapacitorApp } from "@capacitor/app";
 import Dashboard from "./pages/Dashboard";
 import Note from "./pages/Note";
 import Findings from "./pages/Findings";
+import Settings from "./pages/Settings";
 import Onboarding from "./pages/Onboarding";
 import Splash from "./components/Splash";
 import UpdatePrompt from "./components/UpdatePrompt";
@@ -79,7 +80,8 @@ function App() {
 // right way instead of just fading.
 function routeDepth(pathname: string): number {
   if (pathname === "/") return 0;
-  if (pathname.startsWith("/admin")) return pathname.split("/").length - 1;
+  if (pathname === "/settings") return 1;
+  if (pathname.startsWith("/admin")) return pathname.split("/").length;
   if (pathname.endsWith("/findings")) return 1;
   // Note and Export are both one level below Findings
   return 2;
@@ -136,6 +138,7 @@ function AnimatedRoutes() {
           <Route path="/site/:siteId/export" element={<ExportPreview />} />
           <Route path="/site/:siteId/flow/:testId" element={<FlowTest />} />
           <Route path="/site/:siteId/flow-export" element={<FlowExport />} />
+          <Route path="/settings" element={<Settings />} />
           <Route path="/admin/*" element={<Admin />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

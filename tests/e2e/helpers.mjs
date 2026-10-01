@@ -61,6 +61,7 @@ export async function openPage(app, { advanced = true, tour = false } = {}) {
       const m = /^\/site\/([^/]+)\/(findings|export|flow-export|finding\/[^/]+\/note|flow\/[^/]+)$/.exec(h);
       if (m) parent = m[2] === "findings" ? "/" : m[2].startsWith("flow/") ? `/site/${m[1]}/findings?tab=flow` : `/site/${m[1]}/findings`;
       else if (h.startsWith("/admin/")) parent = h.replace(/\/[^/]+$/, "");
+      else if (h === "/admin") parent = "/settings";
       location.replace("#" + parent);
     };
   }, { adv: advanced, tourOn: tour });

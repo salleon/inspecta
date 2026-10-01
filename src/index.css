@@ -730,3 +730,9 @@ button:active:not(:disabled) {
     transform: translateY(-8px);
   }
 }
+
+/* Settings / Admin groups: a line between the rows of one card */
+.settings-group > button:not(:first-child),
+.settings-group > .settings-row:not(:first-child) {
+  border-top: 1px solid var(--border) !important;
+}

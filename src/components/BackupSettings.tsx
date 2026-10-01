@@ -1,4 +1,4 @@
-import { useRef, useState, type CSSProperties } from "react";
+import { useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Capacitor } from "@capacitor/core";
 import { Share } from "@capacitor/share";
 import ConfirmDialog from "./ConfirmDialog";
@@ -12,7 +12,7 @@ import { applyRestore, backupCounts, backupFileName, readBackup, writeBackup, ty
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
-export default function BackupSettings({ rowStyle, hintStyle, onRestored }: { rowStyle: CSSProperties; hintStyle: CSSProperties; onRestored: () => void }) {
+export default function BackupSettings({ rowStyle, hintStyle, onRestored, icons }: { rowStyle: CSSProperties; hintStyle: CSSProperties; onRestored: () => void; icons?: [ReactNode, ReactNode] }) {
   const fileInput = useRef<HTMLInputElement>(null);
   const [progress, setProgress] = useState<{ title: string; percent: number; step: string } | null>(null);
   const [plan, setPlan] = useState<RestorePlan | null>(null);
@@ -104,16 +104,18 @@ export default function BackupSettings({ rowStyle, hintStyle, onRestored }: { ro
   return (
     <>
       <button type="button" onClick={backup} style={rowStyle}>
+        {icons?.[0]}
         <div style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
           <span style={{ fontSize: 14, fontWeight: 700 }}>Back up all data</span>
-          <span style={hintStyle}>Every site, finding and photo in one file. Save it to OneDrive.</span>
+          <span style={hintStyle}>Every site, finding and photo in one file.</span>
         </div>
         <IconChevronRight color="var(--muted)" />
       </button>
       <button type="button" onClick={() => fileInput.current?.click()} style={rowStyle}>
+        {icons?.[1]}
         <div style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
           <span style={{ fontSize: 14, fontWeight: 700 }}>Restore from backup</span>
-          <span style={hintStyle}>Adds the sites from a backup file. Nothing already on this phone is overwritten.</span>
+          <span style={hintStyle}>Adds sites from a backup file; nothing is overwritten.</span>
         </div>
         <IconChevronRight color="var(--muted)" />
       </button>
