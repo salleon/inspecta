@@ -257,6 +257,22 @@ test("a new hydrant test: flows in L/s, PASS / FAIL at the bottom, RPM for a die
   await page.waitForTimeout(400);
   assert.equal(await keypad.evaluate((e) => e.classList.contains("off")), true, "back hid the keypad");
   assert.equal(await wide.count(), 1);
+  // + Add reading is a row where the next reading goes; it opens the keypad on it
+  await wide.locator('button:has-text("Add reading 6")').click();
+  await page.waitForTimeout(400);
+  assert.equal(await wide.locator('[aria-label="RPM"]').count(), 6);
+  assert.equal(await keypad.evaluate((e) => e.classList.contains("off")), false);
+  await wide.locator('button:has-text("Hide keypad")').click();
+  await page.waitForTimeout(300);
+  // each reading's ✕ asks first
+  await wide.locator('[aria-label="Delete reading 6"]').click();
+  const ask = wide.locator('[role="dialog"][aria-label="Delete reading"]');
+  assert.match(await ask.innerText(), /Delete reading 6\?/);
+  await ask.locator('button:has-text("Cancel")').click();
+  assert.equal(await wide.locator('[aria-label="RPM"]').count(), 6);
+  await wide.locator('[aria-label="Delete reading 6"]').click();
+  await ask.locator('button:has-text("Delete")').click();
+  assert.equal(await wide.locator('[aria-label="RPM"]').count(), 5);
   await pressBack(page);
   await page.waitForTimeout(600);
   assert.equal(await wide.count(), 0);

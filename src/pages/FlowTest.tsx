@@ -509,6 +509,19 @@ export default function FlowTest() {
     </>
   );
   const removeRow = (i: number) => change((t) => void t.sections[current].rows.splice(i, 1));
+  // what's in a reading, for "Delete reading 3?"
+  const rowSummary = (r: FlowReading) => {
+    const v = (x: string | undefined) => x?.trim() || "–";
+    const flow = r.flow === "" ? show(flowOf(test, { ...r, flow: "" })) : shown(r.flow, r.flowUnit);
+    return [
+      ...(hydrant ? [] : [`" Hg ${v(r.hg)}`]),
+      `Flow ${v(flow)} ${unitLabel}`,
+      `Discharge ${v(r.dis)}`,
+      `Suction ${v(r.suc)}`,
+      ...(pumps.rpm ? [`RPM ${v(r.rpm)}`] : []),
+      ...(pumps.amps ? [`Amps ${v(r.amps)}`] : []),
+    ].join("  ·  ");
+  };
 
   return shell(
     <>
@@ -787,6 +800,8 @@ export default function FlowTest() {
           pumpHeads={pumpHeads}
           pumpCells={pumpCells}
           updateRow={updateRow}
+          removeRow={removeRow}
+          rowSummary={rowSummary}
           addReading={addReading}
           onColumns={(fn) => change(fn)}
           verdictLine={
@@ -1011,6 +1026,8 @@ function WideReadings({
   pumpHeads,
   pumpCells,
   updateRow,
+  removeRow,
+  rowSummary,
   addReading,
   onColumns,
   verdictLine,
@@ -1027,10 +1044,15 @@ function WideReadings({
   pumpHeads: ReactNode;
   pumpCells: (r: FlowReading, i: number, style: CSSProperties) => ReactNode;
   updateRow: (i: number, fn: (r: FlowReading) => void) => void;
+  removeRow: (i: number) => void;
+  rowSummary: (r: FlowReading) => string;
   addReading: () => void;
   onColumns: (fn: (t: FlowTestRecord) => void) => void;
   verdictLine: { colour: string; text: string } | null; // none for town main
 }) {
+  // the reading waiting on "Delete reading 3?", and the one just added
+  const [ask, setAsk] = useState<number | null>(null);
+  const [added, setAdded] = useState<number | null>(null);
   // the add / edit column box: null closed, -1 adding, else the column
   const [colEdit, setColEdit] = useState<number | null>(null);
   const [closing, setClosing] = useState(false);
@@ -1058,6 +1080,7 @@ function WideReadings({
   };
   useBackHandler(() => {
     if (colEdit !== null) setColEdit(null);
+    else if (ask !== null) setAsk(null);
     else if (padOn) hidePad();
     else close();
     return true;
@@ -1131,6 +1154,12 @@ function WideReadings({
     delete el.dataset.fresh;
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(el, v);
     el.dispatchEvent(new Event("input", { bubbles: true }));
+  };
+  const addRow = () => {
+    const n = rows.length;
+    addReading();
+    setAdded(n);
+    window.setTimeout(() => scrollRef.current?.querySelectorAll<HTMLInputElement>(".wide-pin input")[n]?.focus(), 30);
   };
   const key = (k: string, label: ReactNode = k, extra = "") => (
     <button
@@ -1262,7 +1291,7 @@ function WideReadings({
               {rows.map((r, i) => {
                 const [first, ...rest] = stepCells(r, i, 17);
                 return (
-                  <div key={i} style={{ display: "contents" }}>
+                  <div key={i} style={{ display: "contents" }} className={i === added ? "wide-added" : undefined}>
                     <div className="wide-pin">
                       <span className="wide-num">{i + 1}</span>
                       {first}
@@ -1287,25 +1316,50 @@ function WideReadings({
                         }
                       />
                     ))}
-                    <div />
+                    <div className="wide-xcell">
+                      <button className={padOn ? "wide-x off" : "wide-x"} tabIndex={padOn ? -1 : 0} aria-label={`Delete reading ${i + 1}`} onClick={() => setAsk(i)}>
+                        ✕
+                      </button>
+                    </div>
                   </div>
                 );
               })}
+              {/* where the next reading goes, numbered for it */}
+              <button className="wide-ghost" style={{ gridColumn: `1 / span ${nCols}` }} onClick={addRow}>
+                <span className="wide-num">{rows.length + 1}</span>
+                <span className="wide-ghost-label">
+                  <b>＋</b> Add reading {rows.length + 1}
+                </span>
+              </button>
             </div>
             <div className="wide-foot" style={{ width: Math.max(260, bodyW - (padOn ? padW + 30 : 20)) }}>
-              <button
-                style={{ ...addButton, width: 240, flexShrink: 0 }}
-                onClick={() => {
-                  hidePad();
-                  addReading();
-                }}
-              >
-                + Add reading
-              </button>
               <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: 800, color: verdictLine?.colour }}>{verdictLine && `● ${verdictLine.text}`}</div>
               {ResultBox({ test, index: current, unit: flowUnitFor(test) })}
             </div>
           </div>
+          {ask !== null && rows[ask] && (
+            <div className="wide-ask" onClick={() => setAsk(null)}>
+              <div role="dialog" aria-label="Delete reading" className="wide-ask-box" onClick={(e) => e.stopPropagation()}>
+                <div style={{ fontSize: 16, fontWeight: 800 }}>Delete reading {ask + 1}?</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", lineHeight: 1.5 }}>{rowSummary(rows[ask])}</div>
+                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 6 }}>
+                  <button className="wide-ask-btn" onClick={() => setAsk(null)}>
+                    Cancel
+                  </button>
+                  <button
+                    className="wide-ask-btn del"
+                    onClick={() => {
+                      removeRow(ask);
+                      setAsk(null);
+                      setAdded(null);
+                    }}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           <div className={padOn ? "wide-pad" : "wide-pad off"} style={{ width: padW }} aria-hidden={!padOn}>
             <button type="button" tabIndex={-1} className="wide-key hide" onPointerDown={(e) => e.preventDefault()} onMouseDown={(e) => e.preventDefault()} onClick={hidePad}>
               Hide keypad ›

@@ -18,8 +18,13 @@ the technical detail.
   - The keypad takes whatever room the columns leave (bigger keys on most
     EnFact tests), never narrower than its smallest size; with more columns
     the table scrolls under it.
-  - **+ Column** moved to the top bar; removing a reading is on the upright
-    page.
+  - **+ Column** moved to the top bar.
+  - The keypad has faint teal keys and a soft amber **Hide keypad ›** bar.
+  - With the keypad away, each reading has a translucent red **✕**;
+    "Delete reading 3?" shows what's in it before Cancel / Delete.
+  - **+ Add reading** is a dashed row where the next reading goes,
+    numbered for it ("Add reading 6"); tapping it adds the reading there,
+    flashes it, and opens the keypad on its first cell.
 
 - **Combined systems (canvas FlowCombined / FlowCombinedDuty).**
   - **System pump duty**: the demand points, the first marked **Pump duty**
