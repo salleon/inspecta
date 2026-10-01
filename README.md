@@ -78,14 +78,18 @@ Ideas agreed but not started yet:
 
 1. **Flow testing as its own site type** (canvas board FlowSiteType) — a third
    type beside AFSS and Projects in New site, its own group on the home page;
-   a flow testing site opens straight to its flow tests (no findings, photos
-   or PDF) and exports one "Share flow test Excel". AFSS / project sites also
-   get "Flow tests only" on the Export page.
-2. **Add your own columns to flow test readings** (canvas board FlowColumns) —
-   "Columns ▾" replaces "+ RPM & Amps": tick RPM, Amps and added columns
-   (name + unit, quick picks like oil pressure, engine temp), headings
-   editable; the table scrolls sideways upright, full screen shows all; the
-   Excel gets them after Amps.
+   a flow testing site opens straight to its flow tests (no findings or
+   photos). Its bottom bar has Export (above + New flow test), which opens a
+   preview of the results, one page per test in the template layout (header,
+   a table per supply with PASS / FAIL, graph, comments). Export PDF: a full
+   page per flow test. Export Excel: one sheet per flow test, named after the
+   test. AFSS / project sites keep flow tests in their Excel as now.
+2. **Add your own columns to flow test readings, and comments** (canvas board
+   FlowColumns) — columns are added only in full screen, with a + at the end
+   of the headings (name + unit, quick picks like oil pressure, engine temp);
+   headings editable; the upright view is unchanged. The Excel gets them after
+   Amps. A Comments box under the readings replaces the one-line Comment and
+   prints under the graph on the PDF page and Excel sheet.
 3. **Updating screen: two pre-rendered gears + a live progress gear** (canvas
    board UpdateGearsLive) — the two main gears are a video loop; a small gear
    rolls along the progress bar with the real download percentage.
