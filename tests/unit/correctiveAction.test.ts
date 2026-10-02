@@ -90,7 +90,7 @@ test("real report: Strawberry Hills Hotel", () => {
     ["No signage indicating the sprinkler valve box location", "5.1", "EF-03"],
     ["Extinguisher obstructed", "5.5", "EF-02"],
     ["Annual Sprinkler System Flow Test not undertaken at SIT", "5.6", "EF-05"],
-    ["24 yearly Sprinkler head test compliance", "5.6", "EF-06"],
+    ["24 yearly Sprinkler head test compliance", "5.6", undefined], // tests: only a flow test not done
     ["Sprinkler booster not maintained since 2025", "5.6", "EF-04"],
     ["Plant room used as a storage room with combustible material (ie Furniture, gas cans & etc…)", "6.1", "EF-07"],
     ["Detection spacing not consistent with design standards AS 1670.1", "7.2", "EF-14"],
@@ -114,7 +114,7 @@ test("real reports: Coles Turramurra and Coles Epping", () => {
     ["Compliance of building façade with BCA requirements", "1.9", "EF-20"],
     ["Fire Collar does not have correct fixings", "1.4", "EF-21"],
     ["ALL penetration in carpark and plantroom that are protected by fire collars that are installed with nylon knock-in fasteners and are non-compliant.", "1.4", "EF-21"],
-    ["Numerous Penetrations with collars improperly fitted identified in carpark", "1.4", "EF-22"],
+    ["Numerous Penetrations with collars improperly fitted identified in carpark", "1.4", "EF-21"],
     ["Penetration sealing compliance", "1.4", "EF-23"],
     ["Compartmentation drawings", "1.5", "EF-24"],
     ["No stair nosings treads installed on stair in path of egress.", "2.3", "EF-25"],
@@ -145,6 +145,9 @@ test("real reports: Coles Turramurra and Coles Epping", () => {
     // filler for documents not supplied: never learnt
     ["5 yearly Hydrostatic Test compliance", "5.2", undefined],
     ["Annual Hydrant System Flow Test", "5.2", undefined],
+    ["Annual Sprinkler System Flow Test", "5.6", undefined],
+    // the one test that is: no flow test done
+    ["Annual Sprinkler System Flow Test not undertaken at SIT", "5.6", "EF-05"],
     ["Annual certification not to hand at time of audit", "5.1", undefined],
     ["Annual certification not to hand at time of audit", "3.1", undefined],
     // one-off, site-specific: left for the engineer
@@ -161,7 +164,7 @@ test("unclear or uncommon notes stay blank", () => {
 });
 
 test("every defect in the table has wording, match words and categories", () => {
-  assert.equal(COMMON_DEFECTS.length, 95);
+  assert.equal(COMMON_DEFECTS.length, 93);
   for (const d of COMMON_DEFECTS) {
     assert.ok(d.wording.trim(), d.id);
     assert.ok(d.match.length && d.match.every((g) => g.length), d.id);

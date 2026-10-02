@@ -658,14 +658,6 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     wording: "As per AS1851, an annual flow test must be carried out on the sprinkler system.\n\nIncumbent contractor to carry out annual Flow Test in accordance with AS1851. A copy of the flow test results to be provided to EnFact for review. Provide certification upon completion.",
   },
   {
-    id: "EF-06",
-    measure: "Sprinklers",
-    issue: "24 yearly sprinkler head test",
-    match: [["24 yearly", "24 year", "24yr", "24 years"], ["head test", "head testing", "sprinkler head", "sprinkler heads", "sample", "compliance"]],
-    categories: ["5.6"],
-    wording: "Sprinkler heads must be tested on a 24 yearly basis.\n\nOwner / Contractor to provide evidence of compliance with 24 yearly sprinkler head testing requirements.",
-  },
-  {
     id: "EF-07",
     measure: "Air Handling Systems",
     issue: "Plant room used for combustible storage",
@@ -743,18 +735,10 @@ export const COMMON_DEFECTS: CommonDefect[] = [
   {
     id: "EF-21",
     measure: "Penetrations",
-    issue: "Fire collar fixings non-compliant (nylon knock-ins)",
-    match: [["collar", "collars", "fire collar", "fire collars"], ["fixings", "fixing", "fasteners", "fastener", "knock in", "knock ins", "nylon"]],
+    issue: "Fire collars fixed with nylon fasteners, not approved and tested hardware",
+    match: [["collar", "collars", "fire collar", "fire collars"], ["fixings", "fixing", "fasteners", "fastener", "knock in", "knock ins", "nylon", "plastic", "hardware", "improperly fitted", "inproperly fitted", "improperly installed", "incorrectly fitted", "incorrectly installed", "not fitted correctly", "poorly fitted", "poorly installed"]],
     categories: ["1.4"],
-    wording: "Install compliant fixings to ensure correct operation in accordance with BCA\n\nFire collar is installed with nylon \"knock ins\" in the event of a fire these would melt before the collar is required to activate.",
-  },
-  {
-    id: "EF-22",
-    measure: "Penetrations",
-    issue: "Collars improperly fitted",
-    match: [["collar", "collars"], ["improperly fitted", "inproperly fitted", "improperly installed", "incorrectly fitted", "incorrectly installed", "not fitted correctly", "poorly fitted", "poorly installed"]],
-    categories: ["1.4"],
-    wording: "Engage a passive contractor to conduct a building audit and rectify all defective penetrations",
+    wording: "Fire collar is installed with nylon \"knock in\" fasteners. In the event of a fire these would melt before the collar is required to activate. Collars must be fixed with approved and tested hardware.\n\nInstall compliant fixings to ensure correct operation in accordance with BCA.",
   },
   {
     id: "EF-23",

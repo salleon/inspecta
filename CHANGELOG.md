@@ -7,10 +7,10 @@ the technical detail.
 
 ## 1 October 2026
 
-- **Corrective actions learnt from Coles Turramurra and Coles Epping.** 16
+- **Corrective actions learnt from Coles Turramurra and Coles Epping.** 15
   more defects get the wording EnFact wrote in those finished reports:
-  façade compliance, fire collar fixings, collars improperly
-  fitted, penetration compliance reports, compartmentation drawings, stair
+  façade compliance, fire collars fixed with nylon fasteners (or improperly
+  fitted), penetration compliance reports, compartmentation drawings, stair
   nosings, auto door controls near a corner, mixed exit signage, maximum
   boost pressure signage, handwritten duties on the block plan, landing
   valve clearance, sprinkler heads under ductwork, no fire blanket, fire
@@ -21,7 +21,8 @@ the technical detail.
   close to the wall, hydrant coverage queries, roller or heavy doors, an
   obstructed egress button) now stay blank. Filler rows for documents not
   supplied (annual certification not to hand, hydrostatic and annual flow
-  tests) are deliberately not learnt. Both reports' notes are unit tests.
+  tests) are deliberately not learnt; of the tests, only a flow test not
+  done is pre-filled (the 24 yearly head test entry is gone). Both reports' notes are unit tests.
 - **Flow test sheets fill an A4 page.** A sheet with few columns (a hydrant's
   three) was squeezed into a third of the page with a small graph. Every
   flow test sheet is now an A4 page wide, portrait, its table columns
