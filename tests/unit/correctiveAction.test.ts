@@ -40,7 +40,10 @@ test("the category can stand in for the subject, never for the specific words", 
 });
 
 test("no guessing at typos", () => {
-  assert.equal(id("Sprinkler booster points has no stortz installed", "5.1"), undefined, "point is not paint");
+  // "point" is not "paint": once wrongly read as a painted head; now the
+  // Storz wording, as the finished report has it ("stortz" is a spelling
+  // the table lists, not a guess)
+  assert.equal(id("Sprinkler booster points has no stortz installed", "5.1"), "CI-40", "point is not paint");
   assert.equal(id("sprinkler head point", "5.6"), undefined);
 });
 
@@ -55,7 +58,7 @@ test("real report: the wrong ones are gone, the right ones stay", () => {
     ["3.3.1 \nSignage required on final egress Door", "3.3", "CI-04"],
     ["5.6.2\nStorage stacked above limit", "5.6", "CI-49"],
     // marked wrong (painted sprinkler, spare box, discharge pattern)
-    ["Sprinkler booster points has no stortz installed ", "5.1", undefined],
+    ["Sprinkler booster points has no stortz installed ", "5.1", "CI-40"], // the Storz wording, as finished
     ["Can't access sprinkler booster point ", "5.1", undefined],
     ["Electric sprinkler pump noisy\n5.1.3", "5.6", undefined],
     ["Sprinkler Block Plan", "5.6", undefined],
@@ -63,9 +66,9 @@ test("real report: the wrong ones are gone, the right ones stay", () => {
     ["Awning overhang approx 2.4m overhang \nSprinkler coverage req?", "5.6", "EF-01"],
     // left blank, and still should be
     ["2.1m overhang awning", "5.6", undefined],
-    ["Plastic fasteners on fire collars", "1.4", undefined],
+    ["Plastic fasteners on fire collars", "1.4", "EF-21"], // now: the finished report's wording
     ["Hydrant Block plan", "5.2", undefined],
-    ["Not 100mm clearance landing Valve to wall", "5.2", undefined],
+    ["Not 100mm clearance landing Valve to wall", "5.2", "EF-30"], // now: the finished report's wording
     ["OWS amp unplugged on arrival \nReconnected during test ", "8.2", undefined],
   ];
   for (const [note, category, want] of rows) assert.equal(id(note, category), want, note);
@@ -104,6 +107,57 @@ test("real report: Strawberry Hills Hotel", () => {
   for (const [note, category, want] of rows) assert.equal(id(note, category), want, note);
 });
 
+// Two more finished reports (Coles Turramurra and Coles Epping, 2026): the
+// notes the engineer wrote the same way across sites get that wording.
+test("real reports: Coles Turramurra and Coles Epping", () => {
+  const rows: [string, string, string | undefined][] = [
+    ["Annual certification not to hand at time of audit", "5.1", "EF-15"],
+    ["Annual certification not to hand at time of audit", "1.6", "EF-15"],
+    ["Annual certification not to hand at time of audit", "3.1", "EF-16"],
+    ["Annual certification not to hand at time of audit", "4", "EF-16"],
+    ["Annual certification not to hand at time of audit", "10.3", "EF-17"],
+    ["5 yearly Hydrostatic Test is due 2026", "5.2", "EF-18"],
+    ["5 yearly Hydrostatic Test compliance", "5.2", "EF-18"],
+    ["Annual Hydrant System Flow Test", "5.2", "EF-19"],
+    ["Annual Sprinkler System Flow Test", "5.6", "EF-19"],
+    ["Compliance of building façade with BCA requirements", "1.9", "EF-20"],
+    ["Fire Collar does not have correct fixings", "1.4", "EF-21"],
+    ["ALL penetration in carpark and plantroom that are protected by fire collars that are installed with nylon knock-in fasteners and are non-compliant.", "1.4", "EF-21"],
+    ["Numerous Penetrations with collars improperly fitted identified in carpark", "1.4", "EF-22"],
+    ["Penetration sealing compliance", "1.4", "EF-23"],
+    ["Compartmentation drawings", "1.5", "EF-24"],
+    ["No stair nosings treads installed on stair in path of egress.", "2.3", "EF-25"],
+    ["Auto door manual controls located within 500mm of a  internal corner. BCA D2.21 requires manual controls to be no less than 500mm from an internal corner.", "2.5", "EF-26"],
+    ["Mixed exit signage installed in carpark and Store/ back of house areas", "3.1", "EF-27"],
+    ["No maximum boost pressure signage installed", "5.1", "EF-28"],
+    ["Block plan has duty requirements handwritten  on block plan", "5.6", "EF-29"],
+    ["As per AS2419.1 Clause 3.2.2.2\nHydrant landing valve handwheel must have 100mm clearance around it in all directions. This landing valve is mounted too close to the wall", "5.2", "EF-30"],
+    ["Some sprinkler heads are mounted under low hanging ductwork without suitable protection.", "5.6", "EF-31"],
+    ["No fire blanket installed in kitchen area.", "5.5", "EF-32"],
+    ["Fire damper inspection compliance", "6.3.4", "EF-33"],
+    ["PA system failed to shut down in fire mode", "8.1", "EF-34"],
+    ["Fire exit door held open.", "2.4", "EF-35"],
+    ["Fire exit door not fitted with closer", "2.4", "EF-35"],
+    // existing defects, now also matched by these notes
+    ["Sprinkler booster fittings not fitted with Stortz fitting in accordance with AS2419.4", "5.1", "CI-40"],
+    ["Hydrant to be installed with a Storz valve as per AS2419.4", "5.2", "CI-40"],
+    ["Block plan does not list duty requirements", "5.2", "CI-44"],
+    ["Fire Damper installed incorrectly and is non functional", "6.3.4", "CI-63"],
+    ["Some exit lights were identified as not functioning correctly", "3.1", "CI-30"],
+    ["Illuminated Exit sign failed at time of inspection", "3.1", "CI-30"],
+    ["Stock stacked too high and above limit lines.", "5.6", "CI-49"],
+    // these used to get the wrong wording: now blank, for the engineer
+    ["Hydrant coverage may be insufficient in carpark area", "5.2", undefined],
+    ["Exits along a path of travel need to be a swing door", "2.5", undefined],
+    ["Enterance swing doors impeade the path of travel requiring more than 110 N to open", "2.5", undefined],
+    ["Green egress button is obstructed by metal plate and", "2.5", undefined],
+    // one-off, site-specific: left for the engineer
+    ["Sprinkler pump noisey and amp variation is significant indicting that the pump may be about to fail.", "5.1", undefined],
+    ["No check or rpz valve installed in sprinkler booster line to prevent re-cycle on boost.", "5.1", undefined],
+  ];
+  for (const [note, category, want] of rows) assert.equal(id(note, category), want, note);
+});
+
 test("unclear or uncommon notes stay blank", () => {
   for (const [note, c] of [["Cracked tile in bathroom", "13"], ["Door handle loose", "1.6"], ["Gap under fire door exceeds 10mm", "1.6"], ["", "1.6"]]) {
     assert.equal(id(note, c), undefined, note);
@@ -111,7 +165,7 @@ test("unclear or uncommon notes stay blank", () => {
 });
 
 test("every defect in the table has wording, match words and categories", () => {
-  assert.equal(COMMON_DEFECTS.length, 79);
+  assert.equal(COMMON_DEFECTS.length, 100);
   for (const d of COMMON_DEFECTS) {
     assert.ok(d.wording.trim(), d.id);
     assert.ok(d.match.length && d.match.every((g) => g.length), d.id);

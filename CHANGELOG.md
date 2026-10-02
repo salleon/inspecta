@@ -7,6 +7,22 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Corrective actions learnt from Coles Turramurra and Coles Epping.** 21
+  more defects get the wording EnFact wrote in those finished reports:
+  annual certification not to hand (AS1851, AS2293.2 for exit signs and
+  emergency lighting, AS1735.2 for lifts), 5 yearly hydrostatic test, annual
+  flow test, façade compliance, fire collar fixings, collars improperly
+  fitted, penetration compliance reports, compartmentation drawings, stair
+  nosings, auto door controls near a corner, mixed exit signage, maximum
+  boost pressure signage, handwritten duties on the block plan, landing
+  valve clearance, sprinkler heads under ductwork, no fire blanket, fire
+  damper inspection records, PA not shutting down in fire mode and fire
+  exit doors held open. Storz now also covers boosters (and "Stortz"), block
+  plans missing duties, dampers installed incorrectly and exit lights not
+  functioning. Notes that used to get the wrong wording (landing valve too
+  close to the wall, hydrant coverage queries, roller or heavy doors, an
+  obstructed egress button) now stay blank. Both reports' notes are unit
+  tests.
 - **Flow test sheets fill an A4 page.** A sheet with few columns (a hydrant's
   three) was squeezed into a third of the page with a small graph. Every
   flow test sheet is now an A4 page wide, portrait, its table columns

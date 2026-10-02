@@ -39,6 +39,9 @@ function stem(word: string): string {
 function rawWords(text: string): string[] {
   return text
     .toLowerCase()
+    // "façade" → "facade"
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .replace(/['’]s\b/g, "")
     .split(/[^a-z0-9]+/)
     .filter(Boolean);
