@@ -550,3 +550,19 @@ test("Save & close, above Delete flow test, saves and goes back to the flow test
   });
   assert.equal(comment, "Saved with Save & close");
 });
+
+test("readings are saved straight away, and ones without a flow say why they're not on the graph", async () => {
+  await go(page, app, "/site/s2/flow/t3", 1500);
+  const dis = page.locator('[aria-label="Discharge"]').first();
+  await dis.fill("777");
+  // the app closed straight after typing (no back, no Save & close)
+  await page.waitForTimeout(150);
+  await page.reload();
+  await page.waitForTimeout(1500);
+  assert.equal(await page.locator('[aria-label="Discharge"]').first().inputValue(), "777");
+  // a reading with a pressure but no flow can't be graphed: the note says so
+  assert.equal(await page.getByText(/no flow, so/).count(), 0);
+  await page.locator('[aria-label="Flow"]').first().fill("");
+  await page.waitForTimeout(150);
+  assert.match(await page.getByText(/no flow, so it isn't on the graph/).innerText(), /Type the flow for each reading/);
+});

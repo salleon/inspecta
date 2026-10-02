@@ -82,6 +82,7 @@ export function verdict(test: FlowTest, rows: FlowReading[], unit: FlowUnit = "m
   const u = unit === "sec" ? " L/s" : " L/min";
   const pts = points(test, rows, "dis");
   const dem = demandPoints(test.demand);
+  if (pts.length < 2 && rows.some((r) => r.dis.trim() !== "" && r.flow.trim() === "")) return { text: "Type the flow for each reading to graph it", colour: NEUTRAL_COLOUR, pass: null };
   if (pts.length < 2 || !dem.length) return { text: "Add readings and demand points to compare", colour: NEUTRAL_COLOUR, pass: null };
   const top = pts[pts.length - 1];
   const short = dem.filter((d) => d.x > top.x).sort((a, b) => b.x - a.x)[0];
@@ -388,4 +389,10 @@ export function blankThumbSvg(w: number, h: number): string {
   let s = `<svg width="${w}" height="${h}" viewBox="0 0 72 52"><rect width="72" height="52" rx="8" fill="#071b2c"/>`;
   for (let r = 0; r < 4; r++) for (let c = 0; c < 3; c++) s += `<rect x="${8 + c * 19}" y="${8 + r * 10}" width="16" height="7" rx="2" fill="${r ? "#163a5a" : "#1c4468"}"/>`;
   return `${s}</svg>`;
+}
+
+// readings with a pressure typed but no flow: they can't go on the graph
+export function missingFlows(test: FlowTest): number {
+  if (test.kind === "blank") return 0;
+  return test.sections.reduce((n, sec) => n + sec.rows.filter((r) => (r.dis.trim() !== "" || r.suc.trim() !== "") && r.flow.trim() === "").length, 0);
 }

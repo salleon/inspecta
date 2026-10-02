@@ -7,6 +7,14 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Flow tests save straight away.** Every change is written as soon as it's
+  typed (one write at a time, so an older copy never lands after a newer
+  one), and again if the phone puts the app in the background, not 0.4 s
+  later as before.
+- **Readings without a flow say so.** Since flows are typed, a reading with
+  a pressure but no flow can't go on the graph: an amber note under the
+  graph says how many, and the result line says "Type the flow for each
+  reading to graph it".
 - **Build 5.** BUILD_LABEL is now 5 (Settings shows "Inspecta · Build 5").
 - Tests: the build label check waits for the Settings page to slide in
   (it failed on GitHub's slower machine).

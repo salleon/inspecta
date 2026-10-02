@@ -10,6 +10,7 @@ import {
   type LineKind,
   extraHeading,
   flowUnitFor,
+  missingFlows,
   isReference,
   lmin,
   nextReading,
@@ -41,7 +42,8 @@ import { useFlowMode } from "../lib/settings";
 // per pump; a blank sheet is the inspector's own columns and rows.
 // Saved as it's typed.
 
-const SAVE_DELAY_MS = 400;
+// written as soon as the typing settles (the next key press doesn't wait on it)
+const SAVE_DELAY_MS = 0;
 
 const card: CSSProperties = { background: "var(--panel)", border: "1px solid var(--border)", borderRadius: 14, padding: 12, display: "flex", flexDirection: "column", gap: 8 };
 const lbl: CSSProperties = { fontSize: 11, fontWeight: 800, letterSpacing: "0.05em", textTransform: "uppercase", color: "var(--muted-2)" };
@@ -156,16 +158,31 @@ export default function FlowTest() {
   const [chartW, setChartW] = useState(340);
   const chartBox = useRef<HTMLDivElement>(null);
 
-  // saved a moment after the last change, and when leaving
+  // Saved as it's typed: every change is written straight away, one write
+  // at a time so an older copy can never land after a newer one; and again
+  // when leaving or when the phone puts the app in the background.
   const pending = useRef<FlowTestRecord | null>(null);
   const timer = useRef<number | null>(null);
+  const writing = useRef<Promise<void>>(Promise.resolve());
   const flush = () => {
     if (timer.current !== null) window.clearTimeout(timer.current);
     timer.current = null;
-    if (pending.current) void saveFlowTest(pending.current);
+    const next = pending.current;
     pending.current = null;
+    if (next) writing.current = writing.current.then(() => saveFlowTest(next)).catch(() => {});
+    return writing.current;
   };
-  useEffect(() => flush, []);
+  useEffect(() => {
+    const away = () => void flush();
+    const onVisibility = () => document.visibilityState === "hidden" && away();
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pagehide", away);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", away);
+      flush();
+    };
+  }, []);
 
   useEffect(() => {
     if (!siteId || !testId) return;
@@ -219,11 +236,7 @@ export default function FlowTest() {
   // Save & close: everything's saved as it's typed; this saves anything still
   // waiting and goes back to the flow tests list
   async function saveAndClose() {
-    if (timer.current !== null) window.clearTimeout(timer.current);
-    timer.current = null;
-    const last = pending.current;
-    pending.current = null;
-    if (last) await saveFlowTest(last);
+    await flush();
     navigate(`/site/${siteId}/findings?tab=flow`);
   }
 
@@ -651,6 +664,11 @@ export default function FlowTest() {
             </span>
           )}
         </div>
+        {missingFlows(test) > 0 && (
+          <div style={{ margin: "6px 6px 2px", padding: "7px 10px", borderRadius: 9, background: "rgba(245,165,92,.12)", border: "1px solid rgba(245,165,92,.45)", color: "#f7b977", fontSize: 12, fontWeight: 700, lineHeight: 1.4, textAlign: "center" }}>
+            {missingFlows(test)} reading{missingFlows(test) === 1 ? " has" : "s have"} no flow, so {missingFlows(test) === 1 ? "it isn't" : "they aren't"} on the graph. Type the flow for each reading to plot it.
+          </div>
+        )}
         {!enfact && (
           <GraphLines
             test={test}
