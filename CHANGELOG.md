@@ -7,6 +7,10 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Graph axes fit any site.** Checked from a 3 L/s hydrant to a 20 000 L/min
+  sprinkler: the last flow number no longer gets cut off on the right, and
+  when every pressure is the same the line sits in the middle, not on the
+  bottom edge.
 - **Flow test graph axes labelled.** The in-app graph now says Flow (L/min)
   for sprinklers or Flow (L/s) for hydrants and combined systems along the
   bottom, and Pressure (kPa) up the side.

@@ -332,7 +332,7 @@ export function chartSvg(test: FlowTest, w: number, h: number, opts: { small?: b
   const { small = false, unit = "min", current = 0 } = opts;
   const div = unit === "sec" ? 60 : 1;
   // room on the left and below for the axis titles
-  const pad = small ? { l: 4, r: 4, t: 4, b: 4 } : { l: 52, r: 10, t: 10, b: 40 };
+  const pad = small ? { l: 4, r: 4, t: 4, b: 4 } : { l: 52, r: 18, t: 10, b: 40 };
   const sc = (p: Point) => ({ x: p.x / div, y: p.y });
   const series = test.sections
     .map((s, i) => ({ pts: (isTested(test, i) || i === current) && lineShown(test, "dis", i) ? points(test, s.rows, "dis").map(sc) : [], colour: isReference(test, i) ? REFERENCE_COLOUR : sectionColour(i), ref: isReference(test, i) }))
@@ -351,7 +351,9 @@ export function chartSvg(test: FlowTest, w: number, h: number, opts: { small?: b
   hiX = hiX > 0 ? hiX : div === 60 ? 25 : 1500;
   hiY = hiY > 0 ? hiY : 500;
   const ax = fit(0, hiX);
-  const ay = fit(loY > hiY * 0.55 ? loY - (hiY - loY) * 0.15 : 0, hiY);
+  // pressures all high up: start the axis just below them (never so close
+  // that a flat line sits on the bottom edge)
+  const ay = fit(loY > hiY * 0.55 ? loY - Math.max((hiY - loY) * 0.15, hiY * 0.05) : 0, hiY);
   const minX = ax.min;
   const maxX = ax.max;
   const minY = Math.max(0, ay.min);
@@ -361,7 +363,7 @@ export function chartSvg(test: FlowTest, w: number, h: number, opts: { small?: b
   let s = `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="display:block">`;
   if (!small) {
     for (let gx = minX; gx <= maxX + 1e-9; gx += ax.step) {
-      s += `<line x1="${X(gx)}" y1="${pad.t}" x2="${X(gx)}" y2="${h - pad.b}" stroke="#163a5a"/><text x="${X(gx)}" y="${h - pad.b + 13}" text-anchor="middle" font-size="10" font-weight="700" fill="#6a8098">${+gx.toFixed(2)}</text>`;
+      s += `<line x1="${X(gx)}" y1="${pad.t}" x2="${X(gx)}" y2="${h - pad.b}" stroke="#163a5a"/><text x="${X(gx)}" y="${h - pad.b + 13}" text-anchor="${X(gx) > w - pad.r - 12 ? "end" : "middle"}" font-size="10" font-weight="700" fill="#6a8098">${+gx.toFixed(2)}</text>`;
     }
     for (let gy = minY; gy <= maxY + 1e-9; gy += ay.step) {
       s += `<line x1="${pad.l}" y1="${Y(gy)}" x2="${w - pad.r}" y2="${Y(gy)}" stroke="#163a5a"/><text x="${pad.l - 5}" y="${Y(gy) + 3}" text-anchor="end" font-size="10" font-weight="700" fill="#6a8098">${+gy.toFixed(2)}</text>`;

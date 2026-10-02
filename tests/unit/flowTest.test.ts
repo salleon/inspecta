@@ -192,3 +192,22 @@ test("the in-app graph's axes are labelled: Flow in the test's unit, Pressure (k
   assert.match(chartSvg(hydrant, 300, 230, { unit: "sec" }), /Pressure \(kPa\)/);
   assert.doesNotMatch(chartSvg(sprinkler, 72, 52, { small: true }), /Pressure/, "not on the small list pictures");
 });
+
+test("the graph's axes follow the readings, small sites and big ones", () => {
+  const mk = (kind: "sprinkler" | "hydrant", pts: [number, number][], unit?: "sec") => {
+    const t = { ...newFlowTest("s1", kind), id: "a", order: 0, createdAt: 0, updatedAt: 0 } as FlowTest;
+    t.sections = [{ name: "Electric pump", rows: pts.map(([f, d]) => ({ hg: "", flow: String(f), flowUnit: unit, dis: String(d), suc: "" })) }];
+    t.demand = [];
+    return t;
+  };
+  const labels = (svg: string) => [...svg.matchAll(/>(-?[\d.]+)<\/text>/g)].map((m) => +m[1]);
+  // a big site: the flow axis reaches past 20000 L/min, pressure starts near 900
+  const big = labels(chartSvg(mk("sprinkler", [[0, 1500], [12000, 1200], [20000, 950]]), 340, 230, { unit: "min" }));
+  assert.ok(Math.max(...big) >= 20000 && big.includes(800) && !big.includes(0) === false);
+  // a small hydrant: 0 to about 3.5 L/s
+  const small = labels(chartSvg(mk("hydrant", [[0, 350], [3, 210]], "sec"), 340, 230, { unit: "sec" }));
+  assert.ok(small.includes(3.5) && !small.some((v) => v > 400));
+  // every pressure the same: the axis goes below and above it, not starting at it
+  const flat = labels(chartSvg(mk("sprinkler", [[0, 500], [1000, 500]]), 340, 230, { unit: "min" })).filter((v) => v >= 400);
+  assert.ok(Math.min(...flat) < 500 && Math.max(...flat) > 500, flat.join(","));
+});
