@@ -183,3 +183,12 @@ test("combined systems: L/s to start, the pump duty's unit when switched; headin
   assert.deepEqual([0, 1, 2].map((i) => sectionHeading(t, i)), ["Diesel pump 1 - TANK", "Diesel pump 2 - TOWN MAIN", "Pump 3"]);
   assert.equal(chartSvg(t, 300, 200).match(/fill="#ff5a4a"/g)?.length, 1, "one filled diamond: the pump duty");
 });
+
+test("the in-app graph's axes are labelled: Flow in the test's unit, Pressure (kPa)", () => {
+  const sprinkler = { ...newFlowTest("s1", "sprinkler"), id: "a", order: 0, createdAt: 0, updatedAt: 0 } as FlowTest;
+  const hydrant = { ...newFlowTest("s1", "hydrant"), id: "b", order: 0, createdAt: 0, updatedAt: 0 } as FlowTest;
+  assert.match(chartSvg(sprinkler, 300, 230, { unit: "min" }), /Flow \(L\/min\)/);
+  assert.match(chartSvg(hydrant, 300, 230, { unit: "sec" }), /Flow \(L\/s\)/);
+  assert.match(chartSvg(hydrant, 300, 230, { unit: "sec" }), /Pressure \(kPa\)/);
+  assert.doesNotMatch(chartSvg(sprinkler, 72, 52, { small: true }), /Pressure/, "not on the small list pictures");
+});

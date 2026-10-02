@@ -7,6 +7,9 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Flow test graph axes labelled.** The in-app graph now says Flow (L/min)
+  for sprinklers or Flow (L/s) for hydrants and combined systems along the
+  bottom, and Pressure (kPa) up the side.
 - **Excel: flow test sheets open in desktop Excel again.** Excel was
   "repairing" the flow test sheets and leaving them blank: the sheets copied
   the template's outline settings, which exceljs writes in an order Excel

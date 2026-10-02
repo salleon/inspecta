@@ -629,7 +629,7 @@ export default function FlowTest() {
 
       {/* graph */}
       <div style={{ ...card, padding: "10px 8px 6px", gap: 2 }}>
-        <div ref={chartBox} style={{ width: "100%", height: 210 }} dangerouslySetInnerHTML={{ __html: chartSvg(test, chartW, 210, { unit, current }) }} />
+        <div ref={chartBox} style={{ width: "100%", height: 230 }} dangerouslySetInnerHTML={{ __html: chartSvg(test, chartW, 230, { unit, current }) }} />
         <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap", fontSize: 11, fontWeight: 700, color: "var(--muted)", paddingTop: 2 }}>
           {legend.map((i) =>
             isReference(test, i) ? (

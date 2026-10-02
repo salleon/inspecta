@@ -331,7 +331,8 @@ export function fit(lo: number, hi: number) {
 export function chartSvg(test: FlowTest, w: number, h: number, opts: { small?: boolean; unit?: FlowUnit; current?: number } = {}): string {
   const { small = false, unit = "min", current = 0 } = opts;
   const div = unit === "sec" ? 60 : 1;
-  const pad = small ? { l: 4, r: 4, t: 4, b: 4 } : { l: 38, r: 10, t: 10, b: 26 };
+  // room on the left and below for the axis titles
+  const pad = small ? { l: 4, r: 4, t: 4, b: 4 } : { l: 52, r: 10, t: 10, b: 40 };
   const sc = (p: Point) => ({ x: p.x / div, y: p.y });
   const series = test.sections
     .map((s, i) => ({ pts: (isTested(test, i) || i === current) && lineShown(test, "dis", i) ? points(test, s.rows, "dis").map(sc) : [], colour: isReference(test, i) ? REFERENCE_COLOUR : sectionColour(i), ref: isReference(test, i) }))
@@ -360,11 +361,16 @@ export function chartSvg(test: FlowTest, w: number, h: number, opts: { small?: b
   let s = `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="display:block">`;
   if (!small) {
     for (let gx = minX; gx <= maxX + 1e-9; gx += ax.step) {
-      s += `<line x1="${X(gx)}" y1="${pad.t}" x2="${X(gx)}" y2="${h - pad.b}" stroke="#163a5a"/><text x="${X(gx)}" y="${h - 8}" text-anchor="middle" font-size="10" font-weight="700" fill="#6a8098">${+gx.toFixed(2)}</text>`;
+      s += `<line x1="${X(gx)}" y1="${pad.t}" x2="${X(gx)}" y2="${h - pad.b}" stroke="#163a5a"/><text x="${X(gx)}" y="${h - pad.b + 13}" text-anchor="middle" font-size="10" font-weight="700" fill="#6a8098">${+gx.toFixed(2)}</text>`;
     }
     for (let gy = minY; gy <= maxY + 1e-9; gy += ay.step) {
       s += `<line x1="${pad.l}" y1="${Y(gy)}" x2="${w - pad.r}" y2="${Y(gy)}" stroke="#163a5a"/><text x="${pad.l - 5}" y="${Y(gy) + 3}" text-anchor="end" font-size="10" font-weight="700" fill="#6a8098">${+gy.toFixed(2)}</text>`;
     }
+    // axis titles: Flow in the test's unit, Pressure in kPa
+    const midX = (pad.l + w - pad.r) / 2;
+    const midY = (pad.t + h - pad.b) / 2;
+    s += `<text x="${midX}" y="${h - 2}" text-anchor="middle" font-size="10.5" font-weight="800" fill="#8ba0b5">Flow (${unit === "sec" ? "L/s" : "L/min"})</text>`;
+    s += `<text x="12" y="${midY}" text-anchor="middle" font-size="10.5" font-weight="800" fill="#8ba0b5" transform="rotate(-90 12 ${midY})">Pressure (kPa)</text>`;
   }
   const line = (pts: Point[], colour: string, dash: string, width: number) =>
     pts.length < 2
