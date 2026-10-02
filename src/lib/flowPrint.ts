@@ -122,32 +122,50 @@ export interface ChartModel {
   legend: { x: number; y: number; w: number; h: number; items: { label: string; colour: string; dash: number[]; diamond?: boolean }[] };
 }
 
-// In a box w × h: the discharge (and ticked suction) lines as on the app's
-// graph, the demand points, and the legend in a box on the right.
-export function chartModel(test: FlowTest, w: number, h: number, font = 8): ChartModel {
+// The graph's lines and demand points in the test's flow unit, with their
+// legend labels and colours: the preview, the PDF and the Excel chart all
+// draw these, so they match.
+export interface PrintSeries {
+  label: string;
+  colour: string;
+  dash: number[]; // [] solid
+  dots: boolean;
+  width: number;
+  pts: Point[];
+}
+
+export function chartSeries(test: FlowTest): { series: PrintSeries[]; demand: Point[] } {
   const d = div(test);
-  const series: ChartModel["lines"] = [];
-  const legendItems: ChartModel["legend"]["items"] = [];
+  const series: PrintSeries[] = [];
   test.sections.forEach((s, i) => {
     if (!isTested(test, i)) return;
     const ref = isReference(test, i);
     const colour = ref ? PRINT_TOWN : PRINT_COLOURS[i % PRINT_COLOURS.length];
     if (lineShown(test, "dis", i)) {
       const pts = points(test, s.rows, "dis").map((p) => ({ x: p.x / d, y: p.y }));
-      if (pts.length) {
-        series.push({ pts, colour, dash: ref ? [5, 3] : [], width: 1.6, dots: true });
-        legendItems.push({ label: sectionName(test, i), colour, dash: ref ? [5, 3] : [] });
-      }
+      if (pts.length) series.push({ label: sectionName(test, i), colour, dash: ref ? [5, 3] : [], dots: true, width: 1.6, pts });
     }
     if (lineShown(test, "suc", i)) {
       const pts = points(test, s.rows, "suc").map((p) => ({ x: p.x / d, y: p.y }));
-      if (pts.length) {
-        series.push({ pts, colour, dash: [1.5, 2], width: 1.2, dots: false });
-        legendItems.push({ label: `${sectionName(test, i)} suction`, colour, dash: [1.5, 2] });
-      }
+      if (pts.length) series.push({ label: `${sectionName(test, i)} suction`, colour, dash: [1.5, 2], dots: false, width: 1.2, pts });
     }
   });
-  const demand = demandPoints(test.demand).map((p) => ({ x: p.x / d, y: p.y }));
+  return { series, demand: demandPoints(test.demand).map((p) => ({ x: p.x / d, y: p.y })) };
+}
+
+// the graph's axes: both from 0, to just past the highest point
+export function chartAxes(test: FlowTest, all: Point[]) {
+  const hiX = Math.max(0, ...all.map((p) => p.x)) || (div(test) === 60 ? 25 : 1500);
+  const hiY = Math.max(0, ...all.map((p) => p.y)) || 500;
+  return { ax: fit(0, hiX), ay: fit(0, hiY) };
+}
+
+// In a box w × h: the discharge (and ticked suction) lines as on the app's
+// graph, the demand points, and the legend in a box on the right.
+export function chartModel(test: FlowTest, w: number, h: number, font = 8): ChartModel {
+  const { series: lines, demand } = chartSeries(test);
+  const series: ChartModel["lines"] = lines.map((l) => ({ pts: l.pts, colour: l.colour, dash: l.dash, width: l.width, dots: l.dots }));
+  const legendItems: ChartModel["legend"]["items"] = lines.map((l) => ({ label: l.label, colour: l.colour, dash: l.dash }));
   if (demand.length) legendItems.push({ label: "Demand", colour: PRINT_DEMAND, dash: [], diamond: true });
 
   const longest = Math.max(6, ...legendItems.map((it) => it.label.length));
@@ -156,11 +174,7 @@ export function chartModel(test: FlowTest, w: number, h: number, font = 8): Char
   const T = 8;
   const B = 28;
   const plot = { x: L, y: T, w: w - L - legendW - 14, h: h - T - B };
-  const all = [...series.flatMap((s) => s.pts), ...demand];
-  const hiX = Math.max(0, ...all.map((p) => p.x)) || (d === 60 ? 25 : 1500);
-  const hiY = Math.max(0, ...all.map((p) => p.y)) || 500;
-  const ax = fit(0, hiX);
-  const ay = fit(0, hiY);
+  const { ax, ay } = chartAxes(test, [...series.flatMap((s) => s.pts), ...demand]);
   const X = (x: number) => plot.x + (plot.w * (x - ax.min)) / (ax.max - ax.min);
   const Y = (y: number) => plot.y + plot.h - (plot.h * (y - ay.min)) / (ay.max - ay.min);
   const grid: ChartModel["grid"] = [];

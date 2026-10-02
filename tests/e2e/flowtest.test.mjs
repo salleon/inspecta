@@ -409,50 +409,72 @@ test("deleting a flow test asks first", async () => {
   assert.equal(await page.locator("text=Flow tests · 2").count(), 1);
 });
 
-test("the Excel gets a SPRINKLER and a HYDRANT tab in the template layout, with charts", async () => {
+// where a value is on a sheet, as [row, col], or null
+// (a string ending in "…" matches the start of a cell's text)
+const at = (ws, v) => {
+  const is = typeof v === "string" && v.endsWith("…") ? (x) => typeof x === "string" && x.startsWith(v.slice(0, -1)) : (x) => x === v;
+  let hit = null;
+  ws.eachRow((row, r) => row.eachCell((c, col) => (hit ??= is(c.value) && !ws.getColumn(col).hidden ? [r, col] : null)));
+  return hit;
+};
+// the values of a row from column B on, up to its last filled cell (not the
+// graph's points, in hidden columns)
+const rowValues = (ws, r) => {
+  const out = [];
+  for (let c = 2; c <= ws.getRow(r).cellCount && !ws.getColumn(c).hidden; c++) out.push(ws.getCell(r, c).value);
+  while (out.length && out.at(-1) === null) out.pop();
+  return out;
+};
+
+test("the Excel gets SPRINKLER and HYDRANT tabs laid out like the preview, with charts", async () => {
   const buf = await exportExcel("s1");
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(buf);
   assert.deepEqual(wb.worksheets.map((w) => w.name).slice(1), ["SPRINKLER", "HYDRANT"]);
   const s = wb.getWorksheet("SPRINKLER");
-  assert.equal(s.getCell("C1").value, "SPRINKLER FLOW TEST RESULTS");
-  assert.equal(s.getCell("F3").value, "Coles Turramurra, 1 Rohini St, Turramurra");
-  assert.equal(s.getCell("F6").value, "Wormald");
-  assert.equal(s.getCell("I6").value, 1350);
-  // Town main block, then Electric pump; the untested diesel is left out
-  assert.equal(s.getCell("C9").value, "Town main");
-  assert.equal(s.getCell("D12").value, 755.4);
-  // sprinklers in L/min
-  assert.equal(s.getCell("D10").value, "Flow Rate (L/min)");
-  assert.equal(s.getCell("I4").value, " (L/min)");
-  assert.equal(s.getCell("F12").value, 250);
-  // the town main gets no PASS or FAIL
-  assert.equal(s.getCell("N12").value, "Conclusion:");
-  assert.equal(s.getCell("N15").value, null);
-  assert.equal(s.getCell("C21").value, "Electric pump");
-  assert.equal(s.getCell("G23").value, 120);
-  assert.equal(s.getCell("H23").value, 2950);
-  assert.equal(s.getCell("I22").value, "Amps");
-  // an added column goes after Amps, with its heading
-  assert.equal(s.getCell("J22").value, "Oil pressure (kPa)");
-  assert.equal(s.getCell("J23").value, 420);
-  assert.equal(s.getCell("N26").value, "PASS");
-  assert.notEqual(s.getCell("C33").value, "Diesel pump");
+  // the preview's title, blue bar, details and demand
+  assert.equal(s.getCell("B1").value, "SPRINKLER FLOW TEST RESULTS");
+  assert.equal(s.getCell("B2").fill.fgColor.argb, "FF1F6FB2");
+  const [site] = at(s, "Location");
+  assert.equal(s.getCell(site, 3).value, "Coles Turramurra, 1 Rohini St, Turramurra");
+  assert.ok(at(s, "Wormald"));
+  const [dem] = at(s, "Demand");
+  assert.match(s.getCell(dem, 3).value, /1350 L\/min @/);
+  // Town main table (no PASS / FAIL), then Electric pump; the untested diesel is left out
+  const [town, tc] = at(s, "Town main – 2026");
+  assert.equal(tc, 2);
+  assert.deepEqual(rowValues(s, town), ["Town main – 2026"]);
+  const head = rowValues(s, town + 1);
+  assert.ok(head.includes("Flow L/min"), head.join(" | "));
+  assert.equal(s.getCell(town + 1, 2).fill.fgColor.argb, "FFE6EEF5");
+  assert.ok([2, 3, 4, 5].some((k) => rowValues(s, town + k).includes(250)));
+  const [pump] = at(s, "Electric pump – 2026");
+  const pumpHead = rowValues(s, pump + 1);
+  assert.ok(pumpHead.includes("Oil pressure (kPa)") || pumpHead.includes("Oil pressure kPa"), pumpHead.join(" | "));
+  assert.ok(rowValues(s, pump + 2).includes(420));
+  assert.ok(rowValues(s, pump + 2).includes(2950));
+  assert.equal(rowValues(s, pump).filter((v) => v === "PASS").length, 1);
+  assert.equal(at(s, "Diesel pump…"), null);
   const h = wb.getWorksheet("HYDRANT");
-  assert.equal(h.getCell("B9").value, "Town main");
+  assert.equal(h.getCell("B1").value, "HYDRANT FLOW TEST RESULTS");
+  const [ht] = at(h, "Town main – 2026");
   // hydrants in L/s, as typed in the app
-  assert.equal(h.getCell("B13").value, 4.5);
-  assert.equal(h.getCell("B10").value, "Flow Rate (L/s)");
-  assert.equal(h.getCell("H4").value, " (L/s)");
-  assert.equal(h.getCell("H5").value, 4.5);
+  assert.ok(rowValues(h, ht + 1).some((v) => /L\/s/.test(v)));
+  assert.ok([2, 3, 4, 5].some((k) => rowValues(h, ht + k).includes(4.5)), [2, 3, 4, 5].map((k) => rowValues(h, ht + k).join(" ")).join(" / "));
 
   const zip = await JSZip.loadAsync(buf);
   const charts = Object.keys(zip.files).filter((n) => /^xl\/charts\/chart\d+\.xml$/.test(n));
   assert.equal(charts.length, 2);
   const chart = await zip.file(charts[0]).async("string");
-  assert.match(chart, /'SPRINKLER'!\$D\$11:\$D\$15/);
-  assert.match(chart, /Electric pump - 2026/);
+  // each line in the preview's colours, the legend on the right, no title
+  assert.match(chart, /'SPRINKLER'!\$[A-Z]+\$2:\$[A-Z]+\$\d+/);
+  assert.match(chart, /<c:v>Electric pump<\/c:v>/);
+  assert.match(chart, /<c:v>Demand<\/c:v>/);
+  assert.match(chart, /<c:legendPos val="r"\/>/);
+  assert.match(chart, /<c:autoTitleDeleted val="1"\/>/);
+  assert.match(chart, /prstDash val="dash"/);
   assert.match(chart, /Flow \(L\/min\)/);
+  assert.match(chart, /Pressure \(kPa\)/);
   assert.match(await zip.file(charts[1]).async("string"), /Flow \(L\/s\)/);
   assert.match(await zip.file("[Content_Types].xml").async("string"), /drawingml\.chart\+xml/);
   // desktop Excel needs <sheetPr>'s children in the schema's order
@@ -464,14 +486,18 @@ test("the Excel gets a SPRINKLER and a HYDRANT tab in the template layout, with 
   }
 });
 
-test("more supplies than the template has get their own blocks", async () => {
+test("every supply gets its own table, as on the preview", async () => {
   const buf = await exportExcel("s2");
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(buf);
   assert.deepEqual(wb.worksheets.map((w) => w.name).slice(1), ["SPRINKLER", "Drencher valve test"]);
   const s = wb.getWorksheet("SPRINKLER");
-  assert.deepEqual(["C9", "C21", "C33", "C45"].map((c) => s.getCell(c).value), ["Town main", "Diesel pump 1", "Diesel pump 2", "Jockey pump"]);
-  assert.equal(wb.getWorksheet("Drencher valve test").getCell("C6").value, 300);
+  const rows = ["Town main", "Diesel pump 1", "Diesel pump 2", "Jockey pump"].map((n) => at(s, `${n} – 2026`)?.[0] ?? 0);
+  assert.ok(rows.every((r) => r > 0) && rows.every((r, i) => !i || r > rows[i - 1]), rows.join(", "));
+  const d = wb.getWorksheet("Drencher valve test");
+  let found = false;
+  d.eachRow((row) => row.eachCell((c) => (found ||= c.value === 300)));
+  assert.ok(found);
 });
 
 test("a combined system: pump duty with its own unit, Tank / Town main per pump; Contractor adds year installed, cut-in, temp and oil", async () => {
@@ -512,25 +538,50 @@ test("a combined system: pump duty with its own unit, Tank / Town main per pump;
   await page.evaluate(() => localStorage.setItem("inspecta.flowMode", "enfact"));
 });
 
-test("a combined system goes on a Combined System tab like their sheet", async () => {
+test("a combined system goes on a Combined System tab, as on the preview", async () => {
   const buf = await exportExcel("s3");
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(buf);
   const s = wb.getWorksheet("Combined System");
-  assert.equal(s.getCell("C1").value, "COMBINED SYSTEM FLOW TEST RESULTS");
+  assert.equal(s.getCell("B1").value, "COMBINED SYSTEM FLOW TEST RESULTS");
   // headed with where its suction comes from, and its cut-in
-  assert.equal(s.getCell("C9").value, "Diesel 1 - TANK (cut-in 790 kPa)");
-  assert.equal(s.getCell("J10").value, "Temp (°C)");
-  assert.equal(s.getCell("J11").value, 52);
-  assert.equal(s.getCell("K10").value, "Oil pressure (kPa)");
-  assert.match(String(s.getCell("F5").value ?? ""), /installed 2006/);
+  const [d1] = at(s, "Diesel 1 - TANK (cut-in 790 kPa) – 2026") ?? [0];
+  assert.ok(d1);
+  const head = rowValues(s, d1 + 1);
+  assert.ok(head.includes("Temp °C") && head.includes("Oil pressure kPa"), head.join(" | "));
+  assert.ok(rowValues(s, d1 + 2).includes(52));
   // combined systems in L/s, like hydrants (5" Hg × 3440.5 = 7693.2 L/min)
-  assert.equal(s.getCell("D12").value, 128.22);
-  assert.equal(s.getCell("D10").value, "Flow Rate (L/s)");
-  assert.equal(s.getCell("C21").value, "Diesel 2");
-  assert.equal(s.getCell("N14").value, "PASS");
-  assert.equal(s.getCell("N26").value, "PASS");
+  assert.ok([2, 3, 4, 5].some((k) => rowValues(s, d1 + k).includes(128.2)));
+  assert.ok(head.some((h) => /L\/s/.test(h)));
+  assert.equal(rowValues(s, d1).filter((v) => v === "PASS").length, 1);
+  const [yr] = at(s, "Year installed");
+  assert.equal(s.getCell(yr, 3).value, "2006");
+  assert.ok(at(s, "Diesel 2…"));
   assert.deepEqual(errors, []);
+});
+
+test("the Excel's tables are the preview's tables, cell for cell", async () => {
+  for (const site of ["s1", "s3"]) {
+    await go(page, app, `/site/${site}/flow-export`, 1500);
+    const previews = await page.locator('[data-testid="flow-page"]').evaluateAll((pages) =>
+      pages.map((p) => [...p.querySelectorAll("table")].map((t) => [...t.querySelectorAll("tr")].map((tr) => [...tr.children].map((c) => c.textContent.trim())))),
+    );
+    const file = await download(page, () => page.click('button:has-text("Export Excel")'));
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(fs.readFileSync(file.path));
+    assert.equal(wb.worksheets.length, previews.length);
+    wb.worksheets.forEach((ws, i) => {
+      const text = (r, n) => [...rowValues(ws, r), ...Array(n).fill(null)].slice(0, n).map((v) => (v === null ? "" : String(v)));
+      let from = 0;
+      for (const table of previews[i]) {
+        // the heading row, then each row below it, the same
+        const r = [...Array(ws.rowCount)].findIndex((_, n) => n >= from && text(n + 1, table[0].length).join("|") === table[0].join("|")) + 1;
+        assert.ok(r > 0, `${ws.name}: no heading ${table[0].join(" | ")}`);
+        from = r + table.length - 1;
+        table.slice(1).forEach((row, k) => assert.deepEqual(text(r + 1 + k, row.length), row, `${ws.name} row ${k + 1}`));
+      }
+    });
+  }
 });
 
 test("Save & close, above Delete flow test, saves and goes back to the flow tests list", async () => {

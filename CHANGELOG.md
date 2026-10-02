@@ -7,6 +7,13 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Excel flow test sheets match the preview.** Each flow test sheet is now
+  laid out exactly like the export preview and the PDF: title with the blue
+  bar and the EnFact logo, the details and demand, a table per supply with
+  the same headings and numbers (PASS / FAIL beside its name), the graph in
+  the preview's colours with the legend on the right and the same axes, then
+  the comments. Replaces the old EnFact template layout. A test now checks
+  the Excel's tables against the preview's, cell for cell.
 - **Graph axes fit any site.** Checked from a 3 L/s hydrant to a 20 000 L/min
   sprinkler: the last flow number no longer gets cut off on the right, and
   when every pressure is the same the line sits in the middle, not on the
