@@ -45,7 +45,7 @@ test("scrolled to the bottom, the last site is above the + button; the list bump
 test("flow test page: test details, demand points, graph, readings, comments", async () => {
   await go(page, app, "/site/s0/flow/t1", 900);
   const y = (sel) => page.locator(sel).first().evaluate((e) => e.getBoundingClientRect().top + document.querySelector("[style*='overflow-y: auto']").scrollTop);
-  const order = [await y("text=Test details"), await y("text=Demand points"), await y('div[style*="height: 210px"]'), await y("text=Readings ·"), await y('[aria-label="Comments"]')];
+  const order = [await y("text=Test details"), await y("text=Demand points"), await y('div[style*="height: 230px"]'), await y("text=Readings ·"), await y('[aria-label="Comments"]')];
   assert.deepEqual([...order].sort((a, b) => a - b), order, JSON.stringify(order));
 });
 
