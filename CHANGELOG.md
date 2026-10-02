@@ -7,6 +7,17 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Flow test sheets fill an A4 page.** A sheet with few columns (a hydrant's
+  three) was squeezed into a third of the page with a small graph. Every
+  flow test sheet is now an A4 page wide, portrait, its table columns
+  sharing that width like the preview's, the graph across the page about
+  half as tall as it is wide, and the logo in the top right corner.
+- **Re-exporting the same file no longer fails to upload.** Each export of
+  the same file gets its own name: the first as usual, then "(1)", "(2)" and
+  so on (e.g. Coles Turramurra - Flow tests (1).xlsx), so a newer copy can go
+  into the same OneDrive folder. Applies to reports (PDF, Excel, photos),
+  flow test exports, backups and keyword files. A cancelled share doesn't
+  use up a number.
 - **Excel flow test sheets match the preview.** Each flow test sheet is now
   laid out exactly like the export preview and the PDF: title with the blue
   bar and the EnFact logo, the details and demand, a table per supply with

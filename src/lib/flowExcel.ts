@@ -24,7 +24,12 @@ const CELL_LINE = "FFD3DBE2";
 const BLUE = "FF1F6FB2";
 const PASS = "FF127A3E";
 const FAIL = "FFC62828";
-const CHART_ROWS = 17; // the graph's height, in rows of 15 pt
+// An A4 page, portrait, 1.3 cm margins: the table columns share this width
+// (in Excel's character widths, about 7 px each), the tables and the graph
+// spanning it like the preview's page.
+const PAGE_WIDTH = 92;
+const LABEL_WIDTH = 14; // column B holds the detail labels too
+const CHART_ROWS = 21; // the graph's height, in rows of 15 pt: about half its width, as on the preview
 
 const colLetter = (n: number) => {
   let s = "";
@@ -75,20 +80,24 @@ export async function addFlowSheets(wb: Workbook, tests: FlowTest[], site: Pick<
 
 function fillSheet(ws: Worksheet, name: string, test: FlowTest, site: Pick<Site, "name" | "address">, logo: number): FlowChart | null {
   const tables = printTables(test);
-  const cols = Math.max(4, ...tables.map((t) => t.head.length));
+  const cols = Math.max(1, ...tables.map((t) => t.head.length));
   const first = 2; // column B (A is a narrow margin)
   const last = first + cols - 1;
   const font = (extra: Partial<import("exceljs").Font> = {}) => ({ name: FONT, size: 10, color: { argb: INK }, ...extra });
   const line = (argb: string, style: "thin" | "medium" = "thin") => ({ style, color: { argb } });
   const box = (argb: string, style: "thin" | "medium" = "thin") => ({ left: line(argb, style), right: line(argb, style), top: line(argb, style), bottom: line(argb, style) });
 
-  // columns: wide enough for their headings and values, B also for the detail labels
+  // columns: the page's width shared out by how wide their headings and
+  // values are, as the preview's table does
   ws.getColumn(1).width = 2;
-  for (let j = 0; j < cols; j++) {
-    const texts = tables.flatMap((t) => [t.head[j] ?? "", ...t.rows.map((r) => r[j] ?? "")]);
-    const longest = Math.max(0, ...texts.map((t) => t.length));
-    ws.getColumn(first + j).width = Math.min(30, Math.max(j === 0 ? 14 : 11, longest + 3));
+  const want = [...Array(cols)].map((_, j) => Math.max(5, ...tables.flatMap((t) => [t.head[j] ?? "", ...t.rows.map((r) => r[j] ?? "")]).map((t) => t.length)) + 2);
+  let widths = want.map((w) => (w * PAGE_WIDTH) / want.reduce((a, b) => a + b, 0));
+  if (widths[0] < LABEL_WIDTH) {
+    const rest = want.slice(1).reduce((a, b) => a + b, 0);
+    widths = [LABEL_WIDTH, ...want.slice(1).map((w) => (w * (PAGE_WIDTH - LABEL_WIDTH)) / rest)];
   }
+  if (cols === 1) widths = [PAGE_WIDTH];
+  widths.forEach((w, j) => (ws.getColumn(first + j).width = Math.round(w * 10) / 10));
 
   let r = 1;
   // title, the short blue bar under it, the test's own name
@@ -115,7 +124,7 @@ function fillSheet(ws: Worksheet, name: string, test: FlowTest, site: Pick<Site,
   for (const d of details) {
     ws.getCell(r, first).value = d.label;
     ws.getCell(r, first).font = font({ bold: true });
-    ws.mergeCells(r, first + 1, r, last);
+    if (last > first + 1) ws.mergeCells(r, first + 1, r, last);
     ws.getCell(r, first + 1).value = d.value || "–";
     ws.getCell(r, first + 1).font = font();
     r++;
@@ -171,7 +180,7 @@ function fillSheet(ws: Worksheet, name: string, test: FlowTest, site: Pick<Site,
     ws.getCell(r, first).value = "Comments:";
     ws.getCell(r, first).font = font({ bold: true });
     ws.getCell(r, first).alignment = { vertical: "top" };
-    ws.mergeCells(r, first + 1, r, last);
+    if (last > first + 1) ws.mergeCells(r, first + 1, r, last);
     const c = ws.getCell(r, first + 1);
     c.value = test.comment.trim();
     c.font = font();
@@ -180,8 +189,17 @@ function fillSheet(ws: Worksheet, name: string, test: FlowTest, site: Pick<Site,
     r++;
   }
 
-  // the logo, top right (848 × 401)
-  ws.addImage(logo, { tl: { col: last - 1, row: 0 } as never, ext: { width: 110, height: 52 }, editAs: "oneCell" });
+  // the logo, its right edge on the page's (848 × 401). A column is about
+  // 7 px a character plus 5, 9525 EMU a pixel.
+  const px = widths.map((w) => w * 7 + 5);
+  let edge = px.reduce((a, b) => a + b, 0) - 110;
+  let at = first - 1;
+  for (const w of px) {
+    if (edge <= w) break;
+    edge -= w;
+    at++;
+  }
+  ws.addImage(logo, { tl: { nativeCol: at, nativeColOff: Math.round(edge * 9525), nativeRow: 0, nativeRowOff: 0 } as never, ext: { width: 110, height: 52 }, editAs: "oneCell" });
   ws.pageSetup = { fitToPage: true, fitToWidth: 1, fitToHeight: 0, orientation: "portrait", paperSize: 9, horizontalCentered: true, printArea: `A1:${colLetter(last + 1)}${r}`, margins: { left: 0.5, right: 0.5, top: 0.6, bottom: 0.6, header: 0.3, footer: 0.3 } };
   ws.views = [{ showGridLines: false }];
   return chart;

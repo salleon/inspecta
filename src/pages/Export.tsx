@@ -12,6 +12,7 @@ import { getInitials, getInspectorName } from "../lib/profile";
 import { defectTypeStyle } from "../lib/defectTypes";
 import { EXPORT_MAX_EDGE, PREVIEW_MAX_EDGE, STAMP_VERSION, watermark, watermarkBlob } from "../lib/watermark";
 import { CacheFileWriter, writeBlobToCache } from "../lib/cacheFile";
+import { numberedExport } from "../lib/exportName";
 import { startExportTimer } from "../lib/exportTimings";
 import { pauseCopyBackfill } from "../lib/copyBackfill";
 import { countPhotos, photosZipName, writePhotosZip } from "../lib/photosZip";
@@ -542,12 +543,14 @@ export default function ExportPreview() {
     const fileSite = report ? `${site?.name ?? "Inspection"} ${report.name}` : site?.name;
     try {
       let filename: string;
+      let numbered: ReturnType<typeof numberedExport>;
       let blob: Blob | null = null; // web: the file to share / download
       let uri: string | null = null; // Android: the file written to the cache
       if (kind === "photos") {
         // streamed straight into the file one photo at a time — never
         // held in memory as a whole
-        filename = photosZipName(fileSite);
+        numbered = numberedExport(photosZipName(fileSite));
+        filename = numbered.name;
         const onPhoto = (done: number, total: number) => photoProgress(done, total, 95);
         if (native) {
           const out = new CacheFileWriter(filename);
@@ -560,7 +563,8 @@ export default function ExportPreview() {
           blob = new Blob(parts as BlobPart[], { type: "application/zip" });
         }
       } else {
-        filename = reportFilename(fileSite, inspectorName, kind === "pdf" ? "pdf" : "xlsx");
+        numbered = numberedExport(reportFilename(fileSite, inspectorName, kind === "pdf" ? "pdf" : "xlsx"));
+        filename = numbered.name;
         if (kind === "pdf") {
           blob = await buildPdf(photoProgress);
         } else {
@@ -608,6 +612,7 @@ export default function ExportPreview() {
           URL.revokeObjectURL(url);
         }
       }
+      numbered.shared();
     } catch (err) {
       // a genuine failure (not the user cancelling the share sheet) —
       // surface it instead of silently doing nothing

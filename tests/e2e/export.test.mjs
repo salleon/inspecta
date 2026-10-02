@@ -82,6 +82,7 @@ test("Categorise: pick, fix a mis-tap with Previous, skip, then skipped ones com
   assert.equal(await page.locator("text=Skipped findings").count(), 1);
   assert.equal(await current(), "Loose cable tray cover");
   const pdf = await download(page, () => page.click("text=Skip to export"));
+  assert.doesNotMatch(pdf.name, /\(\d+\)/, "the first copy keeps its name");
   const bytes = await readFile(pdf.path);
   assert.equal(bytes.subarray(0, 4).toString(), "%PDF");
   assert.deepEqual(await categories(page), { f0: "3.1", f1: "5.5", f2: "-", f3: "6.3.4", f4: "1.8", f5: "13" });
@@ -147,6 +148,9 @@ test("photo-less findings are in the PDF", async () => {
     await page.click("text=Share PDF");
     await page.click("text=Export anyway"); // one finding is still uncategorised
   });
+  // the site's PDF was shared once already: this copy is numbered, so it
+  // can go in the same folder
+  assert.match(pdf.name, / \(1\)\.pdf$/, pdf.name);
   const text = (await readFile(pdf.path)).toString("latin1");
   assert.ok(text.includes("Logbook not on site"), "photo-less finding present");
   assert.ok(text.includes("No photo"), "No photo box drawn");

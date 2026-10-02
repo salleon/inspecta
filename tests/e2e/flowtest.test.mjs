@@ -457,6 +457,14 @@ test("the Excel gets SPRINKLER and HYDRANT tabs laid out like the preview, with 
   assert.equal(at(s, "Diesel pump…"), null);
   const h = wb.getWorksheet("HYDRANT");
   assert.equal(h.getCell("B1").value, "HYDRANT FLOW TEST RESULTS");
+  // both an A4 page wide, however many columns (a 3-column hydrant table isn't squeezed into a third of it)
+  for (const ws of [s, h]) {
+    let width = 0;
+    for (let c = 2; !ws.getColumn(c).hidden && ws.getColumn(c).width; c++) width += ws.getColumn(c).width;
+    assert.ok(Math.abs(width - 92) < 1, `${ws.name}: ${width}`);
+    assert.equal(ws.pageSetup.paperSize, 9);
+    assert.equal(ws.pageSetup.fitToWidth, 1);
+  }
   const [ht] = at(h, "Town main – 2026");
   // hydrants in L/s, as typed in the app
   assert.ok(rowValues(h, ht + 1).some((v) => /L\/s/.test(v)));

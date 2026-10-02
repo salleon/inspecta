@@ -6,6 +6,7 @@ import type { FlowTest, Site } from "../db/types";
 import { getSite, listFlowTests } from "../db/db";
 import { chartModel, chartModelSvg, flowFileName, printDemand, printDetails, printSubtitle, printTables, printTitle, type PrintTable } from "../lib/flowPrint";
 import { writeBlobToCache } from "../lib/cacheFile";
+import { numberedExport } from "../lib/exportName";
 import { IconChevronLeft } from "../components/Icons";
 import RoundIconButton from "../components/RoundIconButton";
 import ProgressOverlay from "../components/ProgressOverlay";
@@ -51,7 +52,8 @@ export default function FlowExport() {
         kind === "pdf"
           ? await (await import("../lib/flowPdf")).buildFlowPdf(tests, site)
           : await (await import("../lib/flowExcel")).buildFlowWorkbook(tests, site);
-      const filename = flowFileName(site, kind === "pdf" ? "pdf" : "xlsx");
+      const numbered = numberedExport(flowFileName(site, kind === "pdf" ? "pdf" : "xlsx"));
+      const filename = numbered.name;
       setBusy({ kind, percent: 90, step: "Opening share menu…" });
       const native = Capacitor.isNativePlatform();
       const uri = native ? await writeBlobToCache(blob, filename) : null;
@@ -75,6 +77,7 @@ export default function FlowExport() {
           URL.revokeObjectURL(url);
         }
       }
+      numbered.shared();
     } catch (err) {
       if (!(err instanceof Error) || !/cancell?ed/i.test(err.message)) {
         console.error(`${kind} export failed`, err);

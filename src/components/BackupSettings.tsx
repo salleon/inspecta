@@ -5,6 +5,7 @@ import ConfirmDialog from "./ConfirmDialog";
 import ProgressOverlay from "./ProgressOverlay";
 import { IconChevronRight } from "./Icons";
 import { CacheFileWriter } from "../lib/cacheFile";
+import { numberedExport } from "../lib/exportName";
 import { applyRestore, backupCounts, backupFileName, readBackup, writeBackup, type RestorePlan } from "../lib/backup";
 
 // Settings rows: "Back up all data" and "Restore from backup" (see
@@ -24,7 +25,8 @@ export default function BackupSettings({ rowStyle, hintStyle, onRestored, icons 
       setMessage({ title: "Nothing to back up", text: "There are no sites on this phone yet." });
       return;
     }
-    const filename = backupFileName();
+    const numbered = numberedExport(backupFileName());
+    const filename = numbered.name;
     const onPhoto = (done: number, total: number) =>
       setProgress({ title: "Backing up", percent: total ? (95 * done) / total : 95, step: `Adding photos: ${done} of ${total}` });
     setProgress({ title: "Backing up", percent: 0, step: "Getting ready…" });
@@ -49,6 +51,7 @@ export default function BackupSettings({ rowStyle, hintStyle, onRestored, icons 
         a.remove();
         URL.revokeObjectURL(url);
       }
+      numbered.shared();
     } catch (err) {
       if (!(err instanceof Error) || !/cancell?ed/i.test(err.message)) {
         console.error("backup failed", err);

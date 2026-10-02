@@ -26,6 +26,7 @@ import {
 import { explainCategories, forgetAllLearned, forgetLearned, learnedKeywords } from "../lib/esrSuggest";
 import { checkPin, checkRecoveryCode, isAdminUnlocked, recoveryCode, setPin, unlockAdmin } from "../lib/adminPin";
 import { writeBlobToCache } from "../lib/cacheFile";
+import { numberedExport } from "../lib/exportName";
 import { useBackHandler } from "../lib/backButton";
 import { BLUE, GREY, Group, ORANGE, RowIcon, groupHintStyle, groupRowStyle } from "../components/SettingsList";
 
@@ -103,10 +104,13 @@ function Code({ code, big }: { code: string; big?: boolean }) {
   );
 }
 
-async function shareBlob(blob: Blob, filename: string, title: string) {
+async function shareBlob(blob: Blob, name: string, title: string) {
+  const numbered = numberedExport(name);
+  const filename = numbered.name;
   if (Capacitor.isNativePlatform()) {
     const uri = await writeBlobToCache(blob, filename);
     await Share.share({ title, url: uri });
+    numbered.shared();
     return;
   }
   const url = URL.createObjectURL(blob);
@@ -117,6 +121,7 @@ async function shareBlob(blob: Blob, filename: string, title: string) {
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+  numbered.shared();
 }
 
 // the user cancelling a share sheet isn't an error
