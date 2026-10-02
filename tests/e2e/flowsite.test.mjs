@@ -99,7 +99,7 @@ test("Export PDF: one page per test", async () => {
   assert.equal(pdf.match(/\/Type \/Page\b/g)?.length, 2);
   await pressBack(page);
   await page.waitForTimeout(500);
-  assert.ok(page.url().endsWith("/site/w1/findings"), page.url());
+  assert.match(page.url(), /\/site\/w1\/findings(\?tab=flow)?$/);
 });
 
 test("no page errors", () => {

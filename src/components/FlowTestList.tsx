@@ -17,8 +17,9 @@ function formatDay(ms: number) {
   return new Date(ms).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" });
 }
 
-// onExport: a flow testing site's Export (its only export), above + New flow test
-export default function FlowTestList({ siteId, onCount, onExport }: { siteId: string; onCount: (n: number) => void; onExport?: () => void }) {
+// onExport: the flow test export, above + New flow test (a flow testing
+// site's only export; on AFSS / project sites, Export Flow Tests Only)
+export default function FlowTestList({ siteId, onCount, onExport, exportLabel = "Export" }: { siteId: string; onCount: (n: number) => void; onExport?: () => void; exportLabel?: string }) {
   const navigate = useNavigate();
   const [tests, setTests] = useState<FlowTest[] | null>(null);
   const [picking, setPicking] = useState(false);
@@ -97,7 +98,7 @@ export default function FlowTestList({ siteId, onCount, onExport }: { siteId: st
             onClick={onExport}
             style={{ width: "100%", padding: "13px 0", borderRadius: 12, border: "1px solid rgba(90,176,255,.55)", background: "rgba(90,176,255,.1)", color: "#5ab0ff", fontSize: 14.5, fontWeight: 800 }}
           >
-            Export
+            {exportLabel}
           </button>
         )}
         <button

@@ -85,7 +85,7 @@ export default function FlowExport() {
     }
   }
 
-  const back = () => navigate(`/site/${siteId}/findings`);
+  const back = () => navigate(`/site/${siteId}/findings?tab=flow`);
   const btn: CSSProperties = { width: "100%", padding: "14px 0", borderRadius: 12, fontSize: 15, fontWeight: 800 };
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>

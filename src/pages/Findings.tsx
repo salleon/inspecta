@@ -440,7 +440,8 @@ export default function Findings() {
       {!site ? null : flowSite ? (
         <FlowTestList siteId={siteId} onCount={setFlowCount} onExport={() => navigate(`/site/${siteId}/flow-export`)} />
       ) : flowTab ? (
-        <FlowTestList siteId={siteId} onCount={setFlowCount} />
+        // just the flow tests, as a flow testing site exports them (canvas FlowOnlyExport, A)
+        <FlowTestList siteId={siteId} onCount={setFlowCount} onExport={() => navigate(`/site/${siteId}/flow-export`)} exportLabel="Export Flow Tests Only" />
       ) : (
       <>
       {/* list */}

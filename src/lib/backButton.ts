@@ -13,7 +13,7 @@ export const BACK_EVENT = "inspecta:back";
 // where back goes from a route; null means "leave the app"
 export function parentRoute(pathname: string): string | null {
   const site = /^\/site\/([^/]+)\/(findings|export|flow-export|finding\/[^/]+\/note|flow\/[^/]+)$/.exec(pathname);
-  if (site) return site[2] === "findings" ? "/" : site[2].startsWith("flow/") ? `/site/${site[1]}/findings?tab=flow` : `/site/${site[1]}/findings`;
+  if (site) return site[2] === "findings" ? "/" : site[2].startsWith("flow") ? `/site/${site[1]}/findings?tab=flow` : `/site/${site[1]}/findings`;
   // admin: keyword → list → admin menu → settings → dashboard
   if (pathname.startsWith("/admin/")) return pathname.replace(/\/[^/]+$/, "");
   if (pathname === "/admin") return "/settings";

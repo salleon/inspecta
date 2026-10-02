@@ -7,6 +7,15 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Excel: flow test sheets open in desktop Excel again.** Excel was
+  "repairing" the flow test sheets and leaving them blank: the sheets copied
+  the template's outline settings, which exceljs writes in an order Excel
+  rejects. Those settings are dropped (they were Excel's defaults anyway).
+- **Export Flow Tests Only (canvas FlowOnlyExport, option A).** An AFSS or
+  project site's Flow tests tab has a button above + New flow test that
+  opens the same flow test export a flow testing site has: a sheet per test
+  with its graph in the Excel, a page per test in the PDF, no findings or
+  photos. Back returns to the Flow tests tab.
 - **Flow tests save straight away.** Every change is written as soon as it's
   typed (one write at a time, so an older copy never lands after a newer
   one), and again if the phone puts the app in the background, not 0.4 s

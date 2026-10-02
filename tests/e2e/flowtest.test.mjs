@@ -455,6 +455,13 @@ test("the Excel gets a SPRINKLER and a HYDRANT tab in the template layout, with 
   assert.match(chart, /Flow \(L\/min\)/);
   assert.match(await zip.file(charts[1]).async("string"), /Flow \(L\/s\)/);
   assert.match(await zip.file("[Content_Types].xml").async("string"), /drawingml\.chart\+xml/);
+  // desktop Excel needs <sheetPr>'s children in the schema's order
+  // (tabColor, outlinePr, pageSetUpPr), or it blanks the sheet
+  for (const n of Object.keys(zip.files).filter((n) => /^xl\/worksheets\/sheet\d+\.xml$/.test(n))) {
+    const pr = /<sheetPr>(.*?)<\/sheetPr>/.exec(await zip.file(n).async("string"))?.[1] ?? "";
+    const order = [...pr.matchAll(/<(tabColor|outlinePr|pageSetUpPr)\b/g)].map((m) => ["tabColor", "outlinePr", "pageSetUpPr"].indexOf(m[1]));
+    assert.deepEqual(order, [...order].sort(), `${n}: ${pr}`);
+  }
 });
 
 test("more supplies than the template has get their own blocks", async () => {
@@ -565,4 +572,19 @@ test("readings are saved straight away, and ones without a flow say why they're 
   await page.locator('[aria-label="Flow"]').first().fill("");
   await page.waitForTimeout(150);
   assert.match(await page.getByText(/no flow, so it isn't on the graph/).innerText(), /Type the flow for each reading/);
+});
+
+test("an AFSS site's Flow tests tab: Export Flow Tests Only opens the flow test export (a sheet per test, no findings)", async () => {
+  await go(page, app, "/site/s1/findings?tab=flow", 1200);
+  await page.click('button:has-text("Export Flow Tests Only")');
+  await page.waitForTimeout(1500);
+  assert.ok(page.url().endsWith("/site/s1/flow-export"), page.url());
+  const file = await download(page, () => page.click('button:has-text("Export Excel")'));
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.load(fs.readFileSync(file.path));
+  const names = wb.worksheets.map((w) => w.name);
+  assert.ok(names.length >= 1 && !names.some((n) => /finding/i.test(n)), names.join(", "));
+  // back goes to the Flow tests tab
+  await pressBack(page);
+  assert.ok(page.url().endsWith("/site/s1/findings?tab=flow"), page.url());
 });

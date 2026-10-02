@@ -208,7 +208,12 @@ function copyRow(tpl: Worksheet, ws: Worksheet, from: number, to: number, lastCo
 function fillSheet(wb: Workbook, tplWb: Workbook, L: Layout, test: FlowTest, site: Pick<Site, "name" | "address">, logo: number, byTest: boolean): FlowChart | null {
   const tpl = tplWb.worksheets[0];
   const name = sheetName(wb, byTest ? test.name.trim() || SHEET[test.kind as keyof typeof TITLE] : SHEET[test.kind as keyof typeof TITLE]);
-  const ws = wb.addWorksheet(name, { views: structuredClone(tpl.views), pageSetup: structuredClone(tpl.pageSetup), properties: structuredClone(tpl.properties) });
+  // without the template's outline settings: exceljs writes them after the
+  // fit-to-page setting in <sheetPr>, an order desktop Excel rejects ("Load
+  // error", the sheet comes out blank). They're Excel's defaults anyway.
+  const properties = structuredClone(tpl.properties) as Partial<typeof tpl.properties>;
+  delete properties.outlineProperties;
+  const ws = wb.addWorksheet(name, { views: structuredClone(tpl.views), pageSetup: structuredClone(tpl.pageSetup), properties });
   for (let c = 1; c <= L.lastCol; c++) {
     const w = tpl.getColumn(c).width;
     if (w) ws.getColumn(c).width = w;
