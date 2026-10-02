@@ -12,7 +12,7 @@
 // says, so it needn't be in the note. unless: any of these in the note rules
 // the defect out. The EF- entries are not in the spreadsheet: EF-01 was
 // supplied by EnFact after testing, the rest are taken from the wording in
-// EnFact's finished reports (Strawberry Hills Hotel, 2026; EF-15 on from
+// EnFact's finished reports (Strawberry Hills Hotel, 2026; EF-20 on from
 // Coles Turramurra and Coles Epping, 2026).
 
 export interface CommonDefect {
@@ -733,47 +733,6 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     wording: "Detection spacing does not appear consistent with the design standard AS1670.1.\n\nProvide original installers certificate to confirm compliance standard applicable. Copies of DA approvals would also be useful in determining the required standard.",
   },
   {
-    id: "EF-15",
-    measure: "Maintenance",
-    issue: "Annual certification not to hand (AS1851)",
-    match: [["annual certification", "annual certificate", "annual condition report", "certification", "annual cert"], ["not to hand", "not available", "not provided", "not sighted", "not received", "missing", "outstanding"]],
-    categories: ["1", "5", "6", "7", "8", "9", "11"],
-    wording: "Incumbent contractor to carry out annual inspection testing in accordance with AS1851. Obtain Annual Condition Report and carry out any identified required repairs. Obtain certification upon completion.",
-  },
-  {
-    id: "EF-16",
-    measure: "Maintenance",
-    issue: "Annual certification not to hand (exit signs / emergency lighting, AS2293.2)",
-    match: [["annual certification", "annual certificate", "annual condition report", "certification", "annual cert"], ["not to hand", "not available", "not provided", "not sighted", "not received", "missing", "outstanding"]],
-    categories: ["3", "4"],
-    wording: "Incumbent contractor to carry out annual inspection testing in accordance with AS2293.2. Obtain Annual Condition Report and carry out any identified required repairs. Obtain certification upon completion.",
-  },
-  {
-    id: "EF-17",
-    measure: "Maintenance",
-    issue: "Annual certification not to hand (lifts, AS1735.2)",
-    match: [["annual certification", "annual certificate", "annual condition report", "certification", "annual cert"], ["not to hand", "not available", "not provided", "not sighted", "not received", "missing", "outstanding"]],
-    categories: ["10"],
-    wording: "Incumbent contractor to carry out annual inspection testing in accordance with AS1735.2. Obtain Annual Condition Report and carry out any identified required repairs. Obtain certification upon completion.",
-  },
-  {
-    id: "EF-18",
-    measure: "Fire Hydrants",
-    issue: "5 yearly hydrostatic test",
-    match: [["hydrostatic", "hydrostatic test", "hydrostatic testing"], ["5 yearly", "five yearly", "5 year", "due", "compliance", "evidence", "overdue", "not provided", "outstanding"]],
-    categories: ["5.2", "5.4", "5.6", "5.1"],
-    wording: "Owner / Contractor to provide evidence of last Hydrostatic Test. If this test has not been carried in the preceding 5 years then carry out test and provide results to EnFact for review.",
-  },
-  {
-    id: "EF-19",
-    measure: "Fire Hydrants / Sprinklers",
-    issue: "Annual flow test",
-    match: [["flow test", "flow tests", "flow testing"], ["annual", "yearly", "compliance", "evidence"]],
-    categories: ["5.2", "5.6", "5.1"],
-    unless: ["passed", "pass", "failed", "fail"],
-    wording: "Incumbent contractor to carry out annual Flow Test in accordance with AS1851 - 2012. A copy of the flow test results to be provided to EnFact for review. Provide certification upon completion.",
-  },
-  {
     id: "EF-20",
     measure: "Building Facade",
     issue: "Facade compliance with the BCA",
@@ -795,7 +754,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     issue: "Collars improperly fitted",
     match: [["collar", "collars"], ["improperly fitted", "inproperly fitted", "improperly installed", "incorrectly fitted", "incorrectly installed", "not fitted correctly", "poorly fitted", "poorly installed"]],
     categories: ["1.4"],
-    wording: "Engage a passive contractor to conduct a building audit and rectified all defected penetrations",
+    wording: "Engage a passive contractor to conduct a building audit and rectify all defective penetrations",
   },
   {
     id: "EF-23",

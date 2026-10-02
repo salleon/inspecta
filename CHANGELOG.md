@@ -7,11 +7,9 @@ the technical detail.
 
 ## 1 October 2026
 
-- **Corrective actions learnt from Coles Turramurra and Coles Epping.** 21
+- **Corrective actions learnt from Coles Turramurra and Coles Epping.** 16
   more defects get the wording EnFact wrote in those finished reports:
-  annual certification not to hand (AS1851, AS2293.2 for exit signs and
-  emergency lighting, AS1735.2 for lifts), 5 yearly hydrostatic test, annual
-  flow test, façade compliance, fire collar fixings, collars improperly
+  façade compliance, fire collar fixings, collars improperly
   fitted, penetration compliance reports, compartmentation drawings, stair
   nosings, auto door controls near a corner, mixed exit signage, maximum
   boost pressure signage, handwritten duties on the block plan, landing
@@ -21,8 +19,9 @@ the technical detail.
   plans missing duties, dampers installed incorrectly and exit lights not
   functioning. Notes that used to get the wrong wording (landing valve too
   close to the wall, hydrant coverage queries, roller or heavy doors, an
-  obstructed egress button) now stay blank. Both reports' notes are unit
-  tests.
+  obstructed egress button) now stay blank. Filler rows for documents not
+  supplied (annual certification not to hand, hydrostatic and annual flow
+  tests) are deliberately not learnt. Both reports' notes are unit tests.
 - **Flow test sheets fill an A4 page.** A sheet with few columns (a hydrant's
   three) was squeezed into a third of the page with a small graph. Every
   flow test sheet is now an A4 page wide, portrait, its table columns

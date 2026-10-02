@@ -111,15 +111,6 @@ test("real report: Strawberry Hills Hotel", () => {
 // notes the engineer wrote the same way across sites get that wording.
 test("real reports: Coles Turramurra and Coles Epping", () => {
   const rows: [string, string, string | undefined][] = [
-    ["Annual certification not to hand at time of audit", "5.1", "EF-15"],
-    ["Annual certification not to hand at time of audit", "1.6", "EF-15"],
-    ["Annual certification not to hand at time of audit", "3.1", "EF-16"],
-    ["Annual certification not to hand at time of audit", "4", "EF-16"],
-    ["Annual certification not to hand at time of audit", "10.3", "EF-17"],
-    ["5 yearly Hydrostatic Test is due 2026", "5.2", "EF-18"],
-    ["5 yearly Hydrostatic Test compliance", "5.2", "EF-18"],
-    ["Annual Hydrant System Flow Test", "5.2", "EF-19"],
-    ["Annual Sprinkler System Flow Test", "5.6", "EF-19"],
     ["Compliance of building façade with BCA requirements", "1.9", "EF-20"],
     ["Fire Collar does not have correct fixings", "1.4", "EF-21"],
     ["ALL penetration in carpark and plantroom that are protected by fire collars that are installed with nylon knock-in fasteners and are non-compliant.", "1.4", "EF-21"],
@@ -151,6 +142,11 @@ test("real reports: Coles Turramurra and Coles Epping", () => {
     ["Exits along a path of travel need to be a swing door", "2.5", undefined],
     ["Enterance swing doors impeade the path of travel requiring more than 110 N to open", "2.5", undefined],
     ["Green egress button is obstructed by metal plate and", "2.5", undefined],
+    // filler for documents not supplied: never learnt
+    ["5 yearly Hydrostatic Test compliance", "5.2", undefined],
+    ["Annual Hydrant System Flow Test", "5.2", undefined],
+    ["Annual certification not to hand at time of audit", "5.1", undefined],
+    ["Annual certification not to hand at time of audit", "3.1", undefined],
     // one-off, site-specific: left for the engineer
     ["Sprinkler pump noisey and amp variation is significant indicting that the pump may be about to fail.", "5.1", undefined],
     ["No check or rpz valve installed in sprinkler booster line to prevent re-cycle on boost.", "5.1", undefined],
@@ -165,7 +161,7 @@ test("unclear or uncommon notes stay blank", () => {
 });
 
 test("every defect in the table has wording, match words and categories", () => {
-  assert.equal(COMMON_DEFECTS.length, 100);
+  assert.equal(COMMON_DEFECTS.length, 95);
   for (const d of COMMON_DEFECTS) {
     assert.ok(d.wording.trim(), d.id);
     assert.ok(d.match.length && d.match.every((g) => g.length), d.id);
