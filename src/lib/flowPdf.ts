@@ -42,9 +42,20 @@ export async function buildFlowPdf(tests: FlowTest[], site: Pick<Site, "name" | 
   return doc.output("blob");
 }
 
+// The same pages at the end of a site's report PDF (AFSS and projects):
+// a page per flow test, numbered among the flow tests.
+export async function appendFlowPages(doc: JsPDF, tests: FlowTest[], site: Pick<Site, "name" | "address">): Promise<void> {
+  if (!tests.length) return;
+  const logo = await logoImage().catch(() => null);
+  tests.forEach((test, n) => {
+    doc.addPage();
+    drawPage(doc, test, site, logo, n + 1, tests.length, "Flow test");
+  });
+}
+
 export const flowPdfName = (site: Pick<Site, "name">) => flowFileName(site, "pdf");
 
-function drawPage(doc: JsPDF, test: FlowTest, site: Pick<Site, "name" | "address">, logo: { data: string; w: number; h: number } | null, page: number, pages: number) {
+function drawPage(doc: JsPDF, test: FlowTest, site: Pick<Site, "name" | "address">, logo: { data: string; w: number; h: number } | null, page: number, pages: number, counter = "Page") {
   const { w: W, h: H, m: M } = PAGE;
   const width = W - 2 * M;
   let y = M + 6;
@@ -155,7 +166,7 @@ function drawPage(doc: JsPDF, test: FlowTest, site: Pick<Site, "name" | "address
   doc.setFontSize(7.5);
   doc.setTextColor(SOFT);
   doc.text(`${site.name} · Flow tests · ${new Date().toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}`, M, H - M + 20);
-  doc.text(`Page ${page} of ${pages}`, W - M, H - M + 20, { align: "right" });
+  doc.text(`${counter} ${page} of ${pages}`, W - M, H - M + 20, { align: "right" });
 }
 
 function drawChart(doc: JsPDF, test: FlowTest, x0: number, y0: number, w: number, h: number) {

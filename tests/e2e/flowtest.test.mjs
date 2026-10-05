@@ -496,6 +496,21 @@ test("the Excel gets SPRINKLER and HYDRANT tabs laid out like the preview, with 
   }
 });
 
+test("the site's report PDF ends with a page per flow test", async () => {
+  await go(page, app, "/site/s1/export", 1500);
+  const file = await download(page, async () => {
+    await page.click("text=Share PDF");
+    await page.waitForTimeout(600);
+    if (await page.locator("text=Export anyway").count()) await page.click("text=Export anyway");
+  });
+  const pdf = fs.readFileSync(file.path).toString("latin1");
+  const findings = pdf.indexOf("Exit sign not illuminated");
+  const sprinkler = pdf.indexOf("SPRINKLER FLOW TEST RESULTS");
+  const hydrant = pdf.indexOf("HYDRANT FLOW TEST RESULTS");
+  assert.ok(findings > 0 && sprinkler > findings && hydrant > sprinkler, `${findings} ${sprinkler} ${hydrant}`);
+  assert.ok(pdf.includes("Flow test 1 of 2") && pdf.includes("Flow test 2 of 2"));
+});
+
 test("every supply gets its own table, as on the preview", async () => {
   const buf = await exportExcel("s2");
   const wb = new ExcelJS.Workbook();

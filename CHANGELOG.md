@@ -7,6 +7,11 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Flow tests at the end of the report PDF.** An AFSS or project site's
+  Share PDF now ends with a page per flow test (the ones with readings),
+  the same page as the flow test export: details, demand, a table per
+  supply with PASS / FAIL, the graph and the comments, footed "Flow test 1
+  of 2" and so on.
 - **Keypad keys show each press.** On the full-screen readings keypad, every
   key (Hide keypad too) presses in and springs back when tapped, even on a
   quick tap, so it's clear it registered (canvas FlowKeypadPress, option B).

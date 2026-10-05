@@ -496,6 +496,13 @@ export default function ExportPreview() {
       y = (doc.getNumberOfPages() === startPage ? Math.max(photosEnd, rowTop + textBlockH) : photosEnd) + blockGap;
     }
 
+    // the site's flow tests, a page each, at the end (as the Excel's tabs)
+    const flowTests = site ? (await listFlowTests(site.id)).filter(flowTestHasData) : [];
+    if (site && flowTests.length) {
+      setExportProgress({ percent: 86, step: "Adding flow tests…" });
+      await (await import("../lib/flowPdf")).appendFlowPages(doc, flowTests, site);
+    }
+
     setExportProgress({ percent: 88, step: "Building PDF…" });
     // let the "Building PDF…" step paint before jsPDF's synchronous output
     await new Promise((r) => setTimeout(r, 30));
