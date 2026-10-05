@@ -19,9 +19,9 @@ export const groupRowStyle: CSSProperties = {
 
 export const groupHintStyle: CSSProperties = { fontSize: 12, fontWeight: 500, color: "var(--muted)", lineHeight: 1.4 };
 
-export function Group({ heading, foot, children }: { heading: string; foot?: string; children: ReactNode }) {
+export function Group({ heading, foot, children, tour }: { heading: string; foot?: string; children: ReactNode; tour?: string }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", flexShrink: 0 }}>
+    <div data-tour={tour} style={{ display: "flex", flexDirection: "column", flexShrink: 0 }}>
       <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--muted-2)", margin: "10px 6px 6px" }}>{heading}</div>
       <div className="settings-group" style={{ background: "var(--panel)", border: "1px solid var(--border)", borderRadius: 14, overflow: "hidden" }}>
         {children}

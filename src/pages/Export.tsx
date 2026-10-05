@@ -28,6 +28,7 @@ import { learnCategory, unlearnCategory } from "../lib/esrSuggest";
 import { useBackHandler } from "../lib/backButton";
 import coverBgAfss from "../assets/cover-bg-afss.jpg";
 import coverBgProjects from "../assets/cover-bg-projects.jpg";
+import { useTourScene } from "../lib/tour";
 
 // the export loading screen shows for at least this long: a quick export
 // still gets its animation, counting smoothly up to 100%
@@ -130,6 +131,7 @@ export default function ExportPreview() {
   const [reportId, setReportId] = useState<string | null>(null);
   // Create Customised Report open: a new one, or one being changed
   const [editing, setEditing] = useState<SiteReport | "new" | null>(null);
+  useTourScene("custom-report", () => setEditing("new"), () => setEditing(null));
   const report = site?.reports?.find((r) => r.id === reportId) ?? null;
   // what this report exports, in its order: the whole site (Projects sites
   // in the order the photos were taken, with no ESR sections), or the
@@ -164,6 +166,8 @@ export default function ExportPreview() {
   // Uncategorised findings, offer to categorise them first — the popup, then
   // the Categorise screen. Asked once per visit to this screen.
   const [askCategorise, setAskCategorise] = useState<ShareKind | null>(null);
+  // the tour shows the uncategorised question and the Create Customised Report sheet
+  useTourScene("categorise", () => setAskCategorise("pdf"), () => setAskCategorise(null));
   const [categorising, setCategorising] = useState<ShareKind | null>(null);
   // the findings the Categorise screen goes through, fixed when it opens
   // (so "‹ Previous" can return to ones categorised since)
@@ -660,7 +664,7 @@ export default function ExportPreview() {
       />
 
       {/* paper preview */}
-      <div style={{ flexGrow: 1, overflowY: "auto", padding: "8px 16px 12px" }}>
+      <div data-tour="preview" style={{ flexGrow: 1, overflowY: "auto", padding: "8px 16px 12px" }}>
         <div style={{ background: "var(--paper)", borderRadius: 12, padding: "22px 18px", display: "flex", flexDirection: "column", gap: 18 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 2, borderBottom: "1px solid var(--paper-border)", paddingBottom: 14 }}>
             <div style={{ fontSize: 16, fontWeight: 800, color: "var(--paper-text)" }}>{report ? `${site?.name ?? "Inspection"} - ${report.name}` : reportTitle(site?.name, getInspectorName())}</div>
@@ -670,6 +674,7 @@ export default function ExportPreview() {
             </div>
             {!loading && allItems.length > 0 && (
               <button
+                data-tour="custom-report"
                 onClick={() => setEditing("new")}
                 style={{ marginTop: 10, alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 999, background: "#e3efe9", border: "1px solid #9fd3c6", color: "#1f6b5b", fontSize: 12, fontWeight: 800 }}
               >
@@ -723,7 +728,7 @@ export default function ExportPreview() {
       )}
 
       {/* share bar */}
-      <div style={{ flexShrink: 0, padding: "12px 16px calc(28px + env(safe-area-inset-bottom))", borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 10 }}>
+      <div data-tour="share-bar" style={{ flexShrink: 0, padding: "12px 16px calc(28px + env(safe-area-inset-bottom))", borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 10 }}>
         {/* every photo at full resolution, stamped, zipped in a folder
             named after the site (see lib/photosZip) */}
         <button
@@ -762,7 +767,7 @@ export default function ExportPreview() {
           onClick={() => setAskCategorise(null)}
           style={{ position: "absolute", inset: 0, zIndex: 5, background: "rgba(3,10,18,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: 22 }}
         >
-          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 360, background: "var(--panel)", border: "1px solid var(--border-strong)", borderRadius: 20, padding: "22px 20px 18px", display: "flex", flexDirection: "column", gap: 10 }}>
+          <div data-tour="categorise-ask" onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 360, background: "var(--panel)", border: "1px solid var(--border-strong)", borderRadius: 20, padding: "22px 20px 18px", display: "flex", flexDirection: "column", gap: 10 }}>
             {(() => {
               const n = items.filter((i) => !esrItem(i.finding.esrCategory)).length;
               return (

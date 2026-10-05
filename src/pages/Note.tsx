@@ -25,6 +25,7 @@ import { learnCategory, suggestCategories, unlearnCategory, type CategorySuggest
 import { EsrBrowseSheet, EsrLink, EsrSelectedCard, EsrSuggestionList } from "../components/EsrCategory";
 import { useBackHandler } from "../lib/backButton";
 import PhotoViewer from "../components/PhotoViewer";
+import { useTourScene } from "../lib/tour";
 
 interface PhotoRect {
   top: number;
@@ -63,6 +64,8 @@ export default function Note() {
   const [changingCategory, setChangingCategory] = useState(false);
   // the "Quick add" box starts closed; tapping it drops the suggestions down
   const [categoryOpen, setCategoryOpen] = useState(false);
+  // the tour opens Quick add to show the suggestions
+  useTourScene("quick-add", () => setCategoryOpen(true), () => setCategoryOpen(false));
   const [browsingCategories, setBrowsingCategories] = useState(false);
   const [busy, setBusy] = useState(false);
   // when a text field has focus (keyboard is up), shrink the photo so both
@@ -414,6 +417,7 @@ export default function Note() {
             Grows in from the tapped thumbnail's position on first mount
             (see the useLayoutEffect above) when arriving from Findings. */}
         <div
+          data-tour="photo"
           ref={photoBoxRef}
           style={{
             position: "relative",
@@ -566,7 +570,7 @@ export default function Note() {
           // gets taller than the phone.
           // The + and gallery tiles are pinned on the right; only the
           // thumbnails scroll, so adding stays one tap however many there are.
-          <div style={{ flexShrink: 0, display: "flex", gap: 8 }}>
+          <div data-tour="photo-strip" style={{ flexShrink: 0, display: "flex", gap: 8 }}>
             <div
               ref={stripRef}
               onScroll={updateStripFade}
@@ -659,7 +663,7 @@ export default function Note() {
 
         {/* level — optional, carried to the next finding */}
         {showLevel && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <div data-tour="level" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             <label htmlFor="levelInput" style={labelStyle}>Level</label>
             <LevelField
               value={level}
@@ -676,7 +680,7 @@ export default function Note() {
 
         {/* defect type */}
         {showDefectType && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <div data-tour="defect-type" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             <label htmlFor="defectTypeInput" style={labelStyle}>Defect type</label>
             <button
               id="defectTypeInput"
@@ -744,6 +748,7 @@ export default function Note() {
           on the left and Save & next finding on the right */}
       <div style={{ flexShrink: 0, padding: "12px 18px calc(26px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "row", gap: 10 }}>
         <button
+          data-tour="save-close"
           onClick={handleBack}
           style={{
             flex: 1,

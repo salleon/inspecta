@@ -5,7 +5,7 @@ import { createSite, deleteSite, findingCount, firstSitePhoto, flowTestCount, ge
 import { IconSearch, IconBuilding, IconPlus, IconTrash, IconSettings } from "../components/Icons";
 import CountUp from "../components/CountUp";
 import ConfirmDialog from "../components/ConfirmDialog";
-import { SITES_CHANGED } from "../lib/tour";
+import { SITES_CHANGED, useTourScene } from "../lib/tour";
 import { useEdgeBump } from "../lib/edgeBump";
 import logo from "../assets/logo.png";
 import SiteKindIcon, { KIND_COLOUR, KindTag } from "../components/SiteKindIcon";
@@ -20,6 +20,8 @@ export default function Dashboard() {
   const [sites, setSites] = useState<SiteRow[]>([]);
   const [query, setQuery] = useState("");
   const [adding, setAdding] = useState(false);
+  // the tour opens the New site sheet to show the kinds of site
+  useTourScene("new-site", () => setAdding(true), () => setAdding(false));
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
   const [kind, setKind] = useState<SiteKind>("afss");
@@ -126,8 +128,8 @@ export default function Dashboard() {
           {label}
         </div>
         {group.map((site, i) => (
+          <div key={site.id} data-site-id={site.id}>
           <SiteButton
-            key={site.id}
             site={site}
             thumb={thumbs[site.id]}
             index={i}
@@ -137,6 +139,7 @@ export default function Dashboard() {
             onClose={() => setOpenSwipeId((id) => (id === site.id ? null : id))}
             onDelete={() => setConfirmDeleteSite(site)}
           />
+          </div>
         ))}
       </div>
     );
@@ -280,7 +283,7 @@ export default function Dashboard() {
             }}
           >
             <div style={{ fontSize: 16, fontWeight: 800 }}>New site</div>
-            <div style={{ display: "flex", gap: 8 }}>
+            <div style={{ display: "flex", gap: 8 }} data-tour="site-kinds">
               <button
                 type="button"
                 onClick={() => setKind("afss")}

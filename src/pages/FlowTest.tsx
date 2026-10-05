@@ -34,6 +34,7 @@ import ConfirmDialog from "../components/ConfirmDialog";
 import { useBackHandler } from "../lib/backButton";
 import FlowConverter from "../components/FlowConverter";
 import { useFlowMode } from "../lib/settings";
+import { useTourScene } from "../lib/tour";
 
 // One flow test (see lib/flowTest), as mocked up on the design canvas:
 // the graph and pass lines at the top follow the readings as they're typed.
@@ -152,6 +153,9 @@ export default function FlowTest() {
   // EnFact mode (Admin): the graph has no line options (see lineShown)
   const enfact = useFlowMode() === "enfact";
   const [wide, setWide] = useState(false); // readings full screen, sideways
+  // the tour opens the full screen (with the keypad out, then away)
+  useTourScene("wide-keypad", () => setWide(true), () => setWide(false));
+  useTourScene("wide", () => setWide(true), () => setWide(false));
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [confirmingRemove, setConfirmingRemove] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -534,7 +538,7 @@ export default function FlowTest() {
   return shell(
     <>
       {/* the template's header and comment lines */}
-      <div style={card}>
+      <div style={card} data-tour="flow-details">
         <div style={lbl}>Test details</div>
         {(
           [
@@ -580,7 +584,7 @@ export default function FlowTest() {
         )}
       </div>
       {/* demand points */}
-      <div style={card}>
+      <div style={card} data-tour="flow-demand">
         {combined ? (
           // a combined system's duty: its own unit (the readings follow it), the first point the pump duty
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -628,7 +632,7 @@ export default function FlowTest() {
       </div>
 
       {/* graph */}
-      <div style={{ ...card, padding: "10px 8px 6px", gap: 2 }}>
+      <div style={{ ...card, padding: "10px 8px 6px", gap: 2 }} data-tour="flow-graph">
         <div ref={chartBox} style={{ width: "100%", height: 230 }} dangerouslySetInnerHTML={{ __html: chartSvg(test, chartW, 230, { unit, current }) }} />
         <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap", fontSize: 11, fontWeight: 700, color: "var(--muted)", paddingTop: 2 }}>
           {legend.map((i) =>
@@ -696,7 +700,7 @@ export default function FlowTest() {
       </div>
 
       {/* readings */}
-      <div style={card}>
+      <div style={card} data-tour="flow-readings">
         <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingBottom: 6, borderBottom: "1px solid var(--border)" }}>
           <div style={lbl}>{combined ? "Pumps" : "Supply"}</div>
           <SectionTabs
@@ -1081,6 +1085,11 @@ function WideReadings({
   }, []);
   const [padOn, setPadOn] = useState(false);
   const [bodyW, setBodyW] = useState(0);
+  // the tour taps a cell for the keypad, then puts it away
+  useTourScene("wide-keypad", () => {
+    window.setTimeout(() => scrollRef.current?.querySelectorAll<HTMLInputElement>('[aria-label="Discharge"]')[2]?.focus({ preventScroll: true }), 650);
+  });
+  useTourScene("wide", () => hidePadRef.current());
   const bodyRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const active = useRef<HTMLInputElement | null>(null);
@@ -1091,6 +1100,7 @@ function WideReadings({
     setClosing(true);
     window.setTimeout(onClose, 380);
   };
+  const hidePadRef = useRef(() => {});
   const hidePad = () => {
     active.current?.blur();
     delete active.current?.dataset.fresh;
@@ -1100,6 +1110,7 @@ function WideReadings({
     before.current = null;
     if (b) scrollRef.current?.scrollTo({ left: b.left, behavior: "smooth" });
   };
+  hidePadRef.current = hidePad;
   useBackHandler(() => {
     if (colEdit !== null) setColEdit(null);
     else if (ask !== null) setAsk(null);

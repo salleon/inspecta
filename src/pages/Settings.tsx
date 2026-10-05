@@ -19,9 +19,9 @@ import buildLabel from "../../BUILD_LABEL?raw";
 
 const version = `Build ${buildLabel.trim()}${IS_TEST_BUILD ? " · Test version" : ""}`;
 
-function Item({ icon, title, hint, right, onClick, switchOn }: { icon: ReactNode; title: string; hint: string; right?: ReactNode; onClick: () => void; switchOn?: boolean }) {
+function Item({ icon, title, hint, right, onClick, switchOn, tour }: { icon: ReactNode; title: string; hint: string; right?: ReactNode; onClick: () => void; switchOn?: boolean; tour?: string }) {
   return (
-    <button type="button" onClick={onClick} style={groupRowStyle} {...(switchOn === undefined ? {} : { role: "switch", "aria-checked": switchOn })}>
+    <button type="button" data-tour={tour} onClick={onClick} style={groupRowStyle} {...(switchOn === undefined ? {} : { role: "switch", "aria-checked": switchOn })}>
       {icon}
       <div style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
         <span style={{ fontSize: 14.5, fontWeight: 700 }}>{title}</span>
@@ -75,7 +75,7 @@ export default function Settings() {
             onClick={() => setConverterTool(!converterTool)}
           />
         </Group>
-        <Group heading="Backup" foot="Save backups to OneDrive or similar. Everything else lives only on this phone.">
+        <Group tour="backup" heading="Backup" foot="Save backups to OneDrive or similar. Everything else lives only on this phone.">
           <BackupSettings rowStyle={groupRowStyle} hintStyle={groupHintStyle} onRestored={() => {}} icons={[<RowIcon key="u" name="up" />, <RowIcon key="d" name="down" />]} />
         </Group>
         <Group heading="Help & updates">
@@ -83,6 +83,7 @@ export default function Settings() {
           <UpdateSettingsRow rowStyle={groupRowStyle} hintStyle={groupHintStyle} onAction={() => navigate("/")} icon={<RowIcon name="refresh" />} version={version} />
           <Item
             icon={<RowIcon name="compass" />}
+            tour="replay-tour"
             title="Replay tour"
             hint="A quick walk through the app"
             onClick={() => {

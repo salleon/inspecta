@@ -428,6 +428,7 @@ export default function Findings() {
           Findings · {rows.length}
         </button>
         <button
+          data-tour="flow-tab"
           disabled={reordering}
           onClick={() => setSearchParams({ tab: "flow" }, { replace: true })}
           style={{ flex: "0 0 auto", padding: "11px 12px", borderRadius: 10, border: "none", fontSize: 14.5, fontWeight: 800, whiteSpace: "nowrap", background: flowTab ? "var(--accent)" : "none", color: flowTab ? "var(--accent-text)" : "var(--muted)" }}

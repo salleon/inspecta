@@ -95,6 +95,7 @@ export default function FlowTestList({ siteId, onCount, onExport, exportLabel = 
         <FlowConverter />
         {onExport && !!tests?.length && (
           <button
+            data-tour="flow-export-only"
             onClick={onExport}
             style={{ width: "100%", padding: "13px 0", borderRadius: 12, border: "1px solid rgba(90,176,255,.55)", background: "rgba(90,176,255,.1)", color: "#5ab0ff", fontSize: 14.5, fontWeight: 800 }}
           >
@@ -102,6 +103,7 @@ export default function FlowTestList({ siteId, onCount, onExport, exportLabel = 
           </button>
         )}
         <button
+          data-tour="new-flow-test"
           onClick={() => setPicking(true)}
           className="glow-sweep"
           style={{ position: "relative", overflow: "hidden", width: "100%", padding: "17px 0", borderRadius: 14, background: "var(--accent)", color: "var(--accent-text)", border: "none", fontSize: 16, fontWeight: 800 }}

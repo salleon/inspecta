@@ -7,6 +7,22 @@ the technical detail.
 
 ## 1 October 2026
 
+- **New tutorial tour.** The tour is redone as 8 short topics (canvas
+  TourFull): Sites (the + and the three kinds of site), Findings (camera or
+  pen, photos, Save & next), ESR categories (Quick add, level, defect type,
+  categorising at export), Flow tests on a site (the tab, the report's
+  extra pages and tabs, a Flow testing site on its own), Entering a flow
+  test (details and demand, the graph, readings, full screen with the
+  keypad, adding and deleting readings and columns), Exporting,
+  Customised reports, and Backups & settings. The welcome adds **Pick a
+  topic** to run just one, and every tip has **☰ Topics** to jump about. A
+  bar on each tip shows the topic and how far through it you are. The
+  screens act out each step themselves (the New site sheet, Quick add, the
+  uncategorised question, the full screen turned sideways with the tip
+  turned too, the Create Customised Report sheet). It runs on example
+  sites (an AFSS site with two findings, a flow test and a saved report,
+  and a Flow testing site) that are deleted when it ends. Replaces the
+  7-step first-time tour and the What's new tour.
 - **Flow tests at the end of the report PDF.** An AFSS or project site's
   Share PDF now ends with a page per flow test (the ones with readings),
   the same page as the flow test export: details, demand, a table per
