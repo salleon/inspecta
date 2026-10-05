@@ -258,6 +258,8 @@ test("a new hydrant test: flows in L/s, PASS / FAIL at the bottom, RPM for a die
   assert.equal(await keypad.evaluate((e) => e.classList.contains("off")), false, "tapping a cell brings the keypad in");
   for (const k of ["1", "9", "2", "2", "Backspace", "0"]) await keypad.locator(`[aria-label="${k}"]`).click();
   assert.equal(await rpm.inputValue(), "1920");
+  // each press shows: the key presses in and springs back
+  assert.equal(await keypad.locator('[aria-label="0"]').evaluate((e) => e.classList.contains("pressed") && getComputedStyle(e).animationName), "wide-press");
   // the first key after tapping a cell replaces what's there
   await rpm.click({ force: true });
   await wide.locator('[aria-label="Discharge"]').first().click({ force: true });

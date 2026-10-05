@@ -7,6 +7,9 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Keypad keys show each press.** On the full-screen readings keypad, every
+  key (Hide keypad too) presses in and springs back when tapped, even on a
+  quick tap, so it's clear it registered (canvas FlowKeypadPress, option B).
 - **Corrective actions learnt from Coles Turramurra and Coles Epping.** 15
   more defects get the wording EnFact wrote in those finished reports:
   façade compliance, fire collars fixed with nylon fasteners (or improperly

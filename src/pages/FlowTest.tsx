@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties, type FocusEvent, type MouseEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type FocusEvent, type MouseEvent, type PointerEvent, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import type { FlowTest as FlowTestRecord, FlowReading, FlowUnit, Site } from "../db/types";
 import { deleteFlowTest, getFlowTest, getSite, saveFlowTest } from "../db/db";
@@ -1195,6 +1195,15 @@ function WideReadings({
     setAdded(n);
     window.setTimeout(() => scrollRef.current?.querySelectorAll<HTMLInputElement>(".wide-pin input")[n]?.focus(), 30);
   };
+  // the key presses in and springs back (canvas FlowKeypadPress, option B),
+  // the whole way through even on a quick tap; restarted on every press
+  const pressIn = (e: PointerEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    const el = e.currentTarget;
+    el.classList.remove("pressed");
+    void el.offsetWidth;
+    el.classList.add("pressed");
+  };
   const key = (k: string, label: ReactNode = k, extra = "") => (
     <button
       key={k}
@@ -1203,7 +1212,7 @@ function WideReadings({
       className={`wide-key${extra}`}
       aria-label={k === "bs" ? "Backspace" : k === "." ? "Decimal point" : k}
       // keep the cell focused
-      onPointerDown={(e) => e.preventDefault()}
+      onPointerDown={pressIn}
       onMouseDown={(e) => e.preventDefault()}
       onClick={() => press(k)}
     >
@@ -1395,7 +1404,7 @@ function WideReadings({
             </div>
           )}
           <div className={padOn ? "wide-pad" : "wide-pad off"} style={{ width: padW }} aria-hidden={!padOn}>
-            <button type="button" tabIndex={-1} className="wide-key hide" onPointerDown={(e) => e.preventDefault()} onMouseDown={(e) => e.preventDefault()} onClick={hidePad}>
+            <button type="button" tabIndex={-1} className="wide-key hide" onPointerDown={pressIn} onMouseDown={(e) => e.preventDefault()} onClick={hidePad}>
               Hide keypad ›
             </button>
             {["7", "8", "9", "4", "5", "6", "1", "2", "3"].map((k) => key(k))}
