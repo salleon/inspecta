@@ -378,3 +378,109 @@
 .mk-act.off {
   opacity: 0.35;
 }
+
+/* ---- the camera's start screen (CameraStartScreen) ---- */
+.cam-start {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  animation: cam-start-in 160ms ease-out;
+}
+@keyframes cam-start-in {
+  from {
+    opacity: 0;
+  }
+}
+.cam-iris {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  overflow: visible;
+}
+.cam-iris-hole {
+  transform: scale(0.0001);
+}
+.cam-iris-edges {
+  fill: none;
+  stroke: #2ec4b6;
+  stroke-width: 2;
+  opacity: 0;
+}
+.cam-iris-edges > * {
+  vector-effect: non-scaling-stroke;
+}
+.cam-start.opening .cam-iris-hole {
+  animation: cam-iris-open 520ms linear forwards;
+}
+.cam-start.opening .cam-iris-edges {
+  animation:
+    cam-iris-open 520ms linear forwards,
+    cam-iris-edges 520ms linear forwards;
+}
+@keyframes cam-iris-open {
+  0% {
+    transform: rotate(0) scale(0.02);
+    animation-timing-function: cubic-bezier(0.3, 0, 0.4, 1);
+  }
+  45% {
+    transform: rotate(-25deg) scale(2.4);
+    animation-timing-function: cubic-bezier(0.6, 0, 0.9, 0.6);
+  }
+  100% {
+    transform: rotate(-60deg) scale(18);
+  }
+}
+@keyframes cam-iris-edges {
+  0% {
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.cam-start-icon {
+  position: absolute;
+  left: calc(50% - 75px);
+  top: calc(46% - 77px);
+}
+.cam-start.opening .cam-start-icon {
+  animation: cam-icon-out 220ms ease-in forwards;
+}
+@keyframes cam-icon-out {
+  to {
+    opacity: 0;
+    transform: scale(1.25);
+  }
+}
+.cam-start-wait {
+  position: absolute;
+  left: -40px;
+  right: -40px;
+  top: 172px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 800;
+  color: #8ba0b5;
+  letter-spacing: 0.02em;
+}
+.cam-start-wait b {
+  animation: cam-dots 1.2s infinite;
+}
+.cam-start-wait b:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.cam-start-wait b:nth-child(3) {
+  animation-delay: 0.4s;
+}
+@keyframes cam-dots {
+  0%,
+  100% {
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 1;
+  }
+}

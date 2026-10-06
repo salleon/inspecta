@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import type { Finding, Photo, Site } from "../db/types";
 import { addPhoto, createFinding, deleteFinding, deleteSite, flowTestCount, getSite, getThumbnail, listFindings, listPhotos, reorderFinding, updateSite } from "../db/db";
 import { capturePhoto } from "../lib/capture";
+import { warmCamera } from "../lib/cameraStream";
 import { IconChevronLeft, IconShare, IconEdit, IconGrip, IconCheck, IconTrash, IconPen, IconCamera } from "../components/Icons";
 import DefectTypePill from "../components/DefectTypePill";
 import { esrItem } from "../lib/esrCategories";
@@ -559,6 +560,7 @@ export default function Findings() {
             </button>
             <button
               onClick={handleNewFinding}
+              onPointerDown={warmCamera}
               disabled={busy || reordering}
               className="glow-sweep"
               style={{

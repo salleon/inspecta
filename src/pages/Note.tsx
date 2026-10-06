@@ -15,6 +15,7 @@ import {
   updateFinding,
 } from "../db/db";
 import { capturePhoto, markUpPhoto, pickFromGallery } from "../lib/capture";
+import { warmCamera } from "../lib/cameraStream";
 import { shownBlob } from "../lib/markup";
 import { IconRetake, IconTrash, IconChevronLeft, IconPlus, IconCamera, IconCheck, IconPen, IconGallery } from "../components/Icons";
 import RoundIconButton from "../components/RoundIconButton";
@@ -586,6 +587,7 @@ export default function Note() {
               <button
                 aria-label="Retake photo"
                 onClick={handleRetake}
+                onPointerDown={warmCamera}
                 disabled={busy}
                 style={overlayIconButtonStyle}
               >
@@ -664,7 +666,7 @@ export default function Note() {
                 </button>
               ))}
             </div>
-            <button aria-label="Add another photo to this finding" onClick={handleAddPhoto} disabled={busy} style={addTileStyle}>
+            <button aria-label="Add another photo to this finding" onClick={handleAddPhoto} onPointerDown={warmCamera} disabled={busy} style={addTileStyle}>
               <IconPlus size={18} strokeWidth={2.2} />
             </button>
             <button aria-label="Add photos from the gallery" onClick={handleAddFromGallery} disabled={busy} style={addTileStyle}>
@@ -824,6 +826,7 @@ export default function Note() {
           </button>
           <button
             onClick={handleSaveAndNextFinding}
+            onPointerDown={warmCamera}
             disabled={busy}
             className="glow-sweep"
             style={{

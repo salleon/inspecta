@@ -6,6 +6,8 @@ import { useBackHandler } from "../lib/backButton";
 import { getCameraFlash, setCameraFlash } from "../lib/settings";
 import { decodeUpright } from "../lib/markup";
 import MarkupEditor from "./MarkupEditor";
+import CameraStartScreen from "./CameraStartScreen";
+import { acquireCamera, dropCamera, releaseCamera } from "../lib/cameraStream";
 import "./PhotoTools.css";
 
 // Inspecta's own camera (no Android camera app): the camera's picture full
@@ -70,13 +72,15 @@ export default function InAppCamera({ label, onDone }: Props) {
   // put away)
   useEffect(() => {
     let cancelled = false;
+    let acquired = false;
     async function start() {
       try {
-        const stream = await openMainCamera();
-        if (cancelled) {
-          stream.getTracks().forEach((t) => t.stop());
-          return;
-        }
+        // (already running if a photo was just taken, or a finger went
+        // down on the camera button: then it's instant)
+        const opening = acquireCamera();
+        acquired = true;
+        const stream = await opening;
+        if (cancelled) return;
         streamRef.current = stream;
         const track = stream.getVideoTracks()[0];
         const video = videoRef.current;
@@ -104,19 +108,26 @@ export default function InAppCamera({ label, onDone }: Props) {
         }
         if (cancelled) return;
         setCaps(next);
+        // back to 1× (it may still be zoomed from the last photo)
         const settings = track.getSettings() as MediaTrackSettings & { zoom?: number };
-        if (settings.zoom) setZoom(settings.zoom);
+        if (!next.digital && settings.zoom && Math.abs(settings.zoom - 1) > 0.01 && next.zoom.min <= 1) {
+          track.applyConstraints({ advanced: [{ zoom: 1 } as MediaTrackConstraintSet] }).catch(() => {});
+        } else if (settings.zoom) setZoom(settings.zoom);
         track.addEventListener("ended", () => {
           if (!cancelled && document.visibilityState === "visible") void restart();
         });
         setReady(true);
       } catch {
         // no camera, or no permission: the Android camera instead
+        if (acquired) releaseCamera();
+        acquired = false;
         if (!cancelled) doneRef.current("fallback");
       }
     }
     async function restart() {
-      streamRef.current?.getTracks().forEach((t) => t.stop());
+      if (acquired) releaseCamera();
+      acquired = false;
+      dropCamera();
       streamRef.current = null;
       setReady(false);
       setLive(false);
@@ -131,7 +142,9 @@ export default function InAppCamera({ label, onDone }: Props) {
     return () => {
       cancelled = true;
       document.removeEventListener("visibilitychange", onVisible);
-      streamRef.current?.getTracks().forEach((t) => t.stop());
+      // kept running a minute for the next photo
+      streamRef.current?.getVideoTracks()[0]?.applyConstraints({ advanced: [{ torch: false } as MediaTrackConstraintSet] }).catch(() => {});
+      if (acquired) releaseCamera();
       streamRef.current = null;
     };
   }, []);
@@ -285,6 +298,7 @@ export default function InAppCamera({ label, onDone }: Props) {
       <div className="cam-view" onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}>
         <video ref={videoRef} playsInline muted autoPlay poster={BLANK} onPlaying={() => setLive(true)} style={{ opacity: shot || !live ? 0 : 1, transform: caps.digital && zoom > 1 ? `scale(${zoom})` : undefined }} />
         {shot && <img className="cam-shot" src={shot.url} alt="" />}
+        <CameraStartScreen live={live} />
         {focusAt && !shot && <span key={focusAt.n} className="cam-focus" style={{ left: focusAt.x, top: focusAt.y }} />}
         {blink > 0 && <span key={blink} className="cam-blink" />}
       </div>
@@ -309,7 +323,7 @@ export default function InAppCamera({ label, onDone }: Props) {
           <span className="cam-rb-space" />
         )}
       </div>
-      {!shot && zoomStops.length > 1 && (
+      {!shot && live && zoomStops.length > 1 && (
         <div className="cam-zoom">
           {zoomStops.map((z) => (
             <button key={z} className={z === nearest ? "on" : ""} onClick={() => applyZoom(z)}>
@@ -349,62 +363,11 @@ function FlashIcon({ on }: { on: boolean }) {
   );
 }
 
-// ---- which camera ----
+// ---- the start screen ----
 
 // a see-through 1 px image, in place of the video's ▶ placeholder
 const BLANK = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
-const MAIN_CAMERA_KEY = "inspecta.mainCamera";
-// zoom: true asks to use the camera's zoom (Chrome only offers it if asked)
-const HIGH_RES = { width: { ideal: 4032 }, height: { ideal: 3024 }, zoom: true } as MediaTrackConstraints;
 const DIGITAL_ZOOM = { min: 1, max: 4 };
-
-function getUserMedia(video: MediaTrackConstraints) {
-  return navigator.mediaDevices.getUserMedia({ audio: false, video });
-}
-
-// Android lists each lens on the back as its own camera ("camera2 0, facing
-// back", "camera2 2, facing back"...), and asking for just "the back
-// camera" can give the ultra-wide one: stuck at .5×, no zoom, no flash. So
-// the main one is picked, the lowest-numbered back camera, and remembered.
-async function openMainCamera(): Promise<MediaStream> {
-  let saved: string | null = null;
-  try {
-    saved = localStorage.getItem(MAIN_CAMERA_KEY);
-  } catch {
-    saved = null;
-  }
-  if (saved) {
-    try {
-      return await getUserMedia({ deviceId: { exact: saved }, ...HIGH_RES });
-    } catch {
-      // that camera's gone (or renamed): look again
-    }
-  }
-  // a first look (camera names can only be read once it's allowed)
-  const first = await getUserMedia({ facingMode: { ideal: "environment" } });
-  const main = await mainBackCamera();
-  first.getTracks().forEach((t) => t.stop());
-  if (main) {
-    try {
-      localStorage.setItem(MAIN_CAMERA_KEY, main);
-    } catch {
-      // best-effort
-    }
-    return getUserMedia({ deviceId: { exact: main }, ...HIGH_RES });
-  }
-  return getUserMedia({ facingMode: { ideal: "environment" }, ...HIGH_RES });
-}
-
-async function mainBackCamera(): Promise<string | undefined> {
-  const cams = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === "videoinput" && d.deviceId);
-  const back = cams.filter((d) => /back|rear|environment/i.test(d.label));
-  if (!back.length) return undefined;
-  const num = (d: MediaDeviceInfo) => {
-    const m = /camera2?\s*(\d+)/i.exec(d.label);
-    return m ? Number(m[1]) : 99;
-  };
-  return back.sort((a, b) => num(a) - num(b))[0].deviceId;
-}
 
 // ---- the photo itself ----
 

@@ -14,6 +14,20 @@ before(async () => {
   app = await startApp("camera.test.mjs", { args: ["--use-fake-device-for-media-stream", "--use-fake-ui-for-media-stream"] });
   ({ page, errors } = await openPage(app));
   await page.context().grantPermissions(["camera"]);
+  // count camera opens, and slow them down when a test asks
+  await page.addInitScript(() => {
+    const md = navigator.mediaDevices;
+    const open = md.getUserMedia.bind(md);
+    window.__opens = 0;
+    md.getUserMedia = async (c) => {
+      window.__opens++;
+      const delay = Number(sessionStorage.getItem("gumDelay") || 0);
+      if (delay) await new Promise((r) => setTimeout(r, delay));
+      return open(c);
+    };
+  });
+  await page.reload();
+  await page.waitForTimeout(2300); // splash
   await seed(page, { sites: [{ id: "s1", name: "Cam site", address: "", kind: "afss" }] });
 });
 after(async () => {
@@ -35,6 +49,22 @@ const photos = () =>
 async function canvasBox() {
   return page.getByTestId("markup-canvas").boundingBox();
 }
+
+test("a slow camera shows the start screen, then the aperture opens onto the picture", async () => {
+  await page.evaluate(() => sessionStorage.setItem("gumDelay", "1500"));
+  await go(page, app, "/site/s1/findings");
+  await page.getByRole("button", { name: "New finding", exact: true }).click();
+  await page.getByTestId("in-app-camera").waitFor();
+  await page.waitForTimeout(150);
+  assert.equal(await page.getByTestId("camera-start").count(), 0, "nothing for the first moment");
+  await page.getByTestId("camera-start").waitFor({ timeout: 1000 });
+  assert.ok(await page.locator(".cam-icon canvas").count(), "the swoosh is drawn");
+  // the picture comes through: the aperture opens, then the start screen goes
+  await page.locator(".cam-start.opening").waitFor({ timeout: 4000 });
+  await page.getByTestId("camera-start").waitFor({ state: "detached", timeout: 2000 });
+  await page.getByLabel("Close camera").click();
+  await page.evaluate(() => sessionStorage.removeItem("gumDelay"));
+});
 
 test("✕ closes the camera without making a finding", async () => {
   await go(page, app, "/site/s1/findings");
@@ -114,6 +144,18 @@ test("shoot, retake, mark up with a circle and a measurement, use", async () => 
   assert.deepEqual([p.marks[1].t, p.marks[1].label], ["measure", "1.2 m"], "the unit is as typed");
   assert.ok(p.marked > 0 && p.marked !== p.blob, "a marked copy, the original kept");
   assert.equal(await page.getByLabel("Marked up").count(), 1, "✎ on the thumbnail");
+});
+
+test("the camera stays warm: the next photo opens instantly, with no start screen", async () => {
+  const before = await page.evaluate(() => window.__opens);
+  await page.getByRole("button", { name: "Add another photo to this finding" }).click();
+  await page.getByTestId("in-app-camera").waitFor();
+  await page.waitForTimeout(600);
+  assert.equal(await page.getByTestId("camera-start").count(), 0);
+  assert.equal(await page.evaluate(() => window.__opens), before, "the running camera was reused");
+  assert.equal(await page.evaluate(() => document.querySelector(".cam video").style.opacity), "1", "picture showing");
+  await page.getByLabel("Close camera").click();
+  await page.waitForTimeout(300);
 });
 
 test("✎ Mark up on a finding opens the marks again to change them", async () => {

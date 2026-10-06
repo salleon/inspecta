@@ -7,6 +7,15 @@ the technical detail.
 
 ## 1 October 2026
 
+- **The camera opens faster, with an EnFact start screen only when it's
+  slow.** After a photo the camera keeps running for a minute (stopping
+  straight away if you leave the app), so Save & next, the + photo tile
+  and Retake open it instantly; the camera buttons also start it the
+  moment a finger touches them. If the picture still isn't there after
+  0.3 s, an EnFact camera shows with its swoosh being traced round it, and
+  when the picture comes through an aperture opens from the lens onto it.
+  The zoom buttons show once the picture is live.
+
 - **In-app camera fixes: main lens, zoom, flash, no grey ▶.** The camera
   opened the phone's ultra-wide lens on some phones (stuck at .5×, with
   no zoom or flash buttons); it now picks the main back camera, and asks
