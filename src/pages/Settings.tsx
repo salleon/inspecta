@@ -8,7 +8,7 @@ import BackupSettings from "../components/BackupSettings";
 import { UpdateSettingsRow } from "../components/UpdatePrompt";
 import { BLUE, Group, ORANGE, RowIcon, groupHintStyle, groupRowStyle } from "../components/SettingsList";
 import { getInspectorName, setInspectorName } from "../lib/profile";
-import { setConverterTool, useConverterTool } from "../lib/settings";
+import { setConverterTool, setInAppCamera, useConverterTool, useInAppCamera } from "../lib/settings";
 import { startTour } from "../lib/tour";
 import { useBackHandler } from "../lib/backButton";
 import { IS_TEST_BUILD } from "../lib/buildInfo";
@@ -35,6 +35,7 @@ function Item({ icon, title, hint, right, onClick, switchOn, tour }: { icon: Rea
 export default function Settings() {
   const navigate = useNavigate();
   const converterTool = useConverterTool();
+  const inAppCamera = useInAppCamera();
   const [name, setName] = useState(() => getInspectorName());
   const [draft, setDraft] = useState<string | null>(null);
 
@@ -64,6 +65,16 @@ export default function Settings() {
       <div style={{ flexGrow: 1, overflowY: "auto", padding: "0 16px calc(24px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 4 }}>
         <Group heading="You">
           <Item icon={<RowIcon name="user" />} title="Your name" hint={`${name || "Not set"} · on your reports`} onClick={() => setDraft(name)} />
+        </Group>
+        <Group heading="Photos">
+          <Item
+            icon={<RowIcon name="camera" />}
+            title="In-app camera"
+            hint={inAppCamera ? "Inspecta's own camera, with a quick check and ✎ Mark up" : "Off: the Android camera app"}
+            switchOn={inAppCamera}
+            right={<Switch on={inAppCamera} />}
+            onClick={() => setInAppCamera(!inAppCamera)}
+          />
         </Group>
         <Group heading="Flow testing">
           <Item

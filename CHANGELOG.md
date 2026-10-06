@@ -7,6 +7,26 @@ the technical detail.
 
 ## 1 October 2026
 
+- **In-app camera and ✎ Mark up.** + New finding, Save & next and the +
+  photo tile now open Inspecta's own camera instead of the Android camera
+  app: tap to focus, pinch or .5× / 1× / 2× to zoom (where the phone's
+  camera allows), and a flash button that is simply on or off (it stays as
+  you left it). After each shot there's a quick check: **↺ Retake**, **✎ Mark
+  up** or **Use ✓**. Photos still go to the phone's gallery (DCIM/Inspecta)
+  and keep the date stamp. A photo taken with the phone sideways comes out
+  the right way up. If the in-app camera can't start, the Android camera
+  opens as before; Settings › Photos › In-app camera switches back to it
+  for good.
+  **✎ Mark up** (from the quick check, or the button on a finding's photo):
+  **◯ Circle** taps a red circle on; drag it to move, pinch (or the mouse
+  wheel) to size it, drag its side handles to make an oval. **↔ Measure**
+  drags a yellow double arrow between two points and asks for the
+  measurement, typed with its unit (650 mm, 1.2 m); drag its ends to adjust,
+  tap the number to change it. Smaller: Arrow, Pen, Delete, Undo. The
+  original photo is kept, so ✎ Mark up opens the marks again to change
+  them; the marked-up photo is what shows in the app (✎ on its thumbnail)
+  and goes in the PDF, Excel and photos zip. Backups keep the marks.
+
 - **Tour: Back button, and tips keep clear of the phone's bars.** Each tip
   has **‹ Back** (not on the first step, or a picked topic's first),
   taking the screen back with it (the New site sheet, the full screen

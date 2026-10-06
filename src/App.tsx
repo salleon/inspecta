@@ -10,6 +10,7 @@ import Splash from "./components/Splash";
 import UpdatePrompt from "./components/UpdatePrompt";
 import { startCopyBackfill } from "./lib/copyBackfill";
 import Tour from "./components/Tour";
+import PhotoToolsHost from "./components/PhotoToolsHost";
 import { hasInspectorName } from "./lib/profile";
 import { useKeepFocusedFieldVisible } from "./lib/keepFocusedVisible";
 import { BACK_EVENT, parentRoute } from "./lib/backButton";
@@ -67,6 +68,7 @@ function App() {
           <BackButton />
           <AnimatedRoutes />
           <Tour ready={!splashVisible} />
+          <PhotoToolsHost />
         </HashRouter>
       )}
       {splashVisible && <Splash leaving={splashLeaving} />}

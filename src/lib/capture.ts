@@ -1,15 +1,111 @@
 import { Camera, CameraDirection } from "@capacitor/camera";
+import { Capacitor, registerPlugin } from "@capacitor/core";
+import type { Mark } from "../db/types";
+import { getInAppCamera } from "./settings";
 
+// A photo from the camera, with any marks drawn on it straight away
+// (✎ Mark up on the camera's quick check).
+export interface Captured {
+  blob: Blob;
+  marks?: Mark[];
+}
+
+// what the camera's top chip says, e.g. "New finding · Level 3"
+export interface CameraLabel {
+  title: string;
+  level?: string;
+}
+
+// ---- the in-app camera and the markup editor, shown by PhotoToolsHost ----
+
+export type PhotoToolRequest =
+  | { kind: "camera"; label: CameraLabel; resolve: (r: Captured | null | "fallback") => void }
+  | { kind: "markup"; blob: Blob; marks: Mark[]; resolve: (marks: Mark[] | null) => void };
+
+let request: PhotoToolRequest | null = null;
+const listeners = new Set<() => void>();
+
+export function subscribePhotoTools(l: () => void) {
+  listeners.add(l);
+  return () => {
+    listeners.delete(l);
+  };
+}
+export function currentPhotoTool() {
+  return request;
+}
+function show(r: PhotoToolRequest | null) {
+  request = r;
+  listeners.forEach((l) => l());
+}
 
 /**
- * Opens the device camera (native on Android/iOS via Capacitor, falls back to
- * the browser's file-input camera capture on plain web) and returns the
- * captured photo as a Blob, or null if the user cancelled.
- *
- * On native Android/iOS this also saves a copy straight to the device's
- * photo gallery.
+ * Takes a photo: with Inspecta's own camera (no Android camera app, and a
+ * quick check after the shot: Retake / ✎ Mark up / Use), or the Android
+ * camera if that's switched on in Settings or the in-app one can't start.
+ * Null if cancelled. Either way a copy goes to the phone's gallery.
  */
-export async function capturePhoto(direction: CameraDirection = CameraDirection.Rear): Promise<Blob | null> {
+export async function capturePhoto(label: CameraLabel = { title: "New photo" }): Promise<Captured | null> {
+  if (getInAppCamera() && typeof navigator.mediaDevices?.getUserMedia === "function") {
+    const r = await new Promise<Captured | null | "fallback">((resolve) =>
+      show({
+        kind: "camera",
+        label,
+        resolve: (v) => {
+          show(null);
+          resolve(v);
+        },
+      }),
+    );
+    if (r !== "fallback") return r;
+  }
+  const blob = await systemCamera();
+  return blob ? { blob } : null;
+}
+
+/** Opens the markup editor on a photo; the marks when Done, null if cancelled. */
+export function markUpPhoto(blob: Blob, marks: Mark[] = []): Promise<Mark[] | null> {
+  return new Promise((resolve) =>
+    show({
+      kind: "markup",
+      blob,
+      marks,
+      resolve: (m) => {
+        show(null);
+        resolve(m);
+      },
+    }),
+  );
+}
+
+// the app's own native bit (android/.../GalleryPlugin.java)
+const Gallery = registerPlugin<{ savePhoto(o: { data: string; name: string }): Promise<void> }>("Gallery");
+
+/** A copy of a photo from the in-app camera into the phone's gallery (DCIM/Inspecta). Best effort. */
+export async function saveToGallery(blob: Blob, takenAt = Date.now()) {
+  if (!Capacitor.isNativePlatform()) return;
+  try {
+    const data = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result).replace(/^data:[^,]*,/, ""));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(blob);
+    });
+    const d = new Date(takenAt);
+    const p = (n: number) => String(n).padStart(2, "0");
+    const name = `IMG_${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+    await Gallery.savePhoto({ data, name });
+  } catch {
+    // the photo is in the app either way
+  }
+}
+
+/**
+ * The Android camera app (Capacitor; the browser's file-input camera on
+ * plain web): the captured photo, or null if cancelled. On Android this also
+ * saves a copy straight to the device's photo gallery.
+ */
+export async function systemCamera(direction: CameraDirection = CameraDirection.Rear): Promise<Blob | null> {
   try {
     const result = await Camera.takePhoto({
       quality: 85,

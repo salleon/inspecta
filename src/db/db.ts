@@ -1,9 +1,10 @@
 import Dexie, { type Table } from "dexie";
-import type { Site, Finding, Photo, SiteKind, Thumbnail, ExportCopy, StampedPhoto, FlowTest, SiteReport } from "./types";
+import type { Site, Finding, Photo, Mark, SiteKind, Thumbnail, ExportCopy, StampedPhoto, FlowTest, SiteReport } from "./types";
 import { makeThumbnail } from "../lib/thumbnail";
 import { makeExportCopy } from "../lib/exportCopy";
 import { RENAMED_CODES } from "../lib/esrCategories";
 import { isExportBusy } from "../lib/exportBusy";
+import { renderMarked, shownBlob } from "../lib/markup";
 
 class InspectaDB extends Dexie {
   sites!: Table<Site, string>;
@@ -207,8 +208,9 @@ export async function findingCount(siteId: string) {
   return db.findings.where("siteId").equals(siteId).count();
 }
 
-// takenAt: when a photo from the gallery was taken (defaults to now)
-export async function addPhoto(findingId: string, siteId: string, blob: Blob, takenAt = Date.now()) {
+// takenAt: when a photo from the gallery was taken (defaults to now);
+// marks: drawn on it straight from the camera (✎ Mark up)
+export async function addPhoto(findingId: string, siteId: string, blob: Blob, takenAt = Date.now(), marks?: Mark[]) {
   const existing = await db.photos.where("findingId").equals(findingId).count();
   const photo: Photo = {
     id: uid(),
@@ -218,6 +220,10 @@ export async function addPhoto(findingId: string, siteId: string, blob: Blob, ta
     takenAt,
     order: existing,
   };
+  if (marks?.length) {
+    photo.marks = marks;
+    photo.marked = await renderMarked(blob, marks);
+  }
   await db.photos.add(photo);
   await db.findings.update(findingId, { updatedAt: Date.now() });
   // make its thumbnail now, in the background, so lists never wait on it;
@@ -232,6 +238,31 @@ export async function addPhoto(findingId: string, siteId: string, blob: Blob, ta
 export async function listPhotos(findingId: string) {
   const photos = await db.photos.where("findingId").equals(findingId).toArray();
   return photos.sort((a, b) => a.order - b.order);
+}
+
+// The marks drawn on a photo (✎ Mark up), changed or cleared. The original
+// is kept; the marked copy, its thumbnail and export copies are made again.
+export async function setPhotoMarks(photoId: string, marks: Mark[]) {
+  const photo = await db.photos.get(photoId);
+  if (!photo) return;
+  const marked = marks.length ? await renderMarked(photo.blob, marks) : undefined;
+  // let a thumbnail / copy still being made from the old one finish first,
+  // so it can't be saved over the new one
+  await thumbnailJobs.get(photoId)?.catch(() => {});
+  await exportCopyJobs.get(photoId)?.catch(() => {});
+  await db.transaction("rw", db.photos, db.thumbnails, db.exportCopies, async () => {
+    await db.photos.update(photoId, { marks: marks.length ? marks : undefined, marked });
+    await db.thumbnails.delete(photoId);
+    await db.exportCopies.delete(photoId);
+  });
+  await db.findings.update(photo.findingId, { updatedAt: Date.now() });
+  const updated = await db.photos.get(photoId);
+  if (updated)
+    void getThumbnail(updated)
+      .catch(() => {})
+      .then(() => getExportCopy(updated))
+      .catch(() => {});
+  return updated;
 }
 
 export async function deletePhoto(photoId: string) {
@@ -249,7 +280,7 @@ export function getThumbnail(photo: Photo): Promise<Blob> {
     job = (async () => {
       const saved = await db.thumbnails.get(photo.id);
       if (saved) return saved.blob;
-      const blob = await makeThumbnail(photo.blob);
+      const blob = await makeThumbnail(shownBlob(photo));
       // only keep it if the photo still exists (it may have been deleted
       // or retaken while the thumbnail was being made)
       await db.transaction("rw", db.photos, db.thumbnails, async () => {
@@ -297,7 +328,7 @@ export function getExportCopy(photo: Photo): Promise<Blob> {
       const made = exportCopyQueue.then(async () => {
         // not while an export runs: it doesn't need the copy (see getStamped)
         while (isExportBusy()) await new Promise((r) => setTimeout(r, 500));
-        return makeExportCopy(photo.blob);
+        return makeExportCopy(shownBlob(photo));
       });
       exportCopyQueue = made.catch(() => {});
       const blob = await made;
@@ -330,7 +361,7 @@ export async function getStamped(
   const copy = await db.exportCopies.get(photo.id);
   const saved = copy?.[kind];
   if (saved?.key === key) return saved;
-  if (!copy) return make(photo.blob);
+  if (!copy) return make(shownBlob(photo));
   const made = await make(copy.blob);
   await db.exportCopies.update(photo.id, { [kind]: { key, ...made } });
   return made;
@@ -378,8 +409,8 @@ export async function backupRecords() {
   const sites = await db.sites.toArray();
   const findings = await db.findings.toArray();
   const flowTests = await db.flowTests.toArray();
-  const photos: Omit<Photo, "blob">[] = [];
-  await db.photos.each(({ blob: _blob, ...meta }) => {
+  const photos: Omit<Photo, "blob" | "marked">[] = [];
+  await db.photos.each(({ blob: _blob, marked: _marked, ...meta }) => {
     photos.push(meta);
   });
   return { sites, findings, flowTests, photos };
@@ -403,5 +434,7 @@ export async function restoreSiteRecords(site: Site, findings: Finding[], flowTe
 }
 
 export async function restorePhoto(photo: Photo) {
+  // the marked copy isn't in a backup; it's made again from the marks
+  if (photo.marks?.length) photo.marked = await renderMarked(photo.blob, photo.marks).catch(() => undefined);
   await db.photos.add(photo);
 }

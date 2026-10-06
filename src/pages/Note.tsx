@@ -6,6 +6,7 @@ import {
   createFinding,
   deleteFinding,
   deletePhoto,
+  setPhotoMarks,
   getFinding,
   getSite,
   getThumbnail,
@@ -13,7 +14,8 @@ import {
   listPhotos,
   updateFinding,
 } from "../db/db";
-import { capturePhoto, pickFromGallery } from "../lib/capture";
+import { capturePhoto, markUpPhoto, pickFromGallery } from "../lib/capture";
+import { shownBlob } from "../lib/markup";
 import { IconRetake, IconTrash, IconChevronLeft, IconPlus, IconCamera, IconCheck, IconPen, IconGallery } from "../components/Icons";
 import RoundIconButton from "../components/RoundIconButton";
 import DefectTypePill from "../components/DefectTypePill";
@@ -149,7 +151,7 @@ export default function Note() {
   }, [findingId]);
 
   useEffect(() => {
-    const urls = photos.map((p) => URL.createObjectURL(p.blob));
+    const urls = photos.map((p) => URL.createObjectURL(shownBlob(p)));
     setPhotoUrls(urls);
     return () => urls.forEach((u) => URL.revokeObjectURL(u));
   }, [photos]);
@@ -276,16 +278,16 @@ export default function Note() {
     // finding can't exist without a first photo.
     setBusy(true);
     try {
-      const blob = await capturePhoto();
-      if (!blob) {
-        navigate(`/site/${siteId}/findings`);
-        return;
-      }
       // carry the level over to the next finding — a
       // cleared level carries nothing, so the next one starts empty too
       const carry = level || undefined;
+      const shot = await capturePhoto({ title: "Next finding", level: carry });
+      if (!shot) {
+        navigate(`/site/${siteId}/findings`);
+        return;
+      }
       const finding = await createFinding(siteId, carry ? { level: carry } : {});
-      await addPhoto(finding.id, siteId, blob);
+      await addPhoto(finding.id, siteId, shot.blob, undefined, shot.marks);
       navigate(`/site/${siteId}/finding/${finding.id}/note`, carry ? { state: { carriedLevel: carry } } : undefined);
     } finally {
       setBusy(false);
@@ -296,11 +298,11 @@ export default function Note() {
     if (!findingId || !siteId || busy || !activePhoto) return;
     setBusy(true);
     try {
-      const blob = await capturePhoto();
-      if (!blob) return; // cancelled
+      const shot = await capturePhoto({ title: "Retake", level: level || undefined });
+      if (!shot) return; // cancelled
       const idx = selected;
       await deletePhoto(activePhoto.id);
-      await addPhoto(findingId, siteId, blob);
+      await addPhoto(findingId, siteId, shot.blob, undefined, shot.marks);
       await refresh(idx);
     } finally {
       setBusy(false);
@@ -312,10 +314,28 @@ export default function Note() {
     setBusy(true);
     try {
       await persist(); // don't lose a typed note/location while the camera is open
-      const blob = await capturePhoto();
-      if (!blob) return; // cancelled
-      await addPhoto(findingId, siteId, blob);
+      const shot = await capturePhoto({ title: `Photo ${photos.length + 1}`, level: level || undefined });
+      if (!shot) return; // cancelled
+      await addPhoto(findingId, siteId, shot.blob, undefined, shot.marks);
       await refresh(photos.length); // select the newly added photo
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // ✎ Mark up the photo on show: circles, measurements etc. over the
+  // original, which is kept so they can be changed again later
+  async function handleMarkUp() {
+    if (!activePhoto || busy) return;
+    const marks = await markUpPhoto(activePhoto.blob, activePhoto.marks ?? []);
+    if (!marks) return; // cancelled
+    setBusy(true);
+    try {
+      await setPhotoMarks(activePhoto.id, marks);
+      const url = thumbCache.current.get(activePhoto.id);
+      if (url) URL.revokeObjectURL(url);
+      thumbCache.current.delete(activePhoto.id);
+      await refresh(selected);
     } finally {
       setBusy(false);
     }
@@ -474,6 +494,29 @@ export default function Note() {
               </div>
             )}
           </button>
+          {activePhoto && !fieldFocused && (
+            <button
+              type="button"
+              data-tour="mark-up"
+              onClick={handleMarkUp}
+              disabled={busy}
+              style={{
+                position: "absolute",
+                right: 12,
+                bottom: 12,
+                padding: "7px 11px",
+                borderRadius: 10,
+                background: "rgba(7,27,44,0.85)",
+                border: "1px solid rgba(245,165,92,0.6)",
+                color: "#f7b977",
+                fontSize: 12,
+                fontWeight: 800,
+                whiteSpace: "nowrap",
+              }}
+            >
+              ✎ Mark up
+            </button>
+          )}
           {!activePhoto && !fieldFocused && (
             <button
               type="button"
@@ -602,6 +645,7 @@ export default function Note() {
                     borderRadius: 10,
                     overflow: "hidden",
                     padding: 0,
+                    position: "relative",
                     background: "var(--panel-2)",
                     border: i === selected ? "2px solid var(--accent)" : "1px solid var(--border-strong)",
                   }}
@@ -609,6 +653,14 @@ export default function Note() {
                   {thumbUrls[p.id] && (
                     <img src={thumbUrls[p.id]} alt="" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
                   )}
+                  {p.marks?.length ? (
+                    <span
+                      aria-label="Marked up"
+                      style={{ position: "absolute", right: 2, bottom: 2, padding: "1px 4px", borderRadius: 5, background: "rgba(0,0,0,.6)", color: "#f7b977", fontSize: 10, fontWeight: 800, lineHeight: "14px" }}
+                    >
+                      ✎
+                    </span>
+                  ) : null}
                 </button>
               ))}
             </div>

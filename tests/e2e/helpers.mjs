@@ -7,7 +7,8 @@ import { createHash } from "node:crypto";
 import { chromium } from "playwright";
 
 // a different port per test file, since node --test runs files in parallel
-export async function startApp(testFile) {
+// args: extra Chromium switches (e.g. a fake camera)
+export async function startApp(testFile, { args = [] } = {}) {
   const port = 4300 + (parseInt(createHash("md5").update(testFile).digest("hex").slice(0, 4), 16) % 600);
   const server = spawn("npx", ["vite", "preview", "--port", String(port), "--strictPort"], { stdio: "ignore", detached: true });
   const url = `http://localhost:${port}`;
@@ -19,7 +20,7 @@ export async function startApp(testFile) {
     }
     await new Promise((r) => setTimeout(r, 250));
   }
-  const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
+  const browser = await chromium.launch({ args, ...(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {}) });
   return {
     url,
     browser,

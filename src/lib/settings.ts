@@ -68,3 +68,46 @@ export function setFlowMode(mode: FlowMode) {
 export function useFlowMode(): FlowMode {
   return useSyncExternalStore(subscribe, getFlowMode);
 }
+
+// The camera: Inspecta's own (on, the default) or the Android camera app.
+const IN_APP_CAMERA_KEY = "inspecta.inAppCamera";
+
+export function getInAppCamera(): boolean {
+  try {
+    return localStorage.getItem(IN_APP_CAMERA_KEY) !== "0";
+  } catch {
+    return true;
+  }
+}
+
+export function setInAppCamera(on: boolean) {
+  try {
+    localStorage.setItem(IN_APP_CAMERA_KEY, on ? "1" : "0");
+  } catch {
+    // best-effort
+  }
+  listeners.forEach((l) => l());
+}
+
+export function useInAppCamera(): boolean {
+  return useSyncExternalStore(subscribe, getInAppCamera);
+}
+
+// The in-app camera's flash: on or off (no auto), kept between photos.
+const FLASH_KEY = "inspecta.cameraFlash";
+
+export function getCameraFlash(): boolean {
+  try {
+    return localStorage.getItem(FLASH_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function setCameraFlash(on: boolean) {
+  try {
+    localStorage.setItem(FLASH_KEY, on ? "1" : "0");
+  } catch {
+    // best-effort
+  }
+}

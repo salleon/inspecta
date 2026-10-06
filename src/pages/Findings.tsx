@@ -190,16 +190,16 @@ export default function Findings() {
     }
   }
 
-  // Launches the native camera straight away — no intermediate screen.
+  // Launches the camera straight away — no intermediate screen.
   // Cancelling leaves you right where you were, on this list.
   async function handleNewFinding() {
     if (!siteId || busy || reordering) return;
     setBusy(true);
     try {
-      const blob = await capturePhoto();
-      if (!blob) return; // cancelled
+      const shot = await capturePhoto({ title: "New finding" });
+      if (!shot) return; // cancelled
       const finding = await createFinding(siteId);
-      await addPhoto(finding.id, siteId, blob);
+      await addPhoto(finding.id, siteId, shot.blob, undefined, shot.marks);
       navigate(`/site/${siteId}/finding/${finding.id}/note`);
     } finally {
       setBusy(false);

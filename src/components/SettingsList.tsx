@@ -32,6 +32,12 @@ export function Group({ heading, foot, children, tour }: { heading: string; foot
 }
 
 const PATHS: Record<string, ReactNode> = {
+  camera: (
+    <>
+      <path d="M4 8h3l2-3h6l2 3h3v11H4z" />
+      <circle cx="12" cy="13" r="3.5" />
+    </>
+  ),
   user: (
     <>
       <circle cx="12" cy="8" r="4" />

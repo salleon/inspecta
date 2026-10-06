@@ -57,7 +57,21 @@ export interface Photo {
   blob: Blob;
   takenAt: number;
   order: number;
+  // circles, measurements etc. drawn on it (✎ Mark up), kept apart so they
+  // can be changed later; the original stays in `blob`
+  marks?: Mark[];
+  // the photo with the marks drawn in, what's shown and exported (only
+  // when there are marks; made again from blob + marks after a restore)
+  marked?: Blob;
 }
+
+// A mark on a photo. Positions are fractions of the photo's width (x) and
+// height (y), so they fit the photo at any size.
+export type Mark =
+  | { t: "circle"; cx: number; cy: number; rx: number; ry: number }
+  | { t: "measure"; x0: number; y0: number; x1: number; y1: number; label: string }
+  | { t: "arrow"; x0: number; y0: number; x1: number; y1: number }
+  | { t: "pen"; pts: [number, number][] };
 
 // the copy of a photo the PDF / Excel exports work from (see lib/exportCopy),
 // plus the stamped photos made from it, kept so a repeat export can reuse

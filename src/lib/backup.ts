@@ -25,7 +25,7 @@ interface BackupJson {
   findings: Finding[];
   // added with flow tests; older backups don't have it
   flowTests?: FlowTest[];
-  photos: (Omit<Photo, "blob"> & { file: string; mime: string })[];
+  photos: (Omit<Photo, "blob" | "marked"> & { file: string; mime: string })[];
 }
 
 export function backupFileName(): string {
