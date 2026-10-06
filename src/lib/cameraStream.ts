@@ -80,8 +80,11 @@ if (typeof document !== "undefined") {
 }
 
 const MAIN_CAMERA_KEY = "inspecta.mainCamera";
+// The live picture at 1080p, not the full 12 MP: it starts quicker and is
+// lighter while kept warm. Photos are still full size (ImageCapture takes
+// them at the camera's largest size, see InAppCamera).
 // zoom: true asks to use the camera's zoom (Chrome only offers it if asked)
-const HIGH_RES = { width: { ideal: 4032 }, height: { ideal: 3024 }, zoom: true } as MediaTrackConstraints;
+const PREVIEW = { width: { ideal: 1920 }, height: { ideal: 1080 }, zoom: true } as MediaTrackConstraints;
 
 function getUserMedia(video: MediaTrackConstraints) {
   return navigator.mediaDevices.getUserMedia({ audio: false, video });
@@ -100,7 +103,7 @@ async function openMainCamera(): Promise<MediaStream> {
   }
   if (saved) {
     try {
-      return await getUserMedia({ deviceId: { exact: saved }, ...HIGH_RES });
+      return await getUserMedia({ deviceId: { exact: saved }, ...PREVIEW });
     } catch {
       // that camera's gone (or renamed): look again
     }
@@ -115,9 +118,9 @@ async function openMainCamera(): Promise<MediaStream> {
     } catch {
       // best-effort
     }
-    return getUserMedia({ deviceId: { exact: main }, ...HIGH_RES });
+    return getUserMedia({ deviceId: { exact: main }, ...PREVIEW });
   }
-  return getUserMedia({ facingMode: { ideal: "environment" }, ...HIGH_RES });
+  return getUserMedia({ facingMode: { ideal: "environment" }, ...PREVIEW });
 }
 
 async function mainBackCamera(): Promise<string | undefined> {

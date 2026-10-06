@@ -42,12 +42,17 @@ function tiltTurn(x: number, y: number, last: number): number {
   return last;
 }
 
-type ImageCaptureLike = { takePhoto(s?: { fillLightMode?: string }): Promise<Blob>; getPhotoCapabilities(): Promise<{ fillLightMode?: string[] }> };
+type PhotoSettings = { fillLightMode?: string; imageWidth?: number; imageHeight?: number };
+type ImageCaptureLike = {
+  takePhoto(s?: PhotoSettings): Promise<Blob>;
+  getPhotoCapabilities(): Promise<{ fillLightMode?: string[]; imageWidth?: { max: number }; imageHeight?: { max: number } }>;
+};
 
 export default function InAppCamera({ label, onDone }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const captureRef = useRef<ImageCaptureLike | null>(null);
+  const photoSize = useRef<PhotoSettings>({});
   const [caps, setCaps] = useState<Caps>({ zoom: DIGITAL_ZOOM, digital: true, torch: false, flash: false, focus: false });
   const [ready, setReady] = useState(false);
   // the picture is coming through (until then the video shows nothing,
@@ -102,6 +107,8 @@ export default function InAppCamera({ label, onDone }: Props) {
             captureRef.current = new IC(track);
             const pc = await captureRef.current.getPhotoCapabilities();
             next.flash = !!pc.fillLightMode?.includes("flash");
+            // the photo at the camera's largest size (the live picture is only 1080p)
+            if (pc.imageWidth?.max && pc.imageHeight?.max) photoSize.current = { imageWidth: pc.imageWidth.max, imageHeight: pc.imageHeight.max };
           } catch {
             captureRef.current = null;
           }
@@ -258,7 +265,7 @@ export default function InAppCamera({ label, onDone }: Props) {
       if (captureRef.current) {
         try {
           const photo = await Promise.race([
-            captureRef.current.takePhoto(caps.flash ? { fillLightMode: flash ? "flash" : "off" } : undefined),
+            captureRef.current.takePhoto({ ...photoSize.current, ...(caps.flash ? { fillLightMode: flash ? "flash" : "off" } : {}) }),
             new Promise<never>((_, reject) => setTimeout(() => reject(new Error("slow")), 5000)),
           ]);
           blob = await uprightPhoto(photo, video, turn);

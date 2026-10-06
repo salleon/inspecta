@@ -7,6 +7,11 @@ the technical detail.
 
 ## 1 October 2026
 
+- **The camera starts quicker.** Its live picture now runs at 1080p
+  instead of the full 12 MP, so it opens faster and is lighter while
+  it's kept ready between photos. Photos are still taken at the
+  camera's full size.
+
 - **Teal shutter; tap a markup tool again to turn it off.** The camera's
   shutter button is teal. In ✎ Mark up, tapping the tool that's on (Circle,
   Measure, Arrow or Pen) turns it off, so taps and drags only pick, move
