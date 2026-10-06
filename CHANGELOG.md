@@ -7,6 +7,12 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Tour: Back button, and tips keep clear of the phone's bars.** Each tip
+  has **‹ Back** (not on the first step, or a picked topic's first),
+  taking the screen back with it (the New site sheet, the full screen
+  readings and keypad...). Tips now stay inside the phone's status bar,
+  navigation bar and cut-outs, turned ones too. The uncategorised step
+  lights up the dialog's two buttons so its tip fits on smaller phones.
 - **Tour fixes: tips no longer cover what they point at, and the sideways
   steps stay on screen.** Each tip now measures itself and goes below,
   above or beside what's lit up (or in a corner), never over it; on a

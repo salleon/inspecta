@@ -133,6 +133,44 @@ test("Show me around walks through all 8 topics on example sites, then removes t
   assert.equal(await page.locator('[role="dialog"][aria-label="Welcome"]').count(), 0, "not offered again");
 });
 
+test("Back goes to the step before, its screen and all; not before the first", async () => {
+  await reopen();
+  await page.click('button[aria-label="Settings"]');
+  await page.click('button:has-text("Replay tour")');
+  const back = () => page.getByRole("button", { name: "‹ Back" }).click();
+  assert.equal(await tipTitle(), "Start a site");
+  assert.equal(await page.getByRole("button", { name: "‹ Back" }).count(), 0, "nothing before the first step");
+  await next();
+  await tipTitle();
+  await next();
+  assert.equal(await tipTitle(), "Log a finding");
+  await back();
+  assert.equal(await tipTitle(), "Pick the kind of site");
+  assert.equal(await page.locator('[data-tour="site-kinds"]').count(), 1, "the New site sheet opens again");
+  // into the full screen readings and back out of them
+  await page.getByRole("button", { name: "☰ Topics" }).click();
+  await page.locator('[role="dialog"][aria-label="Pick a topic"]').getByRole("button", { name: /Run the whole tour/ }).click();
+  for (let i = 0; i < 16; i++) {
+    await tipTitle();
+    await next();
+  }
+  assert.equal(await tipTitle(), "Add, delete, your own columns");
+  await back();
+  assert.equal(await tipTitle(), "Full screen with a keypad");
+  await page.waitForTimeout(900);
+  assert.equal(await page.locator(".wide-pad.off").count(), 0, "the keypad is out again");
+  await next();
+  await tipTitle();
+  await next();
+  assert.equal(await tipTitle(), "Check it first");
+  await back();
+  assert.equal(await tipTitle(), "Add, delete, your own columns");
+  assert.equal(await page.locator('[role="dialog"][aria-label="Readings, full screen"]').count(), 1, "back in the full screen");
+  await page.getByRole("button", { name: "Skip", exact: true }).click();
+  await page.waitForTimeout(500);
+  assert.deepEqual(await sites(), ["Harbour Tower"]);
+});
+
 test("Pick a topic runs just that topic, then comes back to the list", async () => {
   await page.evaluate(() => localStorage.removeItem("inspecta.tourOffered"));
   await reopen();
@@ -143,6 +181,7 @@ test("Pick a topic runs just that topic, then comes back to the list", async () 
   await list.getByRole("button", { name: /Customised reports/ }).click();
   assert.equal(await tipTitle(), "Customised reports");
   assert.equal(await topic(), "CUSTOMISED REPORTS · 1 OF 3");
+  assert.equal(await page.getByRole("button", { name: "‹ Back" }).count(), 0, "a picked topic starts at its own first step");
   await next();
   await tipTitle();
   await next();
@@ -201,7 +240,7 @@ test("closed mid-tour: the example sites are cleared away on the next opening", 
   assert.equal(await page.locator("text=Example site").count(), 0);
 });
 
-test("on a smaller phone with status and navigation bars, every tip is on screen and clear of what it lights up", async () => {
+test("on a smaller phone with status and navigation bars, every tip is on screen, clear of the bars and of what it lights up", async () => {
   const context = await app.browser.newContext({ viewport: { width: 360, height: 740 }, isMobile: true, hasTouch: true });
   const small = await context.newPage();
   await small.addInitScript(() => {
@@ -229,10 +268,13 @@ test("on a smaller phone with status and navigation bars, every tip is on screen
         covered: rings.some((x) => hit(card, x)),
         ringsOn: rings.every(on),
         cardOn: card.left >= -1 && card.top >= -1 && card.right <= innerWidth + 1 && card.bottom <= innerHeight + 1,
+        // clear of the status bar (42) and navigation bar (48), turned or not
+        clearOfBars: card.top >= 42 + 12 - 1 && card.bottom <= innerHeight - 48 - 12 + 1,
       };
     });
     assert.ok(r.rings > 0 && r.ringsOn, `${r.title}: lit up and on screen`);
     assert.ok(r.cardOn && !r.covered, `${r.title}: tip on screen, not covering what it lights up`);
+    assert.ok(r.clearOfBars, `${r.title}: tip clear of the phone's status and navigation bars`);
     const nextButton = small.locator('[aria-live="polite"] [role="dialog"] button', { hasText: /^(Next|Done)$/ });
     await nextButton.click();
   }

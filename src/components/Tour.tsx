@@ -117,10 +117,10 @@ const STEPS: Step[] = [
   {
     chapter: 2,
     route: (ids) => `${site(ids)}/export`,
-    targets: t('[data-tour="categorise-ask"]'),
+    targets: () => ['[data-tour="categorise-ask"] button:nth-of-type(1)', '[data-tour="categorise-ask"] button:nth-of-type(2)'],
     scene: "categorise",
     title: "No rush on site",
-    body: <>Leave the category blank if you're busy. When you export, Inspecta offers to go through the ones without a category, one by one, or export them under {b("Uncategorised")}.</>,
+    body: <>Busy? Leave it blank. When you export, Inspecta offers to categorise them then, or puts them under {b("Uncategorised")}.</>,
   },
   // 4. flow tests on a site
   { chapter: 3, route: (ids) => `${site(ids)}/findings`, targets: t('[data-tour="flow-tab"]'), title: "Flow tests on a site", body: <>AFSS and project sites have a {b("Flow tests")} tab next to the findings. Add the site's sprinkler, hydrant or combined system tests here.</> },
@@ -347,25 +347,48 @@ const overlaps = (a: Box, b: Box) => a.x < b.x + b.w && b.x < a.x + a.w && a.y <
 // or right), then the four corners; the first spot that's on screen and
 // clear of every lit-up thing wins. Only if nowhere is clear (a lit-up
 // thing filling the screen) does it sit over the least of them.
-export function placeCard(lit: Box[], view: { w: number; h: number }, width: number, height: number, gap: number): Place {
-  const m = 12; // from the screen's edges
+export interface Insets {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+}
+const NONE: Insets = { top: 0, right: 0, bottom: 0, left: 0 };
+
+// the phone's status bar, navigation bar and cut-outs (index.css --sa-*), in px
+function safeInsets(): Insets {
+  const probe = document.createElement("div");
+  probe.style.cssText = "position:fixed;left:0;top:0;visibility:hidden;pointer-events:none;padding:var(--sa-top) var(--sa-right) var(--sa-bottom) var(--sa-left)";
+  document.body.appendChild(probe);
+  const cs = getComputedStyle(probe);
+  const out = { top: parseFloat(cs.paddingTop) || 0, right: parseFloat(cs.paddingRight) || 0, bottom: parseFloat(cs.paddingBottom) || 0, left: parseFloat(cs.paddingLeft) || 0 };
+  probe.remove();
+  return out;
+}
+
+export function placeCard(lit: Box[], view: { w: number; h: number }, width: number, height: number, gap: number, safe: Insets = NONE): Place {
+  const m = 12; // from the screen's edges, inside the phone's bars
+  const left = m + safe.left;
+  const right = m + safe.right;
+  const top = m + safe.top;
+  const bottom = m + safe.bottom;
   const all = lit.reduce((u, r) => ({ x: Math.min(u.x, r.x), y: Math.min(u.y, r.y), r: Math.max(u.r, r.x + r.w), b: Math.max(u.b, r.y + r.h) }), { x: Infinity, y: Infinity, r: -Infinity, b: -Infinity });
   const first = lit[0];
   const cx = (b: { x: number; w: number }) => b.x + b.w / 2;
-  const clampX = (x: number) => Math.max(m, Math.min(view.w - width - m, x));
-  const clampY = (y: number) => Math.max(m, Math.min(view.h - height - m, y));
+  const clampX = (x: number) => Math.max(left, Math.min(view.w - width - right, x));
+  const clampY = (y: number) => Math.max(top, Math.min(view.h - height - bottom, y));
   const centredX = clampX(cx(first) - width / 2);
   const tries: Place[] = [
     { x: centredX, y: all.b + gap, arrow: { side: "top", at: 0 } },
     { x: centredX, y: all.y - gap - height, arrow: { side: "bottom", at: 0 } },
     { x: first.x + first.w + gap, y: clampY(first.y + first.h / 2 - height / 2), arrow: { side: "left", at: 0 } },
     { x: first.x - gap - width, y: clampY(first.y + first.h / 2 - height / 2), arrow: { side: "right", at: 0 } },
-    { x: m, y: m, arrow: null },
-    { x: view.w - width - m, y: m, arrow: null },
-    { x: m, y: view.h - height - m, arrow: null },
-    { x: view.w - width - m, y: view.h - height - m, arrow: null },
+    { x: left, y: top, arrow: null },
+    { x: view.w - width - right, y: top, arrow: null },
+    { x: left, y: view.h - height - bottom, arrow: null },
+    { x: view.w - width - right, y: view.h - height - bottom, arrow: null },
   ];
-  const fits = (p: Place) => p.x >= m - 0.5 && p.y >= m - 0.5 && p.x + width <= view.w - m + 0.5 && p.y + height <= view.h - m + 0.5;
+  const fits = (p: Place) => p.x >= left - 0.5 && p.y >= top - 0.5 && p.x + width <= view.w - right + 0.5 && p.y + height <= view.h - bottom + 0.5;
   const card = (p: Place) => ({ x: p.x, y: p.y, w: width, h: height });
   let pick = tries.find((p) => fits(p) && !lit.some((r) => overlaps(card(p), { x: r.x - 6, y: r.y - 6, w: r.w + 12, h: r.h + 12 })));
   if (pick) pick = { ...pick, clear: true };
@@ -399,6 +422,13 @@ function Walkthrough({ ids, step, single }: { ids: TourIds; step: number; single
   // readings, the readings themselves (so the tip turns with them)
   const [frame, setFrame] = useState<Frame>({ turned: false, x: 0, y: 0, w: window.innerWidth, h: window.innerHeight });
   const cardRef = useRef<HTMLDivElement>(null);
+  const [safe, setSafe] = useState<Insets>(NONE);
+  useEffect(() => {
+    const read = () => setSafe(safeInsets());
+    read();
+    window.addEventListener("resize", read);
+    return () => window.removeEventListener("resize", read);
+  }, []);
   const [cardH, setCardH] = useState(220);
 
   useBackHandler(() => {
@@ -453,7 +483,7 @@ function Walkthrough({ ids, step, single }: { ids: TourIds; step: number; single
         const vw = window.innerWidth;
         const vh = window.innerHeight;
         const r = els.map((el) => el.getBoundingClientRect()).map((b) => ({ x: b.left, y: b.top, w: b.width, h: b.height }));
-        if (!placeCard(r, { w: vw, h: vh }, Math.min(342, vw - 32), h, 19).clear) {
+        if (!placeCard(r, { w: vw, h: vh }, Math.min(342, vw - 32), h, 19, safeInsets()).clear) {
           lifted.current = step;
           els[0].scrollIntoView({ block: "start", behavior: "instant" as ScrollBehavior });
         }
@@ -469,6 +499,11 @@ function Walkthrough({ ids, step, single }: { ids: TourIds; step: number; single
     navigate("/");
     await endTour();
   }
+  // back a step: not before the tour's first, or a picked topic's first
+  const first = single ? k === 1 : step === 0;
+  function back() {
+    if (!first) setTourStep(step - 1);
+  }
   function next() {
     if (!last) setTourStep(step + 1);
     else if (single) showTopics(true);
@@ -482,7 +517,10 @@ function Walkthrough({ ids, step, single }: { ids: TourIds; step: number; single
   // only what's actually in sight is lit up and pointed at
   const lit = boxes.filter((r) => r.x + r.w > 0 && r.y + r.h > 0 && r.x < view.w && r.y < view.h);
   const box = lit[0];
-  const place = box ? placeCard(lit, view, width, cardH, pad + gap) : null;
+  // the phone's bars, turned with the readings when they're turned: their
+  // left edge runs along the top of the screen
+  const bars = frame.turned ? { top: safe.right, right: safe.bottom, bottom: safe.left, left: safe.top } : safe;
+  const place = box ? placeCard(lit, view, width, cardH, pad + gap, bars) : null;
 
   const layer: CSSProperties = frame.turned
     ? { position: "fixed", left: frame.x + frame.h / 2, top: frame.y + frame.w / 2, width: view.w, height: view.h, transform: "translate(-50%, -50%) rotate(90deg)" }
@@ -556,10 +594,15 @@ function Walkthrough({ ids, step, single }: { ids: TourIds; step: number; single
               <button type="button" onClick={() => showTopics(true)} style={{ background: "none", border: "none", padding: 0, fontSize: 12.5, fontWeight: 800, color: "var(--muted)" }}>
                 ☰ Topics
               </button>
-              <span style={{ display: "flex", gap: 14, alignItems: "center" }}>
+              <span style={{ display: "flex", gap: 12, alignItems: "center" }}>
                 {!(last && !single) && (
                   <button type="button" onClick={() => void finish()} style={{ background: "none", border: "none", padding: 0, fontSize: 13, fontWeight: 700, color: "var(--muted)" }}>
                     Skip
+                  </button>
+                )}
+                {!first && (
+                  <button type="button" onClick={back} style={{ padding: "7px 12px", borderRadius: 10, background: "none", border: "1px solid var(--border-strong)", color: "var(--text)", fontSize: 13, fontWeight: 800 }}>
+                    ‹ Back
                   </button>
                 )}
                 <button type="button" onClick={next} style={{ padding: "8px 16px", borderRadius: 10, background: "var(--accent)", color: "var(--accent-text)", border: "none", fontSize: 13, fontWeight: 800 }}>
