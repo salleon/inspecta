@@ -201,6 +201,44 @@ test("closed mid-tour: the example sites are cleared away on the next opening", 
   assert.equal(await page.locator("text=Example site").count(), 0);
 });
 
+test("on a smaller phone with status and navigation bars, every tip is on screen and clear of what it lights up", async () => {
+  const context = await app.browser.newContext({ viewport: { width: 360, height: 740 }, isMobile: true, hasTouch: true });
+  const small = await context.newPage();
+  await small.addInitScript(() => {
+    localStorage.setItem("inspecta.inspectorName", "Test Inspector");
+    // as the phone's status and navigation bars do (see index.css --sa-*)
+    document.addEventListener("DOMContentLoaded", () => {
+      const st = document.createElement("style");
+      st.textContent = ":root{--safe-area-inset-top:42px;--safe-area-inset-bottom:48px}";
+      document.head.appendChild(st);
+    });
+  });
+  await small.goto(app.url + "/");
+  await small.waitForTimeout(2600);
+  await small.getByRole("button", { name: "Show me around" }).click();
+  for (let i = 0; i < 25; i++) {
+    await small.waitForTimeout(i === 15 ? 1800 : 1100);
+    const r = await small.evaluate(() => {
+      const card = document.querySelector('[aria-live="polite"] [role="dialog"]').getBoundingClientRect();
+      const rings = [...document.querySelectorAll('[aria-live="polite"] svg > rect[stroke]')].map((e) => e.getBoundingClientRect());
+      const hit = (a, b) => a.left < b.right - 2 && b.left < a.right - 2 && a.top < b.bottom - 2 && b.top < a.bottom - 2;
+      const on = (b) => b.right > 0 && b.bottom > 0 && b.left < innerWidth && b.top < innerHeight;
+      return {
+        title: document.querySelector('[aria-live="polite"] [role="dialog"]').getAttribute("aria-label"),
+        rings: rings.length,
+        covered: rings.some((x) => hit(card, x)),
+        ringsOn: rings.every(on),
+        cardOn: card.left >= -1 && card.top >= -1 && card.right <= innerWidth + 1 && card.bottom <= innerHeight + 1,
+      };
+    });
+    assert.ok(r.rings > 0 && r.ringsOn, `${r.title}: lit up and on screen`);
+    assert.ok(r.cardOn && !r.covered, `${r.title}: tip on screen, not covering what it lights up`);
+    const nextButton = small.locator('[aria-live="polite"] [role="dialog"] button', { hasText: /^(Next|Done)$/ });
+    await nextButton.click();
+  }
+  await context.close();
+});
+
 test("no page errors", () => {
   assert.deepEqual(errors, []);
 });

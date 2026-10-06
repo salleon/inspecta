@@ -102,7 +102,7 @@ const STEPS: Step[] = [
   {
     chapter: 2,
     route: (ids) => `${site(ids)}/finding/${ids.findingId}/note`,
-    targets: () => ['[data-tour="defect-type"]', '[data-tour="level"]', '[data-tour="esr"]'],
+    targets: () => ['[data-tour="defect-type"]', '[data-tour="level"]'],
     title: "Level, defect type, category",
     body: (
       <>
@@ -151,7 +151,7 @@ const STEPS: Step[] = [
   {
     chapter: 4,
     route: (ids) => `${site(ids)}/flow/${ids.testId}`,
-    targets: t('[data-tour="flow-readings"]'),
+    targets: t('[data-tour="flow-supplies"]'),
     title: "A tab per supply",
     body: (
       <>
@@ -175,10 +175,10 @@ const STEPS: Step[] = [
     scene: "wide",
     sideways: true,
     title: "Add, delete, your own columns",
-    body: <>The dashed row adds a reading. A red {b("✕")} deletes one (it asks first). {b("+ Column")} adds a reading of your own, like oil pressure. {b("Save & close")} when you're done.</>,
+    body: <>The dashed row adds a reading. A red {b("✕")} deletes one (it asks first). {b("+ Column")} adds a reading of your own, like oil pressure. {b("Done")} goes back.</>,
   },
   // 6. exporting
-  { chapter: 5, route: (ids) => `${site(ids)}/export`, targets: t('[data-tour="preview"]'), title: "Check it first", body: <>This is the report as it will print: findings grouped under their ESR headings, coloured by defect type, with photos.</> },
+  { chapter: 5, route: (ids) => `${site(ids)}/export`, targets: t('[data-tour="preview-head"]'), title: "Check it first", body: <>This is the report as it will print: findings grouped under their ESR headings, coloured by defect type, with photos.</> },
   {
     chapter: 5,
     route: (ids) => `${site(ids)}/export`,
@@ -208,7 +208,7 @@ const STEPS: Step[] = [
   {
     chapter: 6,
     route: (ids) => `${site(ids)}/export`,
-    targets: t('[role="dialog"][aria-label="Create Customised Report"]'),
+    targets: t('[role="dialog"][aria-label="Create Customised Report"] input'),
     scene: "custom-report",
     title: "Name it, pick quickly",
     body: (
@@ -329,6 +329,60 @@ interface Box {
   h: number;
 }
 
+interface Frame extends Box {
+  turned: boolean;
+}
+
+interface Place {
+  x: number;
+  y: number;
+  clear?: boolean; // nothing lit up is under it
+  arrow: { side: "top" | "bottom" | "left" | "right"; at: number } | null;
+}
+
+const overlaps = (a: Box, b: Box) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+
+// Where the tip goes: next to what's lit up, never over any of it. Tries
+// below, then above, everything lit up, then beside the first thing (left
+// or right), then the four corners; the first spot that's on screen and
+// clear of every lit-up thing wins. Only if nowhere is clear (a lit-up
+// thing filling the screen) does it sit over the least of them.
+export function placeCard(lit: Box[], view: { w: number; h: number }, width: number, height: number, gap: number): Place {
+  const m = 12; // from the screen's edges
+  const all = lit.reduce((u, r) => ({ x: Math.min(u.x, r.x), y: Math.min(u.y, r.y), r: Math.max(u.r, r.x + r.w), b: Math.max(u.b, r.y + r.h) }), { x: Infinity, y: Infinity, r: -Infinity, b: -Infinity });
+  const first = lit[0];
+  const cx = (b: { x: number; w: number }) => b.x + b.w / 2;
+  const clampX = (x: number) => Math.max(m, Math.min(view.w - width - m, x));
+  const clampY = (y: number) => Math.max(m, Math.min(view.h - height - m, y));
+  const centredX = clampX(cx(first) - width / 2);
+  const tries: Place[] = [
+    { x: centredX, y: all.b + gap, arrow: { side: "top", at: 0 } },
+    { x: centredX, y: all.y - gap - height, arrow: { side: "bottom", at: 0 } },
+    { x: first.x + first.w + gap, y: clampY(first.y + first.h / 2 - height / 2), arrow: { side: "left", at: 0 } },
+    { x: first.x - gap - width, y: clampY(first.y + first.h / 2 - height / 2), arrow: { side: "right", at: 0 } },
+    { x: m, y: m, arrow: null },
+    { x: view.w - width - m, y: m, arrow: null },
+    { x: m, y: view.h - height - m, arrow: null },
+    { x: view.w - width - m, y: view.h - height - m, arrow: null },
+  ];
+  const fits = (p: Place) => p.x >= m - 0.5 && p.y >= m - 0.5 && p.x + width <= view.w - m + 0.5 && p.y + height <= view.h - m + 0.5;
+  const card = (p: Place) => ({ x: p.x, y: p.y, w: width, h: height });
+  let pick = tries.find((p) => fits(p) && !lit.some((r) => overlaps(card(p), { x: r.x - 6, y: r.y - 6, w: r.w + 12, h: r.h + 12 })));
+  if (pick) pick = { ...pick, clear: true };
+  else {
+    // nowhere clear: the on-screen spot covering the least
+    const covered = (p: Place) => lit.reduce((n, r) => n + Math.max(0, Math.min(p.x + width, r.x + r.w) - Math.max(p.x, r.x)) * Math.max(0, Math.min(p.y + height, r.y + r.h) - Math.max(p.y, r.y)), 0);
+    pick = tries.map((p) => ({ ...p, x: clampX(p.x), y: clampY(p.y), arrow: null })).sort((a, b) => covered(a) - covered(b))[0];
+  }
+  // the arrow points at the first lit-up thing, if it's beside it
+  if (pick.arrow) {
+    const along = pick.arrow.side === "top" || pick.arrow.side === "bottom" ? cx(first) - pick.x - 8 : first.y + first.h / 2 - pick.y - 8;
+    const span = pick.arrow.side === "top" || pick.arrow.side === "bottom" ? width : height;
+    pick = along < 14 || along > span - 30 ? { ...pick, arrow: null } : { ...pick, arrow: { ...pick.arrow, at: along } };
+  }
+  return pick;
+}
+
 function Walkthrough({ ids, step, single }: { ids: TourIds; step: number; single: boolean }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -341,8 +395,11 @@ function Walkthrough({ ids, step, single }: { ids: TourIds; step: number; single
   const here = location.pathname + location.search === route;
   const selectors = current.targets(ids);
   const [boxes, setBoxes] = useState<Box[]>([]);
-  const [viewport, setViewport] = useState({ w: window.innerWidth, h: window.innerHeight });
-  const [turned, setTurned] = useState(false);
+  // the area the tour draws in: the screen, or on the turned full-screen
+  // readings, the readings themselves (so the tip turns with them)
+  const [frame, setFrame] = useState<Frame>({ turned: false, x: 0, y: 0, w: window.innerWidth, h: window.innerHeight });
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [cardH, setCardH] = useState(220);
 
   useBackHandler(() => {
     void finish();
@@ -361,38 +418,50 @@ function Walkthrough({ ids, step, single }: { ids: TourIds; step: number; single
   // follow the lit-up elements (they can move while a screen slides in, or
   // after scrolling into view); state only changes when they really move
   const scrolled = useRef(-1);
+  const lifted = useRef(-1); // moved to the top of the screen to make room for the tip
   const key = selectors.join("|");
   useLayoutEffect(() => {
     setBoxes([]);
     let raf = 0;
     const tick = () => {
       const els = here ? selectors.map((sel) => document.querySelector(sel) as HTMLElement | null).filter((el): el is HTMLElement => !!el) : [];
-      // on the turned full-screen readings, the tip turns with them
-      const turn = !!current.sideways && !!document.querySelector(".wide-turn");
+      const turnEl = current.sideways ? (document.querySelector(".wide-turn") as HTMLElement | null) : null;
       if (els.length) {
         if (scrolled.current !== step) {
           scrolled.current = step;
+          // into view: in the middle of the page, or within the full-screen
+          // readings' own scrolling table
           if (!current.sideways) els[0].scrollIntoView({ block: "center", behavior: "instant" as ScrollBehavior });
+          else for (const el of els) if (el.closest(".wide-scroll")) el.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "instant" as ScrollBehavior });
         }
-        const vw = window.innerWidth;
+        const d = turnEl?.getBoundingClientRect();
+        // turned a quarter-turn clockwise: the readings' left edge is along
+        // the top of the screen, measured from where they actually are
+        const nextFrame: Frame = d ? { turned: true, x: d.left, y: d.top, w: Math.round(d.height), h: Math.round(d.width) } : { turned: false, x: 0, y: 0, w: window.innerWidth, h: window.innerHeight };
         const next = els.map((el) => {
           const r = el.getBoundingClientRect();
-          // turned a quarter-turn clockwise: the screen's top edge is the
-          // turned view's left edge
-          return turn ? { x: Math.round(r.top), y: Math.round(vw - r.right), w: Math.round(r.height), h: Math.round(r.width) } : { x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height) };
+          return d ? { x: Math.round(r.top - d.top), y: Math.round(d.right - r.right), w: Math.round(r.height), h: Math.round(r.width) } : { x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height) };
         });
-        setTurned(turn);
+        setFrame((prev) => (prev.turned === nextFrame.turned && prev.x === nextFrame.x && prev.y === nextFrame.y && prev.w === nextFrame.w && prev.h === nextFrame.h ? prev : nextFrame));
         setBoxes((prev) => (prev.length === next.length && prev.every((p, i) => p.x === next[i].x && p.y === next[i].y && p.w === next[i].w && p.h === next[i].h) ? prev : next));
+      }
+      const h = cardRef.current?.offsetHeight;
+      if (h) setCardH((prev) => (prev === h ? prev : h));
+      // centred on a small screen, with no room for the tip either side:
+      // scroll it up to the top, so the tip fits underneath
+      if (els.length && h && !current.sideways && lifted.current !== step) {
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const r = els.map((el) => el.getBoundingClientRect()).map((b) => ({ x: b.left, y: b.top, w: b.width, h: b.height }));
+        if (!placeCard(r, { w: vw, h: vh }, Math.min(342, vw - 32), h, 19).clear) {
+          lifted.current = step;
+          els[0].scrollIntoView({ block: "start", behavior: "instant" as ScrollBehavior });
+        }
       }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
-    const onResize = () => setViewport({ w: window.innerWidth, h: window.innerHeight });
-    window.addEventListener("resize", onResize);
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener("resize", onResize);
-    };
+    return () => cancelAnimationFrame(raf);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, key, here]);
 
@@ -406,45 +475,27 @@ function Walkthrough({ ids, step, single }: { ids: TourIds; step: number; single
     else void finish();
   }
 
-  const view = turned ? { w: viewport.h, h: viewport.w } : viewport;
-  const box = boxes[0];
+  const view = { w: frame.w, h: frame.h };
   const pad = 5;
-  const width = Math.min(turned ? 330 : 342, view.w - 48);
-  // turned: beside the first lit-up thing, left or right, whichever has room
-  const roomBelow = box ? view.h - (box.y + box.h) : 0;
-  const roomAbove = box ? box.y : 0;
-  const below = box ? box.y + box.h / 2 < view.h / 2 : false;
-  // a tall target (the whole preview) leaves no room either side: the tip sits over it, at the bottom
-  const over = box ? Math.max(roomAbove, roomBelow) < 250 : false;
-  let left = (view.w - width) / 2;
-  let place: CSSProperties = {};
-  let arrow: "top" | "bottom" | "left" | "right" | null = null;
-  let arrowAt = 0;
-  if (box && turned) {
-    const rightRoom = view.w - (box.x + box.w);
-    left = rightRoom > box.x ? Math.min(view.w - width - 16, box.x + box.w + pad + 18) : Math.max(16, box.x - pad - 18 - width);
-    place = { top: Math.max(16, Math.min(view.h - 260, box.y)) };
-    arrow = rightRoom > box.x ? "left" : "right";
-    arrowAt = 30;
-  } else if (box && over) {
-    place = { bottom: 24 };
-  } else if (box) {
-    place = below ? { top: box.y + box.h + pad + 16 } : { bottom: view.h - box.y + pad + 16 };
-    arrow = below ? "top" : "bottom";
-    arrowAt = Math.max(16, Math.min(width - 32, box.x + box.w / 2 - left - 8));
-  }
-  const arrowStyle: CSSProperties =
-    arrow === "top"
-      ? { top: -8, left: arrowAt, borderLeft: "1px solid var(--accent)", borderTop: "1px solid var(--accent)" }
-      : arrow === "bottom"
-        ? { bottom: -8, left: arrowAt, borderRight: "1px solid var(--accent)", borderBottom: "1px solid var(--accent)" }
-        : arrow === "left"
-          ? { left: -8, top: arrowAt, borderLeft: "1px solid var(--accent)", borderBottom: "1px solid var(--accent)" }
-          : { right: -8, top: arrowAt, borderRight: "1px solid var(--accent)", borderTop: "1px solid var(--accent)" };
+  const gap = 14;
+  const width = Math.min(frame.turned ? 330 : 342, view.w - 32);
+  // only what's actually in sight is lit up and pointed at
+  const lit = boxes.filter((r) => r.x + r.w > 0 && r.y + r.h > 0 && r.x < view.w && r.y < view.h);
+  const box = lit[0];
+  const place = box ? placeCard(lit, view, width, cardH, pad + gap) : null;
 
-  const layer: CSSProperties = turned
-    ? { position: "fixed", left: "50%", top: "50%", width: view.w, height: view.h, transform: "translate(-50%, -50%) rotate(90deg)" }
+  const layer: CSSProperties = frame.turned
+    ? { position: "fixed", left: frame.x + frame.h / 2, top: frame.y + frame.w / 2, width: view.w, height: view.h, transform: "translate(-50%, -50%) rotate(90deg)" }
     : { position: "fixed", inset: 0 };
+  const arrowStyle: CSSProperties | null = !place?.arrow
+    ? null
+    : place.arrow.side === "top"
+      ? { top: -8, left: place.arrow.at, borderLeft: "1px solid var(--accent)", borderTop: "1px solid var(--accent)" }
+      : place.arrow.side === "bottom"
+        ? { bottom: -8, left: place.arrow.at, borderRight: "1px solid var(--accent)", borderBottom: "1px solid var(--accent)" }
+        : place.arrow.side === "left"
+          ? { left: -8, top: place.arrow.at, borderLeft: "1px solid var(--accent)", borderBottom: "1px solid var(--accent)" }
+          : { right: -8, top: place.arrow.at, borderRight: "1px solid var(--accent)", borderTop: "1px solid var(--accent)" };
 
   return (
     // covers the whole screen, so taps only reach the tour's own buttons
@@ -454,28 +505,29 @@ function Walkthrough({ ids, step, single }: { ids: TourIds; step: number; single
           <defs>
             <mask id="tour-holes">
               <rect width={view.w} height={view.h} fill="white" />
-              {boxes.map((r, i) => (
+              {lit.map((r, i) => (
                 <rect key={i} x={r.x - pad} y={r.y - pad} width={r.w + pad * 2} height={r.h + pad * 2} rx={Math.min(14, (r.h + pad * 2) / 2)} fill="black" />
               ))}
             </mask>
           </defs>
           <rect width={view.w} height={view.h} fill="rgba(3,13,22,0.74)" mask="url(#tour-holes)" />
-          {boxes.map((r, i) => (
+          {lit.map((r, i) => (
             <rect key={i} x={r.x - pad - 2} y={r.y - pad - 2} width={r.w + pad * 2 + 4} height={r.h + pad * 2 + 4} rx={Math.min(16, (r.h + pad * 2) / 2 + 2)} fill="none" stroke="var(--accent)" strokeWidth={3} />
           ))}
         </svg>
 
-        {box && (
+        {box && place && (
           <div
             role="dialog"
             aria-label={current.title}
             className="pop-in"
             key={step}
+            ref={cardRef}
             style={{
               position: "absolute",
-              left,
+              left: place?.x ?? 16,
+              top: place?.y ?? 16,
               width,
-              ...place,
               boxSizing: "border-box",
               padding: "14px 16px 13px",
               borderRadius: 16,
@@ -487,7 +539,7 @@ function Walkthrough({ ids, step, single }: { ids: TourIds; step: number; single
               gap: 7,
             }}
           >
-            {arrow && <span aria-hidden="true" style={{ position: "absolute", width: 16, height: 16, background: "var(--panel)", transform: "rotate(45deg)", ...arrowStyle }} />}
+            {arrowStyle && <span aria-hidden="true" style={{ position: "absolute", width: 16, height: 16, background: "var(--panel)", transform: "rotate(45deg)", ...arrowStyle }} />}
             <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
               <span aria-hidden="true" style={{ display: "flex", gap: 3 }}>
                 {TOPICS.map((_, i) => (

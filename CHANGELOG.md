@@ -7,6 +7,16 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Tour fixes: tips no longer cover what they point at, and the sideways
+  steps stay on screen.** Each tip now measures itself and goes below,
+  above or beside what's lit up (or in a corner), never over it; on a
+  small phone the page scrolls the lit-up part to the top to make room.
+  On the sideways full-screen steps the tour lines up with the readings as
+  they actually sit on the phone (status and navigation bars included),
+  scrolls the Add reading row and ✕ into view, and makes sure the keypad
+  is out. Tall areas are narrowed to the part that matters (the report's
+  heading, the supply tabs, the report name). A test walks the whole tour
+  on a smaller phone and checks every step.
 - **New tutorial tour.** The tour is redone as 8 short topics (canvas
   TourFull): Sites (the + and the three kinds of site), Findings (camera or
   pen, photos, Save & next), ESR categories (Quick add, level, defect type,

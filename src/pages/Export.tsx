@@ -666,7 +666,7 @@ export default function ExportPreview() {
       {/* paper preview */}
       <div data-tour="preview" style={{ flexGrow: 1, overflowY: "auto", padding: "8px 16px 12px" }}>
         <div style={{ background: "var(--paper)", borderRadius: 12, padding: "22px 18px", display: "flex", flexDirection: "column", gap: 18 }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 2, borderBottom: "1px solid var(--paper-border)", paddingBottom: 14 }}>
+          <div data-tour="preview-head" style={{ display: "flex", flexDirection: "column", gap: 2, borderBottom: "1px solid var(--paper-border)", paddingBottom: 14 }}>
             <div style={{ fontSize: 16, fontWeight: 800, color: "var(--paper-text)" }}>{report ? `${site?.name ?? "Inspection"} - ${report.name}` : reportTitle(site?.name, getInspectorName())}</div>
             <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted-2)" }}>
               {site?.address ? `${site.address} · ` : ""}Inspected {formatDate(inspectionMs)}

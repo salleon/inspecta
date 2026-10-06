@@ -701,7 +701,7 @@ export default function FlowTest() {
 
       {/* readings */}
       <div style={card} data-tour="flow-readings">
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingBottom: 6, borderBottom: "1px solid var(--border)" }}>
+        <div data-tour="flow-supplies" style={{ display: "flex", flexDirection: "column", gap: 8, paddingBottom: 6, borderBottom: "1px solid var(--border)" }}>
           <div style={lbl}>{combined ? "Pumps" : "Supply"}</div>
           <SectionTabs
             test={test}
@@ -1087,7 +1087,10 @@ function WideReadings({
   const [bodyW, setBodyW] = useState(0);
   // the tour taps a cell for the keypad, then puts it away
   useTourScene("wide-keypad", () => {
-    window.setTimeout(() => scrollRef.current?.querySelectorAll<HTMLInputElement>('[aria-label="Discharge"]')[2]?.focus({ preventScroll: true }), 650);
+    window.setTimeout(() => {
+      scrollRef.current?.querySelectorAll<HTMLInputElement>('[aria-label="Discharge"]')[2]?.focus({ preventScroll: true });
+      setPadOn(true); // out even if the phone wouldn't take the focus
+    }, 650);
   });
   useTourScene("wide", () => hidePadRef.current());
   const bodyRef = useRef<HTMLDivElement>(null);
