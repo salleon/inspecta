@@ -65,6 +65,22 @@ test("shoot, retake, mark up with a circle and a measurement, use", async () => 
   await page.waitForTimeout(100);
   assert.equal(await page.locator(".cam-focus").count(), 1, "focus square shown");
 
+  // no grey ▶ placeholder before the picture comes through
+  assert.match(await page.locator(".cam video").getAttribute("poster"), /^data:image\/gif/);
+  // zoom: the fake camera has none of its own, so 1× / 2× zoom digitally
+  // and the photo is cropped to match
+  assert.deepEqual(await page.locator(".cam-zoom button").allInnerTexts(), ["1×", "2×"]);
+  await page.locator(".cam-zoom button", { hasText: "2×" }).click();
+  await page.getByLabel("Take photo").click();
+  await page.getByRole("button", { name: /Retake/ }).waitFor();
+  const size = await page.evaluate(() => {
+    const v = document.querySelector(".cam video");
+    const img = document.querySelector(".cam-shot");
+    return { vw: v.videoWidth, iw: img.naturalWidth };
+  });
+  assert.ok(Math.abs(size.iw - size.vw / 2) < 4, `2× keeps the middle half (${size.iw} of ${size.vw})`);
+  await page.getByRole("button", { name: /Retake/ }).click();
+  await page.locator(".cam-zoom button", { hasText: "1×" }).click();
   await page.getByLabel("Take photo").click();
   await page.getByRole("button", { name: /Retake/ }).waitFor();
   await page.getByRole("button", { name: /Retake/ }).click();

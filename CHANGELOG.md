@@ -7,6 +7,13 @@ the technical detail.
 
 ## 1 October 2026
 
+- **In-app camera fixes: main lens, zoom, flash, no grey ▶.** The camera
+  opened the phone's ultra-wide lens on some phones (stuck at .5×, with
+  no zoom or flash buttons); it now picks the main back camera, and asks
+  for the camera's own zoom. Where a camera still offers no zoom, 1× / 2×
+  (and pinch, up to 4×) zoom digitally, cropping the photo to match. The
+  grey ▶ that showed for a moment before the camera started is gone.
+
 - **In-app camera and ✎ Mark up.** + New finding, Save & next and the +
   photo tile now open Inspecta's own camera instead of the Android camera
   app: tap to focus, pinch or .5× / 1× / 2× to zoom (where the phone's

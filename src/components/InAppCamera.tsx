@@ -20,7 +20,10 @@ interface Props {
 }
 
 interface Caps {
-  zoom?: { min: number; max: number };
+  zoom: { min: number; max: number };
+  // no zoom from the camera itself: the picture is enlarged and the photo
+  // cropped to match (2× keeps the middle half)
+  digital: boolean;
   torch: boolean;
   flash: boolean; // the photo's own flash (ImageCapture fillLightMode)
   focus: boolean;
@@ -43,8 +46,11 @@ export default function InAppCamera({ label, onDone }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const captureRef = useRef<ImageCaptureLike | null>(null);
-  const [caps, setCaps] = useState<Caps>({ torch: false, flash: false, focus: false });
+  const [caps, setCaps] = useState<Caps>({ zoom: DIGITAL_ZOOM, digital: true, torch: false, flash: false, focus: false });
   const [ready, setReady] = useState(false);
+  // the picture is coming through (until then the video shows nothing,
+  // not Android's grey ▶ placeholder)
+  const [live, setLive] = useState(false);
   const [flash, setFlash] = useState(getCameraFlash);
   const [zoom, setZoom] = useState(1);
   const [focusAt, setFocusAt] = useState<{ x: number; y: number; n: number } | null>(null);
@@ -66,10 +72,7 @@ export default function InAppCamera({ label, onDone }: Props) {
     let cancelled = false;
     async function start() {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          audio: false,
-          video: { facingMode: { ideal: "environment" }, width: { ideal: 4032 }, height: { ideal: 3024 } },
-        });
+        const stream = await openMainCamera();
         if (cancelled) {
           stream.getTracks().forEach((t) => t.stop());
           return;
@@ -83,7 +86,8 @@ export default function InAppCamera({ label, onDone }: Props) {
         }
         const tc = (track.getCapabilities?.() ?? {}) as MediaTrackCapabilities & { zoom?: { min: number; max: number }; torch?: boolean; focusMode?: string[] };
         const next: Caps = {
-          zoom: tc.zoom && tc.zoom.max > tc.zoom.min ? { min: tc.zoom.min, max: tc.zoom.max } : undefined,
+          zoom: tc.zoom && tc.zoom.max > tc.zoom.min ? { min: tc.zoom.min, max: tc.zoom.max } : DIGITAL_ZOOM,
+          digital: !(tc.zoom && tc.zoom.max > tc.zoom.min),
           torch: !!tc.torch,
           flash: false,
           focus: !!tc.focusMode?.length,
@@ -115,6 +119,7 @@ export default function InAppCamera({ label, onDone }: Props) {
       streamRef.current?.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
       setReady(false);
+      setLive(false);
       await start();
     }
     function onVisible() {
@@ -157,9 +162,9 @@ export default function InAppCamera({ label, onDone }: Props) {
   }
 
   function applyZoom(z: number) {
-    if (!caps.zoom) return;
     const v = Math.min(caps.zoom.max, Math.max(caps.zoom.min, z));
     setZoom(v);
+    if (caps.digital) return;
     track()?.applyConstraints({ advanced: [{ zoom: v } as MediaTrackConstraintSet] }).catch(() => {});
   }
 
@@ -250,6 +255,7 @@ export default function InAppCamera({ label, onDone }: Props) {
       }
       // no full-size photo from this camera: the picture itself
       if (!blob) blob = await frameGrab(video, turn);
+      if (caps.digital && zoom > 1.01) blob = await cropMiddle(blob, zoom);
       setShot({ blob, url: URL.createObjectURL(blob) });
     } catch {
       // nothing taken; the shutter can be pressed again
@@ -270,14 +276,14 @@ export default function InAppCamera({ label, onDone }: Props) {
     onDone({ blob: shot.blob, marks: marks?.length ? marks : undefined });
   }
 
-  const zoomStops = caps.zoom ? [0.5, 1, 2].filter((z) => z >= caps.zoom!.min - 0.05 && z <= caps.zoom!.max + 0.05) : [];
+  const zoomStops = [0.5, 1, 2].filter((z) => z >= caps.zoom.min - 0.05 && z <= caps.zoom.max + 0.05);
   const nearest = zoomStops.reduce((a, z) => (Math.abs(z - zoom) < Math.abs(a - zoom) ? z : a), zoomStops[0] ?? 1);
   const flashKnown = caps.flash || caps.torch;
 
   return (
     <div className="cam" data-testid="in-app-camera">
       <div className="cam-view" onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}>
-        <video ref={videoRef} playsInline muted autoPlay style={{ opacity: shot ? 0 : 1 }} />
+        <video ref={videoRef} playsInline muted autoPlay poster={BLANK} onPlaying={() => setLive(true)} style={{ opacity: shot || !live ? 0 : 1, transform: caps.digital && zoom > 1 ? `scale(${zoom})` : undefined }} />
         {shot && <img className="cam-shot" src={shot.url} alt="" />}
         {focusAt && !shot && <span key={focusAt.n} className="cam-focus" style={{ left: focusAt.x, top: focusAt.y }} />}
         {blink > 0 && <span key={blink} className="cam-blink" />}
@@ -343,6 +349,63 @@ function FlashIcon({ on }: { on: boolean }) {
   );
 }
 
+// ---- which camera ----
+
+// a see-through 1 px image, in place of the video's ▶ placeholder
+const BLANK = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+const MAIN_CAMERA_KEY = "inspecta.mainCamera";
+// zoom: true asks to use the camera's zoom (Chrome only offers it if asked)
+const HIGH_RES = { width: { ideal: 4032 }, height: { ideal: 3024 }, zoom: true } as MediaTrackConstraints;
+const DIGITAL_ZOOM = { min: 1, max: 4 };
+
+function getUserMedia(video: MediaTrackConstraints) {
+  return navigator.mediaDevices.getUserMedia({ audio: false, video });
+}
+
+// Android lists each lens on the back as its own camera ("camera2 0, facing
+// back", "camera2 2, facing back"...), and asking for just "the back
+// camera" can give the ultra-wide one: stuck at .5×, no zoom, no flash. So
+// the main one is picked, the lowest-numbered back camera, and remembered.
+async function openMainCamera(): Promise<MediaStream> {
+  let saved: string | null = null;
+  try {
+    saved = localStorage.getItem(MAIN_CAMERA_KEY);
+  } catch {
+    saved = null;
+  }
+  if (saved) {
+    try {
+      return await getUserMedia({ deviceId: { exact: saved }, ...HIGH_RES });
+    } catch {
+      // that camera's gone (or renamed): look again
+    }
+  }
+  // a first look (camera names can only be read once it's allowed)
+  const first = await getUserMedia({ facingMode: { ideal: "environment" } });
+  const main = await mainBackCamera();
+  first.getTracks().forEach((t) => t.stop());
+  if (main) {
+    try {
+      localStorage.setItem(MAIN_CAMERA_KEY, main);
+    } catch {
+      // best-effort
+    }
+    return getUserMedia({ deviceId: { exact: main }, ...HIGH_RES });
+  }
+  return getUserMedia({ facingMode: { ideal: "environment" }, ...HIGH_RES });
+}
+
+async function mainBackCamera(): Promise<string | undefined> {
+  const cams = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === "videoinput" && d.deviceId);
+  const back = cams.filter((d) => /back|rear|environment/i.test(d.label));
+  if (!back.length) return undefined;
+  const num = (d: MediaDeviceInfo) => {
+    const m = /camera2?\s*(\d+)/i.exec(d.label);
+    return m ? Number(m[1]) : 99;
+  };
+  return back.sort((a, b) => num(a) - num(b))[0].deviceId;
+}
+
 // ---- the photo itself ----
 
 function encode(canvas: HTMLCanvasElement): Promise<Blob> {
@@ -368,6 +431,23 @@ async function frameGrab(video: HTMLVideoElement, turn: number): Promise<Blob> {
   const blob = await encode(c);
   c.width = c.height = 0;
   return blob;
+}
+
+// the middle of a photo, as enlarged by the digital zoom
+async function cropMiddle(blob: Blob, zoom: number): Promise<Blob> {
+  const img = await decodeUpright(blob);
+  try {
+    const w = Math.round(img.width / zoom), h = Math.round(img.height / zoom);
+    const c = document.createElement("canvas");
+    c.width = w;
+    c.height = h;
+    c.getContext("2d")!.drawImage(img.source, (img.width - w) / 2, (img.height - h) / 2, w, h, 0, 0, w, h);
+    const out = await encode(c);
+    c.width = c.height = 0;
+    return out;
+  } finally {
+    img.done();
+  }
 }
 
 // A tiny grey copy, for comparing which way round two pictures are.
