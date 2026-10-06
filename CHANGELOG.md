@@ -7,8 +7,14 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Teal shutter; tap a markup tool again to turn it off.** The camera's
+  shutter button is teal. In ✎ Mark up, tapping the tool that's on (Circle,
+  Measure, Arrow or Pen) turns it off, so taps and drags only pick, move
+  and change the marks already there and never add new ones; tap a tool to
+  add more. The camera now stays ready for two minutes after a photo.
+
 - **The camera opens faster, with an EnFact start screen only when it's
-  slow.** After a photo the camera keeps running for a minute (stopping
+  slow.** After a photo the camera keeps running for two minutes (stopping
   straight away if you leave the app), so Save & next, the + photo tile
   and Retake open it instantly; the camera buttons also start it the
   moment a finger touches them. If the picture still isn't there after

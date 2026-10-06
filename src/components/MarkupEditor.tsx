@@ -37,6 +37,7 @@ type Drag =
   | { kind: "pen"; pts: [number, number][] }
   | { kind: "tap"; px: number; py: number };
 
+const NO_TOOL_HINT = "Tap a mark to move or change it · tap a tool to add more";
 const HINTS: Record<Tool, string> = {
   circle: "Tap the photo to add a circle · drag to move · pinch to size",
   measure: "Drag from one point to the other, then type the measurement",
@@ -56,7 +57,9 @@ export default function MarkupEditor({ blob, marks: initial, onCancel, onDone }:
   const [marks, setMarks] = useState<Mark[]>(initial);
   const [history, setHistory] = useState<Mark[][]>([]);
   const [sel, setSel] = useState(-1);
-  const [tool, setTool] = useState<Tool>("circle");
+  // null: no tool (its button tapped again), so taps only pick and change
+  // the marks already there, never add one
+  const [tool, setTool] = useState<Tool | null>("circle");
   const [editing, setEditing] = useState(-1); // measurement whose label is being typed
   const [draft, setDraft] = useState<Mark | null>(null);
   const drag = useRef<Drag | null>(null);
@@ -247,6 +250,7 @@ export default function MarkupEditor({ blob, marks: initial, onCancel, onDone }:
     }
     if (tool === "measure" || tool === "arrow") drag.current = { kind: "draw", t: tool, x0: fx, y0: fy, moved: false };
     else if (tool === "pen") drag.current = { kind: "pen", pts: [[fx, fy]] };
+    else if (!tool) drag.current = { kind: "tap", px: x, py: y };
     else drag.current = { kind: "tap", px: x, py: y };
   }
 
@@ -324,8 +328,9 @@ export default function MarkupEditor({ blob, marks: initial, onCancel, onDone }:
         setSel(-1);
       }
     } else if (d.kind === "tap") {
-      if (sel >= 0) {
-        // a tap off the selected mark just lets go of it
+      if (sel >= 0 || !tool) {
+        // a tap off the selected mark just lets go of it (and with no
+        // tool, nothing is added)
         setSel(-1);
         return;
       }
@@ -342,9 +347,10 @@ export default function MarkupEditor({ blob, marks: initial, onCancel, onDone }:
     setMarks((ms) => ms.map((x, i) => (i === sel ? sizeCircle(m, k, rect) : x)));
   }
 
+  // tapping the tool that's on turns it off
   function pickTool(t: Tool) {
     finishLabel();
-    setTool(t);
+    setTool(tool === t ? null : t);
     setSel(-1);
   }
 
@@ -408,7 +414,7 @@ export default function MarkupEditor({ blob, marks: initial, onCancel, onDone }:
           />
         )}
       </div>
-      <div className="mk-hint">{HINTS[tool]}</div>
+      <div className="mk-hint">{tool ? HINTS[tool] : NO_TOOL_HINT}</div>
       <div className="mk-tools">
         <div className="mk-big">
           <button className={`mk-bt${tool === "circle" ? " on" : ""}`} aria-pressed={tool === "circle"} onClick={() => pickTool("circle")}>

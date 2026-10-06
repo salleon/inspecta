@@ -191,6 +191,26 @@ test("✎ Mark up on a finding opens the marks again to change them", async () =
   await page.getByRole("button", { name: "Cancel" }).click();
   await page.waitForTimeout(500);
   assert.equal((await photos())[0].marks.length, 1);
+
+  // tapping the tool that's on turns it off: taps then add nothing
+  await page.getByRole("button", { name: "✎ Mark up" }).click();
+  await page.getByTestId("markup-editor").waitFor();
+  const circle = page.getByRole("button", { name: /Circle/ });
+  assert.equal(await circle.getAttribute("aria-pressed"), "true");
+  await circle.click();
+  assert.equal(await circle.getAttribute("aria-pressed"), "false");
+  assert.match(await page.locator(".mk-hint").innerText(), /Tap a mark to move or change it/);
+  const c3 = await canvasBox();
+  await page.mouse.click(c3.x + c3.width * 0.15, c3.y + c3.height * 0.2);
+  await page.mouse.move(c3.x + c3.width * 0.1, c3.y + c3.height * 0.8);
+  await page.mouse.down();
+  await page.mouse.move(c3.x + c3.width * 0.3, c3.y + c3.height * 0.9, { steps: 5 });
+  await page.mouse.up();
+  assert.equal(await page.getByRole("button", { name: "↶ Undo" }).isDisabled(), true, "nothing was added");
+  await circle.click();
+  assert.equal(await circle.getAttribute("aria-pressed"), "true", "and on again");
+  await page.getByRole("button", { name: "Cancel" }).click();
+  await page.waitForTimeout(300);
   assert.deepEqual(errors, []);
 });
 

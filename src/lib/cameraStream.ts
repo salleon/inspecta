@@ -1,11 +1,11 @@
 import { getInAppCamera } from "./settings";
 
-// The in-app camera's picture, kept running for a minute after the camera
+// The in-app camera's picture, kept running for two minutes after the camera
 // closes so the next photo (Save & next, + photo, Retake) opens instantly,
 // and started as soon as a finger touches a camera button (warmCamera).
 // Stopped straight away when the app goes to the background.
 
-const KEEP_WARM_MS = 60_000;
+const KEEP_WARM_MS = 120_000;
 
 let stream: MediaStream | null = null;
 let opening: Promise<MediaStream> | null = null;
