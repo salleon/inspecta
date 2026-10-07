@@ -151,9 +151,18 @@ test("shoot, retake, mark up with a circle and a measurement, use", async () => 
   await padKeys(["ok"]);
   await page.waitForTimeout(400);
   assert.match(await page.getByTestId("measure-pad").getAttribute("class"), /\boff\b/, "Done puts the pad away");
+  const doneAt = Date.now();
   await page.getByRole("button", { name: "Done" }).click();
   await page.waitForURL(/\/note$/);
-  await page.waitForTimeout(1500);
+  // saved straight away, the marks with it: the marked copy's drawn in
+  // after, in the background, so the next camera never waits for it
+  assert.ok(Date.now() - doneAt < 1400, "on to the finding without waiting for the marked copy");
+  {
+    const [saved] = await photos();
+    assert.ok(saved && saved.marks.length === 2, "saved with its marks straight away");
+  }
+  const until = Date.now() + 10000;
+  while (!(await photos())[0]?.marked && Date.now() < until) await page.waitForTimeout(200);
 
   const [p] = await photos();
   assert.ok(p, "photo saved");

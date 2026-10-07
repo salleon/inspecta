@@ -7,6 +7,17 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Camera: no wait after a marked-up photo.** After marking up a photo,
+  the next finding's camera could sit on "Opening camera…" for a couple of
+  seconds: the photo wasn't saved until the copy with the marks drawn in
+  had been made from the full 12 MP photo. Now the photo and its marks are
+  saved straight away and the camera opens at once; the marked copy is
+  drawn in the background a moment later, so it doesn't share the phone
+  with the camera starting. Its thumbnail, the export copies and the photo
+  zip wait for it, so nothing shows or exports the photo without its
+  marks, and if the app's closed before it's made, it's made when next
+  needed.
+
 - **Camera: the shutter turns into Use ✓.** The shutter is now the same
   size as Use ✓ and in the same place (the middle of the space under the
   photo), so when you take a photo it turns into the teal tick with a

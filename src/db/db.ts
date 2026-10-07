@@ -220,21 +220,57 @@ export async function addPhoto(findingId: string, siteId: string, blob: Blob, ta
     takenAt,
     order: existing,
   };
-  if (marks?.length) {
-    photo.marks = marks;
-    // (never fails: if the marks can't be drawn in, the photo's still saved
-    // with them, and they're drawn in when it's next marked up)
-    photo.marked = await renderMarkedSafe(blob, marks);
-  }
+  if (marks?.length) photo.marks = marks;
   await db.photos.add(photo);
   await db.findings.update(findingId, { updatedAt: Date.now() });
-  // make its thumbnail now, in the background, so lists never wait on it;
-  // then the copy the exports use, so exporting doesn't have to
+  // Marked up: the copy with the marks drawn in is made in the background,
+  // a moment later (a 12 MP photo takes a couple of seconds on some phones,
+  // and the next finding's camera shouldn't wait for it, or share the phone
+  // with it as it starts). Then its thumbnail, then the copy the exports
+  // use, so lists and exports never wait on them; both wait for the marked
+  // copy, so neither is made without the marks.
+  if (photo.marks) startMarked(photo, MARKED_DELAY_MS);
   void getThumbnail(photo)
     .catch(() => {})
     .then(() => getExportCopy(photo))
     .catch(() => {});
   return photo;
+}
+
+// ---- the marked copy, made in the background ----
+
+const MARKED_DELAY_MS = 1500;
+const markedJobs = new Map<string, Promise<void>>();
+
+function startMarked(photo: Photo, delay = 0): Promise<void> {
+  let job = markedJobs.get(photo.id);
+  if (!job) {
+    job = (async () => {
+      if (delay) await new Promise((r) => setTimeout(r, delay));
+      if (!photo.marks?.length) return;
+      // (never fails: if the marks can't be drawn in, the photo's still
+      // saved with them, and they're drawn in when it's next needed)
+      const marked = await renderMarkedSafe(photo.blob, photo.marks);
+      if (!marked) return;
+      await db.transaction("rw", db.photos, async () => {
+        const now = await db.photos.get(photo.id);
+        // only if it's still there with the same marks
+        if (now && !now.marked && JSON.stringify(now.marks) === JSON.stringify(photo.marks)) await db.photos.update(photo.id, { marked });
+      });
+    })().finally(() => markedJobs.delete(photo.id));
+    markedJobs.set(photo.id, job);
+  }
+  return job;
+}
+
+/** The photo with its marked copy, if it's marked up: waits for the copy if
+ * it's being made (or makes it, if it never was, e.g. the app was closed). */
+export async function withMarked(photo: Photo): Promise<Photo> {
+  if (!photo.marks?.length || photo.marked) return photo;
+  const job = markedJobs.get(photo.id) ?? startMarked(photo);
+  // straight away if it was waiting to start
+  await job.catch(() => {});
+  return (await db.photos.get(photo.id)) ?? photo;
 }
 
 export async function listPhotos(findingId: string) {
@@ -282,7 +318,7 @@ export function getThumbnail(photo: Photo): Promise<Blob> {
     job = (async () => {
       const saved = await db.thumbnails.get(photo.id);
       if (saved) return saved.blob;
-      const blob = await makeThumbnail(shownBlob(photo));
+      const blob = await makeThumbnail(shownBlob(await withMarked(photo)));
       // only keep it if the photo still exists (it may have been deleted
       // or retaken while the thumbnail was being made)
       await db.transaction("rw", db.photos, db.thumbnails, async () => {
@@ -330,7 +366,7 @@ export function getExportCopy(photo: Photo): Promise<Blob> {
       const made = exportCopyQueue.then(async () => {
         // not while an export runs: it doesn't need the copy (see getStamped)
         while (isExportBusy()) await new Promise((r) => setTimeout(r, 500));
-        return makeExportCopy(shownBlob(photo));
+        return makeExportCopy(shownBlob(await withMarked(photo)));
       });
       exportCopyQueue = made.catch(() => {});
       const blob = await made;
@@ -363,7 +399,7 @@ export async function getStamped(
   const copy = await db.exportCopies.get(photo.id);
   const saved = copy?.[kind];
   if (saved?.key === key) return saved;
-  if (!copy) return make(shownBlob(photo));
+  if (!copy) return make(shownBlob(await withMarked(photo)));
   const made = await make(copy.blob);
   await db.exportCopies.update(photo.id, { [kind]: { key, ...made } });
   return made;

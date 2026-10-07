@@ -2,6 +2,7 @@ import type { Finding, Photo } from "../db/types";
 import { watermarkBlob } from "./watermark";
 import { ZipWriter } from "./zip";
 import { shownBlob } from "./markup";
+import { withMarked } from "../db/db";
 
 // "Send Photos Only": every photo on the site at full camera resolution,
 // with the same time/date stamp as the reports, in one zip whose only
@@ -70,7 +71,7 @@ export async function writePhotosZip(
       used.add(name.toLowerCase());
 
       // full resolution, visually lossless; upright (EXIF applied) and stamped
-      const { jpeg } = await watermarkBlob(shownBlob(photo), photo.takenAt, { quality: 0.95 });
+      const { jpeg } = await watermarkBlob(shownBlob(await withMarked(photo)), photo.takenAt, { quality: 0.95 });
       await zip.addFile(`${folder}/${name}.jpg`, new Uint8Array(await jpeg.arrayBuffer()), new Date(photo.takenAt));
       onPhoto(++done, total);
     }

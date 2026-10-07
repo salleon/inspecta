@@ -12,6 +12,7 @@ import {
   getThumbnail,
   listFindings,
   listPhotos,
+  withMarked,
   updateFinding,
 } from "../db/db";
 import { capturePhoto, markUpPhoto, pickFromGallery } from "../lib/capture";
@@ -150,6 +151,19 @@ export default function Note() {
     if ((routerLocation.state as { noteOnly?: boolean } | null)?.noteOnly) document.getElementById("noteInput")?.focus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [findingId]);
+
+  // a photo just marked up: its marked copy's still being made (db/addPhoto);
+  // shown with its marks as soon as it's ready
+  useEffect(() => {
+    if (!photos.some((p) => p.marks?.length && !p.marked)) return;
+    let cancelled = false;
+    void Promise.all(photos.map(withMarked)).then((done) => {
+      if (!cancelled) setPhotos(done);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [photos]);
 
   useEffect(() => {
     const urls = photos.map((p) => URL.createObjectURL(shownBlob(p)));
