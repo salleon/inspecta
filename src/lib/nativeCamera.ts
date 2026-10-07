@@ -44,13 +44,18 @@ export async function captureNative(): Promise<Blob> {
 // stopped.
 
 const KEEP_READY_MS = 5 * 60_000;
+// Off for now, to see how quick the camera is from cold: the camera's
+// stopped as soon as its screen closes. Set true to keep it ready again.
+const KEEP_READY = false;
+// warmed by a finger on a camera button, but its screen never opened
+const WARM_ONLY_MS = 10_000;
 let users = 0;
 let stopTimer: number | undefined;
 let hiddenAt = 0;
 
 function scheduleStop() {
   window.clearTimeout(stopTimer);
-  stopTimer = window.setTimeout(() => void NativeCamera.stop().catch(() => {}), KEEP_READY_MS);
+  stopTimer = window.setTimeout(() => void NativeCamera.stop().catch(() => {}), KEEP_READY ? KEEP_READY_MS : WARM_ONLY_MS);
 }
 
 /** The camera, shown: for the camera screen. Pair with releaseNative. */
@@ -66,6 +71,11 @@ export function releaseNative() {
   users = Math.max(0, users - 1);
   if (users) return;
   document.documentElement.classList.remove("native-cam");
+  if (!KEEP_READY) {
+    window.clearTimeout(stopTimer);
+    void NativeCamera.stop().catch(() => {});
+    return;
+  }
   void NativeCamera.hide().catch(() => {});
   scheduleStop();
 }

@@ -7,6 +7,12 @@ the technical detail.
 
 ## 1 October 2026
 
+- **(proper-camera-build) Keeping the camera ready is off for now.** To
+  see how quick Android's camera is from cold, it now stops as soon as
+  the camera screen closes (the five-minute keep-ready is still there,
+  switched off). It still starts the moment a finger touches a camera
+  button.
+
 - **(proper-camera-build branch) The camera on Android's own camera
   system.** On the phone, the in-app camera now runs on Android's camera
   system (CameraX) instead of the browser camera, with the same screen,
