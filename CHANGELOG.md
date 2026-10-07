@@ -7,6 +7,12 @@ the technical detail.
 
 ## 1 October 2026
 
+- **(proper-camera-build) .5× uses the ultra-wide lens.** On phones that
+  list the ultra-wide as a camera of its own, the camera finds it (the back
+  lens that sees a good deal wider than the main one) and shows .5×;
+  tapping it, or pinching out below 1×, switches to it, and 1× / 2× or
+  pinching back in returns to the main lens.
+
 - **(proper-camera-build) No backup camera: the camera says why it
   couldn't start.** If the camera can't start, the camera screen shows the
   reason with a Close button, instead of switching to another camera. The

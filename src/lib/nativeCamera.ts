@@ -11,6 +11,10 @@ export interface NativeCameraInfo {
   zoom: number;
   hasFlash: boolean;
   streaming: boolean;
+  // the ultra-wide lens, if the phone lists it as a camera of its own: how
+  // its view compares with the main lens (e.g. 0.55); 0 if there isn't one
+  wideFactor: number;
+  lens: "main" | "wide";
 }
 
 interface NativeCameraPlugin {
@@ -19,6 +23,7 @@ interface NativeCameraPlugin {
   hide(): Promise<void>;
   stop(): Promise<void>;
   setZoom(o: { ratio: number }): Promise<void>;
+  setLens(o: { wide: boolean }): Promise<NativeCameraInfo>;
   setFlash(o: { on: boolean }): Promise<void>;
   focus(o: { x: number; y: number }): Promise<void>;
   capture(): Promise<{ path: string }>;

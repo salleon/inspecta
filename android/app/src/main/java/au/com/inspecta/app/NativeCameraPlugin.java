@@ -7,7 +7,11 @@ import android.view.Surface;
 import android.view.ViewGroup;
 import android.webkit.WebView;
 import androidx.annotation.NonNull;
+import android.hardware.camera2.CameraCharacteristics;
+import android.util.SizeF;
+import androidx.camera.camera2.interop.Camera2CameraInfo;
 import androidx.camera.core.Camera;
+import androidx.camera.core.CameraInfo;
 import androidx.camera.core.CameraSelector;
 import androidx.camera.core.FocusMeteringAction;
 import androidx.camera.core.ImageCapture;
@@ -32,6 +36,7 @@ import com.getcapacitor.annotation.Permission;
 import com.getcapacitor.annotation.PermissionCallback;
 import com.google.common.util.concurrent.ListenableFuture;
 import java.io.File;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 // Inspecta's camera on Android's own camera system (CameraX), in place of
@@ -59,6 +64,12 @@ public class NativeCameraPlugin extends Plugin {
     private int rotation = Surface.ROTATION_0;
     private OrientationEventListener orientation;
     private boolean flashOn = false;
+    // the back lenses: the main one, and the ultra-wide if the phone lists
+    // it as a camera of its own (its zoom next to the main one's, e.g. 0.55)
+    private CameraSelector mainLens = CameraSelector.DEFAULT_BACK_CAMERA;
+    private CameraSelector wideLens = null;
+    private float wideFactor = 0f;
+    private boolean onWide = false;
 
     // ---- calls from the web app ----
 
@@ -201,24 +212,100 @@ public class NativeCameraPlugin extends Plugin {
                         call.reject("No camera service: " + e);
                         return;
                     }
-                    try {
-                        bind(true);
-                    } catch (Throwable first) {
-                        // the best settings didn't suit this phone: plainer ones
-                        try {
-                            bind(false);
-                        } catch (Throwable second) {
-                            // let go of the camera, so the browser camera can have it
-                            close();
-                            call.reject("Couldn't start the camera: " + first + " / " + second);
-                            return;
-                        }
+                    findLenses();
+                    onWide = false;
+                    String failed = bindEither();
+                    if (failed != null) {
+                        // let go of the camera
+                        close();
+                        call.reject("Couldn't start the camera: " + failed);
+                        return;
                     }
                     call.resolve(info());
                 },
                 ContextCompat.getMainExecutor(getContext())
             );
         });
+    }
+
+    /** The ultra-wide lens (wide: true) or the main one: { ...info }. */
+    @PluginMethod
+    public void setLens(PluginCall call) {
+        boolean wide = Boolean.TRUE.equals(call.getBoolean("wide", false));
+        getActivity().runOnUiThread(() -> {
+            if (provider == null || camera == null || (wide && wideLens == null) || wide == onWide) {
+                call.resolve(info());
+                return;
+            }
+            onWide = wide;
+            String failed = bindEither();
+            if (failed != null) {
+                // back to the lens that worked
+                onWide = !wide;
+                bindEither();
+                call.reject("Couldn't switch lens: " + failed);
+                return;
+            }
+            call.resolve(info());
+        });
+    }
+
+    // The best settings, or plainer ones if this phone won't take them:
+    // null if it's bound, else what went wrong.
+    private String bindEither() {
+        try {
+            bind(true);
+            return null;
+        } catch (Throwable first) {
+            try {
+                bind(false);
+                return null;
+            } catch (Throwable second) {
+                return first + " / " + second;
+            }
+        }
+    }
+
+    // Which back camera is the main one (what Android picks by default) and
+    // which, if any, is an ultra-wide: a back camera that sees a good deal
+    // wider. Its factor is how its view compares (e.g. 0.55 = ".5×").
+    private void findLenses() {
+        wideLens = null;
+        wideFactor = 0f;
+        try {
+            List<CameraInfo> all = provider.getAvailableCameraInfos();
+            List<CameraInfo> mains = CameraSelector.DEFAULT_BACK_CAMERA.filter(all);
+            if (mains.isEmpty()) return;
+            CameraInfo main = mains.get(0);
+            double mainView = viewAngle(main);
+            if (mainView <= 0) return;
+            double widest = mainView * 1.25;
+            for (CameraInfo info : all) {
+                if (info == main || info.getLensFacing() != CameraSelector.LENS_FACING_BACK) continue;
+                double view = viewAngle(info);
+                if (view > widest) {
+                    widest = view;
+                    wideLens = info.getCameraSelector();
+                    wideFactor = (float) (Math.tan(mainView / 2) / Math.tan(view / 2));
+                }
+            }
+        } catch (Throwable ignored) {
+            wideLens = null;
+            wideFactor = 0f;
+        }
+    }
+
+    // a camera's horizontal angle of view, radians (0 if it won't say)
+    private static double viewAngle(CameraInfo info) {
+        try {
+            Camera2CameraInfo c2 = Camera2CameraInfo.from(info);
+            float[] focal = c2.getCameraCharacteristic(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS);
+            SizeF sensor = c2.getCameraCharacteristic(CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE);
+            if (focal == null || focal.length == 0 || sensor == null || focal[0] <= 0) return 0;
+            return 2 * Math.atan(Math.max(sensor.getWidth(), sensor.getHeight()) / (2 * focal[0]));
+        } catch (Throwable e) {
+            return 0;
+        }
     }
 
     // best: 4:3 like the camera app's photos, the photo at the largest size,
@@ -248,7 +335,7 @@ public class NativeCameraPlugin extends Plugin {
         preview.setSurfaceProvider(previewView.getSurfaceProvider());
         imageCapture = captureBuilder.build();
         provider.unbindAll();
-        camera = provider.bindToLifecycle((LifecycleOwner) getActivity(), CameraSelector.DEFAULT_BACK_CAMERA, preview, imageCapture);
+        camera = provider.bindToLifecycle((LifecycleOwner) getActivity(), onWide && wideLens != null ? wideLens : mainLens, preview, imageCapture);
         if (orientation != null) orientation.enable();
     }
 
@@ -283,6 +370,8 @@ public class NativeCameraPlugin extends Plugin {
         res.put("zoom", now);
         res.put("hasFlash", flash);
         res.put("streaming", streaming);
+        res.put("wideFactor", wideLens != null ? wideFactor : 0);
+        res.put("lens", onWide ? "wide" : "main");
         return res;
     }
 

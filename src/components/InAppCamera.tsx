@@ -28,6 +28,9 @@ interface Caps {
   digital: boolean;
   torch: boolean;
   focus: boolean;
+  // Android's camera: the ultra-wide lens's zoom next to the main lens
+  // (0: none). Zoom below 1× uses it.
+  wide?: number;
 }
 
 // gravity's pull on the phone, so a photo taken with the phone sideways
@@ -85,7 +88,11 @@ export default function InAppCamera({ label, onDone }: Props) {
         // went down on the camera button)
         const info = await acquireNative();
         if (cancelled) return;
-        setCaps({ zoom: { min: info.zoomMin, max: info.zoomMax }, digital: false, torch: info.hasFlash, focus: true });
+        const wide = info.wideFactor > 0 && info.wideFactor < 0.95 ? info.wideFactor : 0;
+        setCaps({ zoom: { min: wide || info.zoomMin, max: info.zoomMax }, digital: false, torch: info.hasFlash, focus: true, wide });
+        lensRef.current = info.lens;
+        // back to the main lens (it may still be on the ultra-wide from last time)
+        if (info.lens === "wide") void NativeCamera.setLens({ wide: false }).then(() => (lensRef.current = "main"));
         // back to 1× (it may still be zoomed from the last photo)
         if (Math.abs(info.zoom - 1) > 0.01 && info.zoomMin <= 1) void NativeCamera.setZoom({ ratio: 1 });
         setZoom(info.zoomMin <= 1 ? 1 : info.zoom);
@@ -208,11 +215,38 @@ export default function InAppCamera({ label, onDone }: Props) {
     const v = Math.min(caps.zoom.max, Math.max(caps.zoom.min, z));
     setZoom(v);
     if (native) {
-      void NativeCamera.setZoom({ ratio: v }).catch(() => {});
+      void nativeZoom(v);
       return;
     }
     if (caps.digital) return;
     track()?.applyConstraints({ advanced: [{ zoom: v } as MediaTrackConstraintSet] }).catch(() => {});
+  }
+
+  // Android's camera: below 1× is the ultra-wide lens (its own zoom is the
+  // asked-for zoom over its factor), 1× and up the main one. Changing lens
+  // takes a moment, so it's done once at a time, then the latest zoom asked
+  // for is applied.
+  const lensRef = useRef<"main" | "wide">("main");
+  const switching = useRef(false);
+  const wantedZoom = useRef(1);
+  async function nativeZoom(z: number) {
+    wantedZoom.current = z;
+    if (switching.current) return;
+    const lens = caps.wide && z < 0.999 ? "wide" : "main";
+    if (lens !== lensRef.current) {
+      switching.current = true;
+      try {
+        await NativeCamera.setLens({ wide: lens === "wide" });
+        lensRef.current = lens;
+      } catch {
+        // stays on the lens it was on
+      } finally {
+        switching.current = false;
+      }
+      return nativeZoom(wantedZoom.current);
+    }
+    const ratio = lensRef.current === "wide" && caps.wide ? Math.max(1, z / caps.wide) : z;
+    await NativeCamera.setZoom({ ratio }).catch(() => {});
   }
 
   function toggleFlash() {
@@ -346,7 +380,9 @@ export default function InAppCamera({ label, onDone }: Props) {
     onDone({ blob: shot.blob, marks: marks?.length ? marks : undefined });
   }
 
-  const zoomStops = [0.5, 1, 2].filter((z) => z >= caps.zoom.min - 0.05 && z <= caps.zoom.max + 0.05);
+  // .5× is the ultra-wide where Android's camera found one (its own zoom,
+  // e.g. 0.55, shown as .5×)
+  const zoomStops = caps.wide ? [caps.wide, 1, 2].filter((z) => z <= caps.zoom.max + 0.05) : [0.5, 1, 2].filter((z) => z >= caps.zoom.min - 0.05 && z <= caps.zoom.max + 0.05);
   const nearest = zoomStops.reduce((a, z) => (Math.abs(z - zoom) < Math.abs(a - zoom) ? z : a), zoomStops[0] ?? 1);
   const flashKnown = caps.torch;
 
@@ -393,7 +429,7 @@ export default function InAppCamera({ label, onDone }: Props) {
         <div className="cam-zoom">
           {zoomStops.map((z) => (
             <button key={z} className={z === nearest ? "on" : ""} onClick={() => applyZoom(z)}>
-              {z === nearest && Math.abs(zoom - z) > 0.05 ? `${zoom.toFixed(1).replace(/\.0$/, "")}×` : `${String(z).replace(/^0/, "")}×`}
+              {z === nearest && Math.abs(zoom - z) > 0.05 ? `${zoom.toFixed(1).replace(/\.0$/, "").replace(/^0/, "")}×` : z < 1 ? ".5×" : `${z}×`}
             </button>
           ))}
         </div>
