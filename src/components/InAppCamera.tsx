@@ -13,8 +13,8 @@ import "./PhotoTools.css";
 // Inspecta's own camera (no Android camera app): the camera's picture full
 // screen, tap to focus, pinch or .5× / 1× / 2× to zoom, flash on / off.
 // After the shutter, a quick check: Retake / ✎ Mark up / Use ✓.
-// `onDone`: the photo; null if closed. If the camera can't start, the
-// reason's shown here (no backup camera).
+// `onDone`: the photo; null if closed; "fallback" if no camera here could
+// start (the Android camera app is used instead).
 
 interface Props {
   label: CameraLabel;
@@ -47,10 +47,10 @@ function tiltTurn(x: number, y: number, last: number): number {
 export default function InAppCamera({ label, onDone }: Props) {
   // on the phone: Android's own camera, its picture behind this screen
   // (lib/nativeCamera); in a browser, the browser's camera in a <video>
-  const [native] = useState(hasNativeCamera);
-  // the camera couldn't start: why, shown here (there's no backup camera,
-  // so the reason can be read and reported)
-  const [failed, setFailed] = useState<string | null>(null);
+  // If it can't start: the browser camera instead (saying why, a few
+  // seconds), and if that can't either, the Android camera app.
+  const [native, setNative] = useState(hasNativeCamera);
+  const [nativeError, setNativeError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [caps, setCaps] = useState<Caps>({ zoom: DIGITAL_ZOOM, digital: true, torch: false, focus: false });
@@ -100,12 +100,14 @@ export default function InAppCamera({ label, onDone }: Props) {
         if (info.streaming) setLive(true);
         setReady(true);
       } catch (e) {
-        // Android's camera couldn't start: say why, here (no backup camera)
+        // Android's camera couldn't start: the browser camera instead, and
+        // say why (kept for Settings too)
         if (cancelled) return;
         const message = e instanceof Error ? e.message : String(e);
         console.error("Native camera:", message);
         saveNativeError(message);
-        setFailed(message);
+        setNativeError(message);
+        setNative(false);
       }
     })();
     return () => {
@@ -153,12 +155,10 @@ export default function InAppCamera({ label, onDone }: Props) {
         });
         setReady(true);
       } catch (e) {
-        // no camera, or no permission: the Android camera instead (after
-        // Android's own camera failed too, say why first)
+        // no camera, or no permission: the Android camera app, the last resort
         if (acquired) releaseCamera();
         acquired = false;
-        if (cancelled) return;
-        setFailed(e instanceof Error ? e.message : String(e));
+        if (!cancelled) doneRef.current("fallback");
       }
     }
     async function restart() {
@@ -382,6 +382,12 @@ export default function InAppCamera({ label, onDone }: Props) {
 
   // .5× is the ultra-wide where Android's camera found one (its own zoom,
   // e.g. 0.55, shown as .5×)
+  useEffect(() => {
+    if (!nativeError) return;
+    const id = window.setTimeout(() => setNativeError(null), 8000);
+    return () => window.clearTimeout(id);
+  }, [nativeError]);
+
   const zoomStops = caps.wide ? [caps.wide, 1, 2].filter((z) => z <= caps.zoom.max + 0.05) : [0.5, 1, 2].filter((z) => z >= caps.zoom.min - 0.05 && z <= caps.zoom.max + 0.05);
   const nearest = zoomStops.reduce((a, z) => (Math.abs(z - zoom) < Math.abs(a - zoom) ? z : a), zoomStops[0] ?? 1);
   const flashKnown = caps.torch;
@@ -418,11 +424,9 @@ export default function InAppCamera({ label, onDone }: Props) {
           <span className="cam-rb-space" />
         )}
       </div>
-      {failed && (
-        <div className="cam-failed" role="alert" data-testid="camera-failed">
-          <b>The camera couldn't start</b>
-          <span>{failed}</span>
-          <button onClick={() => onDone(null)}>Close</button>
+      {nativeError && (
+        <div className="cam-note" role="status">
+          Android camera couldn't start, using the browser camera: {nativeError}
         </div>
       )}
       {!shot && live && zoomStops.length > 1 && (

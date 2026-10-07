@@ -7,6 +7,11 @@ the technical detail.
 
 ## 1 October 2026
 
+- **(proper-camera-build) Backups are back.** If Android's camera can't
+  start, the browser camera opens instead (saying why for a few seconds;
+  the reason is also kept in Settings › Photos), and if that can't
+  either, the Android camera app.
+
 - **(proper-camera-build) .5× uses the ultra-wide lens.** On phones that
   list the ultra-wide as a camera of its own, the camera finds it (the back
   lens that sees a good deal wider than the main one) and shows .5×;
