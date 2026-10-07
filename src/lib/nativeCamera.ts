@@ -27,6 +27,7 @@ interface NativeCameraPlugin {
   setLens(o: { wide: boolean }): Promise<NativeCameraInfo>;
   setFlash(o: { on: boolean }): Promise<void>;
   setZsl(o: { on: boolean }): Promise<void>;
+  setLayout(o: { fill: boolean; top: number; height: number }): Promise<void>;
   focus(o: { x: number; y: number }): Promise<void>;
   capture(): Promise<{ path: string }>;
   addListener(event: "state", fn: (s: { streaming: boolean }) => void): Promise<PluginListenerHandle>;

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import type { Mark } from "../db/types";
 import type { CameraLabel, Captured } from "../lib/capture";
 import { saveToGallery } from "../lib/capture";
@@ -73,6 +73,30 @@ export default function InAppCamera({ label, onDone }: Props) {
   const doneRef = useRef(onDone);
   doneRef.current = onDone;
 
+  // On a phone taller than the photo: the whole 4:3 picture at the top,
+  // under the top buttons, the zoom and shutter under it, and a blurred,
+  // darkened copy of the picture filling the screen behind. (Otherwise the
+  // picture's in the middle, as big as fits.)
+  const topRef = useRef<HTMLDivElement>(null);
+  const [fit, setFit] = useState<Fit | null>(null);
+  const fitRef = useRef<Fit | null>(null);
+  useLayoutEffect(() => {
+    function measure() {
+      const bar = topRef.current;
+      if (!bar) return;
+      const w = window.innerWidth, h = window.innerHeight;
+      const top = Math.round(bar.getBoundingClientRect().bottom);
+      const height = Math.round((w * 4) / 3);
+      const next = w < h && top + height + ROOM_BELOW <= h ? { top, height } : null;
+      if (next?.top === fitRef.current?.top && next?.height === fitRef.current?.height) return;
+      fitRef.current = next;
+      setFit(next);
+    }
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
+
   // start the camera (and again if the phone stopped it, e.g. the app was
   // put away)
   useEffect(() => {
@@ -86,6 +110,8 @@ export default function InAppCamera({ label, onDone }: Props) {
         });
         // (instant if it was used in the last five minutes, or a finger
         // went down on the camera button)
+        const f = fitRef.current;
+        await NativeCamera.setLayout({ fill: !!f, top: f?.top ?? 0, height: f?.height ?? 0 }).catch(() => {});
         const info = await acquireNative();
         if (cancelled) return;
         const wide = info.wideFactor > 0 && info.wideFactor < 0.95 ? info.wideFactor : 0;
@@ -186,6 +212,26 @@ export default function InAppCamera({ label, onDone }: Props) {
     };
   }, [native]);
 
+  // Android's camera: its picture where it goes (when the phone's turned
+  // or the screen changes size)
+  useEffect(() => {
+    if (!native || !ready) return;
+    void NativeCamera.setLayout({ fill: !!fit, top: fit?.top ?? 0, height: fit?.height ?? 0 }).catch(() => {});
+  }, [native, ready, fit]);
+
+  // the browser camera: the blurred copy behind is a tiny copy of the
+  // picture, refreshed several times a second
+  const fillRef = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    if (native || !fit || shot || !live) return;
+    const id = window.setInterval(() => {
+      const v = videoRef.current, c = fillRef.current;
+      if (!v || !c || !v.videoWidth) return;
+      c.getContext("2d")?.drawImage(v, 0, 0, c.width, c.height);
+    }, FILL_MS);
+    return () => window.clearInterval(id);
+  }, [native, fit, shot, live]);
+
   // which way up the phone is held
   useEffect(() => {
     function onMotion(e: DeviceMotionEvent) {
@@ -268,8 +314,12 @@ export default function InAppCamera({ label, onDone }: Props) {
 
   function focusAtPoint(clientX: number, clientY: number) {
     if (native) {
+      // as fractions of the picture (it's at the top when there's room)
+      const top = fit?.top ?? 0, height = fit?.height ?? window.innerHeight;
+      const y = (clientY - top) / height;
+      if (y < 0 || y > 1) return;
       setFocusAt((f) => ({ x: clientX, y: clientY, n: (f?.n ?? 0) + 1 }));
-      void NativeCamera.focus({ x: clientX / window.innerWidth, y: clientY / window.innerHeight }).catch(() => {});
+      void NativeCamera.focus({ x: clientX / window.innerWidth, y }).catch(() => {});
       return;
     }
     const p = pictureRect();
@@ -399,8 +449,16 @@ export default function InAppCamera({ label, onDone }: Props) {
   const flashKnown = caps.torch;
 
   return (
-    <div className={native ? "cam native" : "cam"} data-testid="in-app-camera">
+    <div
+      className={`cam${native ? " native" : ""}${fit ? " fit" : ""}`}
+      data-testid="in-app-camera"
+      style={fit ? ({ "--pic-top": `${fit.top}px`, "--pic-h": `${fit.height}px` } as CSSProperties) : undefined}
+    >
       <div className="cam-view" onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}>
+        {/* the blurred copy behind: the photo once it's taken, else the live
+            picture (Android's camera draws its own, behind this screen) */}
+        {fit && shot && <img className="cam-fill" src={shot.url} alt="" data-testid="camera-fill" />}
+        {fit && !shot && !native && <canvas ref={fillRef} className="cam-fill" width={36} height={48} data-testid="camera-fill" />}
         {!native && (
           <video ref={videoRef} playsInline muted autoPlay poster={BLANK} onPlaying={() => setLive(true)} style={{ opacity: shot || !live ? 0 : 1, transform: caps.digital && zoom > 1 ? `scale(${zoom})` : undefined }} />
         )}
@@ -409,7 +467,7 @@ export default function InAppCamera({ label, onDone }: Props) {
         {focusAt && !shot && <span key={focusAt.n} className="cam-focus" style={{ left: focusAt.x, top: focusAt.y }} />}
         {blink > 0 && <span key={blink} className="cam-blink" />}
       </div>
-      <div className="cam-top">
+      <div className="cam-top" ref={topRef}>
         <button className="cam-rb" aria-label="Close camera" onClick={() => onDone(null)}>
           ✕
         </button>
@@ -502,6 +560,14 @@ function grabFrame(video: HTMLVideoElement, turn: number, zoom: number): HTMLCan
   g.drawImage(video, (vw - sw) / 2, (vh - sh) / 2, sw, sh, -sw / 2, -sh / 2, sw, sh);
   return c;
 }
+
+interface Fit {
+  top: number;
+  height: number;
+}
+// room under the picture for the zoom and the shutter
+const ROOM_BELOW = 180;
+const FILL_MS = 120;
 
 // a new picture from the camera (or a moment, if the browser can't say)
 function nextFrame(video: HTMLVideoElement): Promise<void> {

@@ -293,3 +293,34 @@ test("in-app camera off in Settings: the Android camera (file input on web)", as
   assert.equal(await page.getByTestId("in-app-camera").count(), 0);
   await page.evaluate(() => localStorage.removeItem("inspecta.inAppCamera"));
 });
+
+test("on a tall phone: the picture at the top, a blurred copy behind, the same after the shutter", async () => {
+  await go(page, app, "/site/s1/findings");
+  await page.getByRole("button", { name: "New finding", exact: true }).click();
+  await page.getByTestId("in-app-camera").waitFor();
+  await page.waitForFunction(() => document.querySelector(".cam video")?.videoWidth > 0);
+  const top = (await page.locator(".cam-top").boundingBox()).y + (await page.locator(".cam-top").boundingBox()).height;
+  const video = await page.locator(".cam video").boundingBox();
+  assert.ok(Math.abs(video.y - top) <= 1, "the picture starts under the top buttons");
+  assert.ok(Math.abs(video.height - (390 * 4) / 3) <= 1, "the whole 4:3 picture, full width");
+  const zoom = await page.locator(".cam-zoom").boundingBox();
+  assert.ok(zoom.y >= video.y + video.height, "the zoom is under the picture");
+  assert.equal(await page.locator("canvas.cam-fill").count(), 1, "the blurred copy of the live picture");
+  await page.waitForTimeout(300);
+  const lit = await page.evaluate(() => {
+    const c = document.querySelector("canvas.cam-fill");
+    const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
+    let sum = 0;
+    for (let i = 0; i < d.length; i += 4) sum += d[i] + d[i + 1] + d[i + 2];
+    return sum;
+  });
+  assert.ok(lit > 0, "the copy has the picture in it");
+  await page.getByLabel("Take photo").click();
+  await page.getByRole("button", { name: "↺ Retake" }).waitFor();
+  assert.equal(await page.locator("img.cam-fill").count(), 1, "the photo's blurred copy behind it");
+  const shot = await page.locator(".cam-shot").boundingBox();
+  assert.ok(Math.abs(shot.y - video.y) <= 1 && Math.abs(shot.height - video.height) <= 1, "the photo stays where the picture was");
+  await page.getByRole("button", { name: "↺ Retake" }).click();
+  assert.equal(await page.locator("canvas.cam-fill").count(), 1);
+  await page.getByLabel("Close camera").click();
+});

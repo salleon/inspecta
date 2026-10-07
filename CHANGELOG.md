@@ -7,6 +7,16 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Camera on tall phones: the picture at the top, a blurred copy behind.**
+  On a phone taller than the photo, the whole 4:3 picture now sits at the
+  top, just under ✕, the finding and the flash, with the zoom and the
+  shutter in the space under it. Instead of black, a blurred, darkened copy
+  of the live picture fills the rest of the screen and moves with the
+  camera. After the shutter the photo stays in the same place with its own
+  blurred copy behind, and Retake / Mark up / Use underneath. The picture
+  is still exactly what's in the photo; nothing's cropped. On a phone
+  without the room, it's as before.
+
 - **Camera: retake no longer brings back the old photo.** On some phones
   the Android camera's zero shutter lag (the photo is the moment you
   press) hands back an earlier picture instead of a new one. If a photo
