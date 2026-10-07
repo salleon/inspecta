@@ -44,7 +44,10 @@ function tiltTurn(x: number, y: number, last: number): number {
 export default function InAppCamera({ label, onDone }: Props) {
   // on the phone: Android's own camera, its picture behind this screen
   // (lib/nativeCamera); in a browser, the browser's camera in a <video>
-  const [native] = useState(hasNativeCamera);
+  const [native, setNative] = useState(hasNativeCamera);
+  // why Android's camera couldn't start (shown a few seconds; the browser
+  // camera is used instead)
+  const [nativeError, setNativeError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [caps, setCaps] = useState<Caps>({ zoom: DIGITAL_ZOOM, digital: true, torch: false, focus: false });
@@ -89,9 +92,14 @@ export default function InAppCamera({ label, onDone }: Props) {
         void NativeCamera.setFlash({ on: getCameraFlash() });
         if (info.streaming) setLive(true);
         setReady(true);
-      } catch {
-        // no camera, or no permission: the Android camera instead
-        if (!cancelled) doneRef.current("fallback");
+      } catch (e) {
+        // Android's camera couldn't start: the browser camera instead, and
+        // say why
+        if (cancelled) return;
+        const message = e instanceof Error ? e.message : String(e);
+        console.error("Native camera:", message);
+        setNativeError(message);
+        setNative(false);
       }
     })();
     return () => {
@@ -100,6 +108,11 @@ export default function InAppCamera({ label, onDone }: Props) {
       releaseNative();
     };
   }, [native]);
+  useEffect(() => {
+    if (!nativeError) return;
+    const id = window.setTimeout(() => setNativeError(null), 8000);
+    return () => window.clearTimeout(id);
+  }, [nativeError]);
 
   useEffect(() => {
     if (native) return;
@@ -373,6 +386,11 @@ export default function InAppCamera({ label, onDone }: Props) {
           <span className="cam-rb-space" />
         )}
       </div>
+      {nativeError && (
+        <div className="cam-note" role="status">
+          Android camera couldn't start, using the browser camera: {nativeError}
+        </div>
+      )}
       {!shot && live && zoomStops.length > 1 && (
         <div className="cam-zoom">
           {zoomStops.map((z) => (

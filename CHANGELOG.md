@@ -7,6 +7,12 @@ the technical detail.
 
 ## 1 October 2026
 
+- **(proper-camera-build) If Android's camera can't start, the in-app
+  camera is used, and says why.** It had fallen back to the Android
+  camera app without a word. Now the browser camera opens instead, with
+  the reason shown at the top for a few seconds. Android's camera also
+  tries again with plainer settings before giving up.
+
 - **(proper-camera-build) Keeping the camera ready is off for now.** To
   see how quick Android's camera is from cold, it now stops as soon as
   the camera screen closes (the five-minute keep-ready is still there,

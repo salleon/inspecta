@@ -536,3 +536,20 @@ html.native-cam .cam {
 .cam.native .cam-shot {
   background: #000;
 }
+
+.cam-note {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  top: calc(64px + var(--sa-top));
+  z-index: 2;
+  padding: 9px 12px;
+  border-radius: 12px;
+  background: rgba(7, 27, 44, 0.92);
+  border: 1px solid rgba(245, 165, 92, 0.6);
+  color: #f7b977;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+  word-break: break-word;
+}

@@ -180,7 +180,12 @@ public class NativeCameraPlugin extends Plugin {
     private void open(PluginCall call) {
         boolean show = Boolean.TRUE.equals(call.getBoolean("show", true));
         getActivity().runOnUiThread(() -> {
-            ensurePreviewView();
+            try {
+                ensurePreviewView();
+            } catch (Throwable e) {
+                call.reject("Couldn't show the camera: " + e);
+                return;
+            }
             if (show) setSeeThrough(true);
             if (camera != null) {
                 call.resolve(info());
@@ -191,37 +196,55 @@ public class NativeCameraPlugin extends Plugin {
                 () -> {
                     try {
                         provider = future.get();
-                        bind();
-                        call.resolve(info());
-                    } catch (Exception e) {
-                        call.reject("Couldn't start the camera: " + e.getMessage());
+                    } catch (Throwable e) {
+                        call.reject("No camera service: " + e);
+                        return;
                     }
+                    try {
+                        bind(true);
+                    } catch (Throwable first) {
+                        // the best settings didn't suit this phone: plainer ones
+                        try {
+                            bind(false);
+                        } catch (Throwable second) {
+                            camera = null;
+                            call.reject("Couldn't start the camera: " + first + " / " + second);
+                            return;
+                        }
+                    }
+                    call.resolve(info());
                 },
                 ContextCompat.getMainExecutor(getContext())
             );
         });
     }
 
-    private void bind() {
-        // 4:3 like the camera app's photos; the photo at the largest size
-        ResolutionSelector previewSize = new ResolutionSelector.Builder()
-            .setAspectRatioStrategy(AspectRatioStrategy.RATIO_4_3_FALLBACK_AUTO_STRATEGY)
-            .build();
-        ResolutionSelector photoSize = new ResolutionSelector.Builder()
-            .setAspectRatioStrategy(AspectRatioStrategy.RATIO_4_3_FALLBACK_AUTO_STRATEGY)
-            .setResolutionStrategy(ResolutionStrategy.HIGHEST_AVAILABLE_STRATEGY)
-            .build();
-        Preview preview = new Preview.Builder().setResolutionSelector(previewSize).build();
-        preview.setSurfaceProvider(previewView.getSurfaceProvider());
-        // zero shutter lag: the photo is the moment the shutter's pressed
-        // (CameraX falls back to its quickest ordinary capture on phones
-        // without it, and with the flash on)
-        imageCapture = new ImageCapture.Builder()
-            .setResolutionSelector(photoSize)
-            .setCaptureMode(ImageCapture.CAPTURE_MODE_ZERO_SHUTTER_LAG)
+    // best: 4:3 like the camera app's photos, the photo at the largest size,
+    // zero shutter lag (the photo is the moment the shutter's pressed).
+    // Otherwise CameraX's own choices and its quickest ordinary capture.
+    private void bind(boolean best) {
+        Preview.Builder previewBuilder = new Preview.Builder();
+        ImageCapture.Builder captureBuilder = new ImageCapture.Builder()
             .setFlashMode(flashOn ? ImageCapture.FLASH_MODE_ON : ImageCapture.FLASH_MODE_OFF)
-            .setJpegQuality(92)
-            .build();
+            .setJpegQuality(92);
+        if (best) {
+            previewBuilder.setResolutionSelector(
+                new ResolutionSelector.Builder().setAspectRatioStrategy(AspectRatioStrategy.RATIO_4_3_FALLBACK_AUTO_STRATEGY).build()
+            );
+            captureBuilder
+                .setResolutionSelector(
+                    new ResolutionSelector.Builder()
+                        .setAspectRatioStrategy(AspectRatioStrategy.RATIO_4_3_FALLBACK_AUTO_STRATEGY)
+                        .setResolutionStrategy(ResolutionStrategy.HIGHEST_AVAILABLE_STRATEGY)
+                        .build()
+                )
+                .setCaptureMode(ImageCapture.CAPTURE_MODE_ZERO_SHUTTER_LAG);
+        } else {
+            captureBuilder.setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY);
+        }
+        Preview preview = previewBuilder.build();
+        preview.setSurfaceProvider(previewView.getSurfaceProvider());
+        imageCapture = captureBuilder.build();
         provider.unbindAll();
         camera = provider.bindToLifecycle((LifecycleOwner) getActivity(), CameraSelector.DEFAULT_BACK_CAMERA, preview, imageCapture);
         if (orientation != null) orientation.enable();
