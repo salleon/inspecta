@@ -8,7 +8,7 @@ import BackupSettings from "../components/BackupSettings";
 import { UpdateSettingsRow } from "../components/UpdatePrompt";
 import { BLUE, Group, ORANGE, RowIcon, groupHintStyle, groupRowStyle } from "../components/SettingsList";
 import { getInspectorName, setInspectorName } from "../lib/profile";
-import { hasNativeCamera } from "../lib/nativeCamera";
+import { hasNativeCamera, lastNativeError } from "../lib/nativeCamera";
 import { setConverterTool, setInAppCamera, useConverterTool, useInAppCamera } from "../lib/settings";
 import { startTour } from "../lib/tour";
 import { useBackHandler } from "../lib/backButton";
@@ -76,6 +76,11 @@ export default function Settings() {
             right={<Switch on={inAppCamera} />}
             onClick={() => setInAppCamera(!inAppCamera)}
           />
+          {lastNativeError() && (
+            <div data-testid="native-camera-error" style={{ padding: "6px 14px 12px", fontSize: 11.5, lineHeight: 1.45, color: "#f7b977", wordBreak: "break-word" }}>
+              Android camera's last error: {lastNativeError()}
+            </div>
+          )}
         </Group>
         <Group heading="Flow testing">
           <Item

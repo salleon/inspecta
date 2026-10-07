@@ -7,7 +7,7 @@ import { getCameraFlash, setCameraFlash } from "../lib/settings";
 import MarkupEditor from "./MarkupEditor";
 import CameraStartScreen from "./CameraStartScreen";
 import { acquireCamera, dropCamera, releaseCamera } from "../lib/cameraStream";
-import { acquireNative, captureNative, hasNativeCamera, NativeCamera, releaseNative } from "../lib/nativeCamera";
+import { acquireNative, captureNative, hasNativeCamera, NativeCamera, releaseNative, saveNativeError } from "../lib/nativeCamera";
 import "./PhotoTools.css";
 
 // Inspecta's own camera (no Android camera app): the camera's picture full
@@ -48,6 +48,9 @@ export default function InAppCamera({ label, onDone }: Props) {
   // why Android's camera couldn't start (shown a few seconds; the browser
   // camera is used instead)
   const [nativeError, setNativeError] = useState<string | null>(null);
+  // neither camera would start: say so here (with the way out), rather
+  // than switching to the Android camera app without a word
+  const [failed, setFailed] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [caps, setCaps] = useState<Caps>({ zoom: DIGITAL_ZOOM, digital: true, torch: false, focus: false });
@@ -98,6 +101,7 @@ export default function InAppCamera({ label, onDone }: Props) {
         if (cancelled) return;
         const message = e instanceof Error ? e.message : String(e);
         console.error("Native camera:", message);
+        saveNativeError(message);
         setNativeError(message);
         setNative(false);
       }
@@ -109,10 +113,10 @@ export default function InAppCamera({ label, onDone }: Props) {
     };
   }, [native]);
   useEffect(() => {
-    if (!nativeError) return;
+    if (!nativeError || failed) return;
     const id = window.setTimeout(() => setNativeError(null), 8000);
     return () => window.clearTimeout(id);
-  }, [nativeError]);
+  }, [nativeError, failed]);
 
   useEffect(() => {
     if (native) return;
@@ -151,11 +155,14 @@ export default function InAppCamera({ label, onDone }: Props) {
           if (!cancelled && document.visibilityState === "visible") void restart();
         });
         setReady(true);
-      } catch {
-        // no camera, or no permission: the Android camera instead
+      } catch (e) {
+        // no camera, or no permission: the Android camera instead (after
+        // Android's own camera failed too, say why first)
         if (acquired) releaseCamera();
         acquired = false;
-        if (!cancelled) doneRef.current("fallback");
+        if (cancelled) return;
+        if (hasNativeCamera()) setFailed(e instanceof Error ? e.message : String(e));
+        else doneRef.current("fallback");
       }
     }
     async function restart() {
@@ -386,7 +393,15 @@ export default function InAppCamera({ label, onDone }: Props) {
           <span className="cam-rb-space" />
         )}
       </div>
-      {nativeError && (
+      {failed && (
+        <div className="cam-failed" role="alert">
+          <b>The camera couldn't start</b>
+          <span>Android camera: {nativeError ?? "?"}</span>
+          <span>Browser camera: {failed}</span>
+          <button onClick={() => onDone("fallback")}>Use the Android camera app</button>
+        </div>
+      )}
+      {nativeError && !failed && (
         <div className="cam-note" role="status">
           Android camera couldn't start, using the browser camera: {nativeError}
         </div>

@@ -98,3 +98,23 @@ if (typeof document !== "undefined") {
     }
   });
 }
+
+// ---- why it couldn't start (shown in Settings, to report) ----
+
+const ERROR_KEY = "inspecta.nativeCameraError";
+
+export function saveNativeError(message: string) {
+  try {
+    localStorage.setItem(ERROR_KEY, `${new Date().toLocaleString()}: ${message}`);
+  } catch {
+    // best-effort
+  }
+}
+
+export function lastNativeError(): string | null {
+  try {
+    return localStorage.getItem(ERROR_KEY);
+  } catch {
+    return null;
+  }
+}

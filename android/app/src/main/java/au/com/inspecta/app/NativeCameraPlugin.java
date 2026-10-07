@@ -197,6 +197,7 @@ public class NativeCameraPlugin extends Plugin {
                     try {
                         provider = future.get();
                     } catch (Throwable e) {
+                        setSeeThrough(false);
                         call.reject("No camera service: " + e);
                         return;
                     }
@@ -207,7 +208,8 @@ public class NativeCameraPlugin extends Plugin {
                         try {
                             bind(false);
                         } catch (Throwable second) {
-                            camera = null;
+                            // let go of the camera, so the browser camera can have it
+                            close();
                             call.reject("Couldn't start the camera: " + first + " / " + second);
                             return;
                         }
@@ -251,7 +253,11 @@ public class NativeCameraPlugin extends Plugin {
     }
 
     private void close() {
-        if (provider != null) provider.unbindAll();
+        try {
+            if (provider != null) provider.unbindAll();
+        } catch (Throwable ignored) {
+            // nothing bound
+        }
         camera = null;
         imageCapture = null;
         streaming = false;
