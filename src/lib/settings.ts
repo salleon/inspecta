@@ -93,6 +93,32 @@ export function useInAppCamera(): boolean {
   return useSyncExternalStore(subscribe, getInAppCamera);
 }
 
+// Zero shutter lag on the Android camera system: the photo is the moment the
+// shutter's pressed. On (the default) unless turned off here, or turned off
+// by itself on a phone that handed back the same photo twice.
+const ZSL_KEY = "inspecta.cameraZsl";
+
+export function getCameraZsl(): boolean {
+  try {
+    return localStorage.getItem(ZSL_KEY) !== "0";
+  } catch {
+    return true;
+  }
+}
+
+export function setCameraZsl(on: boolean) {
+  try {
+    localStorage.setItem(ZSL_KEY, on ? "1" : "0");
+  } catch {
+    // best-effort
+  }
+  listeners.forEach((l) => l());
+}
+
+export function useCameraZsl(): boolean {
+  return useSyncExternalStore(subscribe, getCameraZsl);
+}
+
 // The in-app camera's flash: on or off (no auto), kept between photos.
 const FLASH_KEY = "inspecta.cameraFlash";
 

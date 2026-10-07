@@ -70,12 +70,16 @@ public class NativeCameraPlugin extends Plugin {
     private CameraSelector wideLens = null;
     private float wideFactor = 0f;
     private boolean onWide = false;
+    // zero shutter lag: off on phones where it hands back an old photo
+    private boolean zsl = true;
 
     // ---- calls from the web app ----
 
     /** Opens the camera (if it isn't open). show: the picture shows now (else it's only made ready). */
     @PluginMethod
     public void start(PluginCall call) {
+        zsl = !Boolean.FALSE.equals(call.getBoolean("zsl", true));
+        if (camera == null) flashOn = Boolean.TRUE.equals(call.getBoolean("flash", flashOn));
         if (getPermissionState("camera") != PermissionState.GRANTED) {
             requestPermissionForAlias("camera", call, "cameraPermission");
             return;
@@ -127,11 +131,46 @@ public class NativeCameraPlugin extends Plugin {
         call.resolve();
     }
 
+    /** Zero shutter lag on or off (the camera's set up again if it's open). */
+    @PluginMethod
+    public void setZsl(PluginCall call) {
+        boolean on = !Boolean.FALSE.equals(call.getBoolean("on", true));
+        getActivity().runOnUiThread(() -> {
+            if (on == zsl) {
+                call.resolve();
+                return;
+            }
+            zsl = on;
+            if (provider != null && camera != null) {
+                String failed = bindEither();
+                if (failed != null) {
+                    call.reject("Couldn't set up the camera again: " + failed);
+                    return;
+                }
+            }
+            call.resolve();
+        });
+    }
+
     @PluginMethod
     public void setFlash(PluginCall call) {
-        flashOn = Boolean.TRUE.equals(call.getBoolean("on", false));
-        if (imageCapture != null) imageCapture.setFlashMode(flashOn ? ImageCapture.FLASH_MODE_ON : ImageCapture.FLASH_MODE_OFF);
-        call.resolve();
+        boolean on = Boolean.TRUE.equals(call.getBoolean("on", false));
+        getActivity().runOnUiThread(() -> {
+            if (on == flashOn) {
+                call.resolve();
+                return;
+            }
+            flashOn = on;
+            // set up again: with the flash on, the photo waits for it
+            if (provider != null && camera != null) {
+                String failed = bindEither();
+                if (failed != null) {
+                    call.reject("Couldn't set the flash: " + failed);
+                    return;
+                }
+            }
+            call.resolve();
+        });
     }
 
     /** Focus on a point: x, y as fractions of the screen. */
@@ -309,13 +348,17 @@ public class NativeCameraPlugin extends Plugin {
     }
 
     // best: 4:3 like the camera app's photos, the photo at the largest size,
-    // zero shutter lag (the photo is the moment the shutter's pressed).
+    // zero shutter lag (the photo is the moment the shutter's pressed) unless
+    // it's been turned off.
     // Otherwise CameraX's own choices and its quickest ordinary capture.
     private void bind(boolean best) {
         Preview.Builder previewBuilder = new Preview.Builder();
         ImageCapture.Builder captureBuilder = new ImageCapture.Builder()
             .setFlashMode(flashOn ? ImageCapture.FLASH_MODE_ON : ImageCapture.FLASH_MODE_OFF)
             .setJpegQuality(92);
+        // the flash as the torch, on until the photo's taken: a quick flash
+        // was missed by the photo on some phones
+        if (flashOn) captureBuilder.setFlashType(ImageCapture.FLASH_TYPE_USE_TORCH_AS_FLASH);
         if (best) {
             previewBuilder.setResolutionSelector(
                 new ResolutionSelector.Builder().setAspectRatioStrategy(AspectRatioStrategy.RATIO_4_3_FALLBACK_AUTO_STRATEGY).build()
@@ -327,7 +370,11 @@ public class NativeCameraPlugin extends Plugin {
                         .setResolutionStrategy(ResolutionStrategy.HIGHEST_AVAILABLE_STRATEGY)
                         .build()
                 )
-                .setCaptureMode(ImageCapture.CAPTURE_MODE_ZERO_SHUTTER_LAG);
+                .setCaptureMode(
+                    // zero shutter lag takes the photo from just before the
+                    // press, before the flash: not with the flash on
+                    zsl && !flashOn ? ImageCapture.CAPTURE_MODE_ZERO_SHUTTER_LAG : ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY
+                );
         } else {
             captureBuilder.setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY);
         }

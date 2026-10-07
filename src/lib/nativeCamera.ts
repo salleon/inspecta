@@ -1,4 +1,5 @@
 import { Capacitor, registerPlugin, type PluginListenerHandle } from "@capacitor/core";
+import { getCameraFlash, getCameraZsl, setCameraZsl } from "./settings";
 
 // Android's own camera system (android/.../NativeCameraPlugin.java): the
 // camera's picture is shown behind the app's screen, which goes see-through
@@ -18,13 +19,14 @@ export interface NativeCameraInfo {
 }
 
 interface NativeCameraPlugin {
-  start(o: { show: boolean }): Promise<NativeCameraInfo>;
+  start(o: { show: boolean; zsl?: boolean; flash?: boolean }): Promise<NativeCameraInfo>;
   show(): Promise<void>;
   hide(): Promise<void>;
   stop(): Promise<void>;
   setZoom(o: { ratio: number }): Promise<void>;
   setLens(o: { wide: boolean }): Promise<NativeCameraInfo>;
   setFlash(o: { on: boolean }): Promise<void>;
+  setZsl(o: { on: boolean }): Promise<void>;
   focus(o: { x: number; y: number }): Promise<void>;
   capture(): Promise<{ path: string }>;
   addListener(event: "state", fn: (s: { streaming: boolean }) => void): Promise<PluginListenerHandle>;
@@ -38,8 +40,37 @@ export function hasNativeCamera(): boolean {
 
 /** A photo taken by the native camera, read in from where it was saved. */
 export async function captureNative(): Promise<Blob> {
+  let blob = await readCapture();
+  let tail = await tailOf(blob);
+  if (lastTail && sameBytes(tail, lastTail) && getCameraZsl()) {
+    // the same photo as last time: some phones' zero shutter lag hands back
+    // an old picture. Off for good on this phone, and the photo's taken again.
+    setCameraZsl(false);
+    await NativeCamera.setZsl({ on: false });
+    blob = await readCapture();
+    tail = await tailOf(blob);
+  }
+  lastTail = tail;
+  return blob;
+}
+
+async function readCapture(): Promise<Blob> {
   const { path } = await NativeCamera.capture();
   return (await fetch(Capacitor.convertFileSrc(path))).blob();
+}
+
+// The end of the last photo's JPEG: the picture itself, not the details at
+// the start (time, which way up), so a repeat of the same picture matches.
+let lastTail: Uint8Array | null = null;
+
+async function tailOf(blob: Blob): Promise<Uint8Array> {
+  return new Uint8Array(await blob.slice(Math.max(0, blob.size - 32768)).arrayBuffer());
+}
+
+function sameBytes(a: Uint8Array, b: Uint8Array) {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
 }
 
 // ---- kept ready ----
@@ -68,7 +99,7 @@ export function acquireNative(): Promise<NativeCameraInfo> {
   users++;
   window.clearTimeout(stopTimer);
   document.documentElement.classList.add("native-cam");
-  return NativeCamera.start({ show: true });
+  return NativeCamera.start({ show: true, zsl: getCameraZsl(), flash: getCameraFlash() });
 }
 
 /** The camera screen's closed: the picture's hidden, the camera stays ready a while. */
@@ -88,7 +119,7 @@ export function releaseNative() {
 /** Opens the camera early, not shown (a finger is on a camera button). */
 export function warmNative() {
   window.clearTimeout(stopTimer);
-  void NativeCamera.start({ show: users > 0 }).catch(() => {});
+  void NativeCamera.start({ show: users > 0, zsl: getCameraZsl(), flash: getCameraFlash() }).catch(() => {});
   if (!users) scheduleStop();
 }
 

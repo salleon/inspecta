@@ -323,6 +323,12 @@ export default function InAppCamera({ label, onDone }: Props) {
     const t = track();
     if (!video || !t || shooting || !ready || !video.videoWidth) return;
     setShooting(true);
+    // just after ↺ Retake the picture may not be moving yet: grabbed now,
+    // it'd be the last photo again
+    if (video.paused) {
+      await video.play().catch(() => {});
+      await nextFrame(video);
+    }
     const turn = turnRef.current;
     let torchOn = false;
     try {
@@ -495,4 +501,16 @@ function grabFrame(video: HTMLVideoElement, turn: number, zoom: number): HTMLCan
   g.rotate((turn * Math.PI) / 180);
   g.drawImage(video, (vw - sw) / 2, (vh - sh) / 2, sw, sh, -sw / 2, -sh / 2, sw, sh);
   return c;
+}
+
+// a new picture from the camera (or a moment, if the browser can't say)
+function nextFrame(video: HTMLVideoElement): Promise<void> {
+  return new Promise((resolve) => {
+    const id = window.setTimeout(resolve, 150);
+    const v = video as HTMLVideoElement & { requestVideoFrameCallback?: (fn: () => void) => number };
+    v.requestVideoFrameCallback?.(() => {
+      window.clearTimeout(id);
+      resolve();
+    });
+  });
 }

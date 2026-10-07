@@ -7,6 +7,19 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Camera: retake no longer brings back the old photo.** On some phones
+  the Android camera's zero shutter lag (the photo is the moment you
+  press) hands back an earlier picture instead of a new one. If a photo
+  comes back the same as the one before, zero shutter lag is turned off
+  on that phone and the photo is taken again, straight away. There's also
+  a "Zero shutter lag" switch in Settings › Photos to turn it off by hand.
+  On the browser camera, the shutter now waits for the picture to be
+  moving again after ↺ Retake, so it can't grab the old still.
+- **Camera: the flash is in the photo.** On some phones the flash went off
+  but the photo was taken without it. With the flash on, the camera no
+  longer uses zero shutter lag (which takes the photo from just before
+  the press), and the flash stays lit as a torch until the photo's taken.
+
 - **Markup fixes: Done no longer loses the photo, and back saves.**
   Marking up a photo straight from the camera and tapping Done could leave
   you on the findings list with the photo and marks gone: drawing the
