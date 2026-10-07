@@ -7,6 +7,14 @@ the technical detail.
 
 ## 1 October 2026
 
+- **The camera stays ready for five minutes, and comes back after
+  unlocking.** After a photo, the camera stays ready for five minutes
+  (was two). Android takes the camera away whenever the phone locks or
+  you switch apps; if you come back within five minutes it's started again
+  straight away, so it's ready by the time you tap. Away longer, it stays
+  off until you next use it. On phones that don't name their cameras, the
+  first open no longer opens the camera twice.
+
 - **Instant shutter, smoother aperture.** The photo is now the camera's
   picture at the moment you press the shutter, so it's instant and nothing
   moves before it's taken (the full-size shot made Android stop, refocus

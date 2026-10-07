@@ -162,6 +162,39 @@ test("the camera stays warm: the next photo opens instantly, with no start scree
   await page.waitForTimeout(300);
 });
 
+// the phone locking / unlocking, as the app sees it
+const setVisible = (visible, laterMs = 0) =>
+  page.evaluate(
+    ({ visible, laterMs }) => {
+      Object.defineProperty(document, "visibilityState", { configurable: true, get: () => (visible ? "visible" : "hidden") });
+      if (laterMs) {
+        const now = Date.now;
+        Date.now = () => now() + laterMs;
+      }
+      document.dispatchEvent(new Event("visibilitychange"));
+    },
+    { visible, laterMs },
+  );
+
+test("locked for under 5 minutes: the camera is started again on unlock; longer, it stays off", async () => {
+  const opens = () => page.evaluate(() => window.__opens);
+  // the camera's ready (just used); the phone locks, then unlocks
+  let before = await opens();
+  await setVisible(false);
+  await setVisible(true);
+  await page.waitForTimeout(800);
+  assert.equal(await opens(), before + 1, "started again straight after unlocking");
+  // locked longer than 5 minutes: not started again
+  before = await opens();
+  await setVisible(false);
+  await setVisible(true, 6 * 60_000);
+  await page.waitForTimeout(800);
+  assert.equal(await opens(), before, "left off");
+  // it still opens normally when next used
+  await page.reload();
+  await page.waitForTimeout(2300);
+});
+
 test("✎ Mark up on a finding opens the marks again to change them", async () => {
   await page.getByRole("button", { name: "✎ Mark up" }).click();
   await page.getByTestId("markup-editor").waitFor();

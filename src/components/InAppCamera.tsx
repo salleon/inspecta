@@ -126,7 +126,7 @@ export default function InAppCamera({ label, onDone }: Props) {
     return () => {
       cancelled = true;
       document.removeEventListener("visibilitychange", onVisible);
-      // kept running two minutes for the next photo
+      // kept running five minutes for the next photo
       streamRef.current?.getVideoTracks()[0]?.applyConstraints({ advanced: [{ torch: false } as MediaTrackConstraintSet] }).catch(() => {});
       if (acquired) releaseCamera();
       streamRef.current = null;

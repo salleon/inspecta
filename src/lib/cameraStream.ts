@@ -1,11 +1,19 @@
 import { getInAppCamera } from "./settings";
 
-// The in-app camera's picture, kept running for two minutes after the camera
-// closes so the next photo (Save & next, + photo, Retake) opens instantly,
-// and started as soon as a finger touches a camera button (warmCamera).
-// Stopped straight away when the app goes to the background.
+// The in-app camera's picture, kept running for five minutes after the
+// camera closes so the next photo (Save & next, + photo, Retake) opens
+// instantly, and started as soon as a finger touches a camera button
+// (warmCamera).
+// Android takes the camera away whenever the phone locks or the app goes to
+// the background, so it's stopped then; if it was ready and the app comes
+// back within five minutes, it's started again straight away, ready for
+// the next photo. Away longer, it stays off until it's next used.
 
-const KEEP_WARM_MS = 120_000;
+const KEEP_WARM_MS = 5 * 60_000;
+const REWARM_DELAY_MS = 250; // the phone needs a moment after unlocking
+
+let readyWhenHidden = false;
+let hiddenAt = 0;
 
 let stream: MediaStream | null = null;
 let opening: Promise<MediaStream> | null = null;
@@ -75,7 +83,20 @@ function stopCamera() {
 
 if (typeof document !== "undefined") {
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden" && !users) stopCamera();
+    if (document.visibilityState === "hidden") {
+      readyWhenHidden = !!liveStream() || !!opening || users > 0;
+      hiddenAt = Date.now();
+      // (the open camera screen restarts it itself when it's back)
+      if (!users) stopCamera();
+      return;
+    }
+    const wasReady = readyWhenHidden;
+    readyWhenHidden = false;
+    if (wasReady && !users && Date.now() - hiddenAt <= KEEP_WARM_MS) {
+      window.setTimeout(() => {
+        if (document.visibilityState === "visible") warmCamera();
+      }, REWARM_DELAY_MS);
+    }
   });
 }
 
@@ -109,19 +130,19 @@ async function openMainCamera(): Promise<MediaStream> {
       // that camera's gone (or renamed): look again
     }
   }
-  // a first look (camera names can only be read once it's allowed)
-  const first = await getUserMedia({ facingMode: { ideal: "environment" } });
+  // the back camera (camera names can only be read once it's open), kept
+  // if it's the main one, or if the phone doesn't say which is which
+  const first = await getUserMedia({ facingMode: { ideal: "environment" }, ...PREVIEW });
   const main = await mainBackCamera();
-  first.getTracks().forEach((t) => t.stop());
-  if (main) {
-    try {
-      localStorage.setItem(MAIN_CAMERA_KEY, main);
-    } catch {
-      // best-effort
-    }
-    return getUserMedia({ deviceId: { exact: main }, ...PREVIEW });
+  if (!main) return first;
+  try {
+    localStorage.setItem(MAIN_CAMERA_KEY, main);
+  } catch {
+    // best-effort
   }
-  return getUserMedia({ facingMode: { ideal: "environment" }, ...PREVIEW });
+  if (first.getVideoTracks()[0]?.getSettings().deviceId === main) return first;
+  first.getTracks().forEach((t) => t.stop());
+  return getUserMedia({ deviceId: { exact: main }, ...PREVIEW });
 }
 
 async function mainBackCamera(): Promise<string | undefined> {
