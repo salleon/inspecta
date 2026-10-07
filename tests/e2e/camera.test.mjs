@@ -348,11 +348,16 @@ test("any phone size, with or without Android's buttons at the bottom: the shutt
     const zoom = await page.locator(".cam-zoom").boundingBox();
     const shut = await page.getByLabel("Take photo").boundingBox();
     assert.ok(shut.y > space.top && shut.y > zoom.y + zoom.height, `${at}: the zoom, then the shutter under the picture`);
-    assert.ok(Math.abs(shut.y + shut.height / 2 - (Math.max(space.top, zoom.y + zoom.height) + space.bottom) / 2) <= 2, `${at}: the shutter centred in the space under the zoom`);
+    assert.ok(zoom.y + zoom.height <= shut.y, `${at}: the zoom clear of the shutter`);
     assert.ok(shut.y + shut.height < space.bottom, `${at}: the shutter clear of Android's buttons`);
     assert.ok(Math.abs(shut.x + shut.width / 2 - width / 2) <= 2, `${at}: the shutter in the middle`);
     await page.getByLabel("Take photo").click();
     const useB = await page.getByRole("button", { name: "Use ✓" }).boundingBox();
+    // the shutter turns into Use ✓: the same size, in the same place
+    // (once its little pop has finished)
+    await page.waitForFunction(() => document.querySelector(".cam-review.round .go b").getAnimations().every((a) => a.playState === "finished"));
+    const useCircle = await page.locator(".cam-review.round .go b").boundingBox();
+    for (const k of ["x", "y", "width", "height"]) assert.ok(Math.abs(useCircle[k] - shut[k]) <= 1, `${at}: Use ✓ where the shutter was (${k} ${useCircle[k]} vs ${shut[k]})`);
     assert.ok(Math.abs(useB.y + useB.height / 2 - (space.top + space.bottom) / 2) <= 2, `${at}: the review buttons centred between the photo and Android's buttons`);
     assert.ok(Math.abs(useB.x + useB.width / 2 - width / 2) <= 2, `${at}: Use in the middle`);
     await page.getByLabel("Close camera").click();

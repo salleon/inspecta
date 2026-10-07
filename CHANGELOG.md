@@ -7,6 +7,12 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Camera: the shutter turns into Use ✓.** The shutter is now the same
+  size as Use ✓ and in the same place (the middle of the space under the
+  photo), so when you take a photo it turns into the teal tick with a
+  little pop, and your thumb's already on it. Where there isn't room for
+  the zoom above it, the zoom sits on the photo's bottom edge.
+
 - **Camera: dotted navy round the picture instead of the live blur.** For
   speed: the live blur behind the picture is gone, and with it all the
   copying of the camera's picture. The space round the picture is now the

@@ -540,6 +540,9 @@ export default function InAppCamera({ label, onDone }: Props) {
           <button className="cam-shut" aria-label="Take photo" disabled={!ready || shooting} onClick={takeShot}>
             <i />
           </button>
+          {/* the same height as Use ✓'s label, so the shutter is exactly
+              where Use ✓ comes (it turns into it) */}
+          {fit && <span className="cam-shut-label" aria-hidden="true" />}
         </div>
       )}
       {shot && marking && <MarkupEditor blob={shot.blob} marks={[]} onCancel={() => setMarking(false)} onDone={(marks) => use(marks)} />}
@@ -601,8 +604,9 @@ interface Fit {
   // edge, and the shutter has the space under it
   snug: boolean;
 }
-// room under the picture for the zoom and the shutter, or (at least) the shutter
-const ROOM_BELOW = 180;
+// room under the picture for the zoom above the shutter (the shutter's where
+// Use ✓ comes, in the middle of the space), or at least for the shutter
+const ROOM_BELOW = 234;
 const ROOM_MIN = 110;
 
 // a new picture from the camera (or a moment, if the browser can't say)
