@@ -19,6 +19,10 @@ interface Row {
   photoCount: number;
 }
 
+// rows made straight away, then per frame after (see shownRows)
+const FIRST_ROWS = 24;
+const MORE_ROWS = 60;
+
 // The last site's list, kept while the app's open, so coming back to it
 // (e.g. from a finding) shows it straight away; it's read again behind it.
 const rowCache = new Map<string, Row[]>();
@@ -163,6 +167,17 @@ export default function Findings() {
       cancelled = true;
     };
   }, [siteId]);
+
+  // A screenful of rows straight away, the rest a batch a frame after
+  // (making hundreds of rows at once held the list up for over a second on
+  // a big site); all of them while reordering, as they all move.
+  const [shownRows, setShownRows] = useState(FIRST_ROWS);
+  useEffect(() => {
+    if (shownRows >= rows.length) return;
+    const id = requestAnimationFrame(() => setShownRows((n) => n + MORE_ROWS));
+    return () => cancelAnimationFrame(id);
+  }, [shownRows, rows.length]);
+  const visibleRows = reordering ? rows : rows.slice(0, shownRows);
 
   // kept for coming back to this list
   useEffect(() => {
@@ -483,7 +498,7 @@ export default function Findings() {
           </div>
         )}
 
-        {rows.map(({ finding, thumb, photoCount }, i) => {
+        {visibleRows.map(({ finding, thumb, photoCount }, i) => {
           const isDragged = dragIndex === i;
           const shiftPx = isDragged ? 0 : shiftSlotsFor(i) * slotHeight;
           return (

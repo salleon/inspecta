@@ -7,6 +7,19 @@ the technical detail.
 
 ## 1 October 2026
 
+- **A stress test for big sites, and a quicker findings list.** A new
+  test fills a site with 500 findings and 1,000 photos and times opening
+  the findings list, scrolling it, opening a finding, coming back to the
+  list, and adding 10 findings one after another with the camera (which
+  mustn't slow down as it goes). It runs with the other tests on every
+  push and before every build, so a change that makes big sites slow is
+  caught. Against the version from before the speed work, it fails: the
+  list took 1.6 s to open and 1.2 s to come back to; now it's about 0.25 s
+  and 0.25 s.
+  - While making it: the findings list now makes a screenful of rows
+    straight away and the rest a batch a frame after, instead of all of
+    them at once (making 500 rows held the list up for over a second).
+
 - **Speed: less work per photo, and big sites stay quick.**
   - Each in-app camera photo is copied to the phone's gallery by Android
     straight from where the camera saved it. Before, the whole photo
