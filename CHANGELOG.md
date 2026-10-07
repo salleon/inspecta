@@ -7,12 +7,11 @@ the technical detail.
 
 ## 1 October 2026
 
-- **(proper-camera-build) The camera says why it couldn't start.** If
-  Android's camera fails, the reason is kept and shown in Settings ›
-  Photos. If the browser camera then fails too, the camera screen stays
-  up with both reasons and a "Use the Android camera app" button, rather
-  than switching to the Android camera app without a word. Android's
-  camera now lets go of the camera properly when it fails.
+- **(proper-camera-build) No backup camera: the camera says why it
+  couldn't start.** If the camera can't start, the camera screen shows the
+  reason with a Close button, instead of switching to another camera. The
+  last reason is also kept in Settings › Photos. Android's camera now
+  lets go of the camera properly when it fails.
 
 - **(proper-camera-build) If Android's camera can't start, the in-app
   camera is used, and says why.** It had fallen back to the Android
