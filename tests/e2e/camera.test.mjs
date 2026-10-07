@@ -320,7 +320,64 @@ test("on a tall phone: the picture at the top, a blurred copy behind, the same a
   assert.equal(await page.locator("img.cam-fill").count(), 1, "the photo's blurred copy behind it");
   const shot = await page.locator(".cam-shot").boundingBox();
   assert.ok(Math.abs(shot.y - video.y) <= 1 && Math.abs(shot.height - video.height) <= 1, "the photo stays where the picture was");
+  // Use ✓ where the shutter was, Retake and Mark up either side
+  const [reB, useB, mkB] = await Promise.all(["↺ Retake", "Use ✓", "✎ Mark up"].map((name) => page.getByRole("button", { name }).boundingBox()));
+  assert.ok(reB.x < useB.x && useB.x < mkB.x, "Retake, Use, Mark up in a row");
+  assert.ok(Math.abs(useB.x + useB.width / 2 - 195) <= 2, "Use in the middle");
+  // in the middle of the space between the photo and the bottom
+  const below = shot.y + shot.height;
+  assert.ok(Math.abs(useB.y + useB.height / 2 - (below + 844) / 2) <= 2, "centred in the space under the photo");
   await page.getByRole("button", { name: "↺ Retake" }).click();
   assert.equal(await page.locator("canvas.cam-fill").count(), 1);
   await page.getByLabel("Close camera").click();
+});
+
+test("any phone size, with or without Android's buttons at the bottom: the shutter and the review buttons sit in the middle of the space under the picture", async () => {
+  const sizes = [
+    { width: 360, height: 760, bar: 0, nav: 0 }, // Galaxy S10 shape
+    { width: 360, height: 760, bar: 24, nav: 48 }, // the same, under the status bar and Android's three buttons
+    { width: 412, height: 915, bar: 32, nav: 24 }, // a big phone, gesture bar
+    { width: 390, height: 844, bar: 0, nav: 48 },
+  ];
+  for (const { width, height, bar, nav } of sizes) {
+    const at = `${width}×${height}, status bar ${bar}px, buttons ${nav}px`;
+    await page.setViewportSize({ width, height });
+    await go(page, app, "/site/s1/findings");
+    await page.evaluate(([b, n]) => {
+      document.documentElement.style.setProperty("--safe-area-inset-top", `${b}px`);
+      document.documentElement.style.setProperty("--safe-area-inset-bottom", `${n}px`);
+    }, [bar, nav]);
+    await page.getByRole("button", { name: "New finding", exact: true }).click();
+    await page.waitForFunction(() => document.querySelector(".cam video")?.videoWidth > 0);
+    const pic = await page.locator(".cam video").boundingBox();
+    assert.ok(Math.abs(pic.width - width) <= 1 && Math.abs(pic.height - (width * 4) / 3) <= 1, `${at}: the whole picture, full width`);
+    const space = { top: pic.y + pic.height, bottom: height - nav };
+    const zoom = await page.locator(".cam-zoom").boundingBox();
+    const shut = await page.getByLabel("Take photo").boundingBox();
+    assert.ok(shut.y > space.top && shut.y > zoom.y + zoom.height, `${at}: the zoom, then the shutter under the picture`);
+    assert.ok(Math.abs(shut.y + shut.height / 2 - (Math.max(space.top, zoom.y + zoom.height) + space.bottom) / 2) <= 2, `${at}: the shutter centred in the space under the zoom`);
+    assert.ok(shut.y + shut.height < space.bottom, `${at}: the shutter clear of Android's buttons`);
+    assert.ok(Math.abs(shut.x + shut.width / 2 - width / 2) <= 2, `${at}: the shutter in the middle`);
+    await page.getByLabel("Take photo").click();
+    const useB = await page.getByRole("button", { name: "Use ✓" }).boundingBox();
+    assert.ok(Math.abs(useB.y + useB.height / 2 - (space.top + space.bottom) / 2) <= 2, `${at}: the review buttons centred between the photo and Android's buttons`);
+    assert.ok(Math.abs(useB.x + useB.width / 2 - width / 2) <= 2, `${at}: Use in the middle`);
+    await page.getByLabel("Close camera").click();
+  }
+  // a screen without room under the picture: in the middle as before, the
+  // navy bar under it
+  await page.setViewportSize({ width: 480, height: 760 });
+  await go(page, app, "/site/s1/findings");
+  await page.evaluate(() => document.documentElement.style.setProperty("--safe-area-inset-bottom", "0px"));
+  await page.getByRole("button", { name: "New finding", exact: true }).click();
+  await page.waitForFunction(() => document.querySelector(".cam video")?.videoWidth > 0);
+  assert.equal(await page.locator(".cam.fit").count(), 0, "no room: the old layout");
+  await page.getByLabel("Take photo").click();
+  assert.equal(await page.locator(".cam-review.round").count(), 0, "the navy bar");
+  await page.getByLabel("Close camera").click();
+  await page.evaluate(() => {
+    document.documentElement.style.removeProperty("--safe-area-inset-top");
+    document.documentElement.style.removeProperty("--safe-area-inset-bottom");
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
 });

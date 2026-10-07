@@ -78,17 +78,21 @@ export default function InAppCamera({ label, onDone }: Props) {
   // darkened copy of the picture filling the screen behind. (Otherwise the
   // picture's in the middle, as big as fits.)
   const topRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
   const [fit, setFit] = useState<Fit | null>(null);
   const fitRef = useRef<Fit | null>(null);
   useLayoutEffect(() => {
     function measure() {
       const bar = topRef.current;
       if (!bar) return;
-      const w = window.innerWidth, h = window.innerHeight;
+      // the screen above Android's buttons at the bottom (if the app goes under them)
+      const w = window.innerWidth, h = window.innerHeight - (bottomRef.current?.offsetHeight ?? 0);
       const top = Math.round(bar.getBoundingClientRect().bottom);
       const height = Math.round((w * 4) / 3);
-      const next = w < h && top + height + ROOM_BELOW <= h ? { top, height } : null;
-      if (next?.top === fitRef.current?.top && next?.height === fitRef.current?.height) return;
+      const room = h - top - height;
+      const next = w < h && room >= ROOM_MIN ? { top, height, snug: room < ROOM_BELOW } : null;
+      const was = fitRef.current;
+      if (next?.top === was?.top && next?.height === was?.height && next?.snug === was?.snug) return;
       fitRef.current = next;
       setFit(next);
     }
@@ -450,7 +454,7 @@ export default function InAppCamera({ label, onDone }: Props) {
 
   return (
     <div
-      className={`cam${native ? " native" : ""}${fit ? " fit" : ""}`}
+      className={`cam${native ? " native" : ""}${fit ? " fit" : ""}${fit?.snug ? " snug" : ""}`}
       data-testid="in-app-camera"
       style={fit ? ({ "--pic-top": `${fit.top}px`, "--pic-h": `${fit.height}px` } as CSSProperties) : undefined}
     >
@@ -467,6 +471,7 @@ export default function InAppCamera({ label, onDone }: Props) {
         {focusAt && !shot && <span key={focusAt.n} className="cam-focus" style={{ left: focusAt.x, top: focusAt.y }} />}
         {blink > 0 && <span key={blink} className="cam-blink" />}
       </div>
+      <div className="cam-sa-bottom" ref={bottomRef} aria-hidden="true" />
       <div className="cam-top" ref={topRef}>
         <button className="cam-rb" aria-label="Close camera" onClick={() => onDone(null)}>
           ✕
@@ -502,7 +507,21 @@ export default function InAppCamera({ label, onDone }: Props) {
           ))}
         </div>
       )}
-      {shot ? (
+      {shot && fit ? (
+        // Use ✓ where the shutter was (the thumb stays put), Retake and
+        // Mark up either side
+        <div className="cam-review round">
+          <button aria-label="↺ Retake" onClick={retake}>
+            <b>↺</b>Retake
+          </button>
+          <button className="go" aria-label="Use ✓" onClick={() => use()}>
+            <b>✓</b>Use
+          </button>
+          <button className="mk" aria-label="✎ Mark up" onClick={() => setMarking(true)}>
+            <b>✎</b>Mark up
+          </button>
+        </div>
+      ) : shot ? (
         <div className="cam-review">
           <button onClick={retake}>↺ Retake</button>
           <button className="mk" onClick={() => setMarking(true)}>
@@ -564,9 +583,13 @@ function grabFrame(video: HTMLVideoElement, turn: number, zoom: number): HTMLCan
 interface Fit {
   top: number;
   height: number;
+  // not much room under the picture: the zoom goes on the picture's bottom
+  // edge, and the shutter has the space under it
+  snug: boolean;
 }
-// room under the picture for the zoom and the shutter
+// room under the picture for the zoom and the shutter, or (at least) the shutter
 const ROOM_BELOW = 180;
+const ROOM_MIN = 110;
 const FILL_MS = 120;
 
 // a new picture from the camera (or a moment, if the browser can't say)

@@ -228,6 +228,12 @@
 /* On a phone taller than the photo: the picture at the top, under the top
    buttons (--pic-top, --pic-h), the zoom and shutter under it, and a
    blurred, darkened copy of the picture filling the screen behind */
+.cam-sa-bottom {
+  position: absolute;
+  height: var(--sa-bottom);
+  width: 0;
+  visibility: hidden;
+}
 .cam-fill {
   position: absolute;
   inset: 0;
@@ -252,22 +258,79 @@
   top: calc(var(--pic-top) + var(--pic-h) + 14px);
 }
 .cam.fit .cam-bot {
-  height: calc(172px + var(--sa-bottom));
+  /* under the zoom, down to Android's buttons: the shutter in its middle */
+  top: calc(var(--pic-top) + var(--pic-h) + 58px);
+  height: auto;
+  padding: 0 28px var(--sa-bottom);
   background: none;
 }
-.cam.fit .cam-review {
-  padding-bottom: calc(58px + var(--sa-bottom));
+.cam.fit.snug .cam-zoom {
+  top: calc(var(--pic-top) + var(--pic-h) - 58px);
+}
+.cam.fit.snug .cam-bot {
+  top: calc(var(--pic-top) + var(--pic-h));
+}
+.cam.fit .cam-review.round {
+  /* the space between the photo and Android's buttons at the bottom of
+     the screen (or the screen's edge): the buttons are in its middle */
+  top: calc(var(--pic-top) + var(--pic-h));
+  padding: 0 34px var(--sa-bottom);
+  align-items: center;
+  justify-content: space-between;
+  gap: 0;
   background: none;
   border-top: 0;
 }
-.cam.fit .cam-review button {
-  background: rgba(14, 39, 64, 0.82);
+.cam-review.round button {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  font-size: 12.5px;
+  color: #f4f7f9;
 }
-.cam.fit .cam-review button.go {
-  background: #2ec4b6;
+.cam-review.round button b {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(0, 0, 0, 0.45);
+  box-sizing: border-box;
 }
-.cam.fit .cam-review button.mk {
+.cam-review.round button.mk {
+  color: #f7b977;
+  background: none;
+  border: 0;
+}
+.cam-review.round button.mk b {
+  border-color: rgba(245, 165, 92, 0.6);
   background: rgba(40, 30, 20, 0.6);
+}
+.cam-review.round button.go {
+  color: #5ff0e0;
+  background: none;
+  border: 0;
+}
+.cam-review.round button.go b {
+  width: 78px;
+  height: 78px;
+  font-size: 30px;
+  color: #04140f;
+  background: #2ec4b6;
+  border: 4px solid #2ec4b6;
+  box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.35);
+}
+.cam-review.round button:active b {
+  transform: scale(0.92);
 }
 
 /* ---- markup editor ---- */

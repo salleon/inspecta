@@ -7,6 +7,15 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Camera: after the shutter, Use ✓ is where the shutter was.** On the
+  new tall-phone layout, Use ✓ is a big round teal button in the shutter's
+  place, with ↺ Retake and ✎ Mark up as round buttons either side, over
+  the blurred photo, so your thumb stays put: shutter, then Use. The
+  shutter and these buttons sit in the middle of the space between the
+  photo and Android's buttons at the bottom of the screen, on any phone.
+  Where there's less room under the picture (e.g. a Galaxy S10 with its
+  three buttons), the zoom goes on the picture's bottom edge to make room.
+
 - **Camera on tall phones: the picture at the top, a blurred copy behind.**
   On a phone taller than the photo, the whole 4:3 picture now sits at the
   top, just under ✕, the finding and the flash, with the zoom and the
