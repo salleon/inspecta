@@ -80,11 +80,12 @@ if (typeof document !== "undefined") {
 }
 
 const MAIN_CAMERA_KEY = "inspecta.mainCamera";
-// The live picture at 1080p, not the full 12 MP: it starts quicker and is
-// lighter while kept warm. Photos are still full size (ImageCapture takes
-// them at the camera's largest size, see InAppCamera).
+// The live picture, which photos are taken from (instantly, see
+// InAppCamera): 4:3 like the camera app's photos, about 2.8 MP. Bigger than
+// the reports use (1200 px), and small enough to start quickly and stay
+// light while kept warm.
 // zoom: true asks to use the camera's zoom (Chrome only offers it if asked)
-const PREVIEW = { width: { ideal: 1920 }, height: { ideal: 1080 }, zoom: true } as MediaTrackConstraints;
+const PREVIEW = { width: { ideal: 1920 }, height: { ideal: 1440 }, aspectRatio: { ideal: 4 / 3 }, zoom: true } as MediaTrackConstraints;
 
 function getUserMedia(video: MediaTrackConstraints) {
   return navigator.mediaDevices.getUserMedia({ audio: false, video });

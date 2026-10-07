@@ -35,32 +35,22 @@ export default function CameraStartScreen({ live }: { live: boolean }) {
   const opening = phase === "opening";
   return (
     <div className={`cam-start${opening ? " opening" : ""}`} data-testid="camera-start" aria-label={opening ? undefined : "Starting camera"}>
-      {/* the aperture: navy with EnFact's dot grid, a six-sided hole that opens from the lens */}
-      <svg className="cam-iris" width="1" height="1" aria-hidden="true">
-        <defs>
-          <pattern id="cam-dots" width="26" height="26" patternUnits="userSpaceOnUse">
-            <circle cx="13" cy="13" r="1.3" fill="rgba(46,196,182,.16)" />
-          </pattern>
-          <mask id="cam-iris-mask" maskUnits="userSpaceOnUse" x="-3000" y="-3000" width="6000" height="6000">
-            <rect x="-3000" y="-3000" width="6000" height="6000" fill="#fff" />
-            <g className="cam-iris-hole">
-              <polygon points={HEX} fill="#000" />
-            </g>
-          </mask>
-        </defs>
-        <g mask="url(#cam-iris-mask)">
-          <rect x="-3000" y="-3000" width="6000" height="6000" fill="#071b2c" />
-          <rect x="-3000" y="-3000" width="6000" height="6000" fill="url(#cam-dots)" />
-        </g>
-        <g className="cam-iris-hole cam-iris-edges">
-          <polygon points={HEX} />
-          {EDGES.map((d, i) => (
-            <path key={i} d={d} />
-          ))}
-        </g>
-      </svg>
+      {/* the aperture: six navy blades round the lens (closed, they cover the
+          screen), each sliding straight out from it while they all turn.
+          Plain slides and turns of one-colour blades, so the phone's
+          graphics chip runs it smoothly even while the camera is starting. */}
+      <div className="cam-blades" aria-hidden="true">
+        {[0, 1, 2, 3, 4, 5].map((k) => (
+          <div key={k} className="cam-blade-arm" style={{ transform: `rotate(${k * 60}deg)` }}>
+            <div className="cam-blade">
+              <i />
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="cam-dots" aria-hidden="true" />
       <div className="cam-start-icon">
-        <CameraIcon size={150} />
+        <CameraIcon size={150} paused={opening} />
         <div className="cam-start-wait">
           Starting camera<b>.</b>
           <b>.</b>
@@ -71,23 +61,14 @@ export default function CameraStartScreen({ live }: { live: boolean }) {
   );
 }
 
-// the aperture's hole (radius 40 before it's scaled) and its blades' edges
-const HEX = Array.from({ length: 6 }, (_, k) => {
-  const a = ((60 * k + 30) * Math.PI) / 180;
-  return `${(40 * Math.cos(a)).toFixed(1)},${(40 * Math.sin(a)).toFixed(1)}`;
-}).join(" ");
-const EDGES = Array.from({ length: 6 }, (_, k) => {
-  const a = ((60 * k + 30) * Math.PI) / 180, b = ((60 * k + 120) * Math.PI) / 180;
-  const x = 40 * Math.cos(a), y = 40 * Math.sin(a);
-  return `M${x.toFixed(1)} ${y.toFixed(1)}L${(x + 300 * Math.cos(b)).toFixed(1)} ${(y + 300 * Math.sin(b)).toFixed(1)}`;
-});
-
 // The EnFact camera: camera body, and the swoosh traced round it by a
 // moving point (behind the camera over the top, in front underneath).
-export function CameraIcon({ size }: { size: number }) {
+export function CameraIcon({ size, paused = false }: { size: number; paused?: boolean }) {
   const back = useRef<HTMLCanvasElement>(null);
   const front = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
+    // stopped while the aperture opens, so it has the phone to itself
+    if (paused) return;
     let frame = 0;
     const draw = (now: number) => {
       if (back.current && front.current) traceSwoosh(back.current, front.current, now);
@@ -95,7 +76,7 @@ export function CameraIcon({ size }: { size: number }) {
     };
     frame = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(frame);
-  }, []);
+  }, [paused]);
   const dpr = Math.min(3, window.devicePixelRatio || 1);
   const c = Math.round(size * 1.5);
   const canvasStyle = { position: "absolute" as const, left: -size / 4, top: -size / 4, width: c, height: c };

@@ -7,10 +7,16 @@ the technical detail.
 
 ## 1 October 2026
 
-- **The camera starts quicker.** Its live picture now runs at 1080p
-  instead of the full 12 MP, so it opens faster and is lighter while
-  it's kept ready between photos. Photos are still taken at the
-  camera's full size.
+- **Instant shutter, smoother aperture.** The photo is now the camera's
+  picture at the moment you press the shutter, so it's instant and nothing
+  moves before it's taken (the full-size shot made Android stop, refocus
+  and re-expose first, about half a second, long enough to blur it). The
+  picture holds still on screen straight away. Photos are 1920 × 1440
+  (4:3, about 2.8 MP), more than the reports use; the live picture runs
+  at that size too, so the camera opens quicker and is lighter while kept
+  ready. With the flash on, the light comes on for a third of a second
+  first. The start screen's aperture is now six sliding blades instead of
+  a redrawn mask, so it opens smoothly while the camera starts.
 
 - **Teal shutter; tap a markup tool again to turn it off.** The camera's
   shutter button is teal. In ✎ Mark up, tapping the tool that's on (Circle,

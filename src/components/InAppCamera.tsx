@@ -4,7 +4,6 @@ import type { CameraLabel, Captured } from "../lib/capture";
 import { saveToGallery } from "../lib/capture";
 import { useBackHandler } from "../lib/backButton";
 import { getCameraFlash, setCameraFlash } from "../lib/settings";
-import { decodeUpright } from "../lib/markup";
 import MarkupEditor from "./MarkupEditor";
 import CameraStartScreen from "./CameraStartScreen";
 import { acquireCamera, dropCamera, releaseCamera } from "../lib/cameraStream";
@@ -27,7 +26,6 @@ interface Caps {
   // cropped to match (2× keeps the middle half)
   digital: boolean;
   torch: boolean;
-  flash: boolean; // the photo's own flash (ImageCapture fillLightMode)
   focus: boolean;
 }
 
@@ -42,18 +40,10 @@ function tiltTurn(x: number, y: number, last: number): number {
   return last;
 }
 
-type PhotoSettings = { fillLightMode?: string; imageWidth?: number; imageHeight?: number };
-type ImageCaptureLike = {
-  takePhoto(s?: PhotoSettings): Promise<Blob>;
-  getPhotoCapabilities(): Promise<{ fillLightMode?: string[]; imageWidth?: { max: number }; imageHeight?: { max: number } }>;
-};
-
 export default function InAppCamera({ label, onDone }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const captureRef = useRef<ImageCaptureLike | null>(null);
-  const photoSize = useRef<PhotoSettings>({});
-  const [caps, setCaps] = useState<Caps>({ zoom: DIGITAL_ZOOM, digital: true, torch: false, flash: false, focus: false });
+  const [caps, setCaps] = useState<Caps>({ zoom: DIGITAL_ZOOM, digital: true, torch: false, focus: false });
   const [ready, setReady] = useState(false);
   // the picture is coming through (until then the video shows nothing,
   // not Android's grey ▶ placeholder)
@@ -98,21 +88,8 @@ export default function InAppCamera({ label, onDone }: Props) {
           zoom: tc.zoom && tc.zoom.max > tc.zoom.min ? { min: tc.zoom.min, max: tc.zoom.max } : DIGITAL_ZOOM,
           digital: !(tc.zoom && tc.zoom.max > tc.zoom.min),
           torch: !!tc.torch,
-          flash: false,
           focus: !!tc.focusMode?.length,
         };
-        const IC = (window as unknown as { ImageCapture?: new (t: MediaStreamTrack) => ImageCaptureLike }).ImageCapture;
-        if (IC) {
-          try {
-            captureRef.current = new IC(track);
-            const pc = await captureRef.current.getPhotoCapabilities();
-            next.flash = !!pc.fillLightMode?.includes("flash");
-            // the photo at the camera's largest size (the live picture is only 1080p)
-            if (pc.imageWidth?.max && pc.imageHeight?.max) photoSize.current = { imageWidth: pc.imageWidth.max, imageHeight: pc.imageHeight.max };
-          } catch {
-            captureRef.current = null;
-          }
-        }
         if (cancelled) return;
         setCaps(next);
         // back to 1× (it may still be zoomed from the last photo)
@@ -246,46 +223,46 @@ export default function InAppCamera({ label, onDone }: Props) {
     if (t && Date.now() - t.t < 500 && Math.hypot(e.clientX - t.x, e.clientY - t.y) < 12) focusAtPoint(e.clientX, e.clientY);
   }
 
+  // The photo is the camera's picture at the moment the shutter's pressed:
+  // instant, so nothing moves between the press and the photo. (A separate
+  // full-size shot made Android stop, refocus and re-expose first, about
+  // half a second, long enough to blur it.)
   async function takeShot() {
     const video = videoRef.current;
     const t = track();
-    if (!video || !t || shooting || !ready) return;
+    if (!video || !t || shooting || !ready || !video.videoWidth) return;
     setShooting(true);
-    setBlink((n) => n + 1);
     const turn = turnRef.current;
     let torchOn = false;
     try {
-      let blob: Blob | null = null;
-      if (flash && !caps.flash && caps.torch) {
-        // no photo flash on this camera: the torch, just for the shot
+      if (flash && caps.torch) {
+        // the flash: the torch, on just long enough for the picture to brighten
         await t.applyConstraints({ advanced: [{ torch: true } as MediaTrackConstraintSet] }).catch(() => {});
         torchOn = true;
-        await new Promise((r) => setTimeout(r, 450));
+        await new Promise((r) => setTimeout(r, 350));
       }
-      if (captureRef.current) {
-        try {
-          const photo = await Promise.race([
-            captureRef.current.takePhoto({ ...photoSize.current, ...(caps.flash ? { fillLightMode: flash ? "flash" : "off" } : {}) }),
-            new Promise<never>((_, reject) => setTimeout(() => reject(new Error("slow")), 5000)),
-          ]);
-          blob = await uprightPhoto(photo, video, turn);
-        } catch {
-          blob = null;
-        }
+      const frame = grabFrame(video, turn, caps.digital ? zoom : 1);
+      // the picture stops where it was, straight away, while it's saved
+      video.pause();
+      setBlink((n) => n + 1);
+      if (torchOn) {
+        torchOn = false;
+        void t.applyConstraints({ advanced: [{ torch: false } as MediaTrackConstraintSet] }).catch(() => {});
       }
-      // no full-size photo from this camera: the picture itself
-      if (!blob) blob = await frameGrab(video, turn);
-      if (caps.digital && zoom > 1.01) blob = await cropMiddle(blob, zoom);
+      const blob = await encode(frame);
+      frame.width = frame.height = 0;
       setShot({ blob, url: URL.createObjectURL(blob) });
     } catch {
       // nothing taken; the shutter can be pressed again
+      void video.play().catch(() => {});
     } finally {
-      if (torchOn) await t.applyConstraints({ advanced: [{ torch: false } as MediaTrackConstraintSet] }).catch(() => {});
+      if (torchOn) void t.applyConstraints({ advanced: [{ torch: false } as MediaTrackConstraintSet] }).catch(() => {});
       setShooting(false);
     }
   }
 
   function retake() {
+    void videoRef.current?.play().catch(() => {});
     setShot(null);
     setMarking(false);
   }
@@ -298,7 +275,7 @@ export default function InAppCamera({ label, onDone }: Props) {
 
   const zoomStops = [0.5, 1, 2].filter((z) => z >= caps.zoom.min - 0.05 && z <= caps.zoom.max + 0.05);
   const nearest = zoomStops.reduce((a, z) => (Math.abs(z - zoom) < Math.abs(a - zoom) ? z : a), zoomStops[0] ?? 1);
-  const flashKnown = caps.flash || caps.torch;
+  const flashKnown = caps.torch;
 
   return (
     <div className="cam" data-testid="in-app-camera">
@@ -382,82 +359,18 @@ function encode(canvas: HTMLCanvasElement): Promise<Blob> {
   return new Promise((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("encode failed"))), "image/jpeg", 0.92));
 }
 
-// a canvas of `source` turned clockwise by `turn` degrees
-function turned(source: CanvasImageSource, w: number, h: number, turn: number): HTMLCanvasElement {
-  const c = document.createElement("canvas");
+// The camera's picture right now, upright for how the phone is held, and
+// cropped to the middle for the digital zoom (2× keeps the middle half).
+function grabFrame(video: HTMLVideoElement, turn: number, zoom: number): HTMLCanvasElement {
+  const vw = video.videoWidth, vh = video.videoHeight;
+  const sw = Math.round(vw / zoom), sh = Math.round(vh / zoom);
   const side = turn === 90 || turn === 270;
-  c.width = side ? h : w;
-  c.height = side ? w : h;
+  const c = document.createElement("canvas");
+  c.width = side ? sh : sw;
+  c.height = side ? sw : sh;
   const g = c.getContext("2d")!;
   g.translate(c.width / 2, c.height / 2);
   g.rotate((turn * Math.PI) / 180);
-  g.drawImage(source, -w / 2, -h / 2, w, h);
+  g.drawImage(video, (vw - sw) / 2, (vh - sh) / 2, sw, sh, -sw / 2, -sh / 2, sw, sh);
   return c;
-}
-
-// the camera's picture as it is now, at its full size
-async function frameGrab(video: HTMLVideoElement, turn: number): Promise<Blob> {
-  const c = turned(video, video.videoWidth, video.videoHeight, turn);
-  const blob = await encode(c);
-  c.width = c.height = 0;
-  return blob;
-}
-
-// the middle of a photo, as enlarged by the digital zoom
-async function cropMiddle(blob: Blob, zoom: number): Promise<Blob> {
-  const img = await decodeUpright(blob);
-  try {
-    const w = Math.round(img.width / zoom), h = Math.round(img.height / zoom);
-    const c = document.createElement("canvas");
-    c.width = w;
-    c.height = h;
-    c.getContext("2d")!.drawImage(img.source, (img.width - w) / 2, (img.height - h) / 2, w, h, 0, 0, w, h);
-    const out = await encode(c);
-    c.width = c.height = 0;
-    return out;
-  } finally {
-    img.done();
-  }
-}
-
-// A tiny grey copy, for comparing which way round two pictures are.
-function tiny(source: CanvasImageSource, w: number, h: number, turn: number): Float32Array {
-  const S = 24;
-  const c = turned(source, w, h, turn);
-  const t = document.createElement("canvas");
-  t.width = t.height = S;
-  const g = t.getContext("2d", { willReadFrequently: true })!;
-  g.drawImage(c, 0, 0, S, S);
-  const d = g.getImageData(0, 0, S, S).data;
-  const out = new Float32Array(S * S);
-  for (let i = 0; i < out.length; i++) out[i] = d[i * 4] * 0.3 + d[i * 4 + 1] * 0.59 + d[i * 4 + 2] * 0.11;
-  return out;
-}
-function differ(a: Float32Array, b: Float32Array) {
-  let s = 0;
-  for (let i = 0; i < a.length; i++) s += Math.abs(a[i] - b[i]);
-  return s;
-}
-
-// The full-size photo, the right way round: some phones hand it over as
-// the camera sensor sees it (sideways), so it's matched against what was on
-// screen, then turned for how the phone was held.
-async function uprightPhoto(photo: Blob, video: HTMLVideoElement, turn: number): Promise<Blob> {
-  const img = await decodeUpright(photo);
-  try {
-    const sameShape = img.width >= img.height === video.videoWidth >= video.videoHeight;
-    let fix = 0;
-    if (!sameShape) {
-      const screen = tiny(video, video.videoWidth, video.videoHeight, 0);
-      fix = differ(tiny(img.source, img.width, img.height, 90), screen) <= differ(tiny(img.source, img.width, img.height, 270), screen) ? 90 : 270;
-    }
-    const total = (fix + turn) % 360;
-    if (total === 0) return photo;
-    const c = turned(img.source, img.width, img.height, total);
-    const blob = await encode(c);
-    c.width = c.height = 0;
-    return blob;
-  } finally {
-    img.done();
-  }
 }

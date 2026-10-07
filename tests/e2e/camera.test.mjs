@@ -111,8 +111,12 @@ test("shoot, retake, mark up with a circle and a measurement, use", async () => 
   assert.ok(Math.abs(size.iw - size.vw / 2) < 4, `2× keeps the middle half (${size.iw} of ${size.vw})`);
   await page.getByRole("button", { name: /Retake/ }).click();
   await page.locator(".cam-zoom button", { hasText: "1×" }).click();
+  // the shutter is instant: the picture stops at once and the quick check follows
+  const t0 = Date.now();
   await page.getByLabel("Take photo").click();
+  assert.equal(await page.evaluate(() => document.querySelector(".cam video").paused), true, "picture held at the press");
   await page.getByRole("button", { name: /Retake/ }).waitFor();
+  assert.ok(Date.now() - t0 < 1500, `quick check after ${Date.now() - t0} ms`);
   await page.getByRole("button", { name: /Retake/ }).click();
   await page.getByLabel("Take photo").waitFor();
   await page.waitForTimeout(300);

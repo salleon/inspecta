@@ -391,53 +391,83 @@
     opacity: 0;
   }
 }
-.cam-iris {
+.cam-blades {
   position: absolute;
   left: 50%;
   top: 46%;
-  overflow: visible;
+  width: 0;
+  height: 0;
+  will-change: transform;
 }
-.cam-iris-hole {
-  transform: scale(0.0001);
+.cam-blade-arm {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
 }
-.cam-iris-edges {
-  fill: none;
-  stroke: #2ec4b6;
-  stroke-width: 2;
+/* a half-plane: its inside edge (the bottom) on the lens, so six of them
+   closed cover the screen, and slid out they leave a six-sided hole */
+.cam-blade {
+  position: absolute;
+  left: -150vmax;
+  bottom: 0;
+  width: 300vmax;
+  height: 150vmax;
+  background: #071b2c;
+  will-change: transform;
+}
+.cam-blade i {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: #2ec4b6;
   opacity: 0;
 }
-.cam-iris-edges > * {
-  vector-effect: non-scaling-stroke;
+.cam-dots {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(46, 196, 182, 0.16) 1.2px, transparent 1.4px);
+  background-size: 26px 26px;
+  background-position: calc(50% + 13px) calc(50% + 13px);
 }
-.cam-start.opening .cam-iris-hole {
-  animation: cam-iris-open 520ms linear forwards;
+.cam-start.opening .cam-dots {
+  animation: cam-fade-out 120ms linear forwards;
 }
-.cam-start.opening .cam-iris-edges {
-  animation:
-    cam-iris-open 520ms linear forwards,
-    cam-iris-edges 520ms linear forwards;
+.cam-start.opening .cam-blades {
+  animation: cam-blades-turn 520ms cubic-bezier(0.4, 0, 0.6, 1) forwards;
 }
-@keyframes cam-iris-open {
-  0% {
-    transform: rotate(0) scale(0.02);
-    animation-timing-function: cubic-bezier(0.3, 0, 0.4, 1);
+.cam-start.opening .cam-blade {
+  animation: cam-blade-out 520ms cubic-bezier(0.55, 0, 0.75, 0.4) forwards;
+}
+.cam-start.opening .cam-blade i {
+  animation: cam-edge 520ms linear forwards;
+}
+@keyframes cam-blades-turn {
+  to {
+    transform: rotate(-60deg);
   }
-  45% {
-    transform: rotate(-25deg) scale(2.4);
-    animation-timing-function: cubic-bezier(0.6, 0, 0.9, 0.6);
-  }
-  100% {
-    transform: rotate(-60deg) scale(18);
+}
+@keyframes cam-blade-out {
+  to {
+    transform: translateY(-120vmax);
   }
 }
-@keyframes cam-iris-edges {
+@keyframes cam-edge {
   0% {
     opacity: 1;
   }
-  70% {
+  75% {
     opacity: 1;
   }
   100% {
+    opacity: 0;
+  }
+}
+@keyframes cam-fade-out {
+  to {
     opacity: 0;
   }
 }
