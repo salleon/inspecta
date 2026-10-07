@@ -683,3 +683,24 @@ html.native-cam .cam {
     transform: scale(1);
   }
 }
+/* ⌫ stands out from the yellow keys: red-pink */
+.mp-key.bs {
+  background: rgba(255, 92, 106, 0.16);
+  border-color: rgba(255, 120, 130, 0.5);
+  color: #ff9aa4;
+}
+.mp-key.bs.pressed {
+  animation-name: mp-press-bs;
+}
+@keyframes mp-press-bs {
+  0% {
+    transform: scale(0.86);
+    background: rgba(255, 92, 106, 0.42);
+  }
+  55% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}

@@ -549,7 +549,7 @@ function MeasurePad({ open, onKey, onDone }: { open: boolean; onKey: (k: string)
         {key("1")}
         {key("2")}
         {key("3")}
-        {key("bs", "⌫", " fn")}
+        {key("bs", "⌫", " fn bs")}
         {key(".", ".", " fn")}
         {key("0")}
         {key("ok", "Done ✓", " ok")}

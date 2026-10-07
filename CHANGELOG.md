@@ -7,6 +7,9 @@ the technical detail.
 
 ## 1 October 2026
 
+- **(proper-camera-build) ⌫ on the measurement pad is red-pink**, so it
+  stands out from the yellow keys.
+
 - **(proper-camera-build) Measurements use a yellow number pad.** After
   drawing a measurement, a yellow number pad slides up over the markup
   tools instead of the phone's keyboard, like the flow test keypad: mm /
