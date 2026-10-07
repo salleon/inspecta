@@ -2,6 +2,8 @@ package au.com.inspecta.app;
 
 import android.Manifest;
 import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Paint;
 import android.graphics.Color;
 import android.graphics.ColorMatrix;
 import android.graphics.ColorMatrixColorFilter;
@@ -10,6 +12,7 @@ import android.graphics.Shader;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+import android.view.TextureView;
 import android.view.View;
 import android.widget.ImageView;
 import android.view.OrientationEventListener;
@@ -90,7 +93,12 @@ public class NativeCameraPlugin extends Plugin {
     private double fillTop = 0, fillHeight = 0;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable fillTick = this::refreshFill;
-    private static final int FILL_MS = 120;
+    private static final int FILL_MS = 70;
+    private static final int FILL_W = 36;
+    private static final Paint FILL_PAINT = new Paint(Paint.FILTER_BITMAP_FLAG);
+    private Bitmap fillRaw;
+    // a photo's being looked at: the web app shows its own blurred copy
+    private boolean fillPaused = false;
 
     // ---- calls from the web app ----
 
@@ -176,13 +184,15 @@ public class NativeCameraPlugin extends Plugin {
         });
     }
 
-    /** Where the picture goes: fill (the picture at top / height, CSS px, with the blurred copy behind) or the whole screen. */
+    /** Where the picture goes: fill (the picture at top / height, CSS px, with the blurred copy behind; paused: not refreshed, a photo is showing) or the whole screen. */
     @PluginMethod
     public void setLayout(PluginCall call) {
         boolean f = Boolean.TRUE.equals(call.getBoolean("fill", false));
+        boolean paused = Boolean.TRUE.equals(call.getBoolean("paused", false));
         Double top = call.getDouble("top"), height = call.getDouble("height");
         getActivity().runOnUiThread(() -> {
             fill = f && top != null && height != null && height > 0;
+            fillPaused = paused;
             fillTop = top != null ? top : 0;
             fillHeight = height != null ? height : 0;
             applyLayout();
@@ -526,16 +536,26 @@ public class NativeCameraPlugin extends Plugin {
         else fillView.setImageDrawable(null);
     }
 
-    // a tiny copy of the picture, blurred, behind it
+    // A tiny copy of the picture, blurred, behind it. Copied straight off the
+    // graphics chip at its tiny size (a full-size copy, several times a
+    // second, slowed the whole app down), then turned the way the picture's
+    // shown (the TextureView's own turn isn't in its copy).
     private void refreshFill() {
-        if (!fill || previewView == null || camera == null) return;
+        if (!fill || fillPaused || previewView == null || camera == null) return;
         if (streaming) {
             try {
-                Bitmap big = previewView.getBitmap();
-                if (big != null) {
-                    int w = 36, h = Math.max(1, Math.round(36f * big.getHeight() / Math.max(1, big.getWidth())));
-                    Bitmap small = Bitmap.createScaledBitmap(big, w, h, true);
-                    big.recycle();
+                TextureView tv = findTexture(previewView);
+                if (tv != null && tv.isAvailable() && tv.getWidth() > 0 && previewView.getWidth() > 0) {
+                    if (fillRaw == null) fillRaw = Bitmap.createBitmap(48, 48, Bitmap.Config.ARGB_8888);
+                    tv.getBitmap(fillRaw);
+                    int sw = FILL_W, sh = Math.max(1, Math.round((float) FILL_W * previewView.getHeight() / previewView.getWidth()));
+                    Bitmap small = Bitmap.createBitmap(sw, sh, Bitmap.Config.ARGB_8888);
+                    Canvas c = new Canvas(small);
+                    c.scale((float) sw / previewView.getWidth(), (float) sh / previewView.getHeight());
+                    c.translate(tv.getLeft(), tv.getTop());
+                    c.concat(tv.getTransform(null));
+                    c.scale((float) tv.getWidth() / fillRaw.getWidth(), (float) tv.getHeight() / fillRaw.getHeight());
+                    c.drawBitmap(fillRaw, 0, 0, FILL_PAINT);
                     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) boxBlur(small, 2);
                     fillView.setImageBitmap(small);
                 }
@@ -544,6 +564,18 @@ public class NativeCameraPlugin extends Plugin {
             }
         }
         handler.postDelayed(fillTick, FILL_MS);
+    }
+
+    private static TextureView findTexture(View v) {
+        if (v instanceof TextureView) return (TextureView) v;
+        if (v instanceof ViewGroup) {
+            ViewGroup g = (ViewGroup) v;
+            for (int i = 0; i < g.getChildCount(); i++) {
+                TextureView t = findTexture(g.getChildAt(i));
+                if (t != null) return t;
+            }
+        }
+        return null;
     }
 
     // a quick blur on a tiny bitmap, for phones without RenderEffect

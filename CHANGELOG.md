@@ -7,6 +7,19 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Camera: the blurred background no longer slows the app down.** The
+  blurred copy behind the picture was made by copying the whole picture,
+  full size, several times a second, on the same part of the phone that
+  runs the app's screen: the blur was choppy, the app sluggish and the
+  camera slow to open. It's now copied at its tiny size straight off the
+  graphics chip (a fraction of the work), so it can refresh more often and
+  more smoothly, and it stops while you're looking at a photo. After the
+  shutter, the blurred copy is made from a tiny version of the photo
+  instead of the full 12 MP one.
+- **Camera: Retake, Use and Mark up icons centred.** The round buttons'
+  icons are drawn now, so they sit in the middle of their circles (the ↺
+  text arrow sat off-centre).
+
 - **Camera: after the shutter, Use ✓ is where the shutter was.** On the
   new tall-phone layout, Use ✓ is a big round teal button in the shutter's
   place, with ↺ Retake and ✎ Mark up as round buttons either side, over

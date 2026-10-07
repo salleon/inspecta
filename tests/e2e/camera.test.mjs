@@ -317,7 +317,12 @@ test("on a tall phone: the picture at the top, a blurred copy behind, the same a
   assert.ok(lit > 0, "the copy has the picture in it");
   await page.getByLabel("Take photo").click();
   await page.getByRole("button", { name: "↺ Retake" }).waitFor();
-  assert.equal(await page.locator("img.cam-fill").count(), 1, "the photo's blurred copy behind it");
+  assert.equal(await page.locator("canvas.cam-fill").count(), 1, "the photo's blurred copy behind it");
+  await page.waitForFunction(() => {
+    const c = document.querySelector("canvas.cam-fill");
+    const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
+    return d.some((v, i) => i % 4 !== 3 && v > 0);
+  });
   const shot = await page.locator(".cam-shot").boundingBox();
   assert.ok(Math.abs(shot.y - video.y) <= 1 && Math.abs(shot.height - video.height) <= 1, "the photo stays where the picture was");
   // Use ✓ where the shutter was, Retake and Mark up either side
