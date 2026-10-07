@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from "react";
+import { Fragment, useEffect, useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import { useBackHandler } from "../lib/backButton";
 
 // Full-screen photo viewer for a finding's photos (tap the big photo on the
@@ -18,7 +18,11 @@ interface Rect {
 }
 
 interface Props {
+  // what's shown (a screen-size copy where there is one)
   urls: string[];
+  // the full-size originals, loaded only when zoomed in (the same as urls
+  // where there's no smaller copy)
+  fullUrls?: string[];
   startIndex: number;
   // where the photo sits on the screen now (it grows from / shrinks to here)
   source: Rect;
@@ -41,7 +45,9 @@ interface Zoom {
 }
 const NO_ZOOM: Zoom = { s: 1, x: 0, y: 0 };
 
-export default function PhotoViewer({ urls, startIndex, source, radius, note, place, onClose }: Props) {
+export default function PhotoViewer({ urls, fullUrls, startIndex, source, radius, note, place, onClose }: Props) {
+  // the original, over the photo, once it's loaded (only while zoomed in)
+  const [fullReady, setFullReady] = useState<string | null>(null);
   const [index, setIndex] = useState(startIndex);
   const [phase, setPhase] = useState<"start" | "open" | "closing">("start");
   const [drag, setDrag] = useState<{ mode: Mode; dx: number; dy: number }>({ mode: null, dx: 0, dy: 0 });
@@ -234,6 +240,9 @@ export default function PhotoViewer({ urls, startIndex, source, radius, note, pl
     >
       <div style={{ position: "absolute", inset: 0, background: "#000", opacity: background, transition: dragging ? "none" : "opacity 300ms ease" }} />
       {urls.map((url, i) => {
+        // only the photo shown and its neighbours (each one is a full
+        // decode, however many photos the finding has)
+        if (Math.abs(i - index) > 1) return null;
         const c = contain(url);
         const style: CSSProperties = {
           position: "absolute",
@@ -255,18 +264,24 @@ export default function PhotoViewer({ urls, startIndex, source, radius, note, pl
         } else if (flying || Math.abs(i - index) > 1) {
           style.opacity = 0;
         }
+        const full = i === index && zoom.s > 1 && !flying && fullUrls?.[i] && fullUrls[i] !== url ? fullUrls[i] : null;
         return (
-          <img
-            key={url}
-            src={url}
-            alt={`Photo ${i + 1} of ${urls.length}`}
-            draggable={false}
-            onLoad={(ev) => {
-              const img = ev.currentTarget;
-              if (img.naturalWidth && img.naturalHeight) setSizes((s) => (s[url] ? s : { ...s, [url]: [img.naturalWidth, img.naturalHeight] }));
-            }}
-            style={style}
-          />
+          <Fragment key={url}>
+            <img
+              src={url}
+              alt={`Photo ${i + 1} of ${urls.length}`}
+              draggable={false}
+              onLoad={(ev) => {
+                const img = ev.currentTarget;
+                if (img.naturalWidth && img.naturalHeight) setSizes((s) => (s[url] ? s : { ...s, [url]: [img.naturalWidth, img.naturalHeight] }));
+              }}
+              style={style}
+            />
+            {full && (
+              // zoomed in: the full-size original over it, once it's loaded
+              <img src={full} alt="" draggable={false} onLoad={() => setFullReady(full)} style={{ ...style, opacity: fullReady === full ? 1 : 0 }} />
+            )}
+          </Fragment>
         );
       })}
 

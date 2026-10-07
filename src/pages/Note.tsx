@@ -12,6 +12,7 @@ import {
   getThumbnail,
   listFindings,
   listPhotos,
+  savedScreenCopy,
   withMarked,
   updateFinding,
 } from "../db/db";
@@ -45,6 +46,7 @@ export default function Note() {
 
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
+  const [fullUrls, setFullUrls] = useState<string[]>([]);
   // small copies for the thumbnail strip (see lib/thumbnail), by photo id
   const [thumbUrls, setThumbUrls] = useState<Record<string, string>>({});
   const [selected, setSelected] = useState(0);
@@ -165,10 +167,29 @@ export default function Note() {
     };
   }, [photos]);
 
+  // Shown from the saved screen-size copy where there is one (a 12 MP
+  // original is ~48 MB to decode, every time a finding opens); the original
+  // only when zoomed in, full screen. A photo just taken shows its original
+  // until its copy's made.
   useEffect(() => {
-    const urls = photos.map((p) => URL.createObjectURL(shownBlob(p)));
-    setPhotoUrls(urls);
-    return () => urls.forEach((u) => URL.revokeObjectURL(u));
+    let cancelled = false;
+    const made: string[] = [];
+    const url = (b: Blob) => {
+      const u = URL.createObjectURL(b);
+      made.push(u);
+      return u;
+    };
+    void (async () => {
+      const copies = await Promise.all(photos.map((p) => savedScreenCopy(p.id).catch(() => undefined)));
+      if (cancelled) return;
+      const shown = photos.map((p, i) => url(copies[i] ?? shownBlob(p)));
+      setPhotoUrls(shown);
+      setFullUrls(photos.map((p, i) => (copies[i] ? url(shownBlob(p)) : shown[i])));
+    })();
+    return () => {
+      cancelled = true;
+      made.forEach((u) => URL.revokeObjectURL(u));
+    };
   }, [photos]);
 
   // Thumbnail URLs live in a ref keyed by photo id, so a refresh (e.g.
@@ -931,6 +952,7 @@ export default function Note() {
       {viewing && (
         <PhotoViewer
           urls={photoUrls}
+          fullUrls={fullUrls}
           startIndex={selected}
           source={viewing}
           radius={16}

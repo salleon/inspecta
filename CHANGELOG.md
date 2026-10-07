@@ -7,6 +7,25 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Speed: less work per photo, and big sites stay quick.**
+  - Each in-app camera photo is copied to the phone's gallery by Android
+    straight from where the camera saved it. Before, the whole photo
+    (~5 MB) was sent through to Android as text on every shot, holding the
+    app up.
+  - The work done on each photo in the background (its thumbnail, its
+    marked-up copy, the copy the exports use; each decodes the full 12 MP
+    photo) now waits while the camera's open and for a moment after it
+    closes, and runs one at a time, so it never competes with the camera
+    when you're adding findings quickly.
+  - A site's findings list is read in three goes however many findings it
+    has (it was one read per finding, then one per thumbnail), and it's
+    kept in memory, so coming back to it from a finding is instant. Rows
+    off screen aren't drawn.
+  - A finding shows its photos from their small saved copies (~1.4 MP)
+    instead of the 12 MP originals (~48 MB each to decode); the original
+    loads only when you zoom in full screen. Full screen only makes the
+    photo you're on and the ones either side.
+
 - **Camera: no wait after a marked-up photo.** After marking up a photo,
   the next finding's camera could sit on "Opening camera…" for a couple of
   seconds: the photo wasn't saved until the copy with the marks drawn in

@@ -7,6 +7,7 @@ import { getCameraFlash, setCameraFlash } from "../lib/settings";
 import MarkupEditor from "./MarkupEditor";
 import CameraStartScreen from "./CameraStartScreen";
 import { acquireCamera, dropCamera, releaseCamera } from "../lib/cameraStream";
+import { setCameraOpen } from "../lib/photoWork";
 import { acquireNative, captureNative, hasNativeCamera, NativeCamera, releaseNative, saveNativeError } from "../lib/nativeCamera";
 import "./PhotoTools.css";
 
@@ -64,7 +65,7 @@ export default function InAppCamera({ label, onDone }: Props) {
   const [shooting, setShooting] = useState(false);
   const [blink, setBlink] = useState(0);
   // the quick check after the shutter
-  const [shot, setShot] = useState<{ blob: Blob; url: string } | null>(null);
+  const [shot, setShot] = useState<{ blob: Blob; url: string; path?: string } | null>(null);
   const [marking, setMarking] = useState(false);
   const turnRef = useRef(0);
   const pointers = useRef(new Map<number, { x: number; y: number }>());
@@ -98,6 +99,12 @@ export default function InAppCamera({ label, onDone }: Props) {
     measure();
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
+  }, []);
+
+  // background work on photos waits while the camera's open (lib/photoWork)
+  useEffect(() => {
+    setCameraOpen(true);
+    return () => setCameraOpen(false);
   }, []);
 
   // start the camera (and again if the phone stopped it, e.g. the app was
@@ -405,8 +412,8 @@ export default function InAppCamera({ label, onDone }: Props) {
     setShooting(true);
     setBlink((n) => n + 1);
     try {
-      const blob = await captureNative();
-      setShot({ blob, url: URL.createObjectURL(blob) });
+      const { blob, path } = await captureNative();
+      setShot({ blob, url: URL.createObjectURL(blob), path });
     } catch {
       // nothing taken; the shutter can be pressed again
     } finally {
@@ -422,7 +429,7 @@ export default function InAppCamera({ label, onDone }: Props) {
 
   function use(marks?: Mark[]) {
     if (!shot) return;
-    void saveToGallery(shot.blob);
+    void saveToGallery(shot.blob, Date.now(), shot.path);
     onDone({ blob: shot.blob, marks: marks?.length ? marks : undefined });
   }
 

@@ -80,11 +80,28 @@ export function markUpPhoto(blob: Blob, marks: Mark[] = []): Promise<Mark[] | nu
 }
 
 // the app's own native bit (android/.../GalleryPlugin.java)
-const Gallery = registerPlugin<{ savePhoto(o: { data: string; name: string }): Promise<void> }>("Gallery");
+const Gallery = registerPlugin<{
+  savePhoto(o: { data: string; name: string }): Promise<void>;
+  savePhotoFile(o: { path: string; name: string }): Promise<void>;
+}>("Gallery");
 
 /** A copy of a photo from the in-app camera into the phone's gallery (DCIM/Inspecta). Best effort. */
-export async function saveToGallery(blob: Blob, takenAt = Date.now()) {
+export async function saveToGallery(blob: Blob, takenAt = Date.now(), path?: string) {
   if (!Capacitor.isNativePlatform()) return;
+  const d = new Date(takenAt);
+  const p = (n: number) => String(n).padStart(2, "0");
+  const name = `IMG_${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+  // the in-app camera's photo: copied by Android straight from where the
+  // camera saved it (sending a 5 MB photo through to Android as text, on
+  // every shot, held the app up)
+  if (path) {
+    try {
+      await Gallery.savePhotoFile({ path, name });
+      return;
+    } catch {
+      // as text, then
+    }
+  }
   try {
     const data = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
@@ -92,9 +109,6 @@ export async function saveToGallery(blob: Blob, takenAt = Date.now()) {
       reader.onerror = () => reject(reader.error);
       reader.readAsDataURL(blob);
     });
-    const d = new Date(takenAt);
-    const p = (n: number) => String(n).padStart(2, "0");
-    const name = `IMG_${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
     await Gallery.savePhoto({ data, name });
   } catch {
     // the photo is in the app either way

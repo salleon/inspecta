@@ -217,9 +217,11 @@ public class NativeCameraPlugin extends Plugin {
             call.reject("No room for the photo");
             return;
         }
-        // last time's photos have been read by now
+        // earlier photos have been read (and copied to the gallery) by now;
+        // the last few minutes' are left, in case one's still being copied
         File[] old = dir.listFiles();
-        if (old != null) for (File f : old) f.delete();
+        long keepFrom = System.currentTimeMillis() - 3 * 60_000;
+        if (old != null) for (File f : old) if (f.lastModified() < keepFrom) f.delete();
         File out = new File(dir, "IMG_" + System.currentTimeMillis() + ".jpg");
         // which way up the phone is held: the photo comes out upright
         imageCapture.setTargetRotation(rotation);

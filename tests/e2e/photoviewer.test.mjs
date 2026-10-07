@@ -115,3 +115,49 @@ test("a finding without a photo still opens the camera from the photo area", asy
 test("no page errors", () => {
   assert.deepEqual(errors, []);
 });
+
+test("a finding shows the photo's small saved copy; the full-size original only loads when zoomed in", async () => {
+  await seed(page, {
+    findings: [{ id: "f2", siteId: "s1", note: "Big photo", order: 2 }],
+    photos: [{ id: "p3", findingId: "f2", siteId: "s1", color: "#884", width: 2400, height: 1800 }],
+  });
+  // its screen-size copy, as made in the background after it's taken
+  const sizes = await page.evaluate(async () => {
+    const req = indexedDB.open("inspecta");
+    const idb = await new Promise((r) => (req.onsuccess = () => r(req.result)));
+    const c = document.createElement("canvas");
+    c.width = 1200;
+    c.height = 900;
+    c.getContext("2d").fillRect(0, 0, 1200, 900);
+    const copy = await new Promise((r) => c.toBlob(r, "image/jpeg", 0.8));
+    const tx = idb.transaction(["exportCopies", "photos"], "readwrite");
+    tx.objectStore("exportCopies").put({ photoId: "p3", siteId: "s1", blob: copy });
+    const original = await new Promise((r) => (tx.objectStore("photos").get("p3").onsuccess = (e) => r(e.target.result.blob.size)));
+    await new Promise((r) => (tx.oncomplete = r));
+    idb.close();
+    return { copy: copy.size, original };
+  });
+  const size = (sel) => page.locator(sel).first().evaluate(async (i) => (await (await fetch(i.src)).blob()).size);
+  await go(page, app, "/site/s1/finding/f2/note", 1500);
+  assert.equal(await size('button[aria-label="View photo full screen"] img'), sizes.copy, "the finding shows the small copy");
+  await openViewer();
+  assert.equal(await size('img[alt="Photo 1 of 1"]'), sizes.copy, "full screen too");
+  assert.equal(await page.locator('img[alt=""][src^="blob:"]').evaluateAll((imgs) => imgs.filter((i) => i.closest('[aria-label="Close photo"]') === null && i.style.position === "absolute").length), 0, "no original until zoomed");
+  await page.mouse.click(195, 420);
+  await page.mouse.click(195, 420);
+  await page.waitForTimeout(600);
+  const full = page.locator('img[alt=""]').filter({ has: page.locator("xpath=self::*[@src]") });
+  const origSizes = await full.evaluateAll(async (imgs) => Promise.all(imgs.map(async (i) => (await (await fetch(i.src)).blob()).size)));
+  assert.ok(origSizes.includes(sizes.original), "zoomed in: the original loads over it");
+  await viewer().click();
+  await page.waitForTimeout(450);
+});
+
+test("full screen only makes the photo shown and its neighbours", async () => {
+  await go(page, app, "/site/s1/finding/f0/note", 1500);
+  await openViewer();
+  assert.equal(await counter(), "1 / 3");
+  assert.equal(await page.locator('img[alt^="Photo "]').count(), 2, "photo 1 and 2, not 3");
+  await viewer().click();
+  await page.waitForTimeout(450);
+});

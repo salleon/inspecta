@@ -1,5 +1,6 @@
 import { getExportCopy, photoIdsWithoutExportCopy, getPhoto } from "../db/db";
 import { isExportBusy, setExportBusy } from "./exportBusy";
+import { whenCameraIdle } from "./photoWork";
 
 // Photos taken before export copies existed (see lib/exportCopy) get theirs
 // here, in the background, so an older site's first export is as quick as
@@ -29,6 +30,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 async function run() {
   for (const id of await photoIdsWithoutExportCopy()) {
     while (isExportBusy() || document.hidden) await sleep(1000);
+    await whenCameraIdle();
     const photo = await getPhoto(id);
     if (photo) await getExportCopy(photo).catch(() => {});
     await sleep(BETWEEN_MS);

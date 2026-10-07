@@ -5,6 +5,7 @@ import { makeExportCopy } from "../lib/exportCopy";
 import { RENAMED_CODES } from "../lib/esrCategories";
 import { isExportBusy } from "../lib/exportBusy";
 import { renderMarkedSafe, shownBlob } from "../lib/markup";
+import { photoJob, whenCameraIdle } from "../lib/photoWork";
 
 class InspectaDB extends Dexie {
   sites!: Table<Site, string>;
@@ -200,6 +201,25 @@ export async function listFindings(siteId: string) {
   return findings.sort((a, b) => a.order - b.order);
 }
 
+/** A site's findings list in three reads, however many findings and photos
+ * it has: the findings, each one's photo count and first photo, and the
+ * saved thumbnails (photoId → thumbnail). */
+export async function listFindingRows(siteId: string) {
+  const [findings, photos, thumbs] = await Promise.all([
+    listFindings(siteId),
+    db.photos.where("siteId").equals(siteId).toArray(),
+    db.thumbnails.where("siteId").equals(siteId).toArray(),
+  ]);
+  const first = new Map<string, Photo>();
+  const counts = new Map<string, number>();
+  for (const p of photos) {
+    counts.set(p.findingId, (counts.get(p.findingId) ?? 0) + 1);
+    const f = first.get(p.findingId);
+    if (!f || p.order < f.order) first.set(p.findingId, p);
+  }
+  return { findings, first, counts, thumbs: new Map(thumbs.map((t) => [t.photoId, t.blob])) };
+}
+
 export async function getFinding(findingId: string) {
   return db.findings.get(findingId);
 }
@@ -223,13 +243,13 @@ export async function addPhoto(findingId: string, siteId: string, blob: Blob, ta
   if (marks?.length) photo.marks = marks;
   await db.photos.add(photo);
   await db.findings.update(findingId, { updatedAt: Date.now() });
-  // Marked up: the copy with the marks drawn in is made in the background,
-  // a moment later (a 12 MP photo takes a couple of seconds on some phones,
-  // and the next finding's camera shouldn't wait for it, or share the phone
-  // with it as it starts). Then its thumbnail, then the copy the exports
-  // use, so lists and exports never wait on them; both wait for the marked
-  // copy, so neither is made without the marks.
-  if (photo.marks) startMarked(photo, MARKED_DELAY_MS);
+  // Marked up: the copy with the marks drawn in is made in the background
+  // (a 12 MP photo takes a couple of seconds on some phones, and the next
+  // finding's camera shouldn't wait for it; see lib/photoWork). Then its
+  // thumbnail, then the copy the exports use, so lists and exports never
+  // wait on them; both wait for the marked copy, so neither is made
+  // without the marks.
+  if (photo.marks) startMarked(photo);
   void getThumbnail(photo)
     .catch(() => {})
     .then(() => getExportCopy(photo))
@@ -239,18 +259,17 @@ export async function addPhoto(findingId: string, siteId: string, blob: Blob, ta
 
 // ---- the marked copy, made in the background ----
 
-const MARKED_DELAY_MS = 1500;
 const markedJobs = new Map<string, Promise<void>>();
 
-function startMarked(photo: Photo, delay = 0): Promise<void> {
+function startMarked(photo: Photo): Promise<void> {
   let job = markedJobs.get(photo.id);
   if (!job) {
     job = (async () => {
-      if (delay) await new Promise((r) => setTimeout(r, delay));
       if (!photo.marks?.length) return;
       // (never fails: if the marks can't be drawn in, the photo's still
       // saved with them, and they're drawn in when it's next needed)
-      const marked = await renderMarkedSafe(photo.blob, photo.marks);
+      const marks = photo.marks;
+      const marked = await photoJob(() => renderMarkedSafe(photo.blob, marks));
       if (!marked) return;
       await db.transaction("rw", db.photos, async () => {
         const now = await db.photos.get(photo.id);
@@ -267,9 +286,7 @@ function startMarked(photo: Photo, delay = 0): Promise<void> {
  * it's being made (or makes it, if it never was, e.g. the app was closed). */
 export async function withMarked(photo: Photo): Promise<Photo> {
   if (!photo.marks?.length || photo.marked) return photo;
-  const job = markedJobs.get(photo.id) ?? startMarked(photo);
-  // straight away if it was waiting to start
-  await job.catch(() => {});
+  await (markedJobs.get(photo.id) ?? startMarked(photo)).catch(() => {});
   return (await db.photos.get(photo.id)) ?? photo;
 }
 
@@ -318,7 +335,8 @@ export function getThumbnail(photo: Photo): Promise<Blob> {
     job = (async () => {
       const saved = await db.thumbnails.get(photo.id);
       if (saved) return saved.blob;
-      const blob = await makeThumbnail(shownBlob(await withMarked(photo)));
+      const source = shownBlob(await withMarked(photo));
+      const blob = await photoJob(() => makeThumbnail(source));
       // only keep it if the photo still exists (it may have been deleted
       // or retaken while the thumbnail was being made)
       await db.transaction("rw", db.photos, db.thumbnails, async () => {
@@ -340,6 +358,13 @@ export async function photoIdsWithoutExportCopy(): Promise<string[]> {
     for (const id of await db.photos.where("siteId").equals(siteId).primaryKeys()) if (!have.has(id)) ids.push(id);
   }
   return ids;
+}
+
+/** The photo's saved screen-size copy (the export copy, ~1.4 MP, marks
+ * drawn in), if it's been made yet: what's shown on a finding, so opening
+ * one doesn't decode a 12 MP original. Never made here. */
+export async function savedScreenCopy(photoId: string): Promise<Blob | undefined> {
+  return (await db.exportCopies.get(photoId))?.blob;
 }
 
 export async function getPhoto(photoId: string) {
@@ -366,7 +391,9 @@ export function getExportCopy(photo: Photo): Promise<Blob> {
       const made = exportCopyQueue.then(async () => {
         // not while an export runs: it doesn't need the copy (see getStamped)
         while (isExportBusy()) await new Promise((r) => setTimeout(r, 500));
-        return makeExportCopy(shownBlob(await withMarked(photo)));
+        const source = shownBlob(await withMarked(photo));
+        await whenCameraIdle();
+        return makeExportCopy(source);
       });
       exportCopyQueue = made.catch(() => {});
       const blob = await made;

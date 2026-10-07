@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import type { Finding, Photo, Site } from "../db/types";
-import { addPhoto, createFinding, deleteFinding, deleteSite, flowTestCount, getSite, getThumbnail, listFindings, listPhotos, reorderFinding, updateSite } from "../db/db";
+import type { Finding, Site } from "../db/types";
+import { addPhoto, createFinding, deleteFinding, deleteSite, flowTestCount, getSite, getThumbnail, listFindingRows, reorderFinding, updateSite } from "../db/db";
 import { capturePhoto } from "../lib/capture";
 import { warmCamera } from "../lib/cameraStream";
 import { IconChevronLeft, IconShare, IconEdit, IconGrip, IconCheck, IconTrash, IconPen, IconCamera } from "../components/Icons";
@@ -17,6 +17,31 @@ interface Row {
   finding: Finding;
   thumb: string | null;
   photoCount: number;
+}
+
+// The last site's list, kept while the app's open, so coming back to it
+// (e.g. from a finding) shows it straight away; it's read again behind it.
+const rowCache = new Map<string, Row[]>();
+// thumbnail URLs by photo, kept with it (made again if the thumbnail changes)
+const thumbUrls = new Map<string, { size: number; url: string }>();
+let thumbSite = "";
+
+function thumbUrl(photoId: string, blob: Blob) {
+  const had = thumbUrls.get(photoId);
+  if (had && had.size === blob.size) return had.url;
+  if (had) URL.revokeObjectURL(had.url);
+  const url = URL.createObjectURL(blob);
+  thumbUrls.set(photoId, { size: blob.size, url });
+  return url;
+}
+
+// only one site's kept
+function keepSite(siteId: string) {
+  if (thumbSite === siteId) return;
+  thumbSite = siteId;
+  thumbUrls.forEach((t) => URL.revokeObjectURL(t.url));
+  thumbUrls.clear();
+  rowCache.clear();
 }
 
 function formatShort(ms: number) {
@@ -56,7 +81,7 @@ export default function Findings() {
   const { siteId } = useParams<{ siteId: string }>();
   const navigate = useNavigate();
   const [site, setSite] = useState<Site | null>(null);
-  const [rows, setRows] = useState<Row[]>([]);
+  const [rows, setRows] = useState<Row[]>(() => (siteId ? (rowCache.get(siteId) ?? []) : []));
   // Findings / Flow tests tabs (?tab=flow, so back from a flow test lands here)
   const [searchParams, setSearchParams] = useSearchParams();
   const flowTab = searchParams.get("tab") === "flow";
@@ -104,41 +129,45 @@ export default function Findings() {
   useEffect(() => {
     if (!siteId) return;
     let cancelled = false;
-    const urls: string[] = [];
 
     async function load() {
       flowTestCount(siteId!).then((n) => !cancelled && setFlowCount(n));
-      const s = await getSite(siteId!);
-      const findings = await listFindings(siteId!);
-      const built: Row[] = [];
-      const firstPhotos: Photo[] = [];
-      for (const finding of findings) {
-        const photos: Photo[] = await listPhotos(finding.id);
-        if (photos[0]) firstPhotos.push(photos[0]);
-        built.push({ finding, thumb: null, photoCount: photos.length });
-      }
+      // three reads for the whole list, however big the site
+      const [s, { findings, first, counts, thumbs }] = await Promise.all([getSite(siteId!), listFindingRows(siteId!)]);
       if (cancelled) return;
+      keepSite(siteId!);
       setSite(s ?? null);
-      setRows(built);
+      setRows(
+        findings.map((finding) => {
+          const photo = first.get(finding.id);
+          const thumb = photo && thumbs.get(photo.id);
+          return { finding, thumb: photo && thumb ? thumbUrl(photo.id, thumb) : null, photoCount: counts.get(finding.id) ?? 0 };
+        }),
+      );
 
-      // Then the thumbnails, one at a time (small saved copies — see
-      // lib/thumbnail; older photos get theirs made here on first view,
-      // one by one so the phone never decodes a pile of full photos at once)
-      for (const photo of firstPhotos) {
+      // Then any thumbnails not made yet, one at a time (older photos get
+      // theirs made here on first view, one by one so the phone never
+      // decodes a pile of full photos at once; see lib/thumbnail)
+      for (const finding of findings) {
+        const photo = first.get(finding.id);
+        if (!photo || thumbs.has(photo.id)) continue;
         const thumb = await getThumbnail(photo).catch(() => null);
         if (cancelled) return;
         if (!thumb) continue;
-        const url = URL.createObjectURL(thumb);
-        urls.push(url);
+        const url = thumbUrl(photo.id, thumb);
         setRows((prev) => prev.map((r) => (r.finding.id === photo.findingId ? { ...r, thumb: url } : r)));
       }
     }
     load();
     return () => {
       cancelled = true;
-      urls.forEach((u) => URL.revokeObjectURL(u));
     };
   }, [siteId]);
+
+  // kept for coming back to this list
+  useEffect(() => {
+    if (siteId && thumbSite === siteId) rowCache.set(siteId, rows);
+  }, [siteId, rows]);
 
   // Stop any in-flight auto-scroll loop on unmount.
   useEffect(() => {
@@ -821,6 +850,11 @@ function FindingRow({
         transform: `translateY(${offsetY}px)`,
         transition: isDragged ? "none" : "transform 220ms cubic-bezier(0.16, 1, 0.3, 1)",
         animationDelay: `${Math.min(index, 8) * 35}ms`,
+        // rows off screen aren't drawn (a site with hundreds of findings
+        // costs no more than one screenful); while reordering every row
+        // is, as they all move
+        contentVisibility: rowReordering ? "visible" : "auto",
+        containIntrinsicSize: "auto 88px",
       }}
     >
       {/* delete panel behind the row: slightly inset, and only shown once
