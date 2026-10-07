@@ -134,15 +134,18 @@ export async function decodeUpright(blob: Blob): Promise<{ source: CanvasImageSo
   }
 }
 
-// The photo at full size with the marks drawn in (a JPEG): what's shown
-// and exported for a marked-up photo.
-export async function renderMarked(original: Blob, marks: Mark[]): Promise<Blob> {
+// The photo with the marks drawn in (a JPEG), at most `maxEdge` px on its
+// long side: what's shown and exported for a marked-up photo. (Twice what
+// the reports use; a full 12 MP canvas was too much for some phones.)
+export async function renderMarked(original: Blob, marks: Mark[], maxEdge = 2400): Promise<Blob> {
   const photo = await decodeUpright(original);
+  const scale = Math.min(1, maxEdge / Math.max(photo.width, photo.height));
   const canvas = document.createElement("canvas");
-  canvas.width = photo.width;
-  canvas.height = photo.height;
+  canvas.width = Math.max(1, Math.round(photo.width * scale));
+  canvas.height = Math.max(1, Math.round(photo.height * scale));
   const g = canvas.getContext("2d")!;
-  g.drawImage(photo.source, 0, 0);
+  g.imageSmoothingQuality = "high";
+  g.drawImage(photo.source, 0, 0, canvas.width, canvas.height);
   photo.done();
   await document.fonts?.load?.(`800 40px "Manrope Variable"`).catch(() => {});
   drawMarks(g, marks, canvas.width, canvas.height);
@@ -152,6 +155,19 @@ export async function renderMarked(original: Blob, marks: Mark[]): Promise<Blob>
   canvas.width = 0;
   canvas.height = 0;
   return out;
+}
+
+// renderMarked that never fails: smaller if it has to, else nothing (the
+// marks are still kept with the photo, so they can be drawn again later)
+export async function renderMarkedSafe(original: Blob, marks: Mark[]): Promise<Blob | undefined> {
+  for (const edge of [2400, 1600]) {
+    try {
+      return await renderMarked(original, marks, edge);
+    } catch {
+      // try smaller
+    }
+  }
+  return undefined;
 }
 
 // what's shown and exported for a photo: marked up if it has marks

@@ -7,6 +7,15 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Markup fixes: Done no longer loses the photo, and back saves.**
+  Marking up a photo straight from the camera and tapping Done could leave
+  you on the findings list with the photo and marks gone: drawing the
+  marks onto a full 12 MP photo was too much for the phone. The marked-up
+  copy is now drawn at up to 2400 px (twice what the reports use), smaller
+  again if needed, and if it still can't be drawn the photo and its marks
+  are saved anyway. Android back in Mark up now keeps the marks, like
+  Done, and returns to the finding (Cancel still throws them away).
+
 - **(proper-camera-build) ⌫ on the measurement pad is red-pink**, so it
   stands out from the yellow keys.
 

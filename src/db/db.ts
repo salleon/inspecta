@@ -4,7 +4,7 @@ import { makeThumbnail } from "../lib/thumbnail";
 import { makeExportCopy } from "../lib/exportCopy";
 import { RENAMED_CODES } from "../lib/esrCategories";
 import { isExportBusy } from "../lib/exportBusy";
-import { renderMarked, shownBlob } from "../lib/markup";
+import { renderMarkedSafe, shownBlob } from "../lib/markup";
 
 class InspectaDB extends Dexie {
   sites!: Table<Site, string>;
@@ -222,7 +222,9 @@ export async function addPhoto(findingId: string, siteId: string, blob: Blob, ta
   };
   if (marks?.length) {
     photo.marks = marks;
-    photo.marked = await renderMarked(blob, marks);
+    // (never fails: if the marks can't be drawn in, the photo's still saved
+    // with them, and they're drawn in when it's next marked up)
+    photo.marked = await renderMarkedSafe(blob, marks);
   }
   await db.photos.add(photo);
   await db.findings.update(findingId, { updatedAt: Date.now() });
@@ -245,7 +247,7 @@ export async function listPhotos(findingId: string) {
 export async function setPhotoMarks(photoId: string, marks: Mark[]) {
   const photo = await db.photos.get(photoId);
   if (!photo) return;
-  const marked = marks.length ? await renderMarked(photo.blob, marks) : undefined;
+  const marked = marks.length ? await renderMarkedSafe(photo.blob, marks) : undefined;
   // let a thumbnail / copy still being made from the old one finish first,
   // so it can't be saved over the new one
   await thumbnailJobs.get(photoId)?.catch(() => {});
@@ -435,6 +437,6 @@ export async function restoreSiteRecords(site: Site, findings: Finding[], flowTe
 
 export async function restorePhoto(photo: Photo) {
   // the marked copy isn't in a backup; it's made again from the marks
-  if (photo.marks?.length) photo.marked = await renderMarked(photo.blob, photo.marks).catch(() => undefined);
+  if (photo.marks?.length) photo.marked = await renderMarkedSafe(photo.blob, photo.marks);
   await db.photos.add(photo);
 }

@@ -4,7 +4,7 @@
 // Chromium's fake camera.
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { startApp, openPage, go, seed } from "./helpers.mjs";
+import { startApp, openPage, go, seed, pressBack } from "./helpers.mjs";
 
 let app;
 let page;
@@ -249,6 +249,18 @@ test("✎ Mark up on a finding opens the marks again to change them", async () =
   await page.getByRole("button", { name: "Cancel" }).click();
   await page.waitForTimeout(500);
   assert.equal((await photos())[0].marks.length, 1);
+
+  // Android back keeps the marks (like Done) and stays on the finding
+  await page.getByRole("button", { name: "✎ Mark up" }).click();
+  await page.getByTestId("markup-editor").waitFor();
+  await page.waitForTimeout(300);
+  const cb = await canvasBox();
+  await page.mouse.click(cb.x + cb.width * 0.88, cb.y + cb.height * 0.12);
+  await pressBack(page);
+  await page.waitForTimeout(1500);
+  assert.equal(await page.getByTestId("markup-editor").count(), 0);
+  assert.match(page.url(), /\/note$/, "still on the finding");
+  assert.equal((await photos())[0].marks.length, 2, "the circle added, kept");
 
   // tapping the tool that's on turns it off: taps then add nothing
   await page.getByRole("button", { name: "✎ Mark up" }).click();

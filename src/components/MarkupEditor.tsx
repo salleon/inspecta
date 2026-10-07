@@ -71,8 +71,10 @@ export default function MarkupEditor({ blob, marks: initial, onCancel, onDone }:
   const toolsRef = useRef<HTMLDivElement>(null);
   const [toolsH, setToolsH] = useState(0);
 
+  // Android back keeps the marks, like Done (Cancel throws them away)
   useBackHandler(() => {
-    onCancel();
+    setEditing(-1);
+    onDone(marks);
     return true;
   });
 
