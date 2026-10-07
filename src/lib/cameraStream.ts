@@ -1,4 +1,5 @@
 import { getInAppCamera } from "./settings";
+import { hasNativeCamera, warmNative } from "./nativeCamera";
 
 // The in-app camera's picture, kept running for five minutes after the
 // camera closes so the next photo (Save & next, + photo, Retake) opens
@@ -64,7 +65,10 @@ export function dropCamera() {
 
 /** Start the camera early (a finger is on a camera button). */
 export function warmCamera() {
-  if (!getInAppCamera() || typeof navigator.mediaDevices?.getUserMedia !== "function") return;
+  if (!getInAppCamera()) return;
+  // on the phone: Android's own camera (lib/nativeCamera)
+  if (hasNativeCamera()) return warmNative();
+  if (typeof navigator.mediaDevices?.getUserMedia !== "function") return;
   window.clearTimeout(stopTimer);
   openStream().catch(() => {});
   if (!users) scheduleStop();
@@ -83,6 +87,7 @@ function stopCamera() {
 
 if (typeof document !== "undefined") {
   document.addEventListener("visibilitychange", () => {
+    if (hasNativeCamera()) return; // (lib/nativeCamera looks after its own)
     if (document.visibilityState === "hidden") {
       readyWhenHidden = !!liveStream() || !!opening || users > 0;
       hiddenAt = Date.now();

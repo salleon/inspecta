@@ -514,3 +514,25 @@
     opacity: 1;
   }
 }
+
+/* ---- Android's own camera (lib/nativeCamera) ----
+   Its picture is behind the app's screen: while the camera's open, the
+   page is see-through and only the camera's controls are drawn. */
+html.native-cam,
+html.native-cam body,
+html.native-cam #root {
+  background: transparent !important;
+}
+html.native-cam .app-shell {
+  visibility: hidden;
+  background: transparent;
+}
+html.native-cam .cam {
+  visibility: visible;
+}
+.cam.native {
+  background: transparent;
+}
+.cam.native .cam-shot {
+  background: #000;
+}

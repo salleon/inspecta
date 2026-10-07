@@ -7,6 +7,18 @@ the technical detail.
 
 ## 1 October 2026
 
+- **(proper-camera-build branch) The camera on Android's own camera
+  system.** On the phone, the in-app camera now runs on Android's camera
+  system (CameraX) instead of the browser camera, with the same screen,
+  start screen, quick check and ✎ Mark up. Photos are full size with the
+  phone's own processing, taken the moment the shutter's pressed on
+  phones that support it, upright however the phone's held; the flash is
+  a real flash; zoom uses the phone's lenses, so .5× shows where there's
+  an ultra-wide. It stays ready five minutes after use; Android closes it
+  when the phone locks and opens it again on unlock, and after more than
+  five minutes away it's stopped. Settings › Photos › In-app camera says
+  which camera this build has.
+
 - **The camera stays ready for five minutes, and comes back after
   unlocking.** After a photo, the camera stays ready for five minutes
   (was two). Android takes the camera away whenever the phone locks or

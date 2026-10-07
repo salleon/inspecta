@@ -7,6 +7,7 @@ import { getCameraFlash, setCameraFlash } from "../lib/settings";
 import MarkupEditor from "./MarkupEditor";
 import CameraStartScreen from "./CameraStartScreen";
 import { acquireCamera, dropCamera, releaseCamera } from "../lib/cameraStream";
+import { acquireNative, captureNative, hasNativeCamera, NativeCamera, releaseNative } from "../lib/nativeCamera";
 import "./PhotoTools.css";
 
 // Inspecta's own camera (no Android camera app): the camera's picture full
@@ -41,6 +42,9 @@ function tiltTurn(x: number, y: number, last: number): number {
 }
 
 export default function InAppCamera({ label, onDone }: Props) {
+  // on the phone: Android's own camera, its picture behind this screen
+  // (lib/nativeCamera); in a browser, the browser's camera in a <video>
+  const [native] = useState(hasNativeCamera);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [caps, setCaps] = useState<Caps>({ zoom: DIGITAL_ZOOM, digital: true, torch: false, focus: false });
@@ -66,6 +70,39 @@ export default function InAppCamera({ label, onDone }: Props) {
   // start the camera (and again if the phone stopped it, e.g. the app was
   // put away)
   useEffect(() => {
+    if (!native) return;
+    let cancelled = false;
+    let listener: { remove: () => Promise<void> } | null = null;
+    (async () => {
+      try {
+        listener = await NativeCamera.addListener("state", (s) => {
+          if (!cancelled) setLive(s.streaming);
+        });
+        // (instant if it was used in the last five minutes, or a finger
+        // went down on the camera button)
+        const info = await acquireNative();
+        if (cancelled) return;
+        setCaps({ zoom: { min: info.zoomMin, max: info.zoomMax }, digital: false, torch: info.hasFlash, focus: true });
+        // back to 1× (it may still be zoomed from the last photo)
+        if (Math.abs(info.zoom - 1) > 0.01 && info.zoomMin <= 1) void NativeCamera.setZoom({ ratio: 1 });
+        setZoom(info.zoomMin <= 1 ? 1 : info.zoom);
+        void NativeCamera.setFlash({ on: getCameraFlash() });
+        if (info.streaming) setLive(true);
+        setReady(true);
+      } catch {
+        // no camera, or no permission: the Android camera instead
+        if (!cancelled) doneRef.current("fallback");
+      }
+    })();
+    return () => {
+      cancelled = true;
+      void listener?.remove();
+      releaseNative();
+    };
+  }, [native]);
+
+  useEffect(() => {
+    if (native) return;
     let cancelled = false;
     let acquired = false;
     async function start() {
@@ -131,7 +168,7 @@ export default function InAppCamera({ label, onDone }: Props) {
       if (acquired) releaseCamera();
       streamRef.current = null;
     };
-  }, []);
+  }, [native]);
 
   // which way up the phone is held
   useEffect(() => {
@@ -161,6 +198,10 @@ export default function InAppCamera({ label, onDone }: Props) {
   function applyZoom(z: number) {
     const v = Math.min(caps.zoom.max, Math.max(caps.zoom.min, z));
     setZoom(v);
+    if (native) {
+      void NativeCamera.setZoom({ ratio: v }).catch(() => {});
+      return;
+    }
     if (caps.digital) return;
     track()?.applyConstraints({ advanced: [{ zoom: v } as MediaTrackConstraintSet] }).catch(() => {});
   }
@@ -169,6 +210,7 @@ export default function InAppCamera({ label, onDone }: Props) {
     const on = !flash;
     setFlash(on);
     setCameraFlash(on);
+    if (native) void NativeCamera.setFlash({ on }).catch(() => {});
   }
 
   // where the picture sits on the screen (it's shown whole, "contain")
@@ -182,6 +224,11 @@ export default function InAppCamera({ label, onDone }: Props) {
   }
 
   function focusAtPoint(clientX: number, clientY: number) {
+    if (native) {
+      setFocusAt((f) => ({ x: clientX, y: clientY, n: (f?.n ?? 0) + 1 }));
+      void NativeCamera.focus({ x: clientX / window.innerWidth, y: clientY / window.innerHeight }).catch(() => {});
+      return;
+    }
     const p = pictureRect();
     if (!p) return;
     const x = (clientX - p.left) / p.width, y = (clientY - p.top) / p.height;
@@ -228,6 +275,7 @@ export default function InAppCamera({ label, onDone }: Props) {
   // full-size shot made Android stop, refocus and re-expose first, about
   // half a second, long enough to blur it.)
   async function takeShot() {
+    if (native) return takeNativeShot();
     const video = videoRef.current;
     const t = track();
     if (!video || !t || shooting || !ready || !video.videoWidth) return;
@@ -261,6 +309,22 @@ export default function InAppCamera({ label, onDone }: Props) {
     }
   }
 
+  // Android's camera takes the photo: full size, the moment the shutter's
+  // pressed on phones with zero shutter lag, upright for how it was held
+  async function takeNativeShot() {
+    if (shooting || !ready) return;
+    setShooting(true);
+    setBlink((n) => n + 1);
+    try {
+      const blob = await captureNative();
+      setShot({ blob, url: URL.createObjectURL(blob) });
+    } catch {
+      // nothing taken; the shutter can be pressed again
+    } finally {
+      setShooting(false);
+    }
+  }
+
   function retake() {
     void videoRef.current?.play().catch(() => {});
     setShot(null);
@@ -278,9 +342,11 @@ export default function InAppCamera({ label, onDone }: Props) {
   const flashKnown = caps.torch;
 
   return (
-    <div className="cam" data-testid="in-app-camera">
+    <div className={native ? "cam native" : "cam"} data-testid="in-app-camera">
       <div className="cam-view" onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}>
-        <video ref={videoRef} playsInline muted autoPlay poster={BLANK} onPlaying={() => setLive(true)} style={{ opacity: shot || !live ? 0 : 1, transform: caps.digital && zoom > 1 ? `scale(${zoom})` : undefined }} />
+        {!native && (
+          <video ref={videoRef} playsInline muted autoPlay poster={BLANK} onPlaying={() => setLive(true)} style={{ opacity: shot || !live ? 0 : 1, transform: caps.digital && zoom > 1 ? `scale(${zoom})` : undefined }} />
+        )}
         {shot && <img className="cam-shot" src={shot.url} alt="" />}
         <CameraStartScreen live={live} />
         {focusAt && !shot && <span key={focusAt.n} className="cam-focus" style={{ left: focusAt.x, top: focusAt.y }} />}

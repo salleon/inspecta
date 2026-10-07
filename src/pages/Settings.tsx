@@ -8,6 +8,7 @@ import BackupSettings from "../components/BackupSettings";
 import { UpdateSettingsRow } from "../components/UpdatePrompt";
 import { BLUE, Group, ORANGE, RowIcon, groupHintStyle, groupRowStyle } from "../components/SettingsList";
 import { getInspectorName, setInspectorName } from "../lib/profile";
+import { hasNativeCamera } from "../lib/nativeCamera";
 import { setConverterTool, setInAppCamera, useConverterTool, useInAppCamera } from "../lib/settings";
 import { startTour } from "../lib/tour";
 import { useBackHandler } from "../lib/backButton";
@@ -70,7 +71,7 @@ export default function Settings() {
           <Item
             icon={<RowIcon name="camera" />}
             title="In-app camera"
-            hint={inAppCamera ? "Inspecta's own camera, with a quick check and ✎ Mark up" : "Off: the Android camera app"}
+            hint={inAppCamera ? (hasNativeCamera() ? "Inspecta's camera on Android's camera system (CameraX)" : "Inspecta's own camera, with a quick check and ✎ Mark up") : "Off: the Android camera app"}
             switchOn={inAppCamera}
             right={<Switch on={inAppCamera} />}
             onClick={() => setInAppCamera(!inAppCamera)}

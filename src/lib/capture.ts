@@ -2,6 +2,7 @@ import { Camera, CameraDirection } from "@capacitor/camera";
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import type { Mark } from "../db/types";
 import { getInAppCamera } from "./settings";
+import { hasNativeCamera } from "./nativeCamera";
 
 // A photo from the camera, with any marks drawn on it straight away
 // (✎ Mark up on the camera's quick check).
@@ -46,7 +47,7 @@ function show(r: PhotoToolRequest | null) {
  * Null if cancelled. Either way a copy goes to the phone's gallery.
  */
 export async function capturePhoto(label: CameraLabel = { title: "New photo" }): Promise<Captured | null> {
-  if (getInAppCamera() && typeof navigator.mediaDevices?.getUserMedia === "function") {
+  if (getInAppCamera() && (hasNativeCamera() || typeof navigator.mediaDevices?.getUserMedia === "function")) {
     const r = await new Promise<Captured | null | "fallback">((resolve) =>
       show({
         kind: "camera",
