@@ -154,7 +154,7 @@ export default function InAppCamera({ label, onDone }: Props) {
           if (!cancelled && document.visibilityState === "visible") void restart();
         });
         setReady(true);
-      } catch (e) {
+      } catch {
         // no camera, or no permission: the Android camera app, the last resort
         if (acquired) releaseCamera();
         acquired = false;
