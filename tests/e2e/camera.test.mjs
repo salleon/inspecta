@@ -225,6 +225,8 @@ test("✎ Mark up on a finding opens the marks again to change them", async () =
   const e = before.marks[1];
   await page.mouse.click(c.x + ((e.x0 + e.x1) / 2) * c.width, c.y + ((e.y0 + e.y1) / 2) * c.height);
   await page.getByTestId("measure-label").waitFor();
+  // (the photo makes room as the pad slides up, moving the box: let it settle)
+  await page.waitForTimeout(500);
   // the cursor in the box: put it after the 2, then type 5
   const two = page.locator('[data-testid="measure-label"] [data-i="2"]');
   const r = await two.boundingBox();
