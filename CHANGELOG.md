@@ -7,6 +7,11 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Zero shutter lag: automatic only.** The switch in Settings › Photos is
+  gone. The app already handles it by itself: if a photo comes back the
+  same as the one before (the retake problem), zero shutter lag is turned
+  off on that phone and the photo is taken again straight away.
+
 - **Camera: the blurred background no longer slows the app down.** The
   blurred copy behind the picture was made by copying the whole picture,
   full size, several times a second, on the same part of the phone that

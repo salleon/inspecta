@@ -8,8 +8,8 @@ import BackupSettings from "../components/BackupSettings";
 import { UpdateSettingsRow } from "../components/UpdatePrompt";
 import { BLUE, Group, ORANGE, RowIcon, groupHintStyle, groupRowStyle } from "../components/SettingsList";
 import { getInspectorName, setInspectorName } from "../lib/profile";
-import { hasNativeCamera, lastNativeError, NativeCamera } from "../lib/nativeCamera";
-import { setCameraZsl, setConverterTool, setInAppCamera, useCameraZsl, useConverterTool, useInAppCamera } from "../lib/settings";
+import { hasNativeCamera, lastNativeError } from "../lib/nativeCamera";
+import { setConverterTool, setInAppCamera, useConverterTool, useInAppCamera } from "../lib/settings";
 import { startTour } from "../lib/tour";
 import { useBackHandler } from "../lib/backButton";
 import { IS_TEST_BUILD } from "../lib/buildInfo";
@@ -37,7 +37,6 @@ export default function Settings() {
   const navigate = useNavigate();
   const converterTool = useConverterTool();
   const inAppCamera = useInAppCamera();
-  const cameraZsl = useCameraZsl();
   const [name, setName] = useState(() => getInspectorName());
   const [draft, setDraft] = useState<string | null>(null);
 
@@ -77,19 +76,6 @@ export default function Settings() {
             right={<Switch on={inAppCamera} />}
             onClick={() => setInAppCamera(!inAppCamera)}
           />
-          {inAppCamera && hasNativeCamera() && (
-            <Item
-              icon={<RowIcon name="camera" />}
-              title="Zero shutter lag"
-              hint={cameraZsl ? "The photo is the moment you press. Turn off if retake keeps showing the old photo" : "Off: the photo's taken just after you press"}
-              switchOn={cameraZsl}
-              right={<Switch on={cameraZsl} />}
-              onClick={() => {
-                setCameraZsl(!cameraZsl);
-                void NativeCamera.setZsl({ on: !cameraZsl }).catch(() => {});
-              }}
-            />
-          )}
           {lastNativeError() && (
             <div data-testid="native-camera-error" style={{ padding: "6px 14px 12px", fontSize: 11.5, lineHeight: 1.45, color: "#f7b977", wordBreak: "break-word" }}>
               Android camera's last error: {lastNativeError()}
