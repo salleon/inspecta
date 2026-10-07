@@ -294,7 +294,7 @@ test("in-app camera off in Settings: the Android camera (file input on web)", as
   await page.evaluate(() => localStorage.removeItem("inspecta.inAppCamera"));
 });
 
-test("on a tall phone: the picture at the top, a blurred copy behind, the same after the shutter", async () => {
+test("on a tall phone: the picture at the top on dotted navy, the same after the shutter", async () => {
   await go(page, app, "/site/s1/findings");
   await page.getByRole("button", { name: "New finding", exact: true }).click();
   await page.getByTestId("in-app-camera").waitFor();
@@ -305,24 +305,12 @@ test("on a tall phone: the picture at the top, a blurred copy behind, the same a
   assert.ok(Math.abs(video.height - (390 * 4) / 3) <= 1, "the whole 4:3 picture, full width");
   const zoom = await page.locator(".cam-zoom").boundingBox();
   assert.ok(zoom.y >= video.y + video.height, "the zoom is under the picture");
-  assert.equal(await page.locator("canvas.cam-fill").count(), 1, "the blurred copy of the live picture");
-  await page.waitForTimeout(300);
-  const lit = await page.evaluate(() => {
-    const c = document.querySelector("canvas.cam-fill");
-    const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
-    let sum = 0;
-    for (let i = 0; i < d.length; i += 4) sum += d[i] + d[i + 1] + d[i + 2];
-    return sum;
-  });
-  assert.ok(lit > 0, "the copy has the picture in it");
+  // navy with dots round the picture, nothing copied from the camera
+  const band = await page.getByTestId("camera-band").boundingBox();
+  assert.ok(Math.abs(band.y - (video.y + video.height)) <= 1 && Math.abs(band.y + band.height - 844) <= 1, "the dotted navy fills the space under the picture");
+  assert.equal(await page.locator(".cam canvas").count(), 0, "no copies of the picture");
   await page.getByLabel("Take photo").click();
   await page.getByRole("button", { name: "↺ Retake" }).waitFor();
-  assert.equal(await page.locator("canvas.cam-fill").count(), 1, "the photo's blurred copy behind it");
-  await page.waitForFunction(() => {
-    const c = document.querySelector("canvas.cam-fill");
-    const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
-    return d.some((v, i) => i % 4 !== 3 && v > 0);
-  });
   const shot = await page.locator(".cam-shot").boundingBox();
   assert.ok(Math.abs(shot.y - video.y) <= 1 && Math.abs(shot.height - video.height) <= 1, "the photo stays where the picture was");
   // Use ✓ where the shutter was, Retake and Mark up either side
@@ -333,7 +321,7 @@ test("on a tall phone: the picture at the top, a blurred copy behind, the same a
   const below = shot.y + shot.height;
   assert.ok(Math.abs(useB.y + useB.height / 2 - (below + 844) / 2) <= 2, "centred in the space under the photo");
   await page.getByRole("button", { name: "↺ Retake" }).click();
-  assert.equal(await page.locator("canvas.cam-fill").count(), 1);
+  await page.getByLabel("Take photo").waitFor();
   await page.getByLabel("Close camera").click();
 });
 

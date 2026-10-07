@@ -226,23 +226,61 @@
 }
 
 /* On a phone taller than the photo: the picture at the top, under the top
-   buttons (--pic-top, --pic-h), the zoom and shutter under it, and a
-   blurred, darkened copy of the picture filling the screen behind */
+   buttons (--pic-top, --pic-h), the zoom and shutter under it */
 .cam-sa-bottom {
   position: absolute;
   height: var(--sa-bottom);
   width: 0;
   visibility: hidden;
 }
-.cam-fill {
+/* round the picture: navy with a fine grid of dots, darker towards the
+   bottom, and a soft teal glow behind the shutter (and behind Use ✓). Still,
+   painted once. */
+.cam-band {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transform: scale(1.15);
-  filter: blur(26px) brightness(0.5) saturate(1.25);
+  left: 0;
+  right: 0;
   pointer-events: none;
+  background-color: #071b2c;
+  background-image: radial-gradient(rgba(143, 200, 230, 0.16) 1.1px, transparent 1.3px), linear-gradient(#061624, #0a2337);
+  background-size: 16px 16px, 100% 100%;
+  background-position: 4px 4px, 0 0;
+}
+.cam-band.t {
+  top: 0;
+  height: var(--pic-top);
+}
+.cam-band.b {
+  top: calc(var(--pic-top) + var(--pic-h));
+  bottom: 0;
+  /* the glow's middle: the shutter's, under the zoom (snug: under the
+     picture; after the shutter: Use ✓, in the middle) */
+  --glow-y: calc(50% + 29px - var(--sa-bottom) / 2);
+  background-image: radial-gradient(240px 170px at 50% var(--glow-y), rgba(46, 196, 182, 0.17), rgba(46, 196, 182, 0)), radial-gradient(rgba(143, 200, 230, 0.16) 1.1px, transparent 1.3px), linear-gradient(#0a2337, #05131f);
+  background-size: 100% 100%, 16px 16px, 100% 100%;
+  background-position: 0 0, 4px 4px, 0 0;
+}
+.cam.snug .cam-band.b,
+.cam.shot .cam-band.b {
+  --glow-y: calc(50% - var(--sa-bottom) / 2);
+}
+.cam.fit .cam-rb,
+.cam.fit .cam-chip,
+.cam.fit .cam-zoom,
+.cam.fit .cam-review.round button b {
+  background: rgba(14, 39, 64, 0.9);
+  border-color: #1c4468;
+}
+.cam.fit .cam-rb.on {
+  border-color: rgba(245, 211, 107, 0.6);
+}
+.cam.fit .cam-review.round button.mk b {
+  border-color: rgba(245, 165, 92, 0.6);
+  background: rgba(40, 30, 20, 0.8);
+}
+.cam.fit .cam-review.round button.go b {
+  background: #2ec4b6;
+  border-color: #2ec4b6;
 }
 .cam.fit .cam-view video,
 .cam.fit .cam-view .cam-shot {

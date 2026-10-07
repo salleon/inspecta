@@ -7,6 +7,14 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Camera: dotted navy round the picture instead of the live blur.** For
+  speed: the live blur behind the picture is gone, and with it all the
+  copying of the camera's picture. The space round the picture is now the
+  app's navy with a fine grid of dots, darker towards the bottom, and a
+  soft teal glow behind the shutter (and behind Use ✓ after it). It's a
+  still picture painted once, so it costs nothing while the camera runs.
+  The top and bottom buttons are solid navy to match.
+
 - **Zero shutter lag: automatic only.** The switch in Settings › Photos is
   gone. The app already handles it by itself: if a photo comes back the
   same as the one before (the retake problem), zero shutter lag is turned

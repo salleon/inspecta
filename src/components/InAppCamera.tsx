@@ -74,9 +74,8 @@ export default function InAppCamera({ label, onDone }: Props) {
   doneRef.current = onDone;
 
   // On a phone taller than the photo: the whole 4:3 picture at the top,
-  // under the top buttons, the zoom and shutter under it, and a blurred,
-  // darkened copy of the picture filling the screen behind. (Otherwise the
-  // picture's in the middle, as big as fits.)
+  // under the top buttons, the zoom and shutter under it, on navy with dots.
+  // (Otherwise the picture's in the middle, as big as fits.)
   const topRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const [fit, setFit] = useState<Fit | null>(null);
@@ -220,41 +219,8 @@ export default function InAppCamera({ label, onDone }: Props) {
   // or the screen changes size)
   useEffect(() => {
     if (!native || !ready) return;
-    // (not refreshed while a photo's being looked at: it has its own)
-    void NativeCamera.setLayout({ fill: !!fit, top: fit?.top ?? 0, height: fit?.height ?? 0, paused: !!shot }).catch(() => {});
-  }, [native, ready, fit, shot]);
-
-  // the browser camera: the blurred copy behind is a tiny copy of the
-  // picture, refreshed several times a second
-  const fillRef = useRef<HTMLCanvasElement>(null);
-  // the photo's: a tiny copy of it, drawn once
-  useEffect(() => {
-    if (!fit || !shot) return;
-    let cancelled = false;
-    void (async () => {
-      try {
-        const c = fillRef.current;
-        if (!c) return;
-        const bmp = await createImageBitmap(shot.blob, { imageOrientation: "from-image", resizeWidth: c.width, resizeHeight: c.height, resizeQuality: "low" });
-        if (!cancelled) c.getContext("2d")?.drawImage(bmp, 0, 0);
-        bmp.close();
-      } catch {
-        // just dark behind it
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [fit, shot]);
-  useEffect(() => {
-    if (native || !fit || shot || !live) return;
-    const id = window.setInterval(() => {
-      const v = videoRef.current, c = fillRef.current;
-      if (!v || !c || !v.videoWidth) return;
-      c.getContext("2d")?.drawImage(v, 0, 0, c.width, c.height);
-    }, FILL_MS);
-    return () => window.clearInterval(id);
-  }, [native, fit, shot, live]);
+    void NativeCamera.setLayout({ fill: !!fit, top: fit?.top ?? 0, height: fit?.height ?? 0 }).catch(() => {});
+  }, [native, ready, fit]);
 
   // which way up the phone is held
   useEffect(() => {
@@ -474,14 +440,19 @@ export default function InAppCamera({ label, onDone }: Props) {
 
   return (
     <div
-      className={`cam${native ? " native" : ""}${fit ? " fit" : ""}${fit?.snug ? " snug" : ""}`}
+      className={`cam${native ? " native" : ""}${fit ? " fit" : ""}${fit?.snug ? " snug" : ""}${shot ? " shot" : ""}`}
       data-testid="in-app-camera"
       style={fit ? ({ "--pic-top": `${fit.top}px`, "--pic-h": `${fit.height}px` } as CSSProperties) : undefined}
     >
       <div className="cam-view" onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}>
-        {/* the blurred copy behind: the photo once it's taken, else the live
-            picture (Android's camera draws its own, behind this screen) */}
-        {fit && (shot || !native) && <canvas key={shot ? "shot" : "live"} ref={fillRef} className="cam-fill" width={36} height={48} data-testid="camera-fill" />}
+        {/* round the picture: navy with dots, and a glow behind the shutter
+            (still, painted once: nothing copied from the camera) */}
+        {fit && (
+          <>
+            <div className="cam-band t" />
+            <div className="cam-band b" data-testid="camera-band" />
+          </>
+        )}
         {!native && (
           <video ref={videoRef} playsInline muted autoPlay poster={BLANK} onPlaying={() => setLive(true)} style={{ opacity: shot || !live ? 0 : 1, transform: caps.digital && zoom > 1 ? `scale(${zoom})` : undefined }} />
         )}
@@ -633,7 +604,6 @@ interface Fit {
 // room under the picture for the zoom and the shutter, or (at least) the shutter
 const ROOM_BELOW = 180;
 const ROOM_MIN = 110;
-const FILL_MS = 120;
 
 // a new picture from the camera (or a moment, if the browser can't say)
 function nextFrame(video: HTMLVideoElement): Promise<void> {
