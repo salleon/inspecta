@@ -263,6 +263,8 @@
   min-height: 0;
   background: #000;
   overflow: hidden;
+  /* the photo makes room as the number pad comes up (its timing) */
+  transition: margin-bottom 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .mk-area img,
 .mk-area canvas {
@@ -274,25 +276,40 @@
 }
 .mk-label {
   position: absolute;
-  width: 120px;
-  margin-left: -60px;
-  margin-top: -20px;
-  padding: 7px 8px;
+  transform: translate(-50%, -50%);
+  min-width: 64px;
+  min-height: 34px;
   box-sizing: border-box;
+  padding: 6px 12px;
   border-radius: 10px;
   border: 2px solid #ffd60a;
   background: #0e2740;
+  box-shadow: 0 0 0 4px rgba(255, 214, 10, 0.25);
   color: #ffd60a;
   font-family: inherit;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 800;
-  text-align: center;
-  outline: none;
-  -webkit-user-select: text;
-  user-select: text;
+  white-space: pre;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.mk-label::placeholder {
-  color: rgba(255, 214, 10, 0.45);
+.mk-label span {
+  position: relative;
+}
+.mk-caret {
+  display: inline-block;
+  width: 2px;
+  height: 17px;
+  margin: 0 1px;
+  background: #ffd60a;
+  vertical-align: -3px;
+  animation: mk-blink 1s steps(1) infinite;
+}
+@keyframes mk-blink {
+  50% {
+    opacity: 0;
+  }
 }
 .mk-hint {
   flex-shrink: 0;
@@ -554,3 +571,115 @@ html.native-cam .cam {
   word-break: break-word;
 }
 
+
+/* ---- the measurement's number pad (MeasurePad): yellow, like the
+   measuring arrow; slides up like the flow test keypad slides in ---- */
+.mk-bottom {
+  flex-shrink: 0;
+}
+.mp {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
+  box-sizing: border-box;
+  padding: 12px 14px calc(14px + var(--sa-bottom));
+  background: #071b2c;
+  border-top: 1px solid rgba(255, 214, 10, 0.35);
+  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 320ms;
+}
+.mp.off {
+  transform: translateY(calc(100% + 12px));
+  box-shadow: none;
+  transition: transform 260ms cubic-bezier(0.5, 0, 0.8, 0.3), box-shadow 260ms;
+}
+.mp-units {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 7px;
+  height: 50px;
+  flex-shrink: 0;
+}
+.mp-keys {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(4, 1fr);
+  gap: 7px;
+  min-height: 0;
+}
+.mp-key {
+  border-radius: 10px;
+  border: 1px solid rgba(255, 214, 10, 0.34);
+  background: rgba(255, 214, 10, 0.15);
+  color: #fff6c2;
+  font-size: 22px;
+  font-weight: 700;
+  padding: 0;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.mp-key.fn {
+  background: rgba(255, 214, 10, 0.06);
+  border-color: rgba(255, 214, 10, 0.22);
+  color: #ffe680;
+  font-size: 19px;
+}
+.mp-key.unit {
+  border-radius: 12px;
+  border-color: rgba(255, 214, 10, 0.4);
+  background: rgba(255, 214, 10, 0.1);
+  color: #ffe680;
+  font-size: 18px;
+  font-weight: 800;
+}
+.mp-key.ins {
+  background: rgba(255, 214, 10, 0.1);
+  border-color: rgba(255, 214, 10, 0.4);
+  color: #ffe680;
+  font-size: 24px;
+}
+.mp-key.ok {
+  grid-column: span 2;
+  border: 0;
+  background: #ffd60a;
+  color: #1d1700;
+  font-size: 17px;
+  font-weight: 800;
+}
+/* pressed: in and spring back, like the flow test keypad, in yellow */
+.mp-key.pressed {
+  animation: mp-press 240ms cubic-bezier(0.3, 0.7, 0.4, 1.3);
+}
+.mp-key.ok.pressed {
+  animation-name: mp-press-ok;
+}
+@keyframes mp-press {
+  0% {
+    transform: scale(0.86);
+    background: rgba(255, 214, 10, 0.45);
+  }
+  55% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes mp-press-ok {
+  0% {
+    transform: scale(0.9);
+  }
+  55% {
+    transform: scale(1.04);
+  }
+  100% {
+    transform: scale(1);
+  }
+}

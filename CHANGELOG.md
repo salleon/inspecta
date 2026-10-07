@@ -7,6 +7,15 @@ the technical detail.
 
 ## 1 October 2026
 
+- **(proper-camera-build) Measurements use a yellow number pad.** After
+  drawing a measurement, a yellow number pad slides up over the markup
+  tools instead of the phone's keyboard, like the flow test keypad: mm /
+  cm / m, < and >, the numbers, ⌫ and Done ✓. Every key types at the
+  cursor in the measurement's box on the photo (tap in the box to move
+  it); a unit gets a space before it, and a decimal point with no number
+  before it gets a 0 (.5 is 0.5). The photo makes room as the pad comes
+  up, and tapping a measurement's number brings the pad back.
+
 - **(proper-camera-build) Backups are back.** If Android's camera can't
   start, the browser camera opens instead (saying why for a few seconds;
   the reason is also kept in Settings › Photos), and if that can't

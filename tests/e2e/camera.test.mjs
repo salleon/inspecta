@@ -46,6 +46,13 @@ const photos = () =>
     return all.map((p) => ({ id: p.id, findingId: p.findingId, marks: p.marks, blob: p.blob.size, marked: p.marked?.size }));
   });
 
+async function padKeys(keys) {
+  for (const k of keys) {
+    await page.locator(`[data-testid="measure-pad"] [data-key="${k}"]`).dispatchEvent("pointerdown");
+    await page.waitForTimeout(30);
+  }
+}
+
 async function canvasBox() {
   return page.getByTestId("markup-canvas").boundingBox();
 }
@@ -135,8 +142,15 @@ test("shoot, retake, mark up with a circle and a measurement, use", async () => 
   await page.mouse.move(c.x + c.width * 0.9, c.y + c.height * 0.7, { steps: 8 });
   await page.mouse.up();
   await page.getByTestId("measure-label").waitFor();
-  await page.keyboard.type("1.2 m");
-  await page.keyboard.press("Enter");
+  // the yellow number pad, not the keyboard: .5 becomes 0.5, a unit gets a
+  // space before it, ⌫ takes off the character before the cursor
+  await padKeys([".", "5"]);
+  assert.equal(await page.getByTestId("measure-label").textContent(), "0.5");
+  await padKeys(["bs", "bs", "bs", "1", ".", "2", "m"]);
+  assert.equal(await page.getByTestId("measure-label").textContent(), "1.2 m");
+  await padKeys(["ok"]);
+  await page.waitForTimeout(400);
+  assert.match(await page.getByTestId("measure-pad").getAttribute("class"), /\boff\b/, "Done puts the pad away");
   await page.getByRole("button", { name: "Done" }).click();
   await page.waitForURL(/\/note$/);
   await page.waitForTimeout(1500);
@@ -210,8 +224,13 @@ test("✎ Mark up on a finding opens the marks again to change them", async () =
   // tap the measurement's number to change it
   const e = before.marks[1];
   await page.mouse.click(c.x + ((e.x0 + e.x1) / 2) * c.width, c.y + ((e.y0 + e.y1) / 2) * c.height);
-  await page.getByTestId("measure-label").fill("1.25 m");
-  await page.keyboard.press("Enter");
+  await page.getByTestId("measure-label").waitFor();
+  // the cursor in the box: put it after the 2, then type 5
+  const two = page.locator('[data-testid="measure-label"] [data-i="2"]');
+  const r = await two.boundingBox();
+  await page.mouse.click(r.x + r.width - 1, r.y + r.height / 2);
+  await padKeys(["5"]);
+  await padKeys(["ok"]);
   await page.getByRole("button", { name: "Done" }).click();
   await page.waitForTimeout(1500);
   const after = (await photos())[0];

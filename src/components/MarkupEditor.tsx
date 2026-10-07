@@ -65,7 +65,11 @@ export default function MarkupEditor({ blob, marks: initial, onCancel, onDone }:
   const drag = useRef<Drag | null>(null);
   const pointers = useRef(new Map<number, { x: number; y: number }>());
   const pinch = useRef<{ dist: number; i: number; start: Extract<Mark, { t: "circle" }> } | null>(null);
-  const labelRef = useRef<HTMLInputElement>(null);
+  // where the cursor is in the measurement being typed (on the number pad)
+  const [caret, setCaret] = useState(0);
+  // the markup tools' height, so the photo makes room for the taller pad
+  const toolsRef = useRef<HTMLDivElement>(null);
+  const [toolsH, setToolsH] = useState(0);
 
   useBackHandler(() => {
     onCancel();
@@ -145,9 +149,56 @@ export default function MarkupEditor({ blob, marks: initial, onCancel, onDone }:
     g.restore();
   });
 
+  // the cursor starts at the end of what the measurement says
   useEffect(() => {
-    if (editing >= 0) labelRef.current?.focus();
+    const m = marks[editing];
+    if (m?.t === "measure") setCaret(m.label.length);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editing]);
+  useLayoutEffect(() => {
+    const el = toolsRef.current;
+    if (!el) return;
+    const measure = () => setToolsH(el.offsetHeight);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // ---- the number pad: each key types at the cursor ----
+
+  function setLabel(label: string, at: number) {
+    setMarks((ms) => ms.map((m, i) => (i === editing && m.t === "measure" ? { ...m, label } : m)));
+    setCaret(at);
+  }
+  function padKey(key: string) {
+    const m = marks[editing];
+    if (m?.t !== "measure") return;
+    const t = m.label, c = Math.min(caret, t.length);
+    if (key === "bs") {
+      if (c > 0) setLabel(t.slice(0, c - 1) + t.slice(c), c - 1);
+      return;
+    }
+    let add = key;
+    // a decimal point that isn't after a number gets a 0 in front: .5 is 0.5
+    if (key === "." && !(c > 0 && /[0-9]/.test(t[c - 1]))) add = "0.";
+    // a unit goes in with a space before it (after a number)
+    if ((key === "mm" || key === "cm" || key === "m") && c > 0 && t[c - 1] !== " ") add = " " + key;
+    setLabel(t.slice(0, c) + add + t.slice(c), c + add.length);
+  }
+  // tap in the measurement's box: the cursor goes to the nearest gap
+  function placeCaret(e: ReactPointerEvent<HTMLDivElement>) {
+    e.preventDefault();
+    const ch = (e.target as HTMLElement).closest<HTMLElement>("[data-i]");
+    const m = marks[editing];
+    if (m?.t !== "measure") return;
+    if (!ch) {
+      setCaret(m.label.length);
+      return;
+    }
+    const r = ch.getBoundingClientRect(), i = Number(ch.dataset.i);
+    setCaret(e.clientX > r.left + r.width / 2 ? i + 1 : i);
+  }
 
   // ---- changes, with undo ----
 
@@ -374,7 +425,7 @@ export default function MarkupEditor({ blob, marks: initial, onCancel, onDone }:
           Done
         </button>
       </div>
-      <div className="mk-area" ref={areaRef}>
+      <div className="mk-area" ref={areaRef} style={{ marginBottom: editing >= 0 ? `max(0px, calc(${PAD_H}px + var(--sa-bottom) - ${toolsH}px))` : 0 }}>
         <img
           src={url}
           alt=""
@@ -394,26 +445,18 @@ export default function MarkupEditor({ blob, marks: initial, onCancel, onDone }:
           />
         )}
         {labelAt && editingMark?.t === "measure" && (
-          <input
-            ref={labelRef}
-            className="mk-label"
-            data-testid="measure-label"
-            placeholder="e.g. 650 mm"
-            enterKeyHint="done"
-            autoComplete="off"
-            value={editingMark.label}
-            style={{ left: labelAt.left, top: labelAt.top }}
-            onChange={(e) => {
-              const v = e.target.value;
-              setMarks((ms) => ms.map((m, i) => (i === editing && m.t === "measure" ? { ...m, label: v } : m)));
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") finishLabel();
-            }}
-            onBlur={finishLabel}
-          />
+          <div className="mk-label" data-testid="measure-label" style={{ left: labelAt.left, top: labelAt.top }} onPointerDown={placeCaret}>
+            {[...editingMark.label].map((ch, i) => (
+              <span key={i} data-i={i}>
+                {i === caret && <i className="mk-caret" />}
+                {ch}
+              </span>
+            ))}
+            {caret >= editingMark.label.length && <i className="mk-caret" />}
+          </div>
         )}
       </div>
+      <div ref={toolsRef} className="mk-bottom">
       <div className="mk-hint">{tool ? HINTS[tool] : NO_TOOL_HINT}</div>
       <div className="mk-tools">
         <div className="mk-big">
@@ -452,6 +495,64 @@ export default function MarkupEditor({ blob, marks: initial, onCancel, onDone }:
             ↶ Undo
           </button>
         </div>
+      </div>
+    </div>
+      <MeasurePad open={editing >= 0} onKey={padKey} onDone={finishLabel} />
+    </div>
+  );
+}
+
+// the number pad's height (above the phone's own bottom bar)
+const PAD_H = 340;
+
+// After drawing a measurement: a yellow number pad in place of the phone's
+// keyboard (mm / cm / m, < >, the numbers, ⌫), sliding up over the markup
+// tools like the flow test keypad. Every key types at the cursor in the
+// measurement's box on the photo.
+function MeasurePad({ open, onKey, onDone }: { open: boolean; onKey: (k: string) => void; onDone: () => void }) {
+  // each key presses in (and springs back) however quickly it's tapped
+  function press(e: ReactPointerEvent<HTMLButtonElement>) {
+    e.preventDefault();
+    const el = e.currentTarget;
+    el.classList.remove("pressed");
+    void el.offsetWidth;
+    el.classList.add("pressed");
+  }
+  const key = (k: string, label: string = k, cls = "") => (
+    <button
+      key={k}
+      type="button"
+      tabIndex={-1}
+      className={`mp-key${cls}`}
+      data-key={k}
+      onPointerDown={(e) => {
+        press(e);
+        if (k === "ok") onDone();
+        else onKey(k);
+      }}
+    >
+      {label}
+    </button>
+  );
+  return (
+    <div className={open ? "mp" : "mp off"} style={{ height: `calc(${PAD_H}px + var(--sa-bottom))` }} aria-hidden={!open} data-testid="measure-pad">
+      <div className="mp-units">{["mm", "cm", "m"].map((u) => key(u, u, " unit"))}</div>
+      <div className="mp-keys">
+        {key("7")}
+        {key("8")}
+        {key("9")}
+        {key("<", "<", " ins")}
+        {key("4")}
+        {key("5")}
+        {key("6")}
+        {key(">", ">", " ins")}
+        {key("1")}
+        {key("2")}
+        {key("3")}
+        {key("bs", "⌫", " fn")}
+        {key(".", ".", " fn")}
+        {key("0")}
+        {key("ok", "Done ✓", " ok")}
       </div>
     </div>
   );
