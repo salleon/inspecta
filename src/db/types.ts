@@ -178,7 +178,7 @@ export interface FlowTest {
 // the AS 1668.1 edition the system was built to, which sets the pass
 // limits and the doors open; its system types
 export type SpfEdition = "1979" | "1991" | "1998" | "2015";
-export type SpfType = "One test" | "Purge" | "Shutdown" | "Zone" | "Car park";
+export type SpfType = "One test" | "Purge" | "Shutdown" | "Zone";
 
 export interface SpfStair {
   id: string;

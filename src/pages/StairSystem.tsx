@@ -28,7 +28,9 @@ export default function StairSystem() {
     void getSite(siteId).then((s) => {
       if (!s) return;
       setSite(s);
-      const loaded = s.spf ?? defaultSystem();
+      const saved = s.spf ?? defaultSystem();
+      // a type the edition no longer offers (e.g. the old 2015 "Car park") → its first
+      const loaded = { ...saved, type: typeFor(saved.edition, saved.type) };
       // a first stair to fill in, so there's somewhere to start
       setSys(loaded.stairs.length ? loaded : { ...loaded, stairs: [newStair()] });
       if (!loaded.stairs.length) setOpen("first");

@@ -26,6 +26,10 @@ the technical detail.
   picked before you choose anything: the Custom chips start blank and
   only light up once Custom is the kind you're on. With nothing picked,
   the button reads "Pick what you're testing" until you tick a section.
+- **No Car park system type.** A 2015 system now offers Zone, Purge or
+  Shutdown. Car parks almost always share the building's fire stairs, so a
+  separate type didn't help; any system already set to Car park opens as
+  Zone, the first 2015 type.
 - **You move yourself.** Tap a level and type on the keypad: Done saves the
   reading and closes the keypad, and ▲▼ step a level when you want them.
   The app never moves you on. Each row shows the other door that's open,

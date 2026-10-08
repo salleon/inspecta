@@ -14,7 +14,7 @@ export const TYPES: Record<SpfEdition, SpfType[]> = {
   "1979": ["One test"],
   "1991": ["Purge", "Zone"],
   "1998": ["Purge", "Shutdown", "Zone"],
-  "2015": ["Zone", "Purge", "Shutdown", "Car park"],
+  "2015": ["Zone", "Purge", "Shutdown"],
 };
 
 // the edition's word for a level
