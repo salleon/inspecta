@@ -30,6 +30,11 @@ the technical detail.
   Shutdown. Car parks almost always share the building's fire stairs, so a
   separate type didn't help; any system already set to Car park opens as
   Zone, the first 2015 type.
+- **Set up the system first, step by step.** On a site whose system isn't
+  set up yet, a new stair test now shows the order as numbered steps:
+  1 · Set up the system (with its own button), and 2 · What are you
+  testing today?, with the test kinds greyed out until the system's done.
+  Once it's set up, the page is the usual one.
 - **You move yourself.** Tap a level and type on the keypad: Done saves the
   reading and closes the keypad, and ▲▼ step a level when you want them.
   The app never moves you on. Each row shows the other door that's open,

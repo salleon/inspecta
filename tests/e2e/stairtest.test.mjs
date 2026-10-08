@@ -38,7 +38,12 @@ test("a Stair pressurisation site from + New site", async () => {
 
 test("the system is set once: edition, type, stairs; the rules follow the edition", async () => {
   await page.getByRole("button", { name: "+ New stair test" }).click();
-  await page.getByRole("button", { name: "Set up the system first ›" }).click();
+  await page.getByRole("button", { name: "Set up the system ›" }).waitFor();
+  // the steps: 1 · set up the system, 2 · the test kinds, greyed out until then
+  assert.match(await page.locator("body").innerText(), /1\s*Set up the system[\s\S]*2\s*What are you testing today\?\s*After the system is set up/);
+  assert.ok(await page.getByRole("button", { name: "Set up the system first" }).isDisabled());
+  assert.equal(await page.locator('[aria-disabled="true"] [role="radio"]').count(), 4);
+  await page.getByRole("button", { name: "Set up the system ›" }).click();
   await page.getByRole("radiogroup", { name: "AS 1668.1 edition" }).waitFor();
   assert.match(await page.getByTestId("spf-rules").innerText(), /AS 1668.1-1998 · PURGE[\s\S]*Compartment above[\s\S]*≤ 65 dB\(A\)/i);
   await page.getByRole("radio", { name: "1979" }).click();
