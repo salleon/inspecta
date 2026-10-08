@@ -7,6 +7,21 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Flow tests: flows fill in from " Hg with your flow equipment.** The
+  Equipment field in Test details now suggests flow equipment from
+  EnFact's flow charts as you type (words in any order: "20t 80",
+  "gcr 200", "annubar 150 sched"): Ambit 20T and 21T Accutubes on medium
+  steel and Sched 40 pipe, and AWR 73 & 74 and GCR Diamond 2 annubars, 46
+  in all. Pick one and every reading's flow is worked out from its " Hg
+  (in teal), exactly as the chart gives it: the device's flow at 1 " Hg ×
+  √" Hg. Change a " Hg and its flow follows. Type over a flow to use your
+  own (it's kept); leave it empty and the worked-out one comes back. Past
+  a device's limit (e.g. a 20T DN80 over 18 " Hg) the flow's orange, with
+  a note to use the 21T. Equipment that isn't in the charts is kept as
+  typed, and the flows are typed as before. Nothing else on the flow test
+  changes; the worked-out flows go on the graph, the result and the
+  exports like typed ones.
+
 - **A stress test for big sites, and a quicker findings list.** A new
   test fills a site with 500 findings and 1,000 photos and times opening
   the findings list, scrolling it, opening a finding, coming back to the

@@ -32,6 +32,7 @@ import { IconChevronLeft } from "../components/Icons";
 import RoundIconButton from "../components/RoundIconButton";
 import ConfirmDialog from "../components/ConfirmDialog";
 import { useBackHandler } from "../lib/backButton";
+import { applyEquipment, deviceFor, deviceLabel, matchDevices, overLimit, type FlowDevice } from "../lib/flowEquipment";
 import FlowConverter from "../components/FlowConverter";
 import { useFlowMode } from "../lib/settings";
 import { useTourScene } from "../lib/tour";
@@ -225,6 +226,8 @@ export default function FlowTest() {
       if (!prev) return prev;
       const next = structuredClone(prev);
       fn(next);
+      // flows worked out from " Hg with the flow equipment, if it's one of the charts'
+      applyEquipment(next);
       pending.current = next;
       if (timer.current !== null) window.clearTimeout(timer.current);
       timer.current = window.setTimeout(flush, SAVE_DELAY_MS);
@@ -422,6 +425,9 @@ export default function FlowTest() {
   const gap = nPump > 1 || (split && nPump) ? 4 : 6;
   const font = nPump > 1 || (split && nPump) ? 12 : 14;
   const updateRow = (i: number, fn: (r: FlowReading) => void) => change((t) => fn(t.sections[current].rows[i]));
+  // the flow equipment, if it's one of the charts' (lib/flowEquipment)
+  const device = hydrant ? null : deviceFor(test.equipment);
+  const overReading = device ? test.sections.flatMap((s) => s.rows).find((r) => r.flowAuto && overLimit(device, r.hg)) : undefined;
   const kindNote = { sprinkler: "Goes into the site's Excel as a SPRINKLER tab", hydrant: "Goes into the site's Excel as a HYDRANT tab", combined: "Goes into the site's Excel as a Combined System tab" }[test.kind];
   const unitLabel = unit === "sec" ? "L/s" : "L/min";
   const addReading = () => change((t) => void t.sections[current].rows.push(nextReading(t)));
@@ -429,17 +435,31 @@ export default function FlowTest() {
   const hgCell = (r: FlowReading, i: number, f: number, props: { tabIndex?: number } = {}) => (
     <input {...props} style={cellStyle(f)} inputMode="decimal" value={r.hg} aria-label='" Hg' onChange={(e) => updateRow(i, (x) => void (x.hg = e.target.value))} />
   );
-  // typed, in the test's unit (working it out from " Hg depends on the rig)
-  const flowCell = (r: FlowReading, i: number, f: number, props: { className?: string; tabIndex?: number } = {}) => (
-    <input
-      {...props}
-      style={hydrant ? cellStyle(f) : { ...cellStyle(f), borderColor: "rgba(46,196,182,.35)" }}
-      inputMode="decimal"
-      value={shown(r.flow, r.flowUnit)}
-      aria-label="Flow"
-      onChange={(e) => updateRow(i, (x) => void Object.assign(x, { flow: e.target.value, flowUnit: unit }))}
-    />
-  );
+  // typed, in the test's unit; or worked out from " Hg with the flow
+  // equipment (teal; orange past the device's limit). Typing over it keeps
+  // the typed flow; left empty, the worked-out one comes back.
+  const flowCell = (r: FlowReading, i: number, f: number, props: { className?: string; tabIndex?: number } = {}) => {
+    const over = !!r.flowAuto && !!device && overLimit(device, r.hg);
+    const style: CSSProperties = hydrant
+      ? cellStyle(f)
+      : r.flowAuto
+        ? { ...cellStyle(f), color: over ? "#f7b977" : "#5ff0e0", background: over ? "rgba(245,165,92,.1)" : "rgba(46,196,182,.07)", borderColor: over ? "rgba(245,165,92,.6)" : "rgba(46,196,182,.35)" }
+        : { ...cellStyle(f), borderColor: "rgba(46,196,182,.35)" };
+    return (
+      <input
+        {...props}
+        style={style}
+        inputMode="decimal"
+        value={shown(r.flow, r.flowUnit)}
+        aria-label="Flow"
+        data-auto={r.flowAuto ? (over ? "over" : "yes") : undefined}
+        onChange={(e) => updateRow(i, (x) => void Object.assign(x, { flow: e.target.value, flowUnit: unit, flowAuto: false }))}
+        onBlur={(e) => {
+          if (e.target.value === "" && r.flowAuto === false) updateRow(i, (x) => void delete x.flowAuto);
+        }}
+      />
+    );
+  };
   const stepHead = hydrant ? (
     <div style={th}>
       Flow
@@ -538,7 +558,7 @@ export default function FlowTest() {
   return shell(
     <>
       {/* the template's header and comment lines */}
-      <div style={card} data-tour="flow-details">
+      <div style={{ ...card, position: "relative", zIndex: 5 }} data-tour="flow-details">
         <div style={lbl}>Test details</div>
         {(
           [
@@ -547,8 +567,8 @@ export default function FlowTest() {
             ["Tested by", "testedBy"],
           ] as const
         ).map(([label, key]) => (
-          <label key={key} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ width: 78, flexShrink: 0, fontSize: 12.5, fontWeight: 700, color: "var(--muted)" }}>{label}</span>
+          <label key={key} style={{ display: "flex", alignItems: key === "equipment" ? "flex-start" : "center", gap: 10 }}>
+            <span style={{ width: 78, flexShrink: 0, fontSize: 12.5, fontWeight: 700, color: "var(--muted)", marginTop: key === "equipment" ? 10 : 0 }}>{label}</span>
             {key === "date" ? (
               <input
                 type="date"
@@ -559,10 +579,12 @@ export default function FlowTest() {
                 }}
                 style={{ ...cellStyle(14), textAlign: "left", padding: "8px 10px", colorScheme: "dark" }}
               />
+            ) : key === "equipment" ? (
+              <EquipmentField value={test.equipment ?? ""} flows={!hydrant} onChange={(v) => change((t) => void (t.equipment = v))} />
             ) : (
               <input
                 value={test[key] ?? ""}
-                placeholder={key === "equipment" ? "e.g. 80 mm / 20T Ambient" : "e.g. Chubb"}
+                placeholder="e.g. Chubb"
                 onChange={(e) => change((t) => void (t[key] = e.target.value))}
                 style={{ ...cellStyle(14), textAlign: "left", padding: "8px 10px" }}
               />
@@ -797,8 +819,22 @@ export default function FlowTest() {
             Added columns ({test.extraCols.map((c) => c.name).join(", ")}) are in full screen
           </div>
         )}
+        {overReading && device && (
+          <div data-testid="flow-over-limit" style={{ fontSize: 11.5, lineHeight: 1.45, color: "#f7b977", background: "rgba(245,165,92,.08)", border: "1px solid rgba(245,165,92,.4)", borderRadius: 10, padding: "8px 10px" }}>
+            Over the {device.model} {device.size}'s limit of {device.maxHg}" Hg (the chart's maximum flow, {Math.round(device.q1 * Math.sqrt(device.maxHg))} L/min).
+            {device.model === "20T" ? " Over it, use the 21T." : ""}
+          </div>
+        )}
         <div style={{ fontSize: 11.5, color: "var(--muted-2)", lineHeight: 1.45 }}>
-          {hydrant ? "Flows in L/s. " : `Type the flow in ${unitLabel}. `}
+          {hydrant ? (
+            "Flows in L/s. "
+          ) : device ? (
+            <>
+              Flows worked out from " Hg: <b style={{ color: "#5ff0e0" }}>{deviceLabel(device)}</b>, {device.q1} × √" Hg. Type over a flow to change it.{" "}
+            </>
+          ) : (
+            `Type the flow in ${unitLabel}. `
+          )}
           {test.kind === "combined" ? "RPM shows for diesel pumps, Amps for electric." : "RPM shows for a diesel pump, Amps for an electric pump."}
         </div>
       </div>
@@ -1685,6 +1721,87 @@ function GraphLines({ test, lines, onChange }: { test: FlowTestRecord; lines: { 
             </div>
           </div>
         </>
+      )}
+    </div>
+  );
+}
+
+// Test details' Equipment: as typed, with flow equipment from the flow
+// charts suggested as it's typed (lib/flowEquipment). Picking one fills the
+// flows in from " Hg (flows: the test has a " Hg column).
+function EquipmentField({ value, flows, onChange }: { value: string; flows: boolean; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const input = useRef<HTMLInputElement>(null);
+  const device = flows ? deviceFor(value) : null;
+  const listed = flows && open && value.trim() !== "" && !device;
+  const matches = listed ? matchDevices(value) : [];
+  const pick = (d: FlowDevice) => {
+    onChange(deviceLabel(d));
+    setOpen(false);
+    input.current?.blur();
+  };
+  return (
+    <div style={{ flex: 1, minWidth: 0, position: "relative" }}>
+      <input
+        ref={input}
+        value={value}
+        aria-label="Equipment"
+        autoComplete="off"
+        placeholder={flows ? "Start typing, e.g. 20T 80" : "e.g. 65 mm / Pitot"}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+        onChange={(e) => {
+          onChange(e.target.value);
+          setOpen(true);
+        }}
+        style={{ ...cellStyle(14), textAlign: "left", padding: "8px 10px" }}
+      />
+      {listed && (
+        <div
+          role="listbox"
+          aria-label="Flow equipment"
+          // a press on the list doesn't take the focus off the field (so it isn't closed first)
+          onPointerDown={(e) => e.preventDefault()}
+          onMouseDown={(e) => e.preventDefault()}
+          style={{ position: "absolute", left: 0, right: 0, top: "calc(100% + 4px)", zIndex: 40, borderRadius: 12, background: "#10304d", border: "1px solid #2a5a82", boxShadow: "0 14px 30px rgba(0,0,0,.5)", overflow: "hidden" }}
+        >
+          {matches.length ? (
+            <>
+              {matches.slice(0, 4).map((d, i) => (
+                <button
+                  key={deviceLabel(d)}
+                  type="button"
+                  role="option"
+                  aria-selected={i === 0}
+                  onClick={() => pick(d)}
+                  style={{ display: "block", width: "100%", textAlign: "left", padding: "9px 11px", border: "none", borderTop: i ? "1px solid var(--border)" : "none", background: i === 0 ? "rgba(46,196,182,.12)" : "none", color: "var(--text)", font: "inherit", cursor: "pointer" }}
+                >
+                  <span style={{ display: "block", fontSize: 13.5, fontWeight: 800 }}>
+                    {d.make} <span style={{ color: "#5ff0e0" }}>{d.model} {d.size}</span>
+                  </span>
+                  <span style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--muted)", marginTop: 2 }}>
+                    {d.pipe} · {Math.round(d.q1)} L/min at 1" Hg{d.maxHg < 30 ? ` · max ${d.maxHg}" Hg` : ""}
+                  </span>
+                </button>
+              ))}
+              {matches.length > 4 && <div style={{ padding: "7px 11px", fontSize: 11, color: "var(--muted)", borderTop: "1px solid var(--border)" }}>{matches.length - 4} more: keep typing</div>}
+            </>
+          ) : (
+            <div style={{ padding: "10px 11px", fontSize: 12, color: "var(--muted)", lineHeight: 1.45 }}>No flow chart for “{value.trim()}”: it's kept as typed, and the flows are typed.</div>
+          )}
+        </div>
+      )}
+      {device ? (
+        <div data-testid="equipment-flows" style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, fontSize: 11.5, fontWeight: 800, color: "#5ff0e0" }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#5ff0e0" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M5 12.5l4.5 4.5L19 7.5" />
+          </svg>
+          Flows fill in from " Hg
+        </div>
+      ) : (
+        flows &&
+        !open &&
+        value.trim() !== "" && <div style={{ marginTop: 6, fontSize: 11.5, fontWeight: 700, color: "var(--muted)" }}>Not in the flow charts: type the flows</div>
       )}
     </div>
   );
