@@ -100,3 +100,19 @@ test("an AFSS site: Other tests, + Add a test, and the export chooser", async ()
   assert.equal(await page.getByRole("button", { name: "Pick a test to export" }).count(), 1);
   assert.deepEqual(errors, []);
 });
+
+test("Custom starts with nothing picked; the chips only light up under Custom", async () => {
+  await go(page, app, "/", 1200);
+  await page.getByText("Harbour Tower").click();
+  await page.getByRole("button", { name: "+ New stair test" }).click();
+  await page.getByRole("button", { name: "Start ›" }).waitFor();
+  assert.equal(await page.locator('button[aria-pressed="true"]').count(), 0, "nothing picked under Annual Testing");
+  await page.getByRole("radio", { name: /Custom/ }).click({ position: { x: 30, y: 16 } });
+  assert.equal(await page.locator('button[aria-pressed="true"]').count(), 0, "Custom starts empty");
+  assert.ok(await page.getByRole("button", { name: "Pick what you're testing" }).isDisabled());
+  await page.getByRole("button", { name: "Door force" }).click();
+  await page.getByRole("button", { name: "Start ›" }).click();
+  await page.getByRole("button", { name: /Door force/ }).first().waitFor();
+  const text = await page.locator("body").innerText();
+  assert.ok(!/≋ Velocity/.test(text.split("+ Add a reading")[0]), "no velocity section");
+});

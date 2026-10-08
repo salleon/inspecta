@@ -22,6 +22,10 @@ the technical detail.
   and door closes & latches at every door, plus noise, pressure
   restoration, pressure (1979) and fan checks once per stair. The stair
   tabs scroll sideways for any number of stairs.
+- **Custom starts empty.** A new stair test no longer has Velocity
+  picked before you choose anything: the Custom chips start blank and
+  only light up once Custom is the kind you're on. With nothing picked,
+  the button reads "Pick what you're testing" until you tick a section.
 - **You move yourself.** Tap a level and type on the keypad: Done saves the
   reading and closes the keypad, and ▲▼ step a level when you want them.
   The app never moves you on. Each row shows the other door that's open,

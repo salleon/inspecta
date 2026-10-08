@@ -25,7 +25,7 @@ export default function StairNew() {
   const navigate = useNavigate();
   const [site, setSite] = useState<Site | null>(null);
   const [kind, setKind] = useState<StairTestKind>("annual");
-  const [picked, setPicked] = useState<StairSection[]>(["vel"]);
+  const [picked, setPicked] = useState<StairSection[]>([]);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -38,6 +38,7 @@ export default function StairNew() {
   async function start() {
     if (!siteId || busy) return;
     if (!ready) return editSystem();
+    if (kind === "custom" && !picked.length) return;
     setBusy(true);
     try {
       const test = await addStairTest(newStairTest(siteId, kind, picked, getInspectorName()));
@@ -79,7 +80,7 @@ export default function StairNew() {
               {k === "custom" && (
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 8 }}>
                   {CUSTOM_SECTIONS.map((s) => {
-                    const sel = picked.includes(s);
+                    const sel = kind === "custom" && picked.includes(s);
                     return (
                       <button
                         key={s}
@@ -87,7 +88,7 @@ export default function StairNew() {
                         onClick={(e) => {
                           e.stopPropagation();
                           setKind("custom");
-                          setPicked((p) => (sel ? (p.length > 1 ? p.filter((x) => x !== s) : p) : [...p, s]));
+                          setPicked((p) => (sel ? p.filter((x) => x !== s) : [...p.filter((x) => x !== s), s]));
                         }}
                         style={{ fontSize: 11, fontWeight: 800, padding: "5px 9px", borderRadius: 999, background: sel ? "rgba(46,196,182,.16)" : "var(--panel-2)", border: sel ? "1px solid var(--accent)" : "1px solid var(--border-strong)", color: sel ? "#5ff0e0" : "var(--muted)" }}
                       >
@@ -104,11 +105,11 @@ export default function StairNew() {
       <div style={{ flexShrink: 0, padding: "10px 16px calc(24px + env(safe-area-inset-bottom))" }}>
         <button
           onClick={() => void start()}
-          disabled={busy}
+          disabled={busy || (ready && kind === "custom" && !picked.length)}
           className="glow-sweep"
-          style={{ position: "relative", overflow: "hidden", width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: "var(--accent)", color: "var(--accent-text)", fontSize: 16, fontWeight: 800 }}
+          style={{ position: "relative", overflow: "hidden", width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: "var(--accent)", color: "var(--accent-text)", fontSize: 16, fontWeight: 800, opacity: ready && kind === "custom" && !picked.length ? 0.45 : 1 }}
         >
-          {ready ? "Start ›" : "Set up the system first ›"}
+          {!ready ? "Set up the system first ›" : kind === "custom" && !picked.length ? "Pick what you're testing" : "Start ›"}
         </button>
       </div>
     </div>
