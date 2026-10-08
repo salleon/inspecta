@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Site, SiteKind } from "../db/types";
-import { createSite, deleteSite, findingCount, firstSitePhoto, flowTestCount, getThumbnail, listSites } from "../db/db";
+import { createSite, deleteSite, findingCount, firstSitePhoto, flowTestCount, getThumbnail, listSites, stairTestCount } from "../db/db";
 import { IconSearch, IconBuilding, IconPlus, IconTrash, IconSettings } from "../components/Icons";
 import CountUp from "../components/CountUp";
 import ConfirmDialog from "../components/ConfirmDialog";
@@ -13,6 +13,7 @@ import SiteKindIcon, { KIND_COLOUR, KindTag } from "../components/SiteKindIcon";
 interface SiteRow extends Site {
   findings: number;
   flowTests: number;
+  stairTests: number;
 }
 
 export default function Dashboard() {
@@ -41,7 +42,12 @@ export default function Dashboard() {
   async function refresh() {
     const list = await listSites();
     const withCounts = await Promise.all(
-      list.map(async (s) => ({ ...s, findings: await findingCount(s.id), flowTests: s.kind === "flow" ? await flowTestCount(s.id) : 0 })),
+      list.map(async (s) => ({
+        ...s,
+        findings: await findingCount(s.id),
+        flowTests: s.kind === "flow" ? await flowTestCount(s.id) : 0,
+        stairTests: s.kind === "spf" ? await stairTestCount(s.id) : 0,
+      })),
     );
     setSites(withCounts);
     await loadThumbs(withCounts.map((s) => s.id));
@@ -92,6 +98,7 @@ export default function Dashboard() {
   const afssSites = filtered.filter((s) => s.kind === "afss");
   const projectSites = filtered.filter((s) => s.kind === "project");
   const flowSites = filtered.filter((s) => s.kind === "flow");
+  const spfSites = filtered.filter((s) => s.kind === "spf");
 
   async function handleDeleteSite() {
     if (!confirmDeleteSite || deleting) return;
@@ -229,6 +236,7 @@ export default function Dashboard() {
         {renderSiteGroup("AFSS", "afss", afssSites)}
         {renderSiteGroup("Projects", "project", projectSites)}
         {renderSiteGroup("Flow testing", "flow", flowSites)}
+        {renderSiteGroup("Stair pressurisation", "spf", spfSites)}
       </div>
 
       {/* new site fab */}
@@ -283,7 +291,8 @@ export default function Dashboard() {
             }}
           >
             <div style={{ fontSize: 16, fontWeight: 800 }}>New site</div>
-            <div style={{ display: "flex", gap: 8 }} data-tour="site-kinds">
+            {/* two by two, so all four kinds fit (canvas SiteTests) */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }} data-tour="site-kinds">
               <button
                 type="button"
                 onClick={() => setKind("afss")}
@@ -308,10 +317,23 @@ export default function Dashboard() {
                 <SiteKindIcon kind="flow" size={13} color="currentColor" />
                 Flow testing
               </button>
+              <button
+                type="button"
+                onClick={() => setKind("spf")}
+                style={kindToggleStyle(kind === "spf", "spf")}
+              >
+                <SiteKindIcon kind="spf" size={13} color="currentColor" />
+                Stair pressurisation
+              </button>
             </div>
             {kind === "flow" && (
               <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.45, marginTop: -4 }}>
                 Just flow tests: no findings or photos. Exports its flow test results as a PDF or Excel.
+              </div>
+            )}
+            {kind === "spf" && (
+              <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.45, marginTop: -4 }}>
+                Just stair pressurisation tests: no findings or photos. Exports its stair test results as a PDF or Excel.
               </div>
             )}
             {/* no autofocus: pick the kind first, then tap here (the keyboard waits) */}
@@ -344,7 +366,7 @@ export default function Dashboard() {
                 overflow: "hidden",
               }}
             >
-              Start inspection
+              {kind === "flow" ? "Start flow testing" : kind === "spf" ? "Start stair testing" : "Start inspection"}
             </button>
           </form>
         </div>
@@ -592,6 +614,10 @@ function SiteButton({
             {site.kind === "flow" ? (
               <>
                 <CountUp value={site.flowTests} /> flow test{site.flowTests === 1 ? "" : "s"}
+              </>
+            ) : site.kind === "spf" ? (
+              <>
+                <CountUp value={site.stairTests} /> stair test{site.stairTests === 1 ? "" : "s"}
               </>
             ) : (
               <>

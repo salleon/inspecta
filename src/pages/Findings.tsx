@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import type { Finding, Site } from "../db/types";
-import { addPhoto, createFinding, deleteFinding, deleteSite, flowTestCount, getSite, getThumbnail, listFindingRows, reorderFinding, updateSite } from "../db/db";
+import { addPhoto, createFinding, deleteFinding, deleteSite, flowTestCount, getSite, getThumbnail, listFindingRows, reorderFinding, stairTestCount, updateSite } from "../db/db";
 import { capturePhoto } from "../lib/capture";
 import { warmCamera } from "../lib/cameraStream";
 import { IconChevronLeft, IconShare, IconEdit, IconGrip, IconCheck, IconTrash, IconPen, IconCamera } from "../components/Icons";
@@ -11,6 +11,7 @@ import ConfirmDialog from "../components/ConfirmDialog";
 import FormActions from "../components/FormActions";
 import RoundIconButton from "../components/RoundIconButton";
 import FlowTestList from "../components/FlowTestList";
+import TestsList from "../components/TestsList";
 import { KindTag } from "../components/SiteKindIcon";
 
 interface Row {
@@ -86,11 +87,15 @@ export default function Findings() {
   const navigate = useNavigate();
   const [site, setSite] = useState<Site | null>(null);
   const [rows, setRows] = useState<Row[]>(() => (siteId ? (rowCache.get(siteId) ?? []) : []));
-  // Findings / Flow tests tabs (?tab=flow, so back from a flow test lands here)
+  // Findings / Other tests tabs (?tab=flow, so back from a flow or stair
+  // test lands here)
   const [searchParams, setSearchParams] = useSearchParams();
   const flowTab = searchParams.get("tab") === "flow";
-  // a flow testing site is just its flow tests: no Findings tab
+  // a flow testing site is just its flow tests, a stair pressurisation site
+  // just its stair tests: no Findings tab
   const flowSite = site?.kind === "flow";
+  const spfSite = site?.kind === "spf";
+  const testSite = flowSite || spfSite;
   const [flowCount, setFlowCount] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [editingSite, setEditingSite] = useState(false);
@@ -135,7 +140,8 @@ export default function Findings() {
     let cancelled = false;
 
     async function load() {
-      flowTestCount(siteId!).then((n) => !cancelled && setFlowCount(n));
+      // flow and stair tests together (the Other tests tab)
+      Promise.all([flowTestCount(siteId!), stairTestCount(siteId!)]).then(([f, s]) => !cancelled && setFlowCount(f + s));
       // three reads for the whole list, however big the site
       const [s, { findings, first, counts, thumbs }] = await Promise.all([getSite(siteId!), listFindingRows(siteId!)]);
       if (cancelled) return;
@@ -445,14 +451,14 @@ export default function Findings() {
           style={{ background: "none", border: "none", display: "flex", alignItems: "center", gap: 6, color: "inherit", padding: "4px 6px" }}
         >
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-            <div style={{ fontSize: 14, fontWeight: 700 }}>{flowSite ? site?.name : "Findings"}</div>
-            <div style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)" }}>{flowSite ? "Flow testing" : site?.name ?? ""}</div>
+            <div style={{ fontSize: 14, fontWeight: 700 }}>{testSite ? site?.name : "Findings"}</div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)" }}>{flowSite ? "Flow testing" : spfSite ? "Stair pressurisation" : site?.name ?? ""}</div>
           </div>
           <IconEdit size={13} color="var(--muted-2)" />
         </button>
-        {flowSite ? (
+        {testSite ? (
           <div style={{ width: 40, display: "flex", justifyContent: "flex-end" }}>
-            <KindTag kind="flow" />
+            <KindTag kind={spfSite ? "spf" : "flow"} />
           </div>
         ) : (
           <RoundIconButton ariaLabel="Export PDF" onClick={() => navigate(`/site/${siteId}/export`)}>
@@ -461,9 +467,10 @@ export default function Findings() {
         )}
       </div>
 
-      {/* Findings / Flow tests (canvas option E1): Findings takes most of
-          the bar; flow tests are a smaller part of the day, so a compact tab */}
-      {!flowSite && site && (
+      {/* Findings / Other tests (canvas option E1, SiteTests): Findings
+          takes most of the bar; the other tests (flow, stair) are a smaller
+          part of the day, so a compact tab */}
+      {!testSite && site && (
       <div style={{ flexShrink: 0, margin: "0 16px 8px", display: "flex", gap: 4, padding: 4, borderRadius: 12, background: "var(--panel)", border: "1px solid var(--border)" }}>
         <button
           disabled={reordering}
@@ -478,16 +485,18 @@ export default function Findings() {
           onClick={() => setSearchParams({ tab: "flow" }, { replace: true })}
           style={{ flex: "0 0 auto", padding: "11px 12px", borderRadius: 10, border: "none", fontSize: 14.5, fontWeight: 800, whiteSpace: "nowrap", background: flowTab ? "var(--accent)" : "none", color: flowTab ? "var(--accent-text)" : "var(--muted)" }}
         >
-          Flow tests{flowCount === null ? "" : ` · ${flowCount}`}
+          Other tests{flowCount === null ? "" : ` · ${flowCount}`}
         </button>
       </div>
       )}
 
       {!site ? null : flowSite ? (
         <FlowTestList siteId={siteId} onCount={setFlowCount} onExport={() => navigate(`/site/${siteId}/flow-export`)} />
+      ) : spfSite ? (
+        <TestsList site={site} mode="spf" onCount={setFlowCount} />
       ) : flowTab ? (
-        // just the flow tests, as a flow testing site exports them (canvas FlowOnlyExport, A)
-        <FlowTestList siteId={siteId} onCount={setFlowCount} onExport={() => navigate(`/site/${siteId}/flow-export`)} exportLabel="Export Flow Tests Only" />
+        // the flow and stair tests; Export asks which (canvas SiteTests)
+        <TestsList site={site} mode="other" onCount={setFlowCount} />
       ) : (
       <>
       {/* list */}

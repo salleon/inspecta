@@ -12,6 +12,11 @@ export const BACK_EVENT = "inspecta:back";
 
 // where back goes from a route; null means "leave the app"
 export function parentRoute(pathname: string): string | null {
+  // stair tests: a section or the report → its test → the site's tests
+  const spf = /^\/site\/([^/]+)\/spf\/([^/]+)\/[^/]+$/.exec(pathname);
+  if (spf && spf[2] !== "new") return `/site/${spf[1]}/spf/${spf[2]}`;
+  const spfTop = /^\/site\/([^/]+)\/(spf\/[^/]+|spf-system)$/.exec(pathname);
+  if (spfTop) return `/site/${spfTop[1]}/findings?tab=flow`;
   const site = /^\/site\/([^/]+)\/(findings|export|flow-export|finding\/[^/]+\/note|flow\/[^/]+)$/.exec(pathname);
   if (site) return site[2] === "findings" ? "/" : site[2].startsWith("flow") ? `/site/${site[1]}/findings?tab=flow` : `/site/${site[1]}/findings`;
   // admin: keyword → list → admin menu → settings → dashboard

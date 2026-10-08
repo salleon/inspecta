@@ -1,8 +1,9 @@
 import type { SiteKind } from "../db/types";
 
 // A small icon for each kind of site (home page groups and New site):
-// AFSS a clipboard with a tick, Projects a hard hat, Flow testing a drop.
-export const KIND_COLOUR: Record<SiteKind, string> = { afss: "#2ec4b6", project: "#f5a55c", flow: "#5ab0ff" };
+// AFSS a clipboard with a tick, Projects a hard hat, Flow testing a drop,
+// Stair pressurisation a small staircase.
+export const KIND_COLOUR: Record<SiteKind, string> = { afss: "#2ec4b6", project: "#f5a55c", flow: "#5ab0ff", spf: "#b18cff" };
 
 export default function SiteKindIcon({ kind, size = 14, color }: { kind: SiteKind; size?: number; color?: string }) {
   const stroke = color ?? KIND_COLOUR[kind];
@@ -23,11 +24,13 @@ export default function SiteKindIcon({ kind, size = 14, color }: { kind: SiteKin
         </>
       )}
       {kind === "flow" && <path d="M12 3c3.5 4.2 6 7.6 6 10.6A6 6 0 0 1 6 13.6C6 10.6 8.5 7.2 12 3z" />}
+      {/* three steps up to the right, on the floor */}
+      {kind === "spf" && <path d="M3 21h18V4h-4.5v5.5H12V15H7.5v6" />}
     </svg>
   );
 }
 
-const TAG: Record<SiteKind, string> = { afss: "AFSS", project: "Project", flow: "Flow" };
+const TAG: Record<SiteKind, string> = { afss: "AFSS", project: "Project", flow: "Flow", spf: "SPF" };
 
 // the small coloured tag on a site's row (and a flow testing site's header)
 export function KindTag({ kind }: { kind: SiteKind }) {

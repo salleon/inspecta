@@ -1,4 +1,4 @@
-import type { Finding, FlowTest, Photo, Site } from "../db/types";
+import type { Finding, FlowTest, Photo, Site, SpfSystem, StairTest } from "../db/types";
 import { defectTypeStyle } from "./defectTypes";
 import { reportRows } from "./esrGrouping";
 import { suggestedCorrectiveAction } from "./correctiveAction";
@@ -10,6 +10,8 @@ import { addFlowCharts, addFlowSheets } from "./flowExcel";
 export interface FlowExport {
   tests: FlowTest[];
   site: Pick<Site, "name" | "address">;
+  // the site's stair tests, sheets after the flow tests
+  stair?: { tests: StairTest[]; sys: SpfSystem };
 }
 
 // A photo stamped for the Excel: made once from its export copy, then
@@ -334,6 +336,7 @@ export async function buildFindingsWorkbook(
 // freezes the loading screen) for a negligible saving on the XML.
 async function writeWorkbook(wb: import("exceljs").Workbook, flow?: FlowExport): Promise<Blob> {
   const charts = flow?.tests.length ? await addFlowSheets(wb, flow.tests, flow.site) : [];
+  if (flow?.stair?.tests.length) (await import("./stairExcel")).addStairSheets(wb, flow.stair.tests, flow.stair.sys, flow.site);
   const buffer = await wb.xlsx.writeBuffer({ zip: { compression: "STORE" } } as never);
   const bytes = await addFlowCharts(new Uint8Array(buffer as ArrayBuffer), charts);
   return new Blob([bytes as BlobPart], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });

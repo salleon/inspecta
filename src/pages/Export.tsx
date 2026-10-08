@@ -4,7 +4,8 @@ import { jsPDF } from "jspdf";
 import { Share } from "@capacitor/share";
 import { Capacitor } from "@capacitor/core";
 import type { Finding, Photo, Site, SiteReport } from "../db/types";
-import { countExportCopies, getExportCopy, getStamped, getSite, listFindings, listFlowTests, listPhotos, saveSiteReports, updateFinding } from "../db/db";
+import { countExportCopies, getExportCopy, getStamped, getSite, listFindings, listFlowTests, listPhotos, listStairTests, saveSiteReports, updateFinding } from "../db/db";
+import { stairTestHasData } from "../lib/stairTest";
 import { IconChevronLeft, IconShare } from "../components/Icons";
 import RoundIconButton from "../components/RoundIconButton";
 import ProgressOverlay from "../components/ProgressOverlay";
@@ -506,6 +507,12 @@ export default function ExportPreview() {
       setExportProgress({ percent: 86, step: "Adding flow tests…" });
       await (await import("../lib/flowPdf")).appendFlowPages(doc, flowTests, site);
     }
+    // and its stair tests, a page per stair
+    const stairTests = site?.spf?.stairs.length ? (await listStairTests(site.id)).filter(stairTestHasData) : [];
+    if (site?.spf && stairTests.length) {
+      setExportProgress({ percent: 87, step: "Adding stair tests…" });
+      await (await import("../lib/stairPdf")).appendStairPages(doc, stairTests, site.spf, site, false);
+    }
 
     setExportProgress({ percent: 88, step: "Building PDF…" });
     // let the "Building PDF…" step paint before jsPDF's synchronous output
@@ -585,7 +592,9 @@ export default function ExportPreview() {
           // the site's flow tests go in as tabs after the findings, the
           // ones with readings only
           const flowTests = site ? (await listFlowTests(site.id)).filter(flowTestHasData) : [];
-          const flow = site && flowTests.length ? { tests: flowTests, site } : undefined;
+          const stairTests = site?.spf?.stairs.length ? (await listStairTests(site.id)).filter(stairTestHasData) : [];
+          const stair = site?.spf && stairTests.length ? { tests: stairTests, sys: site.spf } : undefined;
+          const flow = site && (flowTests.length || stair) ? { tests: flowTests, site, stair } : undefined;
           blob = site?.kind === "project" ? await buildProjectWorkbook(items, onProgress, flow) : await buildFindingsWorkbook(items, inspectionMs, onProgress, flow);
         }
         timer.mark("building");

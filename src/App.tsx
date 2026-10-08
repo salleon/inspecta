@@ -22,6 +22,11 @@ const ExportPreview = lazy(() => import("./pages/Export"));
 const Admin = lazy(() => import("./pages/Admin"));
 const FlowTest = lazy(() => import("./pages/FlowTest"));
 const FlowExport = lazy(() => import("./pages/FlowExport"));
+const StairSystem = lazy(() => import("./pages/StairSystem"));
+const StairNew = lazy(() => import("./pages/StairNew"));
+const StairTestPage = lazy(() => import("./pages/StairTestPage"));
+const StairSectionPage = lazy(() => import("./pages/StairSectionPage"));
+const StairReport = lazy(() => import("./pages/StairReport"));
 
 // How long the splash sits fully visible before it starts fading, and how
 // long the fade itself takes (kept in sync with .splash-leaving's CSS
@@ -140,6 +145,11 @@ function AnimatedRoutes() {
           <Route path="/site/:siteId/export" element={<ExportPreview />} />
           <Route path="/site/:siteId/flow/:testId" element={<FlowTest />} />
           <Route path="/site/:siteId/flow-export" element={<FlowExport />} />
+          <Route path="/site/:siteId/spf-system" element={<StairSystem />} />
+          <Route path="/site/:siteId/spf/new" element={<StairNew />} />
+          <Route path="/site/:siteId/spf/:testId" element={<StairTestPage />} />
+          <Route path="/site/:siteId/spf/:testId/report" element={<StairReport />} />
+          <Route path="/site/:siteId/spf/:testId/:section" element={<StairSectionPage />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/admin/*" element={<Admin />} />
           <Route path="*" element={<Navigate to="/" replace />} />

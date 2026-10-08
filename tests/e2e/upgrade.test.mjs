@@ -66,7 +66,7 @@ test("opens the old database, moves 4.1 to 4, keeps the rest", async () => {
     db.close();
     return { version, stores, cats: Object.fromEntries(all.map((f) => [f.id, f.esrCategory])) };
   });
-  assert.equal(state.version, 70);
+  assert.equal(state.version, 80);
   assert.ok(state.stores.includes("exportCopies"), String(state.stores));
   assert.ok(state.stores.includes("flowTests"), String(state.stores));
   assert.deepEqual(state.cats, { f0: "4", f1: "3.1" });

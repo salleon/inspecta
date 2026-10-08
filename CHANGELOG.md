@@ -7,6 +7,41 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Stair pressurisation (SPF) tests.** A new kind of site, Stair
+  pressurisation, on + New site (the kinds are now a 2×2 grid), listed on
+  the home screen in its own group with a violet staircase icon and an SPF
+  tag. Set the system up once for the site: the AS 1668.1 edition it was
+  built to and its type, which fill in an amber rules box (the doors open,
+  as dot points, and the pass limits for that edition), then the stairs
+  (name, bottom and top level, extra doors such as a plant room, and the
+  fan) and site notes for the bottom of the report. Servicing is always
+  AS 1851-2012.
+- **Pick what you're testing.** A new stair test is a Three-monthly check,
+  Annual Testing, Commissioning or Custom (pick the sections). Every
+  section is optional and only the picked ones show: velocity, door force
+  and door closes & latches at every door, plus noise, pressure
+  restoration, pressure (1979) and fan checks once per stair. The stair
+  tabs scroll sideways for any number of stairs.
+- **You move yourself.** Tap a level and type on the keypad: Done saves the
+  reading and closes the keypad, and ▲▼ step a level when you want them.
+  The app never moves you on. Each row shows the other door that's open,
+  and fails show in red, with "N of M done · N fail · N to go" up top.
+- **Phone sound meter.** The noise section has a phone meter for a
+  reference check (Listen, the maximum, ±1 calibration). It saves the max
+  as a reference only; type the calibrated meter's reading in yourself.
+  The app now asks for the microphone the first time.
+- **The stair report.** A page per stair with every column (level,
+  adjacent door open, velocity, closes and latches, opening force), blank
+  wherever a test wasn't done and red where it failed, then the once-a-stair
+  results, the fan checks, notes and site notes. Preview it, then export
+  PDF or Excel (a sheet per stair). Stair pages are added to the site's
+  PDF and Excel reports too.
+- **Other tests on AFSS and project sites.** The Flow testing tab is now
+  Other tests. + Add a test offers a flow test or stair pressurisation (on
+  an AFSS it starts as Annual Testing; you can change it). Export Other
+  Tests Only lets you tick which tests to send, as PDF, Excel or both.
+- Backups and restores include stair tests.
+
 - **Flow tests: flows fill in from " Hg with your flow equipment.** The
   Equipment field in Test details now suggests flow equipment from
   EnFact's flow charts as you type (words in any order: "20t 80",

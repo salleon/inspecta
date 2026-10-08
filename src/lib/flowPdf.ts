@@ -13,7 +13,7 @@ const BLUE = "#1f6fb2";
 
 const hex = (c: string): [number, number, number] => [parseInt(c.slice(1, 3), 16), parseInt(c.slice(3, 5), 16), parseInt(c.slice(5, 7), 16)];
 
-function logoImage(): Promise<{ data: string; w: number; h: number }> {
+export function logoImage(): Promise<{ data: string; w: number; h: number }> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     // shrunk to what the page needs, so the PDF stays small

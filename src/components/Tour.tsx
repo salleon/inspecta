@@ -123,7 +123,7 @@ const STEPS: Step[] = [
     body: <>Busy? Leave it blank. When you export, Inspecta offers to categorise them then, or puts them under {b("Uncategorised")}.</>,
   },
   // 4. flow tests on a site
-  { chapter: 3, route: (ids) => `${site(ids)}/findings`, targets: t('[data-tour="flow-tab"]'), title: "Flow tests on a site", body: <>AFSS and project sites have a {b("Flow tests")} tab next to the findings. Add the site's sprinkler, hydrant or combined system tests here.</> },
+  { chapter: 3, route: (ids) => `${site(ids)}/findings`, targets: t('[data-tour="flow-tab"]'), title: "Other tests on a site", body: <>AFSS and project sites have an {b("Other tests")} tab next to the findings. Add the site's flow tests (sprinkler, hydrant or combined system) and stair pressurisation tests here.</> },
   {
     chapter: 3,
     route: (ids) => `${site(ids)}/findings?tab=flow`,
@@ -131,13 +131,13 @@ const STEPS: Step[] = [
     title: "In the site's report",
     body: (
       <>
-        {b("+ New flow test")} adds one. The site's PDF then ends with a page per test, and its Excel gets a tab per test, each with its graph.
+        {b("+ Add a test")} adds one: a flow test or a stair test. The site's PDF then ends with a page per test, and its Excel gets a tab per test, each with its graph.
         <br />
-        {b("Export Flow Tests Only")} sends just the tests.
+        {b("Export Other Tests Only")} sends just the tests you pick, as PDF and / or Excel.
       </>
     ),
   },
-  { chapter: 3, route: () => "/", targets: (ids) => [`[data-site-id="${ids.flowSiteId}"]`], title: "Or on its own", body: <>For a site that's only flow testing, make a {b("Flow testing")} site from {b("+")}: just its tests, no findings.</> },
+  { chapter: 3, route: () => "/", targets: (ids) => [`[data-site-id="${ids.flowSiteId}"]`], title: "Or on its own", body: <>For a site that's only flow testing or stair pressurisation, make a {b("Flow testing")} or {b("Stair pressurisation")} site from {b("+")}: just its tests, no findings.</> },
   { chapter: 3, route: (ids) => `/site/${ids.flowSiteId}/flow-export`, targets: t('[data-tour="flow-export-buttons"]'), title: "Its report", body: <>A preview of each test as it prints. {b("Export PDF")}: a page per test. {b("Export Excel")}: a sheet per test, laid out the same, each A4.</> },
   // 5. entering a flow test
   {

@@ -95,7 +95,7 @@ test("Show me around walks through all 8 topics on example sites, then removes t
     ["ESR category", async () => assert.ok(await page.locator("text=Browse all categories").count(), "Quick add open")],
     ["Level, defect type, category"],
     ["No rush on site", async () => assert.ok(await page.locator('[data-tour="categorise-ask"]').count(), "the uncategorised question")],
-    ["Flow tests on a site"],
+    ["Other tests on a site"],
     ["In the site's report", async () => assert.match(page.url(), /\?tab=flow$/)],
     ["Or on its own"],
     ["Its report", async () => assert.match(page.url(), /\/flow-export$/)],

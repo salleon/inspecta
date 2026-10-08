@@ -1,5 +1,6 @@
-// flow: a site that's only flow testing (no findings or photos)
-export type SiteKind = "afss" | "project" | "flow";
+// flow: a site that's only flow testing (no findings or photos); spf: one
+// that's only stair pressurisation testing
+export type SiteKind = "afss" | "project" | "flow" | "spf";
 
 // Advanced-controls field — see lib/defectTypes.ts for labels and colours.
 export type DefectType = "critical" | "non-critical" | "non-compliance" | "recommend" | "note-only" | "rectified" | "outstanding";
@@ -14,6 +15,9 @@ export interface Site {
   // customised reports made on the export page (see lib/customReports);
   // absent until the first one is made
   reports?: SiteReport[];
+  // the site's stair pressurisation system, set once (lib/stairTest);
+  // absent until it's set up
+  spf?: SpfSystem;
 }
 
 // A customised report: a chosen group of the site's findings, exported on
@@ -164,6 +168,78 @@ export interface FlowTest {
   // blank sheet only
   columns?: string[];
   cells?: string[][];
+  order: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
+// ---- stair pressurisation (Other tests on a site; see lib/stairTest) ----
+
+// the AS 1668.1 edition the system was built to, which sets the pass
+// limits and the doors open; its system types
+export type SpfEdition = "1979" | "1991" | "1998" | "2015";
+export type SpfType = "One test" | "Purge" | "Shutdown" | "Zone" | "Car park";
+
+export interface SpfStair {
+  id: string;
+  name: string; // "Front", "North"…
+  from: string; // bottom level: "G", "B2", "1"…
+  to: string; // top level
+  extra: string[]; // more doors at the top: "Plant room", "Roof"…
+  fan: string; // "SPF-1"
+}
+
+export interface SpfSystem {
+  edition: SpfEdition;
+  type: SpfType;
+  stairs: SpfStair[];
+  notes: string; // site notes, at the bottom of the report
+}
+
+// three-monthly check, Annual Testing, commissioning, or the inspector's
+// own pick of readings
+export type StairTestKind = "quick" | "annual" | "comm" | "custom";
+// the readings: at every door (vel, force, latch) or once a stair
+export type StairSection = "vel" | "force" | "latch" | "noise" | "rest" | "pa" | "fan" | "quick";
+export type Tick = "y" | "n";
+
+// one door's readings, as typed ("" or absent = not tested)
+export interface StairDoor {
+  vel?: string; // m/s
+  force?: string; // N
+  latch?: Tick;
+}
+
+// a stair's once-off readings
+export interface StairOnce {
+  noiseLevel?: string; // the noisiest door
+  noiseStair?: string; // dB(A)
+  noiseOcc?: string; // dB(A), occupied space
+  noiseRef?: string; // the phone meter's max, reference only
+  restLevel?: string; // the test door (the slowest)
+  restDoors?: string; // the doors opened and re-closed
+  restTime?: string; // s
+  pa?: string; // stair pressure, all doors closed
+  fan?: Record<string, Tick>; // by check (lib/stairTest FAN_CHECKS)
+  quick?: Record<string, Tick>; // three-monthly checks
+}
+
+export interface StairNote {
+  location: string;
+  text: string;
+}
+
+export interface StairTest {
+  id: string;
+  siteId: string;
+  kind: StairTestKind;
+  sections: StairSection[];
+  testedAt: number;
+  testedBy?: string;
+  // by stair id: its doors by level, and its once-off readings
+  doors: Record<string, Record<string, StairDoor>>;
+  once: Record<string, StairOnce>;
+  notes: StairNote[];
   order: number;
   createdAt: number;
   updatedAt: number;

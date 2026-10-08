@@ -1,8 +1,8 @@
-import type { Finding, FlowTest, Photo, Site } from "../db/types";
+import type { Finding, FlowTest, Photo, Site, StairTest } from "../db/types";
 import { backupRecords, photoBlob, restorePhoto, restoreSiteRecords, siteExists } from "../db/db";
 import { ZipWriter } from "./zip";
 
-// Backup: every site, finding, flow test and photo on this phone in one .zip —
+// Backup: every site, finding, flow test, stair test and photo on this phone in one .zip —
 // backup.json (the records) plus photos/<id>.jpg (the original photos, as
 // taken). Shared like the other exports, e.g. saved to OneDrive.
 //
@@ -25,6 +25,8 @@ interface BackupJson {
   findings: Finding[];
   // added with flow tests; older backups don't have it
   flowTests?: FlowTest[];
+  // added with stair tests
+  stairTests?: StairTest[];
   photos: (Omit<Photo, "blob" | "marked"> & { file: string; mime: string })[];
 }
 
@@ -42,7 +44,7 @@ export async function backupCounts() {
 // Photos are written one at a time, so memory stays flat however many
 // there are.
 export async function writeBackup(write: (bytes: Uint8Array) => Promise<void>, onPhoto: (done: number, total: number) => void) {
-  const { sites, findings, flowTests, photos } = await backupRecords();
+  const { sites, findings, flowTests, stairTests, photos } = await backupRecords();
   const zip = new ZipWriter(write);
   const now = new Date();
   const listed: BackupJson["photos"] = [];
@@ -56,7 +58,7 @@ export async function writeBackup(write: (bytes: Uint8Array) => Promise<void>, o
     listed.push({ ...meta, file, mime: blob.type || "image/jpeg" });
     onPhoto(i + 1, photos.length);
   }
-  const json: BackupJson = { type: TYPE, version: VERSION, createdAt: now.toISOString(), sites, findings, flowTests, photos: listed };
+  const json: BackupJson = { type: TYPE, version: VERSION, createdAt: now.toISOString(), sites, findings, flowTests, stairTests, photos: listed };
   await zip.addFile("backup.json", new TextEncoder().encode(JSON.stringify(json)), now);
   await zip.finish();
 }
@@ -130,7 +132,12 @@ export async function applyRestore(plan: RestorePlan, onPhoto: (done: number, to
   let findings = 0;
   for (const site of plan.newSites) {
     const siteFindings = plan.json.findings.filter((f) => f.siteId === site.id);
-    await restoreSiteRecords(site, siteFindings, (plan.json.flowTests ?? []).filter((t) => t.siteId === site.id));
+    await restoreSiteRecords(
+      site,
+      siteFindings,
+      (plan.json.flowTests ?? []).filter((t) => t.siteId === site.id),
+      (plan.json.stairTests ?? []).filter((t) => t.siteId === site.id),
+    );
     findings += siteFindings.length;
   }
   onPhoto(0, photos.length);

@@ -1,4 +1,4 @@
-// Flow tests (the Flow tests tab on a site): making one, the graph and
+// Flow tests (on a site's Other tests tab): making one, the graph and
 // result following the readings, and the site's Excel getting a tab per
 // flow test in EnFact's template layout, with a real chart.
 import { test, before, after } from "node:test";
@@ -103,9 +103,9 @@ async function exportExcel(siteId) {
   return fs.readFileSync(file.path);
 }
 
-test("the Flow tests tab lists the site's tests with their results", async () => {
+test("the Other tests tab lists the site's tests with their results", async () => {
   await go(page, app, "/site/s1/findings");
-  await page.click("text=Flow tests");
+  await page.click('button:has-text("Other tests")');
   await page.waitForTimeout(500);
   assert.ok(page.url().endsWith("?tab=flow"));
   assert.equal(await page.locator("text=ALPHA TEST").count(), 0);
@@ -125,7 +125,9 @@ test("the Flow tests tab lists the site's tests with their results", async () =>
 
 test("a new sprinkler test: flows are typed (never worked out from \" Hg), the result follows, and it's saved", async () => {
   await go(page, app, "/site/s1/findings?tab=flow");
-  await page.click("text=+ New flow test");
+  // + Add a test asks which kind: a flow test, then which
+  await page.click("text=+ Add a test");
+  await page.click('.sheet-panel button:has-text("Flow test")');
   await page.click("text=Sprinkler >> nth=-1");
   await page.waitForTimeout(800);
   assert.match(page.url(), /\/site\/s1\/flow\//);
@@ -180,7 +182,7 @@ test("a new sprinkler test: flows are typed (never worked out from \" Hg), the r
   await pressBack(page);
   await page.waitForTimeout(600);
   assert.ok(page.url().endsWith("/site/s1/findings?tab=flow"), page.url());
-  assert.equal(await page.locator("text=Flow tests · 3").count(), 1);
+  assert.equal(await page.locator("text=Other tests · 3").count(), 1);
   const saved = await page.evaluate(async () => {
     const req = indexedDB.open("inspecta");
     const idb = await new Promise((r) => (req.onsuccess = () => r(req.result)));
@@ -199,7 +201,9 @@ test("a new sprinkler test: flows are typed (never worked out from \" Hg), the r
 
 test("a new hydrant test: flows in L/s, PASS / FAIL at the bottom, RPM for a diesel pump, no pass or fail for town main, full screen", async () => {
   await go(page, app, "/site/s1/findings?tab=flow");
-  await page.click("text=+ New flow test");
+  // + Add a test asks which kind: a flow test, then which
+  await page.click("text=+ Add a test");
+  await page.click('.sheet-panel button:has-text("Flow test")');
   await page.click("text=Hydrant >> nth=-1");
   await page.waitForTimeout(800);
   const flow = page.locator('[aria-label="Flow"]');
@@ -408,7 +412,7 @@ test("deleting a flow test asks first", async () => {
   await page.click("text=Delete flow test");
   await page.click("button:has-text('Delete') >> nth=-1");
   await page.waitForTimeout(700);
-  assert.equal(await page.locator("text=Flow tests · 2").count(), 1);
+  assert.equal(await page.locator("text=Other tests · 2").count(), 1);
 });
 
 // where a value is on a sheet, as [row, col], or null
@@ -650,17 +654,16 @@ test("readings are saved straight away, and ones without a flow say why they're 
   assert.match(await page.getByText(/no flow, so it isn't on the graph/).innerText(), /Type the flow for each reading/);
 });
 
-test("an AFSS site's Flow tests tab: Export Flow Tests Only opens the flow test export (a sheet per test, no findings)", async () => {
+test("an AFSS site's Other tests tab: Export Other Tests Only asks which tests, then exports them (a sheet per test, no findings)", async () => {
   await go(page, app, "/site/s1/findings?tab=flow", 1200);
-  await page.click('button:has-text("Export Flow Tests Only")');
-  await page.waitForTimeout(1500);
-  assert.ok(page.url().endsWith("/site/s1/flow-export"), page.url());
-  const file = await download(page, () => page.click('button:has-text("Export Excel")'));
+  await page.click('button:has-text("Export Other Tests Only")');
+  assert.match(await page.locator(".sheet-panel").innerText(), /Export tests[\s\S]*All tests/);
+  // Excel only
+  await page.click('.sheet-panel button:has-text("PDF")');
+  const file = await download(page, () => page.getByRole("button", { name: /^Export .* · Excel$/ }).click());
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(fs.readFileSync(file.path));
   const names = wb.worksheets.map((w) => w.name);
   assert.ok(names.length >= 1 && !names.some((n) => /finding/i.test(n)), names.join(", "));
-  // back goes to the Flow tests tab
-  await pressBack(page);
   assert.ok(page.url().endsWith("/site/s1/findings?tab=flow"), page.url());
 });
