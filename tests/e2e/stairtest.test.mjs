@@ -49,6 +49,10 @@ test("the system is set once: edition, type, stairs; the rules follow the editio
   await page.getByRole("radio", { name: "1979" }).click();
   assert.match(await page.getByTestId("spf-rules").innerText(), /≤ 50 Pa/);
   await page.getByRole("radio", { name: "1998" }).click();
+  // the first stair starts blank: no G filled in, no example text, no extra doors
+  assert.equal(await page.getByLabel("Bottom level").inputValue(), "");
+  assert.equal(await page.locator("input[placeholder]:visible, textarea[placeholder]:visible").count(), 0);
+  assert.equal(await page.getByText("Extra doors").count(), 0);
   await page.getByLabel("Stair name").fill("Front");
   await page.getByLabel("Bottom level").fill("G");
   await page.getByLabel("Top level").fill("3");

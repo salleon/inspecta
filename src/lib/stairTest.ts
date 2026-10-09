@@ -22,7 +22,7 @@ const WORD: Record<SpfEdition, string> = { "1979": "storey", "1991": "floor", "1
 
 export const defaultSystem = (): SpfSystem => ({ edition: "1998", type: "Purge", stairs: [], notes: "" });
 
-export const newStair = (): SpfStair => ({ id: crypto.randomUUID(), name: "", from: "G", to: "", extra: [], fan: "" });
+export const newStair = (): SpfStair => ({ id: crypto.randomUUID(), name: "", from: "", to: "", extra: [], fan: "" });
 
 // a type the edition has (the first, if it's changed to one that hasn't)
 export const typeFor = (edition: SpfEdition, type: SpfType): SpfType => (TYPES[edition].includes(type) ? type : TYPES[edition][0]);

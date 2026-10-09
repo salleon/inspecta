@@ -9,7 +9,7 @@ import { card, cardLabel, fieldInput, PageHeader, Pill, RulesBox, Seg } from "..
 // The stair pressurisation system, set once for the site (design canvas
 // StairTestSimple, "0 · Set up the system"): the edition it was built to and
 // its type (the amber rules: doors open and pass limits follow), the stairs
-// with their levels and fans, and site notes for the bottom of the report.
+// with their levels and fans (no extra doors: the levels are the doors), and site notes for the bottom of the report.
 // Kept as it's changed.
 
 export default function StairSystem() {
@@ -19,7 +19,6 @@ export default function StairSystem() {
   const [site, setSite] = useState<Site | null>(null);
   const [sys, setSys] = useState<SpfSystem | null>(null);
   const [open, setOpen] = useState<string | null>(null);
-  const [extra, setExtra] = useState("");
   const saveTimer = useRef<number | null>(null);
   const latest = useRef<SpfSystem | null>(null);
 
@@ -118,49 +117,18 @@ export default function StairSystem() {
                 {isOpen && (
                   <div style={{ background: "var(--panel-2)", border: "1px solid var(--accent)", borderTop: "none", borderRadius: "0 0 10px 10px", padding: "4px 10px 10px", display: "flex", flexDirection: "column", gap: 8 }}>
                     <Row label="Name">
-                      <input aria-label="Stair name" placeholder="e.g. Front, North" value={st.name} onChange={(e) => setStair(st.id, { name: e.target.value })} style={{ ...fieldInput, flex: 1 }} />
+                      <input aria-label="Stair name" value={st.name} onChange={(e) => setStair(st.id, { name: e.target.value })} style={{ ...fieldInput, flex: 1 }} />
                     </Row>
                     <Row label="Levels">
-                      <input aria-label="Bottom level" placeholder="G" value={st.from} onChange={(e) => setStair(st.id, { from: e.target.value })} style={{ ...fieldInput, width: 64, textAlign: "center" }} />
+                      <input aria-label="Bottom level" value={st.from} onChange={(e) => setStair(st.id, { from: e.target.value })} style={{ ...fieldInput, width: 64, textAlign: "center" }} />
                       <span style={{ fontSize: 12, color: "var(--muted)", fontWeight: 700 }}>to</span>
-                      <input aria-label="Top level" placeholder="26" value={st.to} onChange={(e) => setStair(st.id, { to: e.target.value })} style={{ ...fieldInput, width: 64, textAlign: "center" }} />
+                      <input aria-label="Top level" value={st.to} onChange={(e) => setStair(st.id, { to: e.target.value })} style={{ ...fieldInput, width: 64, textAlign: "center" }} />
                       <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--muted)", fontWeight: 700 }}>
                         {count} door{count === 1 ? "" : "s"}
                       </span>
                     </Row>
-                    <Row label="Extra doors">
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 5, alignItems: "center", flex: 1 }}>
-                        {st.extra.map((x) => (
-                          <button
-                            key={x}
-                            aria-label={`Remove ${x}`}
-                            onClick={() => setStair(st.id, { extra: st.extra.filter((e) => e !== x) })}
-                            style={{ fontSize: 11.5, fontWeight: 800, padding: "4px 9px", borderRadius: 999, border: "none", background: "#143452", color: "#bfd0de" }}
-                          >
-                            {x} ✕
-                          </button>
-                        ))}
-                        <input
-                          aria-label="Add an extra door"
-                          placeholder="+ Plant room, Roof…"
-                          value={extra}
-                          onChange={(e) => setExtra(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key !== "Enter" || !extra.trim()) return;
-                            setStair(st.id, { extra: [...st.extra.filter((x) => x !== extra.trim()), extra.trim()] });
-                            setExtra("");
-                          }}
-                          onBlur={() => {
-                            if (!extra.trim()) return;
-                            setStair(st.id, { extra: [...st.extra.filter((x) => x !== extra.trim()), extra.trim()] });
-                            setExtra("");
-                          }}
-                          style={{ ...fieldInput, flex: 1, minWidth: 110, padding: "6px 9px", fontSize: 12.5 }}
-                        />
-                      </div>
-                    </Row>
                     <Row label="Fan">
-                      <input aria-label="Fan" placeholder="e.g. SPF-1" value={st.fan} onChange={(e) => setStair(st.id, { fan: e.target.value })} style={{ ...fieldInput, flex: 1 }} />
+                      <input aria-label="Fan" value={st.fan} onChange={(e) => setStair(st.id, { fan: e.target.value })} style={{ ...fieldInput, flex: 1 }} />
                     </Row>
                     {sys.stairs.length > 1 && (
                       <button
@@ -195,7 +163,6 @@ export default function StairSystem() {
           <textarea
             aria-label="Site notes"
             value={sys.notes}
-            placeholder="Anything about the site for the report: access, keys, where the relief is…"
             onChange={(e) => change({ ...sys, notes: e.target.value })}
             rows={3}
             style={{ ...fieldInput, fontWeight: 600, fontSize: 13, lineHeight: 1.45, resize: "vertical", fontFamily: "inherit" }}

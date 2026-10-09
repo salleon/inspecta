@@ -35,6 +35,10 @@ the technical detail.
   1 · Set up the system (with its own button), and 2 · What are you
   testing today?, with the test kinds greyed out until the system's done.
   Once it's set up, the page is the usual one.
+- **A simpler stair setup.** The Extra doors row is gone from each stair
+  (the levels are the doors), a new stair no longer starts with G filled
+  in as its bottom level, and the greyed-out example text in the stair
+  and site notes boxes is gone.
 - **You move yourself.** Tap a level and type on the keypad: Done saves the
   reading and closes the keypad, and ▲▼ step a level when you want them.
   The app never moves you on. Each row shows the other door that's open,
