@@ -63,6 +63,8 @@ the technical detail.
   an AFSS it starts as Annual Testing; you can change it). Export Other
   Tests Only lets you tick which tests to send, as PDF, Excel or both.
 - Backups and restores include stair tests.
+- Automated tests: the stair test checks wait for a new test to open
+  before moving on (one sometimes ran early and stopped a phone build).
 
 - **Flow tests: flows fill in from " Hg with your flow equipment.** The
   Equipment field in Test details now suggests flow equipment from

@@ -121,6 +121,8 @@ test("Custom starts with nothing picked; the chips only light up under Custom", 
   assert.ok(await page.getByRole("button", { name: "Pick what you're testing" }).isDisabled());
   await page.getByRole("button", { name: "Door force" }).click();
   await page.getByRole("button", { name: "Start ›" }).click();
+  // the test itself, not the Door force chip still on the new test page
+  await page.waitForURL(/\/spf\/(?!new)[^/?]+$/);
   await page.getByRole("button", { name: /Door force/ }).first().waitFor();
   const text = await page.locator("body").innerText();
   assert.ok(!/≋ Velocity/.test(text.split("+ Add a reading")[0]), "no velocity section");
