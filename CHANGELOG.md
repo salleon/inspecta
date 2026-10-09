@@ -39,6 +39,11 @@ the technical detail.
   (the levels are the doors), a new stair no longer starts with G filled
   in as its bottom level, and the greyed-out example text in the stair
   and site notes boxes is gone.
+- **Change the system any time.** Once a site's stair pressurisation
+  system is set up, it sits at the top of the site's stair tests ("The
+  system" on a stair pressurisation site, "Stair pressurisation system"
+  in an AFSS or project site's Other tests) with an Edit button. Before,
+  the only way back in was through + New stair test.
 - **You move yourself.** Tap a level and type on the keypad: Done saves the
   reading and closes the keypad, and ▲▼ step a level when you want them.
   The app never moves you on. Each row shows the other door that's open,

@@ -3,19 +3,21 @@ import { useNavigate } from "react-router-dom";
 import type { FlowKind, FlowTest, Site, StairTest } from "../db/types";
 import { addFlowTest, deleteFlowTest, deleteStairTest, listFlowTests, listStairTests } from "../db/db";
 import { blankThumbSvg, chartSvg, KIND_HINT, KIND_LABEL, newFlowTest, readingCount, summary } from "../lib/flowTest";
-import { KIND_LABEL as STAIR_KIND, stairTestSummary } from "../lib/stairTest";
+import { KIND_LABEL as STAIR_KIND, stairTestSummary, systemLine } from "../lib/stairTest";
 import { exportTests, type TestsFormat } from "../lib/testsExport";
 import { useBackHandler } from "../lib/backButton";
 import ConfirmDialog from "./ConfirmDialog";
 import FlowConverter from "./FlowConverter";
 import ProgressOverlay from "./ProgressOverlay";
 import SiteKindIcon from "./SiteKindIcon";
+import { Pill } from "./StairUi";
 
 // The Other tests tab of an AFSS or project site, and a stair pressurisation
 // site's list (design canvas SiteTests): every test on the site, flow and
 // stair, each with its icon; swipe left to delete. + Add a test asks which
 // kind (more kinds join that list later); Export asks which tests, as PDF
-// and / or Excel.
+// and / or Excel. Once a site's stair pressurisation system is set up, it
+// sits at the top with Edit, so it can be changed any time.
 
 const FLOW_KINDS: FlowKind[] = ["sprinkler", "hydrant", "combined", "blank"];
 const MIN_LOADER_MS = 3000;
@@ -168,6 +170,16 @@ export default function TestsList({ site, mode, onCount }: { site: Site; mode: "
   return (
     <>
       <div style={{ flexGrow: 1, overflowY: "auto", padding: "4px 16px 12px", display: "flex", flexDirection: "column", gap: 10 }}>
+        {!!site.spf?.stairs.length && (
+          <div data-testid="spf-system" style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--panel-2)", border: "1px solid var(--border-strong)", borderRadius: 12, padding: "9px 11px", fontSize: 12, color: "#bfd0de", lineHeight: 1.4 }}>
+            <span style={{ flexGrow: 1 }}>
+              <b style={{ color: "var(--text)" }}>{mode === "spf" ? "The system" : "Stair pressurisation system"}</b>
+              <br />
+              {systemLine(site.spf)}
+            </span>
+            <Pill onClick={() => navigate(`/site/${site.id}/spf-system?back=${encodeURIComponent(`/site/${site.id}/findings?tab=flow`)}`)}>Edit</Pill>
+          </div>
+        )}
         {items?.length === 0 && (
           <div style={{ padding: "40px 8px", textAlign: "center", color: "var(--muted-2)", fontSize: 14, fontWeight: 500 }}>
             {mode === "spf" ? "No stair tests on this site yet." : "No other tests on this site yet: tap + Add a test."}

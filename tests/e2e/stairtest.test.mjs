@@ -125,3 +125,15 @@ test("Custom starts with nothing picked; the chips only light up under Custom", 
   const text = await page.locator("body").innerText();
   assert.ok(!/≋ Velocity/.test(text.split("+ Add a reading")[0]), "no velocity section");
 });
+
+test("the system can be changed any time from the site's list", async () => {
+  await go(page, app, "/", 1200);
+  await page.getByText("Harbour Tower").click();
+  const box = page.getByTestId("spf-system");
+  await box.waitFor();
+  assert.match(await box.innerText(), /The system[\s\S]*Purge · built to AS 1668.1-1998 · 1 stair/);
+  await box.getByRole("button", { name: "Edit" }).click();
+  await page.getByRole("radio", { name: "Zone" }).click();
+  await page.getByRole("button", { name: "Save" }).click();
+  await page.getByTestId("spf-system").getByText("Zone · built to AS 1668.1-1998 · 1 stair").waitFor();
+});
