@@ -36,6 +36,7 @@ import { applyEquipment, deviceFor, deviceLabel, matchDevices, overLimit, type F
 import FlowConverter from "../components/FlowConverter";
 import { useFlowMode } from "../lib/settings";
 import { useTourScene } from "../lib/tour";
+import CellPad from "../components/CellPad";
 
 // One flow test (see lib/flowTest), as mocked up on the design canvas:
 // the graph and pass lines at the top follow the readings as they're typed.
@@ -162,6 +163,7 @@ export default function FlowTest() {
   const [deleting, setDeleting] = useState(false);
   const [chartW, setChartW] = useState(340);
   const chartBox = useRef<HTMLDivElement>(null);
+  const pageScroll = useRef<HTMLDivElement>(null);
 
   // Saved as it's typed: every change is written straight away, one write
   // at a time so an older copy can never land after a newer one; and again
@@ -326,7 +328,7 @@ export default function FlowTest() {
   const shell = (body: ReactNode, note: string, bottom?: ReactNode) => (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
       {header}
-      <div style={{ flexGrow: 1, overflowY: "auto", padding: `4px 16px ${bottom ? 64 : 24}px`, display: "flex", flexDirection: "column", gap: 12 }}>
+      <div ref={pageScroll} style={{ flexGrow: 1, overflowY: "auto", padding: `4px 16px ${bottom ? 64 : 24}px`, display: "flex", flexDirection: "column", gap: 12 }}>
         {body}
         {footer}
         {/* where it goes: at the end of the page, not a fixed bar */}
@@ -342,6 +344,8 @@ export default function FlowTest() {
           <div style={{ borderRadius: 999, background: "var(--bg)", boxShadow: "0 6px 18px rgba(0,0,0,.45)" }}>{bottom}</div>
         </div>
       )}
+      {/* the blue number pad for the number cells (not in full screen: it has its own) */}
+      {!wide && <CellPad scope={pageScroll} />}
       {dialog}
       {removeDialog}
     </div>
@@ -633,7 +637,7 @@ export default function FlowTest() {
           <div />
         </div>
         {test.demand.map((d, i) => (
-          <div key={i} style={{ display: "grid", gridTemplateColumns: combined ? "1fr 1fr 76px 26px" : "1fr 1fr 26px", gap: 6, alignItems: "center" }}>
+          <div key={i} data-pad-where={`Demand point ${i + 1}`} style={{ display: "grid", gridTemplateColumns: combined ? "1fr 1fr 76px 26px" : "1fr 1fr 26px", gap: 6, alignItems: "center" }}>
             <input
               style={cellStyle(14)}
               inputMode="decimal"
@@ -801,7 +805,7 @@ export default function FlowTest() {
           <div />
         </div>
         {rows.map((r, i) => (
-          <div key={i} style={{ display: "grid", gridTemplateColumns: gridCols, gap, alignItems: "center" }}>
+          <div key={i} data-pad-where={`Reading ${i + 1}`} style={{ display: "grid", gridTemplateColumns: gridCols, gap, alignItems: "center" }}>
             {stepCell(r, i, font)}
             <input style={cellStyle(font)} inputMode="decimal" value={r.dis} aria-label="Discharge" onChange={(e) => updateRow(i, (x) => void (x.dis = e.target.value))} />
             <input style={cellStyle(font)} inputMode="decimal" value={r.suc} aria-label="Suction" onChange={(e) => updateRow(i, (x) => void (x.suc = e.target.value))} />
@@ -1460,7 +1464,7 @@ function WideReadings({
             {["7", "8", "9", "4", "5", "6", "1", "2", "3"].map((k) => key(k))}
             {key(".", ".")}
             {key("0")}
-            {key("bs", "⌫", " fn")}
+            {key("bs", "⌫", " bs")}
           </div>
         </div>
       </div>

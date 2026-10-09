@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { adjacentDoor, doorsOpen, doorStats, limits, onceStatus, sectionsFor, stairLevels, stairTestHasData, stairTestSummary, typeFor } from "../../src/lib/stairTest";
+import { adjacentDoor, doorsOpen, doorStats, joinLevel, levelName, limits, onceStatus, sectionsFor, splitLevel, stairLevels, stairTestHasData, stairTestSummary, typeFor } from "../../src/lib/stairTest";
 import { stairPages } from "../../src/lib/stairPrint";
 import type { SpfSystem, StairTest } from "../../src/db/types";
 
@@ -76,4 +76,17 @@ test("the report keeps every column; anything not tested is blank", () => {
   assert.deepEqual(page.rows[0].fails, [false, false, true, false, false]);
   assert.ok(page.boxes.every((b) => b.value === ""));
   assert.equal(page.subtitle, "Stair 1 (Front)");
+});
+
+test("levels are a type and a number; ground in any range across it, the others only at the ends", () => {
+  assert.deepEqual(stairLevels({ from: "B2", to: "3", extra: [] }), ["3", "2", "1", "G", "B1", "B2"]);
+  assert.deepEqual(stairLevels({ from: "LG", to: "2", extra: [] }), ["2", "1", "G", "LG"]);
+  assert.deepEqual(stairLevels({ from: "G", to: "UG", extra: [] }), ["UG", "G"]);
+  assert.deepEqual(stairLevels({ from: "B1", to: "M", extra: [] }), ["M", "G", "B1"]);
+  assert.deepEqual(splitLevel("B2"), { type: "B", num: "2" });
+  assert.deepEqual(splitLevel("26"), { type: "", num: "26" });
+  assert.equal(joinLevel("B", "3"), "B3");
+  assert.equal(joinLevel("G", "4"), "G", "ground has no number");
+  assert.equal(levelName("B2"), "Basement 2");
+  assert.equal(levelName("R"), "Roof");
 });

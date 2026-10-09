@@ -29,39 +29,82 @@ export const typeFor = (edition: SpfEdition, type: SpfType): SpfType => (TYPES[e
 
 // ---- levels ----
 
-// "G" 0, "B2" -2, "12" 12; null if it isn't one of those
-export function levelNumber(label: string): number | null {
-  const t = label.trim().toUpperCase();
-  if (/^(G|GF|GROUND)$/.test(t)) return 0;
-  const b = /^B(\d+)$/.exec(t);
-  if (b) return -Number(b[1]);
-  const l = /^L?(\d+)$/.exec(t);
-  return l ? Number(l[1]) : null;
+// A level is a type and, for Level and Basement, a number (design canvas
+// SpfStairPad): kept as its short code, the one on the report: "26", "B2",
+// "LG", "G", "UG", "M", "R".
+export type LevelType = "" | "B" | "LG" | "G" | "UG" | "M" | "R";
+export const LEVEL_TYPES: { id: LevelType; name: string; numbered: boolean; example: string }[] = [
+  { id: "", name: "Level", numbered: true, example: "26" },
+  { id: "B", name: "Basement", numbered: true, example: "B2" },
+  { id: "LG", name: "Lower ground", numbered: false, example: "LG" },
+  { id: "G", name: "Ground", numbered: false, example: "G" },
+  { id: "UG", name: "Upper ground", numbered: false, example: "UG" },
+  { id: "M", name: "Mezzanine", numbered: false, example: "M" },
+  { id: "R", name: "Roof", numbered: false, example: "R" },
+];
+const TYPE_RANK: Record<Exclude<LevelType, "" | "B">, number> = { LG: -5, G: 0, UG: 3, M: 6, R: 1e6 };
+
+// "B2" → Basement, "2"; "26" (or "L26") → Level, "26"; "G" → Ground
+export function splitLevel(code: string): { type: LevelType; num: string } {
+  const t = code.trim().toUpperCase();
+  if (/^(G|GF|GROUND)$/.test(t)) return { type: "G", num: "" };
+  if (t === "LG" || t === "UG" || t === "M" || t === "R") return { type: t, num: "" };
+  const b = /^B(\d*)$/.exec(t);
+  if (b) return { type: "B", num: b[1] };
+  const l = /^L?(\d*)$/.exec(t);
+  return { type: "", num: l ? l[1] : code.trim() };
+}
+export const joinLevel = (type: LevelType, num: string) => (type === "" ? num : type === "B" ? `B${num}` : type);
+export const levelName = (code: string) => {
+  const { type, num } = splitLevel(code);
+  const name = LEVEL_TYPES.find((x) => x.id === type)?.name ?? "Level";
+  return LEVEL_TYPES.find((x) => x.id === type)?.numbered ? `${name}${num ? ` ${num}` : ""}` : name;
+};
+
+// where a level sits, bottom to top; null if it isn't one we know
+function levelRank(code: string): number | null {
+  const t = code.trim().toUpperCase();
+  if (!t) return null;
+  const { type, num } = splitLevel(t);
+  if (type === "B") return num ? -10 - 10 * Number(num) : null;
+  if (type === "") return /^\d+$/.test(num) ? 10 * Number(num) : null;
+  return TYPE_RANK[type];
 }
 
-export const levelLabel = (n: number) => (n === 0 ? "G" : n < 0 ? `B${-n}` : String(n));
-
-// a stair's doors, top to bottom: its extra doors (plant room, roof…)
-// first, then each level from the top down to the bottom
+// a stair's doors, top to bottom: any extra doors first, then every level
+// from the top one down to the bottom one. Ground is always in a range that
+// crosses it; lower / upper ground, mezzanine and roof only when they're
+// one of the ends (not every building has them).
 export function stairLevels(stair: Pick<SpfStair, "from" | "to" | "extra">): string[] {
   const extra = stair.extra.map((e) => e.trim()).filter(Boolean);
-  const a = levelNumber(stair.from);
-  const b = levelNumber(stair.to);
+  const ends = [stair.from, stair.to].map((c) => c.trim().toUpperCase().replace(/^L(?=\d)/, ""));
+  const ranks = ends.map(levelRank);
   let levels: string[];
-  if (a !== null && b !== null) {
-    const top = Math.max(a, b);
-    const bottom = Math.min(a, b);
-    levels = [];
-    for (let n = top; n >= bottom && levels.length < 300; n--) levels.push(levelLabel(n));
+  if (ranks[0] !== null && ranks[1] !== null) {
+    const lo = Math.min(ranks[0], ranks[1]);
+    const hi = Math.max(ranks[0], ranks[1]);
+    const nums = ends.map(splitLevel);
+    const maxB = Math.max(0, ...nums.filter((x) => x.type === "B").map((x) => Number(x.num)));
+    const maxN = Math.max(0, ...nums.filter((x) => x.type === "").map((x) => Number(x.num)));
+    const all: string[] = [];
+    for (let n = Math.min(maxB, 200); n >= 1; n--) all.push(`B${n}`);
+    all.push("LG", "G", "UG", "M");
+    for (let n = 1; n <= Math.min(maxN, 300); n++) all.push(String(n));
+    all.push("R");
+    levels = all
+      .filter((c) => {
+        const r = levelRank(c)!;
+        if (r < lo || r > hi) return false;
+        return c === "G" || !(c in TYPE_RANK) || ends.includes(c);
+      })
+      .reverse();
   } else levels = [stair.to.trim(), stair.from.trim()].filter(Boolean);
   return [...extra.filter((e) => !levels.includes(e)), ...levels];
 }
 
 export const stairName = (stair: SpfStair, i: number) => `Stair ${i + 1}${stair.name.trim() ? ` · ${stair.name.trim()}` : ""}`;
-export const stairRange = (stair: SpfStair) => {
-  const levels = stairLevels(stair);
-  return levels.length ? `${stair.from.trim() || levels[levels.length - 1]}–${stair.to.trim() || levels[0]}` : "No levels yet";
-};
+// "B2 to 26"
+export const stairRange = (stair: SpfStair) => (stair.from.trim() && stair.to.trim() ? `${stair.from.trim()} to ${stair.to.trim()}` : "No levels yet");
 
 // ---- the rules (StairTestRules board) ----
 
@@ -123,10 +166,10 @@ export const systemLine = (sys: SpfSystem | undefined) =>
 
 export const KIND_LABEL: Record<StairTestKind, string> = { quick: "Three-monthly check", annual: "Annual Testing", comm: "Commissioning", custom: "Custom" };
 export const KIND_HINT: Record<StairTestKind, string> = {
-  quick: "AS 1851 three-monthly: start it from the fire panel and tick it works. No gauges.",
-  annual: "AS 1851 annual: every door's velocity, force and latching; noise and restoration once; fan checks.",
-  comm: "AS 1668.1 in full, to the edition it's built to: every reading.",
-  custom: "Pick only what you're doing today, e.g. velocities after a fan repair.",
+  quick: "Panel start: tick it works",
+  annual: "All doors: velocities, forces, latches etc",
+  comm: "All tests",
+  custom: "Pick the tests",
 };
 export const KINDS: StairTestKind[] = ["quick", "annual", "comm", "custom"];
 export const KIND_SECTIONS: Record<Exclude<StairTestKind, "custom">, StairSection[]> = {

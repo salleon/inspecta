@@ -495,12 +495,12 @@ button:active:not(:disabled) {
   -webkit-user-select: none;
 }
 .wide-grid input:focus {
-  border: 2px solid var(--accent) !important;
+  border: 2px solid #5ab0ff !important;
   background: #17405f !important;
-  box-shadow: 0 0 0 3px rgba(46, 196, 182, 0.18);
+  box-shadow: 0 0 0 3px rgba(90, 176, 255, 0.22);
 }
 .wide-grid input[data-fresh]:focus {
-  background: rgba(46, 196, 182, 0.28) !important;
+  background: rgba(90, 176, 255, 0.25) !important;
 }
 .wide-head,
 .wide-heads > div {
@@ -558,8 +558,8 @@ button:active:not(:disabled) {
   box-sizing: border-box;
   padding: 8px;
   border-radius: 16px;
-  background: rgba(9, 30, 44, 0.95);
-  border: 1px solid rgba(46, 196, 182, 0.45);
+  background: #071b2c;
+  border: 1px solid rgba(90, 176, 255, 0.35);
   box-shadow: -10px 0 30px rgba(0, 0, 0, 0.45);
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -572,11 +572,12 @@ button:active:not(:disabled) {
   box-shadow: none;
   transition: transform 260ms cubic-bezier(0.5, 0, 0.8, 0.3), box-shadow 260ms;
 }
+/* flow-testing blue, like the upright pad (components/NumPad.css) */
 .wide-key {
-  border: 1px solid rgba(46, 196, 182, 0.32);
+  border: 1px solid rgba(90, 176, 255, 0.4);
   border-radius: 10px;
-  background: rgba(46, 196, 182, 0.17);
-  color: #e9fffc;
+  background: rgba(90, 176, 255, 0.1);
+  color: #e3f1ff;
   font-size: 22px;
   font-weight: 700;
   padding: 0;
@@ -586,7 +587,7 @@ button:active:not(:disabled) {
   -webkit-user-select: none;
 }
 .wide-key:active {
-  background: rgba(46, 196, 182, 0.35);
+  background: rgba(90, 176, 255, 0.3);
 }
 /* pressed: in and spring back (canvas FlowKeypadPress, option B) */
 .wide-key.pressed {
@@ -598,7 +599,7 @@ button:active:not(:disabled) {
 @keyframes wide-press {
   0% {
     transform: scale(0.86);
-    background: rgba(46, 196, 182, 0.42);
+    background: rgba(90, 176, 255, 0.45);
   }
   55% {
     transform: scale(1.05);
@@ -620,10 +621,16 @@ button:active:not(:disabled) {
   }
 }
 .wide-key.fn {
-  background: rgba(46, 196, 182, 0.07);
-  border-color: rgba(46, 196, 182, 0.22);
-  color: #bfeee8;
+  background: rgba(90, 176, 255, 0.05);
+  border-color: rgba(90, 176, 255, 0.25);
+  color: #5ab0ff;
   font-size: 19px;
+}
+/* ⌫ in red-pink, like every pad */
+.wide-key.bs {
+  background: rgba(255, 92, 106, 0.16);
+  border-color: rgba(255, 120, 130, 0.5);
+  color: #ff9aa4;
 }
 .wide-key.hide {
   grid-column: span 3;

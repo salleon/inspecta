@@ -8,7 +8,7 @@ import { PageHeader, Pill } from "../components/StairUi";
 
 // A new stair test (design canvas StairTestSimple, "1 · Pick the test"):
 // the system is already set for the site, so it only asks what's being
-// tested today. Annual Testing to start with (an AFSS site's is always
+// tested. Annual Testing to start with (an AFSS site's is always
 // annual, but it can still be changed). Before the system is set up it shows
 // the order as numbered steps (canvas SpfSetupFirst, option A): 1 · set up
 // the system, 2 · what you're testing, greyed out until then.
@@ -80,7 +80,7 @@ export default function StairNew() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      <PageHeader title="Stair pressurisation" sub={`${site?.name ?? ""} · new test`} onBack={() => navigate(`/site/${siteId}/findings?tab=flow`)} />
+      <PageHeader title="New stair test" sub={site?.name ?? ""} onBack={() => navigate(`/site/${siteId}/findings?tab=flow`)} />
       <div style={{ flexGrow: 1, overflowY: "auto", padding: "4px 14px 16px", display: "flex", flexDirection: "column", gap: 8 }}>
         {steps ? (
           <>
@@ -99,7 +99,7 @@ export default function StairNew() {
             <div style={stepCard(false)}>
               <span style={stepNum(false)}>2</span>
               <div style={{ fontSize: 14.5, fontWeight: 800, color: "var(--muted)" }}>
-                What are you testing today?
+                What are you testing?
                 <small style={stepSub}>After the system is set up.</small>
               </div>
             </div>
@@ -114,7 +114,7 @@ export default function StairNew() {
               </span>
               <Pill onClick={editSystem}>{ready ? "Edit" : "Set up"}</Pill>
             </div>
-            <div style={{ fontSize: 13, fontWeight: 800, color: "#bfd0de", marginTop: 6 }}>What are you testing today?</div>
+            <div style={{ fontSize: 13, fontWeight: 800, color: "#bfd0de", marginTop: 6 }}>What are you testing?</div>
           </>
         )}
         <div aria-disabled={steps || undefined} style={{ display: "flex", flexDirection: "column", gap: 8, opacity: steps ? 0.38 : 1, pointerEvents: steps ? "none" : undefined }}>
@@ -133,9 +133,9 @@ export default function StairNew() {
                   <span style={radio(on)} />
                   {KIND_LABEL[k]}
                 </div>
-                <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 3, lineHeight: 1.4 }}>{KIND_HINT[k]}</div>
-                {k === "custom" && (
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 8 }}>
+                <div style={{ fontSize: 12, color: "var(--muted)", margin: "3px 0 0 24px", lineHeight: 1.4 }}>{KIND_HINT[k]}</div>
+                {k === "custom" && on && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 5, margin: "8px 0 0 24px" }}>
                     {CUSTOM_SECTIONS.map((s) => {
                       const sel = kind === "custom" && picked.includes(s);
                       return (

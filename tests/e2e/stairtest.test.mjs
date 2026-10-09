@@ -1,4 +1,5 @@
-// Stair pressurisation (canvas StairTestSimple, SiteTests): a Stair
+// Stair pressurisation (canvas StairTestSimple, SiteTests, SpfTidy,
+// SpfStairPad): a Stair
 // pressurisation site from + New site, the system set up once, a test
 // picked, a velocity typed at a level with the keypad (Done saves and
 // closes: the app never moves you on), the report; and on an AFSS site the
@@ -40,7 +41,7 @@ test("the system is set once: edition, type, stairs; the rules follow the editio
   await page.getByRole("button", { name: "+ New stair test" }).click();
   await page.getByRole("button", { name: "Set up the system ›" }).waitFor();
   // the steps: 1 · set up the system, 2 · the test kinds, greyed out until then
-  assert.match(await page.locator("body").innerText(), /1\s*Set up the system[\s\S]*2\s*What are you testing today\?\s*After the system is set up/);
+  assert.match(await page.locator("body").innerText(), /1\s*Set up the system[\s\S]*2\s*What are you testing\?\s*After the system is set up/);
   assert.ok(await page.getByRole("button", { name: "Set up the system first" }).isDisabled());
   assert.equal(await page.locator('[aria-disabled="true"] [role="radio"]').count(), 4);
   await page.getByRole("button", { name: "Set up the system ›" }).click();
@@ -49,16 +50,26 @@ test("the system is set once: edition, type, stairs; the rules follow the editio
   await page.getByRole("radio", { name: "1979" }).click();
   assert.match(await page.getByTestId("spf-rules").innerText(), /≤ 50 Pa/);
   await page.getByRole("radio", { name: "1998" }).click();
-  // the first stair starts blank: no G filled in, no example text, no extra doors
-  assert.equal(await page.getByLabel("Bottom level").inputValue(), "");
+  // no stairs to start: add them one by one; nothing to save until there's one
+  await page.getByText("No stairs yet").waitFor();
+  assert.ok(await page.getByRole("button", { name: "Add a stair to continue" }).isDisabled());
+  await page.getByRole("button", { name: "+ Add a stair" }).click();
+  // the new stair starts blank: no example text, no extra doors
   assert.equal(await page.locator("input[placeholder]:visible, textarea[placeholder]:visible").count(), 0);
   assert.equal(await page.getByText("Extra doors").count(), 0);
   await page.getByLabel("Stair name").fill("Front");
-  await page.getByLabel("Bottom level").fill("G");
-  await page.getByLabel("Top level").fill("3");
-  await page.getByLabel("Fan").fill("SPF-1");
-  assert.match(await page.locator("body").innerText(), /4 doors/);
-  await page.getByRole("button", { name: "Save" }).click();
+  // highest level first, typed on the purple pad; Next › goes down to the lowest
+  await page.getByRole("button", { name: "Highest level", exact: true }).click();
+  const pad = page.getByTestId("level-pad");
+  await pad.getByRole("button", { name: "3", exact: true }).dispatchEvent("pointerdown");
+  await pad.getByRole("button", { name: "Next", exact: true }).dispatchEvent("pointerdown");
+  assert.match(await pad.innerText(), /Lowest level/);
+  // a level is a type and a number: Ground needs no number
+  await page.getByRole("button", { name: "Lowest level type" }).click();
+  await page.getByRole("option", { name: /^Ground/ }).click();
+  assert.match(await page.locator("[data-stair]").first().innerText(), /4 doors/);
+  await page.getByLabel("Fan name").fill("SPF-1");
+  await page.getByRole("button", { name: "Save and continue ›" }).click();
   await page.getByText("Purge · built to AS 1668.1-1998 · 1 stair").waitFor();
 });
 
@@ -81,7 +92,7 @@ test("a velocity at one level: Done saves it and closes the keypad", async () =>
   assert.equal(await page.getByTestId("spf-value").count(), 0, "the keypad closes; it doesn't move on to the next level");
   const row = await page.locator('[data-i="1"]').innerText();
   assert.match(row, /2[\s\S]*3[\s\S]*0\.8[\s\S]*Fail/, "level 2, the level above open, 0.8 m/s fails");
-  assert.match(await page.locator("body").innerText(), /1 of 4 done · 1 fail · 3 to go/);
+  assert.match(await page.locator("body").innerText(), /1 of 4 · 1 fail/);
 });
 
 test("the report: every column, blanks where not tested", async () => {
@@ -125,7 +136,7 @@ test("Custom starts with nothing picked; the chips only light up under Custom", 
   await page.waitForURL(/\/spf\/(?!new)[^/?]+$/);
   await page.getByRole("button", { name: /Door force/ }).first().waitFor();
   const text = await page.locator("body").innerText();
-  assert.ok(!/≋ Velocity/.test(text.split("+ Add a reading")[0]), "no velocity section");
+  assert.ok(!/≋ Velocity/.test(text.split("Additional tests")[0]), "no velocity section");
 });
 
 test("the system can be changed any time from the site's list", async () => {
@@ -136,6 +147,6 @@ test("the system can be changed any time from the site's list", async () => {
   assert.match(await box.innerText(), /The system[\s\S]*Purge · built to AS 1668.1-1998 · 1 stair/);
   await box.getByRole("button", { name: "Edit" }).click();
   await page.getByRole("radio", { name: "Zone" }).click();
-  await page.getByRole("button", { name: "Save" }).click();
+  await page.getByRole("button", { name: "Save and continue ›" }).click();
   await page.getByTestId("spf-system").getByText("Zone · built to AS 1668.1-1998 · 1 stair").waitFor();
 });

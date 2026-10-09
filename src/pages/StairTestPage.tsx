@@ -5,13 +5,14 @@ import { ALL_SECTIONS, doorStats, KIND_LABEL, onceStatus, SECTION, stairLevels }
 import { useBackHandler } from "../lib/backButton";
 import { card, cardLabel, fieldInput, PageHeader, Pill, useStairTest } from "../components/StairUi";
 
-// A stair test (design canvas StairTestSimple, "2 · The sections"): a tab
-// per stair (scrolls sideways for any number), then only the sections this
-// test has, each with its progress and fails. More can be added; every one
-// is optional, and anything not tested is left blank on the report.
+// A stair test (design canvas StairTestSimple, "2 · The sections"; tidied on
+// SpfTidy): a tab per stair (scrolls sideways for any number), then only the
+// sections this test has, each with its progress and fails. The rest are
+// under Additional tests; every one is optional, and anything not tested is
+// left blank on the report.
 
 const ICON: Record<StairSection, string> = { vel: "≋", force: "⇥", latch: "⊡", noise: "◖", rest: "↻", pa: "▣", fan: "✻", quick: "✓" };
-const formatDay = (ms: number) => new Date(ms).toLocaleDateString("en-AU", { day: "2-digit", month: "2-digit", year: "numeric" });
+const formatDay = (ms: number) => new Date(ms).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" });
 
 export default function StairTestPage() {
   const { siteId, testId } = useParams<{ siteId: string; testId: string }>();
@@ -41,21 +42,20 @@ export default function StairTestPage() {
 
   const sectionCard = (s: StairSection) => {
     const info = SECTION[s];
-    let sub: string;
+    let sub = "";
     let right: string;
     let colour: string;
     let pct: number;
     if (!sys || !stair) return null;
     if (info.every) {
       const x = doorStats(test, stair, s as "vel" | "force" | "latch", sys);
-      sub = `Every door · ${x.done} of ${x.total}`;
-      right = x.fails ? `${x.fails} fail${x.fails === 1 ? "" : "s"}` : x.done ? (x.done === x.total ? "All pass" : "OK so far") : "Optional";
+      sub = `${x.done} of ${x.total}`;
+      right = x.fails ? `${x.fails} fail${x.fails === 1 ? "" : "s"}` : x.done ? (x.done === x.total ? "All pass" : "OK so far") : "—";
       colour = x.fails ? "#ff7a6a" : x.done ? "#2bd47a" : "#5f7890";
       pct = x.total ? Math.round((100 * x.done) / x.total) : 0;
     } else {
       const o = onceStatus(s, test.once[stair.id], sys);
-      sub = `Once · ${info.once}`;
-      right = o.text || "Optional";
+      right = o.text || "—";
       colour = o.fail ? "#ff7a6a" : o.text ? "#2bd47a" : "#5f7890";
       pct = o.done ? 100 : o.text ? 50 : 0;
     }
@@ -71,10 +71,12 @@ export default function StairTestPage() {
         <span style={{ width: 34, height: 34, borderRadius: 10, background: pct === 100 ? "rgba(43,212,122,.16)" : "#143452", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>{ICON[s]}</span>
         <span style={{ flexGrow: 1, minWidth: 0 }}>
           <span style={{ display: "block", fontSize: 14, fontWeight: 800 }}>{info.name}</span>
-          <span style={{ display: "block", fontSize: 11, color: "var(--muted)", fontWeight: 700 }}>{sub}</span>
-          <span style={{ display: "block", height: 4, borderRadius: 2, background: "#143452", marginTop: 5, overflow: "hidden" }}>
-            <span style={{ display: "block", height: "100%", width: `${pct}%`, background: "var(--accent)" }} />
-          </span>
+          {sub && <span style={{ display: "block", fontSize: 11.5, color: "var(--muted)", fontWeight: 700 }}>{sub}</span>}
+          {info.every && (
+            <span style={{ display: "block", height: 4, borderRadius: 2, background: "#143452", marginTop: 5, overflow: "hidden" }}>
+              <span style={{ display: "block", height: "100%", width: `${pct}%`, background: "var(--accent)" }} />
+            </span>
+          )}
         </span>
         <span style={{ fontSize: 12, fontWeight: 800, color: colour, whiteSpace: "nowrap" }}>{right}</span>
       </button>
@@ -105,11 +107,8 @@ export default function StairTestPage() {
                   onClick={() => setParams({ stair: s.id }, { replace: true })}
                   style={{ flex: "0 0 auto", textAlign: "left", fontSize: 12, fontWeight: 800, padding: "7px 11px", borderRadius: 9, lineHeight: 1.25, background: on ? "rgba(46,196,182,.14)" : "var(--panel-2)", border: on ? "1px solid var(--accent)" : "1px solid var(--border-strong)", color: on ? "#5ff0e0" : "var(--muted)" }}
                 >
-                  Stair {i + 1}
-                  {s.name.trim() ? ` · ${s.name.trim()}` : ""}
-                  <small style={{ display: "block", fontSize: 10.5, fontWeight: 700 }}>
-                    {stairLevels(s).length} doors{every ? ` · ${done} done` : ""}
-                  </small>
+                  {s.name.trim() || `Stair ${i + 1}`}
+                  <small style={{ display: "block", fontSize: 10.5, fontWeight: 700 }}>{every ? `${done} of ${stairLevels(s).length}` : `${stairLevels(s).length} doors`}</small>
                 </button>
               );
             })}
@@ -120,30 +119,26 @@ export default function StairTestPage() {
 
           <div style={{ flexGrow: 1, overflowY: "auto", padding: "8px 14px 16px", display: "flex", flexDirection: "column", gap: 7 }}>
             {test.sections.map(sectionCard)}
-            {missing.length > 0 && (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 5, alignItems: "center", marginTop: 4 }}>
-                <span style={{ fontSize: 11.5, fontWeight: 800, color: "#5ff0e0", marginRight: 2 }}>+ Add a reading</span>
-                {missing.map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => setTest((t) => ({ ...t, sections: ALL_SECTIONS.filter((x) => t.sections.includes(x) || x === s) }))}
-                    style={{ fontSize: 10.5, fontWeight: 800, padding: "4px 8px", borderRadius: 999, border: "1px dashed #2a5a82", background: "none", color: "var(--muted)" }}
-                  >
-                    {SECTION[s].name}
-                  </button>
-                ))}
+            {missing.length > 0 && <div style={{ fontSize: 13, fontWeight: 800, color: "#bfd0de", marginTop: 4 }}>Additional tests</div>}
+            {missing.map((s) => (
+              <div key={s} style={{ display: "flex", alignItems: "center", gap: 11, padding: "10px 12px", borderRadius: 13, border: "1px dashed var(--border-strong)" }}>
+                <span style={{ width: 34, height: 34, borderRadius: 10, background: "rgba(46,196,182,.1)", color: "#5ff0e0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>+</span>
+                <span style={{ flexGrow: 1, fontSize: 14, fontWeight: 800, color: "#bfd0de" }}>{SECTION[s].name}</span>
+                <Pill onClick={() => setTest((t) => ({ ...t, sections: ALL_SECTIONS.filter((x) => t.sections.includes(x) || x === s) }))}>+ Add</Pill>
               </div>
-            )}
+            ))}
             <button
               onClick={() => setNotesOpen(true)}
-              style={{ display: "flex", alignItems: "center", gap: 11, width: "100%", textAlign: "left", padding: "10px 12px", borderRadius: 13, background: "var(--panel)", border: "1px dashed var(--border-strong)", color: "var(--text)", marginTop: 4 }}
+              style={{ display: "flex", alignItems: "center", gap: 11, width: "100%", textAlign: "left", padding: "10px 12px", borderRadius: 13, background: "var(--panel)", border: "1px solid var(--border)", color: "var(--text)", marginTop: 4 }}
             >
               <span style={{ width: 34, height: 34, borderRadius: 10, background: "#143452", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>✎</span>
               <span style={{ flexGrow: 1 }}>
                 <span style={{ display: "block", fontSize: 14, fontWeight: 800 }}>Notes</span>
-                <span style={{ display: "block", fontSize: 11, color: "var(--muted)", fontWeight: 700 }}>
-                  {test.notes.length ? `${test.notes.length} note${test.notes.length === 1 ? "" : "s"}` : "Anything to note, by level"}
-                </span>
+                {test.notes.length > 0 && (
+                  <span style={{ display: "block", fontSize: 11.5, color: "var(--muted)", fontWeight: 700 }}>
+                    {test.notes.length} note{test.notes.length === 1 ? "" : "s"}
+                  </span>
+                )}
               </span>
               <span style={{ color: "var(--muted-2)", fontSize: 18 }}>›</span>
             </button>
@@ -166,7 +161,6 @@ export default function StairTestPage() {
         <div className="sheet-backdrop" onClick={() => setNotesOpen(false)} style={{ position: "absolute", inset: 0, background: "rgba(10,11,13,0.6)", display: "flex", alignItems: "flex-end", zIndex: 5 }}>
           <div className="sheet-panel" onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxHeight: "80%", overflowY: "auto", background: "var(--panel)", borderRadius: "20px 20px 0 0", padding: "20px 18px calc(24px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 9 }}>
             <div style={{ fontSize: 16, fontWeight: 800 }}>Notes</div>
-            <div style={{ fontSize: 12, color: "var(--muted)" }}>Numbered on the report, e.g. “L.16 · Two readings: front door open / balcony door open”.</div>
             {test.notes.map((n, i) => (
               <div key={i} style={{ ...card, background: "var(--panel-2)" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

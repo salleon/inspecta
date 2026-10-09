@@ -70,12 +70,11 @@ export default function StairReport() {
           </div>
         ))}
       </div>
-      <div style={{ flexShrink: 0, padding: "10px 16px calc(24px + env(safe-area-inset-bottom))", borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 10 }}>
-        <div style={{ fontSize: 11.5, color: "var(--muted-2)", textAlign: "center" }}>Each stair is a page in the PDF and a sheet in the Excel. Anything not tested is left blank.</div>
-        <button disabled={!pages.length || !!busy} onClick={() => void share("xlsx")} style={{ ...btn, border: "1px solid rgba(46,196,182,.55)", background: "rgba(46,196,182,.12)", color: "var(--accent)" }}>
+      <div style={{ flexShrink: 0, padding: "10px 16px calc(24px + env(safe-area-inset-bottom))", borderTop: "1px solid var(--border)", display: "flex", gap: 8 }}>
+        <button disabled={!pages.length || !!busy} onClick={() => void share("xlsx")} style={{ ...btn, flex: 1, border: "1px solid rgba(46,196,182,.55)", background: "rgba(46,196,182,.12)", color: "var(--accent)" }}>
           Export Excel
         </button>
-        <button disabled={!pages.length || !!busy} onClick={() => void share("pdf")} style={{ ...btn, padding: "16px 0", border: "none", background: "var(--accent)", color: "var(--accent-text)" }}>
+        <button disabled={!pages.length || !!busy} onClick={() => void share("pdf")} style={{ ...btn, flex: 1, border: "none", background: "var(--accent)", color: "var(--accent-text)" }}>
           Export PDF
         </button>
       </div>

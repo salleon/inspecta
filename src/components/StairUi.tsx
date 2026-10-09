@@ -71,7 +71,7 @@ export function DoorsOpen({ sys }: { sys: Pick<SpfSystem, "edition" | "type"> })
   );
 }
 
-// everything the edition decides, in amber so it's seen as the year's rules
+// everything the edition decides (its requirements), in amber so it's seen as the year's
 export function RulesBox({ sys, tiles = true, children }: { sys: Pick<SpfSystem, "edition" | "type">; tiles?: boolean; children?: ReactNode }) {
   const key = `${sys.edition} ${sys.type}`;
   const [flash, setFlash] = useState(false);
@@ -89,7 +89,7 @@ export function RulesBox({ sys, tiles = true, children }: { sys: Pick<SpfSystem,
       style={{ background: flash ? `${AMBER}.24)` : `${AMBER}.07)`, border: `1px solid ${AMBER}.45)`, borderRadius: 11, padding: "8px 9px", display: "flex", flexDirection: "column", gap: 6, transition: "background 600ms ease-out" }}
     >
       <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", color: "#f7b977" }}>
-        Rules for <span style={{ color: "#ffd9a8" }}>AS 1668.1-{sys.edition}{sys.type === "One test" ? "" : ` · ${sys.type}`}</span>
+        Requirements · <span style={{ color: "#ffd9a8" }}>AS 1668.1-{sys.edition}{sys.type === "One test" ? "" : ` · ${sys.type}`}</span>
       </div>
       <DoorsOpen sys={sys} />
       {tiles && (

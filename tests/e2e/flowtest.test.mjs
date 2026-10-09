@@ -667,3 +667,23 @@ test("an AFSS site's Other tests tab: Export Other Tests Only asks which tests, 
   assert.ok(names.length >= 1 && !names.some((n) => /finding/i.test(n)), names.join(", "));
   assert.ok(page.url().endsWith("/site/s1/findings?tab=flow"), page.url());
 });
+
+test("upright readings: a number cell brings up the blue pad, not the phone's keyboard", async () => {
+  await go(page, app, "/site/s1/flow/t1", 1200);
+  const cell = page.locator('input[aria-label="Suction"]').first();
+  assert.equal(await cell.evaluate((e) => e.inputMode), "none", "the phone's keyboard stays away");
+  await cell.click();
+  const pad = page.getByTestId("cell-pad");
+  await pad.waitFor();
+  assert.match(await pad.innerText(), /Reading 1 · Suction/);
+  for (const k of ["1", "2", "5"]) await pad.getByRole("button", { name: k, exact: true }).dispatchEvent("pointerdown");
+  assert.equal(await cell.inputValue(), "125");
+  await pad.getByRole("button", { name: "Backspace" }).dispatchEvent("pointerdown");
+  assert.equal(await cell.inputValue(), "12");
+  // › on to the next cell: suction is reading 1's last, so reading 2's " Hg
+  await pad.getByRole("button", { name: "Next cell" }).dispatchEvent("pointerdown");
+  assert.match(await pad.innerText(), /Reading 2 · " Hg/);
+  await pad.getByRole("button", { name: "Done" }).dispatchEvent("pointerdown");
+  await page.waitForTimeout(200);
+  assert.equal(await pad.count(), 0, "Done closes it");
+});

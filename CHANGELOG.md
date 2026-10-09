@@ -7,6 +7,41 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Number pads for tests, in the test's colour.** Stair pressurisation
+  and flow tests now type numbers on the app's own number pad, laid out
+  and styled like the measuring tool's yellow pad: purple for stair
+  pressurisation, blue for flow tests (the home screen's colours, as a
+  see-through tint). ⌫ is red-pink and in the same place on every pad
+  (third row, right), Done ✓ is bottom right, and keys press in and
+  spring back.
+- **Flow tests: no more Android keyboard on the readings.** On the upright
+  page, tapping a number cell (readings, demand points) brings up the blue
+  pad. It says which reading and column you're in; ‹ › step to the cell
+  before or after (along the row, then on to the next reading); Done ✓ or
+  Hide closes it, and the page scrolls so the cell stays above it. The
+  full-screen keypad keeps its layout and Hide keypad, recoloured from
+  teal to blue with the red-pink ⌫.
+- **Stair setup, reworked.** The system page starts with no stairs: add
+  them one at a time. The stair you're on is its own card (Name, Highest
+  level, Lowest level, Fan name, Remove, and its door count); finished
+  stairs fold to one line (e.g. "Front · B2 to 26 · 29 doors · Fan SPF-1")
+  with Edit. Each level is a type (Level, Basement, Lower ground, Ground,
+  Upper ground, Mezzanine or Roof) and, for Level and Basement, a number
+  typed on the purple pad (Next › goes from highest to lowest). Ground is
+  always included in a range that crosses it; lower / upper ground,
+  mezzanine and roof only when they're one of the ends. The amber box is
+  now headed Requirements and folds to one line once there's a stair. Site
+  notes grow as you type and can't be dragged too small. Save and
+  continue is at the bottom (it waits until there's a stair), and a stair
+  left completely empty isn't kept.
+- **Stair screens, tidied.** Fewer hints and shorter labels throughout:
+  New stair test ("What are you testing?", one-line descriptions, Custom's
+  tests only shown once Custom is picked); stair tabs by name with their
+  progress; section cards with just the count and results; tests not in
+  the kind under Additional tests, each with + Add; every-door readings as
+  outlined buttons, a red outline on a fail, with the requirements on one
+  line; the noise meter's buttons on one row; fan checks as Yes / No; the
+  report's exports side by side.
 - **Stair pressurisation (SPF) tests.** A new kind of site, Stair
   pressurisation, on + New site (the kinds are now a 2×2 grid), listed on
   the home screen in its own group with a violet staircase icon and an SPF
