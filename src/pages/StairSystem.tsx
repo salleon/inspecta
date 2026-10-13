@@ -243,6 +243,7 @@ export default function StairSystem() {
                     }
                   }}
                   onReview={() => (setPad(null), setMenu(null), setReview(st.id))}
+                  onClose={() => (setOpen(null), setPad(null), setMenu(null))}
                   onText={() => (setPad(null), setMenu(null))}
                   onRemove={() => {
                     change({ ...sys, stairs: sys.stairs.filter((s) => s.id !== st.id) });
@@ -274,7 +275,7 @@ export default function StairSystem() {
                 </button>
               ),
             )}
-            <button onClick={addStair} style={open === null ? addHot : addButton}>
+            <button onClick={addStair} className={open === null ? "pulse-teal" : undefined} style={open === null ? addHot : addButton}>
               + Add another stair
             </button>
           </>
@@ -362,6 +363,7 @@ function StairCard({
   onRemove,
   onText,
   onReview,
+  onClose,
 }: {
   stair: SpfStair;
   n: number;
@@ -374,6 +376,7 @@ function StairCard({
   onRemove: () => void;
   onText: () => void;
   onReview: () => void;
+  onClose: () => void;
 }) {
   const count = ready(stair) ? stairLevels(stair).length : 0;
   const edited = levelsEdited(stair);
@@ -381,13 +384,15 @@ function StairCard({
     <div data-stair={stair.id} style={{ background: "var(--panel)", border: "1px solid var(--accent)", boxShadow: "0 0 0 3px rgba(46,196,182,.12)", borderRadius: 14, padding: "11px 12px", display: "flex", flexDirection: "column", gap: 9 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
         <span style={numBadge}>{n}</span>
-        <span style={{ fontSize: 15, fontWeight: 800 }}>Stair {n}</span>
+        <span style={{ fontSize: 15, fontWeight: 800, whiteSpace: "nowrap" }}>Stair {n}</span>
         <span style={{ marginLeft: "auto", fontSize: 12, fontWeight: 800, borderRadius: 999, padding: "5px 10px", whiteSpace: "nowrap", color: count ? "#5ff0e0" : "#6a8098", background: count ? "rgba(46,196,182,.1)" : "#143452" }}>
           {count ? `${count} door${count === 1 ? "" : "s"}` : "— doors"}
         </span>
-        {edited && <span className="lr-tag">levels edited</span>}
         <button onClick={onRemove} style={{ border: "none", background: "none", color: "#ff7a6a", fontSize: 12, fontWeight: 800, padding: "2px 0 2px 4px" }}>
           Remove
+        </button>
+        <button aria-label="Close the stair" onClick={onClose} style={{ ...editPill, padding: "4px 9px", fontSize: 13, lineHeight: 1 }}>
+          ▴
         </button>
       </div>
       <Field label="Name">
@@ -447,7 +452,7 @@ function StairCard({
         />
       </Field>
       {count > 0 && (
-        <button className={`lr-row${stair.reviewed ? " done" : ""}`} onClick={onReview}>
+        <button className={`lr-row${stair.reviewed ? " done" : " pulse"}`} onClick={onReview}>
           <span className="ic">☰</span>
           <span className="t">
             Review level layout

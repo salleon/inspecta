@@ -7,6 +7,14 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Stair setup: close a stair again.** An opened stair card has a ▴
+  button next to Remove that folds it back to its one line.
+- **Pulses on what to tap next.** Review level layout pulses purple until
+  the stair's levels are looked over; + Add another stair pulses teal once
+  every stair is folded away.
+- **Fix: noise meter's reference tick.** "Ref. 71 ✓" stayed highlighted
+  after Reset max or listening again; it's now ticked only while the max
+  on screen is the one saved (the saved reference is still kept).
 - **Fix: Done on a number pad no longer taps what's underneath it.**
   Editing a level in Review level layout and tapping Done kicked you out
   of the review: the pad closed as the finger went down, and the tap went

@@ -407,6 +407,8 @@ function PhoneMeter({ saved, onSave }: { saved?: string; onSave: (v: string) => 
   const [max, setMax] = useState<number | null>(null);
   const [error, setError] = useState("");
   const [offset, setOffset] = useState(meterOffset());
+  // the saved reference shows as saved until the meter is used again
+  const [used, setUsed] = useState(false);
   const meter = useRef<Meter | null>(null);
 
   useEffect(() => () => meter.current?.stop(), []);
@@ -419,6 +421,7 @@ function PhoneMeter({ saved, onSave }: { saved?: string; onSave: (v: string) => 
       return;
     }
     setError("");
+    setUsed(true);
     try {
       meter.current = await startMeter((v) => {
         setLevel(v);
@@ -434,6 +437,8 @@ function PhoneMeter({ saved, onSave }: { saved?: string; onSave: (v: string) => 
     setMeterOffset(next);
   };
   const listening = level !== null;
+  // ticked only while the max on screen is the one saved
+  const isRef = !!saved && (max === null ? !used : String(max) === saved);
 
   return (
     <div style={{ background: "#0a2135", border: "1px dashed #2a5a82", borderRadius: 12, padding: "10px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
@@ -456,9 +461,9 @@ function PhoneMeter({ saved, onSave }: { saved?: string; onSave: (v: string) => 
         <MeterButton onClick={() => void toggle()} on={listening}>
           {listening ? "Stop" : "Listen"}
         </MeterButton>
-        <MeterButton onClick={() => setMax(null)}>Reset max</MeterButton>
-        <MeterButton onClick={() => max !== null && onSave(String(max))} on={!!saved}>
-          {saved ? `Ref. ${saved} ✓` : "Save as ref."}
+        <MeterButton onClick={() => (setMax(null), setUsed(true))}>Reset max</MeterButton>
+        <MeterButton onClick={() => max !== null && onSave(String(max))} on={isRef}>
+          {isRef ? `Ref. ${saved} ✓` : "Save as ref."}
         </MeterButton>
         <MeterButton small onClick={() => nudge(-1)}>
           −1

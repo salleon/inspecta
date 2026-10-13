@@ -338,3 +338,30 @@
   color: #1a0d33;
   border: 0;
 }
+/* a pulse round the next thing to tap: Review level layout before it's
+   looked over, + Add another stair once a stair is folded away */
+@keyframes lrPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(var(--pulse), 0.55);
+  }
+  70% {
+    box-shadow: 0 0 0 9px rgba(var(--pulse), 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(var(--pulse), 0);
+  }
+}
+.lr-row.pulse {
+  --pulse: 177, 140, 255;
+  animation: lrPulse 1.8s ease-out infinite;
+}
+.pulse-teal {
+  --pulse: 46, 196, 182;
+  animation: lrPulse 1.8s ease-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lr-row.pulse,
+  .pulse-teal {
+    animation: none;
+  }
+}

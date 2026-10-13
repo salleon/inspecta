@@ -109,6 +109,12 @@ test("the system is set once: edition, type, stairs; the rules follow the editio
   // Looks right ✓ folds the stair to one line
   await page.getByRole("button", { name: /Looks right/ }).click();
   assert.match(await page.locator("[data-stair]").first().innerText(), /Front[\s\S]*G to 3 · 4 doors · Fan SPF-1[\s\S]*Edit/);
+  // opened again, it can be closed again
+  await page.locator("[data-stair]").first().click();
+  await page.getByLabel("Stair name").waitFor();
+  await page.getByRole("button", { name: "Close the stair" }).click();
+  assert.equal(await page.getByLabel("Stair name").count(), 0);
+  assert.match(await page.locator("[data-stair]").first().innerText(), /G to 3 · 4 doors · Fan SPF-1/);
   await page.getByRole("button", { name: "Save and continue ›" }).click();
   await page.getByText("Purge · built to AS 1668.1-1998 · 1 stair").waitFor();
 });
