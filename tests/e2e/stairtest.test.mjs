@@ -88,6 +88,24 @@ test("the system is set once: edition, type, stairs; the rules follow the editio
   assert.match(await page.locator("body").innerText(), /5 doors/);
   await page.getByRole("button", { name: "Remove", exact: true }).click();
   assert.match(await page.locator("body").innerText(), /Stair 1 · Front · 4 doors/);
+  // Edit a level: a real tap on Done saves it and stays on the review (the
+  // tap mustn't carry through to Looks right ✓ underneath the pad)
+  await list.locator('[data-level="2"]').click();
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  const edit = page.getByTestId("edit-level-pad");
+  await edit.getByRole("button", { name: "Backspace" }).click();
+  await edit.getByRole("button", { name: "9", exact: true }).click();
+  await edit.getByRole("button", { name: "Done" }).click();
+  await page.waitForTimeout(300);
+  assert.equal(await edit.count(), 0, "the pad closes");
+  assert.match(await list.innerText(), /3[\s\S]*9[\s\S]*1/, "2 is now 9, still on the review");
+  // 9 is still picked
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await edit.getByRole("button", { name: "Backspace" }).click();
+  await edit.getByRole("button", { name: "2", exact: true }).click();
+  await edit.getByRole("button", { name: "Done" }).click();
+  await page.waitForTimeout(300);
+  assert.match(await list.innerText(), /3[\s\S]*2[\s\S]*1/);
   // Looks right ✓ folds the stair to one line
   await page.getByRole("button", { name: /Looks right/ }).click();
   assert.match(await page.locator("[data-stair]").first().innerText(), /Front[\s\S]*G to 3 · 4 doors · Fan SPF-1[\s\S]*Edit/);

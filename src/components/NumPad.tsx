@@ -25,6 +25,7 @@ export default function NumPad({ tint, head, keys, onKey, testId }: { tint: "spf
     el.classList.remove("pressed");
     void el.offsetWidth;
     el.classList.add("pressed");
+    swallowClick();
     onKey(key);
   }
   return (
@@ -48,6 +49,26 @@ export default function NumPad({ tint, head, keys, onKey, testId }: { tint: "spf
       </div>
     </div>
   );
+}
+
+// A key acts as the finger goes down, so a key that closes the pad (Done)
+// has it gone before the finger lifts; the tap's click would then land on
+// whatever was under the key (Looks right ✓, Save and continue…). That one
+// click is dropped; the next tap anywhere is a tap of its own.
+export function swallowClick() {
+  const swallow = (e: Event) => {
+    e.stopPropagation();
+    e.preventDefault();
+    stop();
+  };
+  const stop = () => {
+    window.removeEventListener("click", swallow, true);
+    window.removeEventListener("pointerdown", stop, true);
+    window.clearTimeout(timer);
+  };
+  window.addEventListener("click", swallow, true);
+  const timer = window.setTimeout(stop, 1500);
+  window.setTimeout(() => window.addEventListener("pointerdown", stop, true), 0);
 }
 
 // the "Editing" tag in a pad's heading

@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useState, type RefObject } from "react";
-import NumPad, { k, numberKeys } from "./NumPad";
+import NumPad, { k, numberKeys, swallowClick } from "./NumPad";
 
 // The flow test's number cells on the upright page (design canvas FlowPads):
 // tapping one brings up the blue pad instead of the phone's keyboard. It
@@ -98,6 +98,7 @@ export default function CellPad({ scope }: { scope: RefObject<HTMLElement | null
           <button
             onPointerDown={(e) => {
               e.preventDefault();
+              swallowClick();
               key("done");
             }}
             style={{ marginLeft: "auto", fontSize: 12, fontWeight: 800, color: "#8cc8ff", background: "none", border: "1px solid rgba(90,176,255,.4)", borderRadius: 999, padding: "4px 10px" }}

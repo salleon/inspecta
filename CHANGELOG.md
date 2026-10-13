@@ -7,6 +7,12 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Fix: Done on a number pad no longer taps what's underneath it.**
+  Editing a level in Review level layout and tapping Done kicked you out
+  of the review: the pad closed as the finger went down, and the tap went
+  on to Looks right ✓ beneath it. Done now saves the change and leaves you
+  on the level layout. The same goes for every number pad (and the flow
+  pad's Hide).
 - **Stair setup: Review level layout.** Once a stair's highest and lowest
   levels are set, Review level layout opens with the suggested doors top
   to bottom; runs of numbered levels fold to one line (tap to open, ▴ Fold
