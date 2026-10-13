@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import type { SpfStair, SpfSystem, StairDoor, StairOnce, StairSection, StairTest, Tick } from "../db/types";
-import { adjacentDoor, doorFails, doorsOpen, doorStats, doorValue, FAN_CHECKS, limits, QUICK_CHECKS, SECTION, stairLevels, stairName } from "../lib/stairTest";
+import { adjacentDoor, doorFails, doorsOpen, doorStats, doorValue, FAN_CHECKS, FAN_SOURCE, isCustomLevel, levelChip, limits, QUICK_CHECKS, SECTION, stairLevels, stairName } from "../lib/stairTest";
 import { meterOffset, setMeterOffset, startMeter, type Meter } from "../lib/soundMeter";
 import { useBackHandler } from "../lib/backButton";
 import { AMBER, PageHeader, useStairTest } from "../components/StairUi";
@@ -195,7 +195,7 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, onBack }: Prop
                 color: "var(--text)",
               }}
             >
-              <span style={{ height: 30, borderRadius: 8, background: "#143452", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 14, overflow: "hidden", whiteSpace: "nowrap" }}>{level}</span>
+              <span style={{ height: 30, borderRadius: 8, background: "#143452", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 14, overflow: "hidden", whiteSpace: "nowrap" }}>{levelChip(level)}</span>
               <span style={{ fontSize: 12.5, color: "var(--muted)", fontWeight: 700, textAlign: "center" }}>{section === "vel" ? adjacentDoor(levels, j, sys) || "–" : ""}</span>
               <span style={{ fontSize: 15, fontWeight: 800, textAlign: "center", color: v ? (bad ? FAIL : PASS) : "#6a8098" }}>{v || "—"}</span>
               <span style={{ fontSize: 11.5, fontWeight: 800, textAlign: editing ? "center" : "right", borderRadius: 6, padding: "2px 0", color: editing ? "#1a0d33" : bad ? FAIL : PASS, background: editing ? "#b18cff" : "none" }}>
@@ -215,7 +215,7 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, onBack }: Prop
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontSize: 20, fontWeight: 800, whiteSpace: "nowrap" }}>
                   <PadTag />
-                  Level {levels[cur]}
+                  {isCustomLevel(levels[cur]) ? levels[cur] : `Level ${levels[cur]}`}
                 </div>
                 <div style={{ fontSize: 11.5, color: "var(--muted)", fontWeight: 700, lineHeight: 1.35 }}>
                   {section === "vel" && (
@@ -316,7 +316,10 @@ function Once({ section, sys, stair, stairNo, test, setTest, onBack }: Props & {
             const t = once[section]?.[k];
             return (
               <div key={k} style={{ display: "flex", alignItems: "center", gap: 10, background: "var(--panel)", border: "1px solid var(--border)", borderRadius: 12, padding: "9px 11px" }}>
-                <span style={{ flex: 1, fontSize: 13.5, fontWeight: 800, lineHeight: 1.3 }}>{label}</span>
+                <span style={{ flex: 1, fontSize: 13.5, fontWeight: 800, lineHeight: 1.3 }}>
+                  {label}
+                  {section === "fan" && <small style={{ display: "block", fontSize: 10, fontWeight: 700, color: "#6a8098", marginTop: 2 }}>AS 1851-2012 {FAN_SOURCE[k]}</small>}
+                </span>
                 <span role="radiogroup" aria-label={label} style={{ display: "flex", gap: 4 }}>
                   {(["y", "n"] as Tick[]).map((v) => (
                     <button

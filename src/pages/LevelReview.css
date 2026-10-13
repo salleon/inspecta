@@ -1,0 +1,340 @@
+/* Review level layout (design canvas SpfLevelPlay): the stair's doors top to
+   bottom, runs of numbered levels folded to one line, a picked level in
+   purple with its tools underneath. */
+.lr-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: #0a2135;
+  border: 1px solid #1c4468;
+  border-radius: 12px;
+  padding: 8px;
+}
+.lr-end {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6a8098;
+  text-align: center;
+  padding: 2px 0;
+}
+.lr-lv {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  flex-shrink: 0;
+  text-align: left;
+  padding: 6px 8px;
+  border-radius: 9px;
+  background: #143452;
+  border: 1px solid transparent;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 800;
+}
+.lr-lv .c {
+  min-width: 34px;
+  text-align: center;
+  background: #0e2740;
+  border-radius: 7px;
+  padding: 3px 5px;
+  font-size: 13.5px;
+}
+.lr-lv small {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11.5px;
+  color: #8ba0b5;
+  font-weight: 700;
+}
+.lr-lv .ch {
+  color: #5f7890;
+  font-size: 13px;
+}
+.lr-lv.run {
+  background: transparent;
+  border: 1px dashed #2a5a82;
+}
+.lr-lv.run .c {
+  background: transparent;
+  color: #bfd0de;
+}
+.lr-lv.run small {
+  color: #bfd0de;
+}
+.lr-lv.fold {
+  padding: 4px 8px;
+  border-color: rgba(177, 140, 255, 0.45);
+}
+.lr-lv.fold small,
+.lr-lv.fold .c,
+.lr-lv.fold .ch {
+  color: #b18cff;
+}
+.lr-lv.new {
+  border-color: rgba(177, 140, 255, 0.6);
+  background: rgba(177, 140, 255, 0.1);
+}
+.lr-lv.new small {
+  color: #c9b0ff;
+}
+.lr-lv.sel {
+  border-color: #b18cff;
+  box-shadow: 0 0 0 3px rgba(177, 140, 255, 0.22);
+  background: rgba(177, 140, 255, 0.14);
+}
+.lr-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.lr-tl {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: #bfd0de;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.lr-seg {
+  margin-left: auto;
+  display: flex;
+  min-width: 0;
+  background: #143452;
+  border: 1px solid #1c4468;
+  border-radius: 9px;
+  padding: 2px;
+}
+.lr-seg button {
+  border: none;
+  background: none;
+  font-size: 11.5px;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 7px;
+  color: #8ba0b5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lr-seg button.on {
+  background: #b18cff;
+  color: #1a0d33;
+}
+.lr-q3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.lr-q3 button {
+  padding: 9px 4px;
+  border-radius: 10px;
+  background: rgba(177, 140, 255, 0.1);
+  border: 1px solid rgba(177, 140, 255, 0.4);
+  color: #efe8ff;
+  font-size: 12.5px;
+  font-weight: 800;
+  text-align: center;
+}
+.lr-q3 button:active {
+  transform: scale(0.94);
+}
+.lr-q3 button.fn {
+  background: rgba(177, 140, 255, 0.05);
+  border-color: rgba(177, 140, 255, 0.25);
+  color: #b18cff;
+}
+.lr-q3 button.rm {
+  background: rgba(255, 92, 106, 0.12);
+  border-color: rgba(255, 120, 130, 0.45);
+  color: #ff9aa4;
+}
+.lr-q3 button.cu {
+  grid-column: 1 / -1;
+  border-style: dashed;
+}
+/* the purple Review level layout row on a stair's card */
+.lr-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  padding: 11px 12px;
+  border-radius: 12px;
+  background: rgba(177, 140, 255, 0.1);
+  border: 1.5px solid rgba(177, 140, 255, 0.6);
+  box-shadow: 0 0 0 3px rgba(177, 140, 255, 0.1);
+  color: #efe8ff;
+}
+.lr-row .ic {
+  flex: 0 0 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: #b18cff;
+  color: #1a0d33;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 800;
+}
+.lr-row .t {
+  flex: 1;
+  min-width: 0;
+  font-size: 14.5px;
+  font-weight: 800;
+}
+.lr-row .t small {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #c7b3ff;
+  margin-top: 2px;
+}
+.lr-row .go {
+  flex: 0 0 auto;
+  background: #b18cff;
+  color: #1a0d33;
+  font-size: 13px;
+  font-weight: 800;
+  border-radius: 999px;
+  padding: 7px 13px;
+}
+.lr-row.done {
+  background: rgba(177, 140, 255, 0.06);
+  border-color: rgba(177, 140, 255, 0.4);
+  box-shadow: none;
+}
+.lr-row.done .ic {
+  background: rgba(177, 140, 255, 0.18);
+  color: #b18cff;
+}
+.lr-row.done .go {
+  background: none;
+  border: 1px solid rgba(177, 140, 255, 0.5);
+  color: #d4c4ff;
+}
+.lr-tag {
+  font-size: 10.5px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(177, 140, 255, 0.16);
+  color: #c9b0ff;
+  white-space: nowrap;
+}
+/* a level type list (the stair card's and the edit pad's) */
+.lr-menu {
+  position: absolute;
+  left: 0;
+  z-index: 8;
+  width: 210px;
+  background: var(--panel);
+  border: 1px solid rgba(177, 140, 255, 0.5);
+  border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.55);
+  padding: 5px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.lr-menu button {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: none;
+  font-size: 14px;
+  font-weight: 800;
+  text-align: left;
+  background: none;
+  color: #e6dcff;
+}
+.lr-menu button[aria-selected="true"] {
+  background: rgba(177, 140, 255, 0.18);
+  color: #fff;
+}
+.lr-menu button small {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 700;
+}
+.lr-dim {
+  position: absolute;
+  inset: 0;
+  background: rgba(2, 10, 18, 0.6);
+  z-index: 9;
+}
+.lr-dlg {
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  top: 30%;
+  z-index: 10;
+  background: var(--panel);
+  border: 1px solid var(--border-strong);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+}
+.lr-dlg h3 {
+  margin: 0;
+  font-size: 16px;
+}
+.lr-dlg p {
+  margin: 0;
+  font-size: 13px;
+  color: #bfd0de;
+  line-height: 1.45;
+}
+.lr-dlg input {
+  background: #0a2135;
+  border: 1px solid #b18cff;
+  border-radius: 10px;
+  height: 42px;
+  padding: 0 12px;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 800;
+  color: #fff;
+  outline: none;
+}
+.lr-dlg .bb {
+  display: flex;
+  gap: 8px;
+}
+.lr-dlg .bb button {
+  flex: 1;
+  padding: 12px;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 14px;
+  background: rgba(46, 196, 182, 0.1);
+  border: 1px solid rgba(46, 196, 182, 0.5);
+  color: #5ff0e0;
+}
+.lr-dlg .bb button.go {
+  background: var(--accent);
+  color: var(--accent-text);
+  border: 0;
+}
+.lr-dlg .bb button.warn {
+  background: #b18cff;
+  color: #1a0d33;
+  border: 0;
+}

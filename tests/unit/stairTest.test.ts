@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { adjacentDoor, doorsOpen, doorStats, joinLevel, levelName, limits, onceStatus, sectionsFor, splitLevel, stairLevels, stairTestHasData, stairTestSummary, typeFor } from "../../src/lib/stairTest";
+import { adjacentDoor, doorsOpen, doorStats, isCustomLevel, joinLevel, levelChanges, levelChip, levelName, levelsEdited, limits, onceStatus, sectionsFor, splitLevel, stairLevels, stairTestHasData, stairTestSummary, typeFor } from "../../src/lib/stairTest";
 import { stairPages } from "../../src/lib/stairPrint";
 import type { SpfSystem, StairTest } from "../../src/db/types";
 
@@ -89,4 +89,20 @@ test("levels are a type and a number; ground in any range across it, the others 
   assert.equal(joinLevel("G", "4"), "G", "ground has no number");
   assert.equal(levelName("B2"), "Basement 2");
   assert.equal(levelName("R"), "Roof");
+});
+
+test("car parks, typed level names and a reviewed layout", () => {
+  assert.deepEqual(stairLevels({ from: "P2", to: "2", extra: [] }), ["2", "1", "G", "P1", "P2"], "below ground as the bottom end is");
+  assert.deepEqual(splitLevel("P3"), { type: "P", num: "3" });
+  assert.equal(levelName("P1"), "Car park 1");
+  assert.equal(levelName("Plant room"), "Plant room");
+  assert.ok(isCustomLevel("Plant room") && !isCustomLevel("B2") && !isCustomLevel("26"));
+  assert.equal(levelChip("Plant room"), "PR");
+  assert.equal(levelChip("Podium"), "POD");
+  assert.equal(levelChip("12A"), "12A");
+  const stair = { from: "G", to: "3", extra: [], levels: ["Plant room", "3", "1", "G"] };
+  assert.deepEqual(stairLevels(stair), ["Plant room", "3", "1", "G"], "the reviewed layout");
+  assert.deepEqual(levelChanges(stair), ["no 2", "added Plant room"]);
+  assert.ok(levelsEdited(stair));
+  assert.ok(!levelsEdited({ from: "G", to: "3", levels: ["3", "2", "1", "G"] }));
 });

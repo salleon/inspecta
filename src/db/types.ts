@@ -187,6 +187,8 @@ export interface SpfStair {
   to: string; // top level
   extra: string[]; // more doors at the top: "Plant room", "Roof"…
   fan: string; // "SPF-1"
+  levels?: string[]; // its doors top to bottom, when the reviewed layout isn't the suggestion
+  reviewed?: boolean; // its level layout has been looked over (Looks right ✓)
 }
 
 export interface SpfSystem {

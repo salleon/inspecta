@@ -22,85 +22,116 @@ const WORD: Record<SpfEdition, string> = { "1979": "storey", "1991": "floor", "1
 
 export const defaultSystem = (): SpfSystem => ({ edition: "1998", type: "Purge", stairs: [], notes: "" });
 
-export const newStair = (): SpfStair => ({ id: crypto.randomUUID(), name: "", from: "", to: "", extra: [], fan: "" });
+// the fan name starts as "SPF-", for its number
+export const newStair = (): SpfStair => ({ id: crypto.randomUUID(), name: "", from: "", to: "", extra: [], fan: "SPF-" });
 
 // a type the edition has (the first, if it's changed to one that hasn't)
 export const typeFor = (edition: SpfEdition, type: SpfType): SpfType => (TYPES[edition].includes(type) ? type : TYPES[edition][0]);
 
 // ---- levels ----
 
-// A level is a type and, for Level and Basement, a number (design canvas
-// SpfStairPad): kept as its short code, the one on the report: "26", "B2",
-// "LG", "G", "UG", "M", "R".
-export type LevelType = "" | "B" | "LG" | "G" | "UG" | "M" | "R";
+// A level is a type and, for Level, Car park and Basement, a number (design
+// canvas SpfStairPad, SpfLevelPlay): kept as its short code, the one on the
+// report: "26", "P1", "B2", "LG", "G", "UG", "M", "R". Anything else is a
+// name typed for an odd layout ("Plant room"), kept as typed.
+export type LevelType = "" | "P" | "B" | "LG" | "G" | "UG" | "M" | "R";
+// in the order they sit in a building: roof at the top, basement at the bottom
 export const LEVEL_TYPES: { id: LevelType; name: string; numbered: boolean; example: string }[] = [
-  { id: "", name: "Level", numbered: true, example: "26" },
-  { id: "B", name: "Basement", numbered: true, example: "B2" },
-  { id: "LG", name: "Lower ground", numbered: false, example: "LG" },
-  { id: "G", name: "Ground", numbered: false, example: "G" },
-  { id: "UG", name: "Upper ground", numbered: false, example: "UG" },
-  { id: "M", name: "Mezzanine", numbered: false, example: "M" },
   { id: "R", name: "Roof", numbered: false, example: "R" },
+  { id: "", name: "Level", numbered: true, example: "26" },
+  { id: "M", name: "Mezzanine", numbered: false, example: "M" },
+  { id: "UG", name: "Upper ground", numbered: false, example: "UG" },
+  { id: "G", name: "Ground", numbered: false, example: "G" },
+  { id: "LG", name: "Lower ground", numbered: false, example: "LG" },
+  { id: "P", name: "Car park", numbered: true, example: "P1" },
+  { id: "B", name: "Basement", numbered: true, example: "B2" },
 ];
-const TYPE_RANK: Record<Exclude<LevelType, "" | "B">, number> = { LG: -5, G: 0, UG: 3, M: 6, R: 1e6 };
+export const levelType = (id: LevelType) => LEVEL_TYPES.find((x) => x.id === id) ?? LEVEL_TYPES[1];
+const TYPE_RANK: Record<Exclude<LevelType, "" | "B" | "P">, number> = { LG: -5, G: 0, UG: 3, M: 6, R: 1e6 };
 
 // "B2" → Basement, "2"; "26" (or "L26") → Level, "26"; "G" → Ground
 export function splitLevel(code: string): { type: LevelType; num: string } {
   const t = code.trim().toUpperCase();
   if (/^(G|GF|GROUND)$/.test(t)) return { type: "G", num: "" };
   if (t === "LG" || t === "UG" || t === "M" || t === "R") return { type: t, num: "" };
-  const b = /^B(\d*)$/.exec(t);
-  if (b) return { type: "B", num: b[1] };
+  const b = /^(B|P)(\d*)$/.exec(t);
+  if (b) return { type: b[1] as "B" | "P", num: b[2] };
   const l = /^L?(\d*)$/.exec(t);
   return { type: "", num: l ? l[1] : code.trim() };
 }
-export const joinLevel = (type: LevelType, num: string) => (type === "" ? num : type === "B" ? `B${num}` : type);
+export const joinLevel = (type: LevelType, num: string) => (type === "" ? num : type === "B" || type === "P" ? `${type}${num}` : type);
+// a name typed for an odd layout, not one of the types
+export const isCustomLevel = (code: string) => !/^(L?\d+|[BP]\d+|LG|G|GF|GROUND|UG|M|R)$/i.test(code.trim());
 export const levelName = (code: string) => {
+  if (isCustomLevel(code)) return code.trim();
   const { type, num } = splitLevel(code);
-  const name = LEVEL_TYPES.find((x) => x.id === type)?.name ?? "Level";
-  return LEVEL_TYPES.find((x) => x.id === type)?.numbered ? `${name}${num ? ` ${num}` : ""}` : name;
+  const t = levelType(type);
+  return t.numbered ? `${t.name}${num ? ` ${num}` : ""}` : t.name;
 };
+// a level's short code for its chip: a typed name is shortened (Plant room → PR, Podium → POD)
+export function levelChip(code: string): string {
+  const c = code.trim();
+  if (!isCustomLevel(c) || c.length <= 4) return c;
+  const w = c.split(/\s+/);
+  return (w.length > 1 ? w.map((x) => x[0]).join("").slice(0, 3) : c.slice(0, 3)).toUpperCase();
+}
 
 // where a level sits, bottom to top; null if it isn't one we know
 function levelRank(code: string): number | null {
   const t = code.trim().toUpperCase();
-  if (!t) return null;
+  if (!t || isCustomLevel(t)) return null;
   const { type, num } = splitLevel(t);
-  if (type === "B") return num ? -10 - 10 * Number(num) : null;
+  if (type === "B" || type === "P") return num ? -10 - 10 * Number(num) : null;
   if (type === "") return /^\d+$/.test(num) ? 10 * Number(num) : null;
   return TYPE_RANK[type];
 }
 
-// a stair's doors, top to bottom: any extra doors first, then every level
-// from the top one down to the bottom one. Ground is always in a range that
-// crosses it; lower / upper ground, mezzanine and roof only when they're
-// one of the ends (not every building has them).
-export function stairLevels(stair: Pick<SpfStair, "from" | "to" | "extra">): string[] {
-  const extra = stair.extra.map((e) => e.trim()).filter(Boolean);
+// the levels suggested for a range, top to bottom: every level from the top
+// one down to the bottom one. Ground is always in a range that crosses it;
+// lower / upper ground, mezzanine and roof only when they're one of the ends
+// (not every building has them). Below ground they're car parks or
+// basements, as the bottom end is.
+export function suggestLevels(stair: Pick<SpfStair, "from" | "to">): string[] {
   const ends = [stair.from, stair.to].map((c) => c.trim().toUpperCase().replace(/^L(?=\d)/, ""));
   const ranks = ends.map(levelRank);
-  let levels: string[];
-  if (ranks[0] !== null && ranks[1] !== null) {
-    const lo = Math.min(ranks[0], ranks[1]);
-    const hi = Math.max(ranks[0], ranks[1]);
-    const nums = ends.map(splitLevel);
-    const maxB = Math.max(0, ...nums.filter((x) => x.type === "B").map((x) => Number(x.num)));
-    const maxN = Math.max(0, ...nums.filter((x) => x.type === "").map((x) => Number(x.num)));
-    const all: string[] = [];
-    for (let n = Math.min(maxB, 200); n >= 1; n--) all.push(`B${n}`);
-    all.push("LG", "G", "UG", "M");
-    for (let n = 1; n <= Math.min(maxN, 300); n++) all.push(String(n));
-    all.push("R");
-    levels = all
-      .filter((c) => {
-        const r = levelRank(c)!;
-        if (r < lo || r > hi) return false;
-        return c === "G" || !(c in TYPE_RANK) || ends.includes(c);
-      })
-      .reverse();
-  } else levels = [stair.to.trim(), stair.from.trim()].filter(Boolean);
+  if (ranks[0] === null || ranks[1] === null) return [stair.to.trim(), stair.from.trim()].filter(Boolean);
+  const lo = Math.min(ranks[0], ranks[1]);
+  const hi = Math.max(ranks[0], ranks[1]);
+  const nums = ends.map(splitLevel);
+  const under = nums.filter((x) => x.type === "B" || x.type === "P");
+  const below = under.find((x) => x.type === "P") ? "P" : "B";
+  const maxB = Math.max(0, ...under.map((x) => Number(x.num)));
+  const maxN = Math.max(0, ...nums.filter((x) => x.type === "").map((x) => Number(x.num)));
+  const all: string[] = [];
+  for (let n = Math.min(maxB, 200); n >= 1; n--) all.push(`${below}${n}`);
+  all.push("LG", "G", "UG", "M");
+  for (let n = 1; n <= Math.min(maxN, 300); n++) all.push(String(n));
+  all.push("R");
+  return all
+    .filter((c) => {
+      const r = levelRank(c)!;
+      if (r < lo || r > hi) return false;
+      return c === "G" || !(c in TYPE_RANK) || ends.includes(c);
+    })
+    .reverse();
+}
+
+// a stair's doors, top to bottom: its reviewed layout if it was changed,
+// otherwise the suggestion for its range (any old extra doors first)
+export function stairLevels(stair: Pick<SpfStair, "from" | "to" | "extra" | "levels">): string[] {
+  if (stair.levels?.length) return stair.levels;
+  const extra = stair.extra.map((e) => e.trim()).filter(Boolean);
+  const levels = suggestLevels(stair);
   return [...extra.filter((e) => !levels.includes(e)), ...levels];
 }
+
+// how a reviewed layout differs from the suggestion: "no 13", "added P1"
+export function levelChanges(stair: Pick<SpfStair, "from" | "to" | "levels">): string[] {
+  if (!stair.levels) return [];
+  const sg = suggestLevels(stair);
+  return [...sg.filter((c) => !stair.levels!.includes(c)).map((c) => `no ${c}`), ...stair.levels.filter((c) => !sg.includes(c)).map((c) => `added ${c}`)];
+}
+export const levelsEdited = (stair: Pick<SpfStair, "from" | "to" | "levels">) => !!stair.levels && stair.levels.join("\n") !== suggestLevels(stair).join("\n");
 
 export const stairName = (stair: SpfStair, i: number) => `Stair ${i + 1}${stair.name.trim() ? ` · ${stair.name.trim()}` : ""}`;
 // "B2 to 26"
@@ -201,15 +232,28 @@ export const SECTION: Record<StairSection, SectionInfo> = {
 
 // AS 1851-2012 functionality record (Figure I4.3) and annual items
 export const FAN_CHECKS: [string, string][] = [
-  ["off", "Normally off"],
-  ["trip", "Runs on fire trip (from a detector)"],
-  ["smoke", "Stops with smoke in the airstream"],
-  ["reset", "Resets when the smoke clears"],
-  ["panel", "Fire fan panel override works"],
+  ["off", "Off in normal mode"],
+  ["trip", "Starts on a fire alarm"],
+  ["smoke", "Smoke at its supply detector shuts it down"],
+  ["reset", "Restarts by itself when the smoke clears"],
+  ["panel", "Fire fan panel ON switch runs it, even while shut down by smoke"],
   ["brigade", "Fire brigade switch starts and stops it"],
-  ["lamps", "Indicator lamps change"],
-  ["relief", "Air relief works"],
+  ["lamps", "Indicator lamps change when it starts and stops"],
+  ["relief", "Air relief works with everything running"],
+  ["normal", "Back to normal afterwards (equipment and lamps)"],
 ];
+// where each fan check comes from in AS 1851-2012
+export const FAN_SOURCE: Record<string, string> = {
+  off: "Fig I4.3 · Normally off",
+  trip: "Fig I4.3 · Runs on fire trip",
+  smoke: "Table 13.4.2.3 (e)",
+  reset: "Table 13.4.2.3 (e) · Fig I4.3 auto reset",
+  panel: "Table 13.4.2.3 (e) · Fig I4.3 FIP override",
+  brigade: "Table 13.4.2.3 (f)",
+  lamps: "Table 13.4.2.3 (g)",
+  relief: "Table 13.4.2.3 (h)",
+  normal: "Table 13.4.2.3 · 2.4",
+};
 // AS 1851-2012 Table 13.4.2.2
 export const QUICK_CHECKS: [string, string][] = [
   ["fire", "Fans, dampers and lamps go to fire mode (from the fire panel)"],

@@ -7,6 +7,25 @@ the technical detail.
 
 ## 1 October 2026
 
+- **Stair setup: Review level layout.** Once a stair's highest and lowest
+  levels are set, Review level layout opens with the suggested doors top
+  to bottom; runs of numbered levels fold to one line (tap to open, ▴ Fold
+  to close). Tap a level to Edit it (its type from the list, its number on
+  the purple pad), Remove it, or add one above or below it: Level, Car
+  park, Ground, Mezzanine, Basement, Roof, or a custom name for odd
+  layouts (e.g. Plant room, shown as PR). Looks right ✓ folds the stair to
+  one line so + Add another stair stands out; the stair card's purple
+  Review level layout button opens it again. Changing the range after
+  editing the levels asks first (Keep my edits / Change the range). The
+  tests and report use the reviewed levels.
+- **Car park levels**, numbered like basements (P1, P2…). The level type
+  list now runs as a building does: Roof at the top, Basement at the
+  bottom.
+- **Fan name starts as "SPF-"** with the cursor after it, ready for the
+  number (a bare "SPF-" isn't saved as a fan name).
+- **Fan checks reworded** to say plainly what's checked, each with where
+  it comes from in AS 1851-2012 underneath, and a ninth check: Back to
+  normal afterwards (equipment and lamps).
 - **Number pads for tests, in the test's colour.** Stair pressurisation
   and flow tests now type numbers on the app's own number pad, laid out
   and styled like the measuring tool's yellow pad: purple for stair

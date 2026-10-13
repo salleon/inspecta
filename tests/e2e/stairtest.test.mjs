@@ -58,17 +58,39 @@ test("the system is set once: edition, type, stairs; the rules follow the editio
   assert.equal(await page.locator("input[placeholder]:visible, textarea[placeholder]:visible").count(), 0);
   assert.equal(await page.getByText("Extra doors").count(), 0);
   await page.getByLabel("Stair name").fill("Front");
+  // the fan name starts as SPF-, for its number
+  assert.equal(await page.getByLabel("Fan name").inputValue(), "SPF-");
+  await page.getByLabel("Fan name").fill("SPF-1");
   // highest level first, typed on the purple pad; Next › goes down to the lowest
   await page.getByRole("button", { name: "Highest level", exact: true }).click();
   const pad = page.getByTestId("level-pad");
   await pad.getByRole("button", { name: "3", exact: true }).dispatchEvent("pointerdown");
   await pad.getByRole("button", { name: "Next", exact: true }).dispatchEvent("pointerdown");
   assert.match(await pad.innerText(), /Lowest level/);
-  // a level is a type and a number: Ground needs no number
+  // a level is a type and a number: Ground needs no number; the types go roof to basement
   await page.getByRole("button", { name: "Lowest level type" }).click();
+  assert.deepEqual(
+    (await page.getByRole("option").allInnerTexts()).map((t) => t.split("\n")[0]),
+    ["Roof", "Level", "Mezzanine", "Upper ground", "Ground", "Lower ground", "Car park", "Basement"],
+  );
   await page.getByRole("option", { name: /^Ground/ }).click();
-  assert.match(await page.locator("[data-stair]").first().innerText(), /4 doors/);
-  await page.getByLabel("Fan name").fill("SPF-1");
+  // the range set: its levels to review, top to bottom
+  const list = page.getByTestId("level-list");
+  await list.waitFor();
+  assert.match(await page.locator("body").innerText(), /Review level layout\s*Stair 1 · Front · 4 doors/);
+  assert.match(await list.innerText(), /Top[\s\S]*3[\s\S]*2[\s\S]*1[\s\S]*G[\s\S]*Bottom/i);
+  // a level with a name of its own, above 3, then removed again
+  await list.locator('[data-level="3"]').click();
+  await page.getByRole("button", { name: "+ Custom name…" }).click();
+  await page.getByLabel("Level name").fill("Plant room");
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  assert.match(await list.innerText(), /PR\s*Plant room[\s\S]*3/);
+  assert.match(await page.locator("body").innerText(), /5 doors/);
+  await page.getByRole("button", { name: "Remove", exact: true }).click();
+  assert.match(await page.locator("body").innerText(), /Stair 1 · Front · 4 doors/);
+  // Looks right ✓ folds the stair to one line
+  await page.getByRole("button", { name: /Looks right/ }).click();
+  assert.match(await page.locator("[data-stair]").first().innerText(), /Front[\s\S]*G to 3 · 4 doors · Fan SPF-1[\s\S]*Edit/);
   await page.getByRole("button", { name: "Save and continue ›" }).click();
   await page.getByText("Purge · built to AS 1668.1-1998 · 1 stair").waitFor();
 });
