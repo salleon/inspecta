@@ -7,6 +7,10 @@ the technical detail.
 
 ## 25 October 2026
 
+- **Stair pressurisation marked Beta.** It's still being built but can be
+  used: an amber BETA tag next to Stair pressurisation on the home screen,
+  and a BETA ribbon on its button in New site. Nowhere else. Both come off
+  when it's finished.
 - **Stair tests: ambient noise.** The Noise section has an Ambient, fan
   off reading, one per stair, typed on the purple pad and labelled with
   the noisiest door it was taken at. Found a noisier door? Change
@@ -15,7 +19,6 @@ the technical detail.
   any time to take it again). The AS 1851 record has no ambient column,
   so the report prints it under Max noise, stair ("ambient 64 dB(A) at
   3"), above the phone's reference.
-
 - **Build 6, out to coworkers.** The in-app camera, photo markup, the speed
   work and flow equipment suggestions go out through Google Play. BUILD_LABEL
   is now 6 (Settings shows "Inspecta · Build 6"). The stair pressurisation
