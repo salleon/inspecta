@@ -16,6 +16,11 @@ the technical detail.
   so the report prints it under Max noise, stair ("ambient 64 dB(A) at
   3"), above the phone's reference.
 
+- **Build 6, out to coworkers.** The in-app camera, photo markup, the speed
+  work and flow equipment suggestions go out through Google Play. BUILD_LABEL
+  is now 6 (Settings shows "Inspecta · Build 6"). The stair pressurisation
+  tests stay on `test` for now.
+
 ## 1 October 2026
 
 - **Stair setup: close a stair again.** An opened stair card has a ▴
