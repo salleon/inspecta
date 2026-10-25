@@ -368,7 +368,7 @@ export function stairTestSummary(test: StairTest, sys: SpfSystem | undefined): {
 export function stairTestHasData(test: StairTest): boolean {
   const anyDoor = Object.values(test.doors).some((byLevel) => Object.values(byLevel).some((d) => !!(d.vel?.trim() || d.force?.trim() || d.latch)));
   const anyOnce = Object.values(test.once).some(
-    (o) => !!(o.noiseStair?.trim() || o.noiseOcc?.trim() || o.restTime?.trim() || o.pa?.trim() || tickCount(o.fan) || tickCount(o.quick)),
+    (o) => !!(o.noiseStair?.trim() || o.noiseOcc?.trim() || o.ambient?.trim() || o.restTime?.trim() || o.pa?.trim() || tickCount(o.fan) || tickCount(o.quick)),
   );
   return anyDoor || anyOnce || test.notes.some((n) => n.text.trim());
 }

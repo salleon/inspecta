@@ -1,4 +1,4 @@
-import type { Site, SpfSystem, StairTest } from "../db/types";
+import type { Site, SpfSystem, StairOnce, StairTest } from "../db/types";
 import { adjacentDoor, doorFails, doorValue, FAN_CHECKS, KIND_LABEL, limits, onceStatus, QUICK_CHECKS, stairLevels, stairName } from "./stairTest";
 
 // A stair test as it prints (design canvas StairTestSimple, "The report"):
@@ -10,7 +10,7 @@ export interface StairBox {
   label: string;
   value: string; // "" = not tested
   fail?: boolean;
-  ref?: string; // the phone meter's reading, reference only
+  ref?: string[]; // the ambient and the phone meter's reading, a line each
 }
 
 export interface StairRow {
@@ -34,6 +34,14 @@ export interface StairPage {
 
 export const STAIR_HEAD = ["Level", "Adjacent door open", "Average velocity m/s (min 1)", "Door closes and latches", "Door opening force N (max 110)"];
 
+// under the stair's max noise: the ambient (fan off) and the phone's reference
+const noiseRef = (once: StairOnce) => {
+  const a = (once.ambient ?? "").trim();
+  const r = (once.noiseRef ?? "").trim();
+  const parts = [a && `ambient ${a} dB(A)${once.ambientLevel ? ` at ${once.ambientLevel}` : ""}`, r && `phone ref. ${r} dB(A)`].filter(Boolean);
+  return parts.length ? parts : undefined;
+};
+
 const day = (ms: number) => new Date(ms).toLocaleDateString("en-AU", { day: "2-digit", month: "2-digit", year: "numeric" });
 
 const ticks = (list: [string, string][], got: Record<string, "y" | "n"> | undefined) =>
@@ -54,7 +62,7 @@ export function stairPages(test: StairTest, sys: SpfSystem, site: Pick<Site, "na
     const pa = onceStatus("pa", once, sys);
     const n = (v?: string) => (v ?? "").trim();
     const boxes: StairBox[] = [
-      { label: "Max noise, stair", value: has("noise") && n(once.noiseStair) ? `${n(once.noiseStair)} dB(A) ${Number(once.noiseStair) > l.noiseStair ? "✗" : "✓"}` : "", fail: noise.fail && Number(once.noiseStair) > l.noiseStair, ref: has("noise") && n(once.noiseRef) ? `phone ref. ${n(once.noiseRef)} dB(A)` : undefined },
+      { label: "Max noise, stair", value: has("noise") && n(once.noiseStair) ? `${n(once.noiseStair)} dB(A) ${Number(once.noiseStair) > l.noiseStair ? "✗" : "✓"}` : "", fail: noise.fail && Number(once.noiseStair) > l.noiseStair, ref: has("noise") ? noiseRef(once) : undefined },
       { label: "Max noise, occupied space", value: has("noise") && n(once.noiseOcc) ? `${n(once.noiseOcc)} dB(A)${l.noiseOcc === null ? "" : Number(once.noiseOcc) > l.noiseOcc ? " ✗" : " ✓"}` : "", fail: l.noiseOcc !== null && Number(once.noiseOcc) > l.noiseOcc },
       { label: "Pressure restoration", value: has("rest") ? rest.text : "", fail: rest.fail },
       { label: "Stair, all doors closed", value: has("pa") ? pa.text : "", fail: pa.fail },

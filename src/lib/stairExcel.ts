@@ -64,7 +64,7 @@ export function addStairSheets(wb: Workbook, tests: StairTest[], sys: SpfSystem,
         lab.font = { name: FONT, size: 8, color: { argb: SOFT } };
         lab.alignment = { wrapText: true, vertical: "top" };
         const v = ws.getCell(r + 1, col);
-        v.value = b.value + (b.ref ? `  (${b.ref})` : "");
+        v.value = b.value + (b.ref ? `  (${b.ref.join(" · ")})` : "");
         v.font = { name: FONT, bold: true, size: 10, color: { argb: b.fail ? FAIL_INK : INK } };
         lab.border = box;
         v.border = box;

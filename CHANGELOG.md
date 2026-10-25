@@ -5,6 +5,17 @@ matches a commit on the `test` branch (called `advanced_controls` until
 29 September 2026) or `main`; the commit itself has
 the technical detail.
 
+## 25 October 2026
+
+- **Stair tests: ambient noise.** The Noise section has an Ambient, fan
+  off reading, one per stair, typed on the purple pad and labelled with
+  the noisiest door it was taken at. Found a noisier door? Change
+  Noisiest door and a Re-record ambient at … button lights up: it clears
+  the old reading and opens the pad for the new one (the button is there
+  any time to take it again). The AS 1851 record has no ambient column,
+  so the report prints it under Max noise, stair ("ambient 64 dB(A) at
+  3"), above the phone's reference.
+
 ## 1 October 2026
 
 - **Stair setup: close a stair again.** An opened stair card has a ▴

@@ -106,7 +106,11 @@ function Paper({ page }: { page: StairPage }) {
           <div key={b.label} style={{ border: "1px solid #c9d6e0", borderRadius: 5, padding: "4px 5px", fontSize: 8, color: "#4a6175", minHeight: 34 }}>
             {b.label}
             <b style={{ display: "block", fontSize: 11, color: b.fail ? "#b3261e" : "#14212e" }}>{b.value || " "}</b>
-            {b.ref && <span style={{ fontSize: 7.5 }}>{b.ref}</span>}
+            {b.ref?.map((r) => (
+              <span key={r} style={{ display: "block", fontSize: 7.5 }}>
+                {r}
+              </span>
+            ))}
           </div>
         ))}
       </div>

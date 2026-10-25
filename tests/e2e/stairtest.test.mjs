@@ -141,8 +141,27 @@ test("a velocity at one level: Done saves it and closes the keypad", async () =>
   assert.match(await page.locator("body").innerText(), /1 of 4 · 1 fail/);
 });
 
-test("the report: every column, blanks where not tested", async () => {
+test("ambient: one per stair, taken again at a noisier door", async () => {
   await page.getByRole("button", { name: "Back" }).click();
+  await page.getByText("1 fail").first().waitFor();
+  await page.getByRole("button", { name: /^\S+ Noise/ }).click();
+  await page.getByLabel("Noisiest door").fill("2");
+  await page.getByRole("button", { name: "Ambient, fan off" }).click();
+  for (const k of ["6", "1"]) await page.getByRole("button", { name: k, exact: true }).dispatchEvent("pointerdown");
+  await page.getByRole("button", { name: "Done" }).dispatchEvent("pointerdown");
+  assert.match(await page.getByRole("button", { name: "Ambient, fan off" }).innerText(), /at 2[\s\S]*61/);
+  // a noisier door: the ambient is offered again there
+  await page.getByLabel("Noisiest door").fill("3");
+  await page.getByRole("button", { name: "Re-record ambient at 3" }).click();
+  assert.match(await page.getByTestId("spf-value").innerText(), /type/, "re-recording starts blank");
+  for (const k of ["6", "4"]) await page.getByRole("button", { name: k, exact: true }).dispatchEvent("pointerdown");
+  await page.getByRole("button", { name: "Done" }).dispatchEvent("pointerdown");
+  assert.match(await page.getByRole("button", { name: "Ambient, fan off" }).innerText(), /at 3[\s\S]*64/);
+  assert.equal(await page.getByRole("button", { name: "Re-record ambient", exact: true }).count(), 1);
+  await page.getByRole("button", { name: "Done ›" }).click();
+});
+
+test("the report: every column, blanks where not tested", async () => {
   await page.getByText("1 fail").first().waitFor();
   await page.getByRole("button", { name: "Preview the report" }).click();
   const sheet = await page.getByTestId("spf-page").innerText();
@@ -150,6 +169,7 @@ test("the report: every column, blanks where not tested", async () => {
   assert.match(sheet, /Stair 1 \(Front\)/);
   assert.match(sheet, /Door opening force N \(max 110\)/);
   assert.match(sheet, /2\s+3\s+0\.8/);
+  assert.match(sheet, /Max noise, stair[\s\S]*ambient 64 dB\(A\) at 3/);
 });
 
 test("an AFSS site: Other tests, + Add a test, and the export chooser", async () => {

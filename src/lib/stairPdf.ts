@@ -76,7 +76,7 @@ function drawPage(doc: JsPDF, page: StairPage, logo: Logo) {
   // the once-a-stair readings
   const gap = 6;
   const bw = (width - 3 * gap) / 4;
-  const bh = 36;
+  const bh = 36 + 7 * Math.max(0, ...page.boxes.map((b) => (b.ref?.length ?? 1) - 1));
   page.boxes.forEach((b, i) => {
     const x = M + i * (bw + gap);
     doc.setDrawColor("#c9d6e0");
@@ -93,7 +93,7 @@ function drawPage(doc: JsPDF, page: StairPage, logo: Logo) {
       doc.setFont("helvetica", "normal");
       doc.setFontSize(6.5);
       doc.setTextColor(SOFT);
-      doc.text(b.ref, x + 5, y + 32);
+      b.ref.forEach((r, k) => doc.text(r, x + 5, y + 32 + 7 * k));
     }
   });
   y += bh + 10;

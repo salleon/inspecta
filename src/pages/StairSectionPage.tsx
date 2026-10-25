@@ -248,7 +248,7 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, onBack }: Prop
 
 // ---- once a stair ----
 
-type OnceNum = "noiseStair" | "noiseOcc" | "restTime" | "pa";
+type OnceNum = "noiseStair" | "noiseOcc" | "ambient" | "restTime" | "pa";
 
 function Once({ section, sys, stair, stairNo, test, setTest, onBack }: Props & { section: StairSection }) {
   const once = test.once[stair.id] ?? {};
@@ -283,13 +283,18 @@ function Once({ section, sys, stair, stairNo, test, setTest, onBack }: Props & {
       else if (k === "." && cur.includes(".")) return t;
       else if (cur.length >= 6) return t;
       else next = cur === "" && k === "." ? "0." : cur + k;
-      return { ...t, once: { ...t.once, [stair.id]: { ...t.once[stair.id], [f]: next } } };
+      const o = { ...t.once[stair.id], [f]: next };
+      // a new ambient reading is at the noisiest door as it stands
+      if (f === "ambient" && cur === "") o.ambientLevel = o.noiseLevel?.trim() || undefined;
+      return { ...t, once: { ...t.once, [stair.id]: o } };
     });
   }
   const numField = (field: OnceNum, label: string, sub: string, max: number | null) => (
     <NumField label={label} sub={sub} value={once[field]} ok={judge(once[field], max)} active={pad?.field === field} onOpen={() => setPad({ field, label, sub })} />
   );
   const fan = stair.fan.trim();
+  // the noisiest door has changed since the ambient was taken
+  const moved = !!once.ambient?.trim() && !!once.noiseLevel?.trim() && once.noiseLevel.trim() !== (once.ambientLevel ?? "");
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
@@ -301,6 +306,18 @@ function Once({ section, sys, stair, stairNo, test, setTest, onBack }: Props & {
             <Field label="Noisiest door" sub="Level" value={once.noiseLevel} onChange={(v) => set({ noiseLevel: v })} onFocus={() => setPad(null)} />
             {numField("noiseStair", "In the stair", `dB(A) · ≤ ${l.noiseStair}`, l.noiseStair)}
             {numField("noiseOcc", "Occupied space", l.noiseOcc === null ? "dB(A) · recorded" : `dB(A) · ≤ ${l.noiseOcc}`, l.noiseOcc)}
+            {numField("ambient", "Ambient, fan off", `dB(A)${once.ambient?.trim() && once.ambientLevel ? ` · at ${once.ambientLevel}` : " · recorded"}`, null)}
+            {once.ambient?.trim() && (
+              <button
+                onClick={() => {
+                  set({ ambient: "", ambientLevel: once.noiseLevel?.trim() || undefined });
+                  setPad({ field: "ambient", label: "Ambient, fan off", sub: `dB(A)${once.noiseLevel?.trim() ? ` · at ${once.noiseLevel.trim()}` : ""}` });
+                }}
+                style={{ alignSelf: "flex-end", fontSize: 12, fontWeight: 800, padding: "7px 12px", borderRadius: 9, background: "#143452", border: `1px solid ${moved ? "#b18cff" : "var(--border-strong)"}`, color: moved ? "#d6c4ff" : "#bfd0de" }}
+              >
+                {moved ? `Re-record ambient at ${once.noiseLevel!.trim()}` : "Re-record ambient"}
+              </button>
+            )}
           </>
         )}
         {section === "rest" && (
