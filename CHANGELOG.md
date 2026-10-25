@@ -5,6 +5,13 @@ matches a commit on the `test` branch (called `advanced_controls` until
 29 September 2026) or `main`; the commit itself has
 the technical detail.
 
+## 25 October 2026
+
+- **Build 6, out to coworkers.** The in-app camera, photo markup, the speed
+  work and flow equipment suggestions go out through Google Play. BUILD_LABEL
+  is now 6 (Settings shows "Inspecta · Build 6"). The stair pressurisation
+  tests stay on `test` for now.
+
 ## 1 October 2026
 
 - **Flow tests: flows fill in from " Hg with your flow equipment.** The
