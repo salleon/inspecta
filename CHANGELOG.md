@@ -5,6 +5,12 @@ matches a commit on the `test` branch (called `advanced_controls` until
 29 September 2026) or `main`; the commit itself has
 the technical detail.
 
+## 26 October 2026
+
+- **Build 7, out to coworkers.** Stair pressurisation tests (marked Beta)
+  and the blue number pad on flow test readings go out through Google
+  Play. BUILD_LABEL is now 7 (Settings shows "Inspecta · Build 7").
+
 ## 25 October 2026
 
 - **Stair pressurisation marked Beta.** It's still being built but can be
