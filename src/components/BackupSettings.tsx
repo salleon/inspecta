@@ -9,7 +9,8 @@ import { numberedExport } from "../lib/exportName";
 import { applyRestore, backupCounts, backupFileName, readBackup, writeBackup, type RestorePlan } from "../lib/backup";
 
 // Settings rows: "Back up all data" and "Restore from backup" (see
-// lib/backup). Backing up shows the packed-box picture, restoring the ring.
+// lib/backup). Both show the packed-box animation, restoring from the moment
+// the file is picked (reading a big backup takes a while).
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
@@ -64,10 +65,14 @@ export default function BackupSettings({ rowStyle, hintStyle, onRestored, icons 
 
   async function onFile(file: File | undefined) {
     if (!file) return;
+    // reading a big backup takes a while: show the ring from the start
+    setProgress({ title: "Restoring", percent: 0, step: "Reading the backup…" });
     try {
       setPlan(await readBackup(file));
     } catch (err) {
       setMessage({ title: "Can't restore this file", text: err instanceof Error && /newer version/.test(err.message) ? err.message + "." : "That isn't an Inspecta backup file." });
+    } finally {
+      setProgress(null);
     }
   }
 
@@ -145,7 +150,7 @@ export default function BackupSettings({ rowStyle, hintStyle, onRestored, icons 
         />
       )}
       {message && <ConfirmDialog title={message.title} message={message.text} confirmLabel="OK" tone="primary" infoOnly onCancel={() => setMessage(null)} onConfirm={() => setMessage(null)} />}
-      {progress && <ProgressOverlay percent={progress.percent} title={progress.title} step={progress.step} art={progress.title === "Backing up" ? "box" : undefined} />}
+      {progress && <ProgressOverlay percent={progress.percent} title={progress.title} step={progress.step} art="box" />}
     </>
   );
 }

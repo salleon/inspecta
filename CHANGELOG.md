@@ -7,6 +7,11 @@ the technical detail.
 
 ## 26 October 2026
 
+- **Restoring a backup shows it's working.** The packed-box animation
+  now plays from the moment the backup file is picked, while the file is
+  read and while sites and photos are added. Before, nothing showed while
+  a big file was read, so the app looked frozen.
+
 - **Build 7, out to coworkers.** Stair pressurisation tests (marked Beta)
   and the blue number pad on flow test readings go out through Google
   Play. BUILD_LABEL is now 7 (Settings shows "Inspecta · Build 7").
