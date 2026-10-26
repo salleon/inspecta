@@ -7,6 +7,9 @@ the technical detail.
 
 ## 26 October 2026
 
+- **Build 8, out to coworkers.** Re-packed backups restore, clearer
+  restore messages, and the restore animation. BUILD_LABEL is now 8.
+
 - **Restore reads re-packed backups.** A backup that went through a
   computer or a cloud drive and came back compressed, or inside a folder,
   was refused as "not an Inspecta backup". It now restores. When a file
