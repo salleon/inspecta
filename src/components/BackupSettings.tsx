@@ -70,7 +70,7 @@ export default function BackupSettings({ rowStyle, hintStyle, onRestored, icons 
     try {
       setPlan(await readBackup(file));
     } catch (err) {
-      setMessage({ title: "Can't restore this file", text: err instanceof Error && /newer version/.test(err.message) ? err.message + "." : "That isn't an Inspecta backup file." });
+      setMessage({ title: "Can't restore this file", text: err instanceof Error && err.message.endsWith(".") ? err.message : "That isn't an Inspecta backup file." });
     } finally {
       setProgress(null);
     }

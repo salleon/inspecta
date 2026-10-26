@@ -65,9 +65,14 @@ export async function writeBackup(write: (bytes: Uint8Array) => Promise<void>, o
 
 // ---- reading ----
 
-// Reads the stored (uncompressed) entries of a zip like ours, straight
-// from the file: only the part being used is loaded.
-async function zipEntries(file: Blob): Promise<Map<string, Blob>> {
+// A file in the zip, read only when it's used.
+type Entry = () => Promise<Blob>;
+
+// Reads the entries of a zip straight from the file, only the part being
+// used. Ours are stored (uncompressed), but a backup that went through a
+// computer or a cloud drive may come back compressed (deflate), so both
+// are read.
+async function zipEntries(file: Blob): Promise<Map<string, Entry>> {
   const tailSize = Math.min(file.size, 65557);
   const tail = new DataView(await file.slice(file.size - tailSize).arrayBuffer());
   let eocd = -1;
@@ -77,34 +82,40 @@ async function zipEntries(file: Blob): Promise<Map<string, Blob>> {
       break;
     }
   }
-  if (eocd < 0) throw new Error("Not a zip file");
+  if (eocd < 0) throw new Error("This file isn't a zip file.");
   const count = tail.getUint16(eocd + 10, true);
   const dirSize = tail.getUint32(eocd + 12, true);
   const dirOffset = tail.getUint32(eocd + 16, true);
   const dir = new DataView(await file.slice(dirOffset, dirOffset + dirSize).arrayBuffer());
-  const entries = new Map<string, Blob>();
+  const entries = new Map<string, Entry>();
   let p = 0;
   for (let n = 0; n < count; n++) {
-    if (dir.getUint32(p, true) !== 0x02014b50) throw new Error("Damaged zip file");
+    if (dir.getUint32(p, true) !== 0x02014b50) throw new Error("This zip file is damaged.");
     const method = dir.getUint16(p + 10, true);
-    const size = dir.getUint32(p + 20, true);
+    const compressed = dir.getUint32(p + 20, true);
     const nameLen = dir.getUint16(p + 28, true);
     const extraLen = dir.getUint16(p + 30, true);
     const commentLen = dir.getUint16(p + 32, true);
     const localOffset = dir.getUint32(p + 42, true);
     const name = new TextDecoder().decode(new Uint8Array(dir.buffer, dir.byteOffset + p + 46, nameLen));
     p += 46 + nameLen + extraLen + commentLen;
-    if (method !== 0) continue; // only stored entries (ours are)
-    const local = new DataView(await file.slice(localOffset, localOffset + 30).arrayBuffer());
-    const dataStart = localOffset + 30 + local.getUint16(26, true) + local.getUint16(28, true);
-    entries.set(name, file.slice(dataStart, dataStart + size));
+    if (method !== 0 && method !== 8) continue;
+    entries.set(name, async () => {
+      const local = new DataView(await file.slice(localOffset, localOffset + 30).arrayBuffer());
+      const dataStart = localOffset + 30 + local.getUint16(26, true) + local.getUint16(28, true);
+      const data = file.slice(dataStart, dataStart + compressed);
+      if (method === 0) return data;
+      return new Response(data.stream().pipeThrough(new DecompressionStream("deflate-raw"))).blob();
+    });
   }
   return entries;
 }
 
 export interface RestorePlan {
   json: BackupJson;
-  entries: Map<string, Blob>;
+  entries: Map<string, Entry>;
+  // the folder backup.json is in, if the zip was re-made with a folder
+  prefix: string;
   newSites: Site[];
   existingSites: Site[];
 }
@@ -113,17 +124,23 @@ export interface RestorePlan {
 // anything yet.
 export async function readBackup(file: Blob): Promise<RestorePlan> {
   const entries = await zipEntries(file);
-  const jsonBlob = entries.get("backup.json");
-  if (!jsonBlob) throw new Error("Not an Inspecta backup");
-  const json = JSON.parse(await jsonBlob.text()) as BackupJson;
-  if (json?.type !== TYPE || !Array.isArray(json.sites) || !Array.isArray(json.findings) || !Array.isArray(json.photos)) {
-    throw new Error("Not an Inspecta backup");
+  const jsonName = [...entries.keys()].find((n) => (n === "backup.json" || n.endsWith("/backup.json")) && !n.startsWith("__MACOSX/"));
+  if (!jsonName) throw new Error("There's no backup.json in this zip, so it isn't an Inspecta backup.");
+  const prefix = jsonName.slice(0, -"backup.json".length);
+  let json: BackupJson;
+  try {
+    json = JSON.parse(await (await entries.get(jsonName)!()).text()) as BackupJson;
+  } catch {
+    throw new Error("This backup's backup.json can't be read. The file may be damaged.");
   }
-  if (json.version > VERSION) throw new Error("This backup is from a newer version of Inspecta");
+  if (json?.type !== TYPE || !Array.isArray(json.sites) || !Array.isArray(json.findings) || !Array.isArray(json.photos)) {
+    throw new Error("This zip has a backup.json, but it isn't an Inspecta backup.");
+  }
+  if (json.version > VERSION) throw new Error("This backup is from a newer version of Inspecta. Update the app, then restore it.");
   const newSites: Site[] = [];
   const existingSites: Site[] = [];
   for (const site of json.sites) ((await siteExists(site.id)) ? existingSites : newSites).push(site);
-  return { json, entries, newSites, existingSites };
+  return { json, entries, prefix, newSites, existingSites };
 }
 
 export async function applyRestore(plan: RestorePlan, onPhoto: (done: number, total: number) => void) {
@@ -144,10 +161,10 @@ export async function applyRestore(plan: RestorePlan, onPhoto: (done: number, to
   let restored = 0;
   for (let i = 0; i < photos.length; i++) {
     const { file, mime, ...meta } = photos[i];
-    const data = plan.entries.get(file);
-    if (data) {
+    const entry = plan.entries.get(plan.prefix + file);
+    if (entry) {
       // copied into memory as its own Blob, independent of the backup file
-      await restorePhoto({ ...meta, blob: new Blob([await data.arrayBuffer()], { type: mime }) });
+      await restorePhoto({ ...meta, blob: new Blob([await (await entry()).arrayBuffer()], { type: mime }) });
       restored++;
     }
     onPhoto(i + 1, photos.length);

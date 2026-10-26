@@ -7,6 +7,12 @@ the technical detail.
 
 ## 26 October 2026
 
+- **Restore reads re-packed backups.** A backup that went through a
+  computer or a cloud drive and came back compressed, or inside a folder,
+  was refused as "not an Inspecta backup". It now restores. When a file
+  really can't be used, the message says why: not a zip, no backup.json,
+  damaged, or from a newer version of the app.
+
 - **Restoring a backup shows it's working.** The packed-box animation
   now plays from the moment the backup file is picked, while the file is
   read and while sites and photos are added. Before, nothing showed while

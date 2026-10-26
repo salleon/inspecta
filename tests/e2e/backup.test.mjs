@@ -4,6 +4,7 @@
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { execFileSync } from "node:child_process";
 import { startApp, openPage, go, seed, download } from "./helpers.mjs";
 
 let app;
@@ -109,7 +110,18 @@ test("restoring the same backup again adds nothing and overwrites nothing", asyn
 test("a file that isn't a backup is refused", async () => {
   await page.setInputFiles('input[type=file][accept*=".zip"]', { name: "notes.zip", mimeType: "application/zip", buffer: Buffer.from("not a zip") });
   await page.waitForTimeout(300);
-  assert.equal(await page.locator("text=isn't an Inspecta backup").count(), 1);
+  assert.equal(await page.locator("text=isn't a zip file").count(), 1);
+  await page.getByRole("button", { name: "OK", exact: true }).click();
+});
+
+test("a backup re-zipped (compressed, inside a folder) still reads", async () => {
+  // as when a backup goes through a computer or a cloud drive
+  const remade = `${backupPath}.remade.zip`;
+  execFileSync("python3", ["-c", "import sys,zipfile\nsrc=zipfile.ZipFile(sys.argv[1])\nout=zipfile.ZipFile(sys.argv[2],'w',zipfile.ZIP_DEFLATED)\nfor n in src.namelist(): out.writestr('Inspecta backup/'+n, src.read(n))\nout.close()", backupPath, remade]);
+  await page.setInputFiles('input[type=file][accept*=".zip"]', remade);
+  await page.waitForTimeout(600);
+  assert.equal(await page.locator("text=Every site in this backup is already on this phone").count(), 1);
+  await page.getByRole("button", { name: "OK", exact: true }).click();
 });
 
 test("no page errors", () => {
