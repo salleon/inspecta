@@ -127,6 +127,22 @@
   justify-content: center;
   background: rgba(0, 0, 0, 0.55);
 }
+/* the selfie camera button, level with the shutter, to its right */
+.cam-flip {
+  position: absolute;
+  right: 36px;
+  top: calc((100% - 26px - var(--sa-bottom)) / 2 - 20px);
+  width: 46px;
+  height: 46px;
+  margin-top: -3px;
+}
+.cam-flip:disabled {
+  opacity: 0.5;
+}
+.cam.fit .cam-flip {
+  top: calc((100% - var(--sa-bottom) - var(--use-label-h) - 7px) / 2 - 23px);
+  margin-top: 0;
+}
 .cam-shut {
   width: 78px;
   height: 78px;
@@ -304,7 +320,8 @@
   /* the zoom sits over the top of this space: only the shutter takes taps */
   pointer-events: none;
 }
-.cam.fit .cam-shut {
+.cam.fit .cam-shut,
+.cam.fit .cam-flip {
   pointer-events: auto;
 }
 .cam-shut-label {

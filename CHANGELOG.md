@@ -5,6 +5,15 @@ matches a commit on the `test` branch (called `advanced_controls` until
 29 September 2026) or `main`; the commit itself has
 the technical detail.
 
+## 27 October 2026
+
+- **Camera: selfie camera.** A flip button to the right of the shutter
+  switches to the front camera and back. The camera always opens on the
+  back one, at 1×. No flash or .5× on the front camera.
+- **Camera: volume keys take the photo.** While the camera is up, either
+  volume key works the shutter (one photo per press) instead of changing
+  the volume. In the app only, not the browser version.
+
 ## 26 October 2026
 
 - **Build 8, out to coworkers.** Re-packed backups restore, clearer

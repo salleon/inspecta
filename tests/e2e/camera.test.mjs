@@ -388,3 +388,33 @@ test("any phone size, with or without Android's buttons at the bottom: the shutt
   });
   await page.setViewportSize({ width: 390, height: 844 });
 });
+
+test("flip to the selfie camera and back", async () => {
+  await go(page, app, "/site/s1/findings");
+  // the fake camera has no front one: one is listed
+  await page.evaluate(() => {
+    const md = navigator.mediaDevices;
+    const list = md.enumerateDevices.bind(md);
+    md.enumerateDevices = async () => [...(await list()), { kind: "videoinput", label: "Front camera", deviceId: "front", groupId: "" }];
+    const open = md.getUserMedia;
+    md.getUserMedia = (c) => {
+      window.__lastFacing = c?.video?.facingMode?.ideal ?? null;
+      return open(c);
+    };
+  });
+  await page.getByRole("button", { name: "New finding", exact: true }).click();
+  await page.getByTestId("in-app-camera").waitFor();
+  const flip = page.getByRole("button", { name: "Selfie camera" });
+  await flip.waitFor();
+  await page.waitForFunction(() => !document.querySelector(".cam-flip")?.disabled);
+  await flip.click();
+  await page.getByRole("button", { name: "Back camera" }).waitFor();
+  await page.waitForFunction(() => window.__lastFacing === "user");
+  assert.match(await page.locator(".cam video").evaluate((v) => v.style.transform), /scaleX\(-1\)/, "the selfie picture is mirrored");
+  // level with the shutter
+  const [f, s] = [await page.locator(".cam-flip").boundingBox(), await page.locator(".cam-shut").boundingBox()];
+  assert.ok(Math.abs(f.y + f.height / 2 - (s.y + s.height / 2)) < 3, "level with the shutter");
+  await page.getByRole("button", { name: "Back camera" }).click();
+  await page.getByRole("button", { name: "Selfie camera" }).waitFor();
+  await page.getByLabel("Close camera").click();
+});

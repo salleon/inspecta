@@ -6,7 +6,7 @@ import { useBackHandler } from "../lib/backButton";
 import { getCameraFlash, setCameraFlash } from "../lib/settings";
 import MarkupEditor from "./MarkupEditor";
 import CameraStartScreen from "./CameraStartScreen";
-import { acquireCamera, dropCamera, releaseCamera } from "../lib/cameraStream";
+import { acquireCamera, dropCamera, hasFrontCamera, releaseCamera, setCameraFacing } from "../lib/cameraStream";
 import { setCameraOpen } from "../lib/photoWork";
 import { acquireNative, captureNative, hasNativeCamera, NativeCamera, releaseNative, saveNativeError } from "../lib/nativeCamera";
 import "./PhotoTools.css";
@@ -29,6 +29,8 @@ interface Caps {
   digital: boolean;
   torch: boolean;
   focus: boolean;
+  // there's a selfie camera to flip to
+  front?: boolean;
   // Android's camera: the ultra-wide lens's zoom next to the main lens
   // (0: none). Zoom below 1× uses it.
   wide?: number;
@@ -60,6 +62,9 @@ export default function InAppCamera({ label, onDone }: Props) {
   // not Android's grey ▶ placeholder)
   const [live, setLive] = useState(false);
   const [flash, setFlash] = useState(getCameraFlash);
+  // the selfie camera (it opens on the back one every time)
+  const [front, setFront] = useState(false);
+  const [flipping, setFlipping] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [focusAt, setFocusAt] = useState<{ x: number; y: number; n: number } | null>(null);
   const [shooting, setShooting] = useState(false);
@@ -122,11 +127,13 @@ export default function InAppCamera({ label, onDone }: Props) {
         // went down on the camera button)
         const f = fitRef.current;
         await NativeCamera.setLayout({ fill: !!f, top: f?.top ?? 0, height: f?.height ?? 0 }).catch(() => {});
-        const info = await acquireNative();
+        let info = await acquireNative();
         if (cancelled) return;
         const wide = info.wideFactor > 0 && info.wideFactor < 0.95 ? info.wideFactor : 0;
-        setCaps({ zoom: { min: wide || info.zoomMin, max: info.zoomMax }, digital: false, torch: info.hasFlash, focus: true, wide });
-        lensRef.current = info.lens;
+        setCaps({ zoom: { min: wide || info.zoomMin, max: info.zoomMax }, digital: false, torch: info.hasFlash, focus: true, wide, front: !!info.hasFront });
+        // back to the back camera (it may still be on the selfie one from last time)
+        if (info.lens === "front") info = await NativeCamera.setFacing({ front: false });
+        lensRef.current = info.lens === "front" ? "main" : info.lens;
         // back to the main lens (it may still be on the ultra-wide from last time)
         if (info.lens === "wide") void NativeCamera.setLens({ wide: false }).then(() => (lensRef.current = "main"));
         // back to 1× (it may still be zoomed from the last photo)
@@ -161,6 +168,7 @@ export default function InAppCamera({ label, onDone }: Props) {
       try {
         // (already running if a photo was just taken, or a finger went
         // down on the camera button: then it's instant)
+        setCameraFacing(front);
         const opening = acquireCamera();
         acquired = true;
         const stream = await opening;
@@ -178,6 +186,7 @@ export default function InAppCamera({ label, onDone }: Props) {
           digital: !(tc.zoom && tc.zoom.max > tc.zoom.min),
           torch: !!tc.torch,
           focus: !!tc.focusMode?.length,
+          front: front || (await hasFrontCamera().catch(() => false)),
         };
         if (cancelled) return;
         setCaps(next);
@@ -220,7 +229,29 @@ export default function InAppCamera({ label, onDone }: Props) {
       if (acquired) releaseCamera();
       streamRef.current = null;
     };
-  }, [native]);
+  }, [native, front]);
+
+  // next time, the camera opens on the back one (it's kept warm on the back)
+  useEffect(() => () => setCameraFacing(false), []);
+
+  // the volume keys are the shutter while the camera's up (the app on the
+  // phone only; in a browser they change the volume)
+  const shutterRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    if (!hasNativeCamera()) return;
+    let handle: { remove: () => Promise<void> } | null = null;
+    let gone = false;
+    void NativeCamera.addListener("shutterKey", () => shutterRef.current()).then((h) => (gone ? void h.remove() : (handle = h)));
+    return () => {
+      gone = true;
+      void handle?.remove();
+      void NativeCamera.setShutterKeys({ on: false }).catch(() => {});
+    };
+  }, []);
+  useEffect(() => {
+    if (!hasNativeCamera()) return;
+    void NativeCamera.setShutterKeys({ on: !shot && !marking }).catch(() => {});
+  }, [shot, marking]);
 
   // Android's camera: its picture where it goes (when the phone's turned
   // or the screen changes size)
@@ -421,6 +452,33 @@ export default function InAppCamera({ label, onDone }: Props) {
     }
   }
 
+  shutterRef.current = () => void takeShot();
+
+  // the selfie camera, or back to the back one (at 1×)
+  async function flip() {
+    if (flipping || shooting || !ready) return;
+    const next = !front;
+    if (!native) {
+      setZoom(1);
+      setFront(next);
+      return;
+    }
+    setFlipping(true);
+    try {
+      const info = await NativeCamera.setFacing({ front: next });
+      const wide = info.wideFactor > 0 && info.wideFactor < 0.95 ? info.wideFactor : 0;
+      lensRef.current = "main";
+      setCaps((c) => ({ ...c, zoom: { min: wide || info.zoomMin, max: info.zoomMax }, torch: info.hasFlash, wide }));
+      if (Math.abs(info.zoom - 1) > 0.01 && info.zoomMin <= 1) void NativeCamera.setZoom({ ratio: 1 });
+      setZoom(1);
+      setFront(info.lens === "front");
+    } catch {
+      // stays on the camera it was on
+    } finally {
+      setFlipping(false);
+    }
+  }
+
   function retake() {
     void videoRef.current?.play().catch(() => {});
     setShot(null);
@@ -461,7 +519,7 @@ export default function InAppCamera({ label, onDone }: Props) {
           </>
         )}
         {!native && (
-          <video ref={videoRef} playsInline muted autoPlay poster={BLANK} onPlaying={() => setLive(true)} style={{ opacity: shot || !live ? 0 : 1, transform: caps.digital && zoom > 1 ? `scale(${zoom})` : undefined }} />
+          <video ref={videoRef} playsInline muted autoPlay poster={BLANK} onPlaying={() => setLive(true)} style={{ opacity: shot || !live ? 0 : 1, transform: `${front ? "scaleX(-1) " : ""}${caps.digital && zoom > 1 ? `scale(${zoom})` : ""}`.trim() || undefined }} />
         )}
         {shot && <img className="cam-shot" src={shot.url} alt="" />}
         <CameraStartScreen live={live} />
@@ -550,10 +608,26 @@ export default function InAppCamera({ label, onDone }: Props) {
           {/* the same height as Use ✓'s label, so the shutter is exactly
               where Use ✓ comes (it turns into it) */}
           {fit && <span className="cam-shut-label" aria-hidden="true" />}
+          {caps.front && (
+            <button className="cam-rb cam-flip" aria-label={front ? "Back camera" : "Selfie camera"} disabled={!ready || shooting || flipping} onClick={() => void flip()}>
+              <FlipIcon />
+            </button>
+          )}
         </div>
       )}
       {shot && marking && <MarkupEditor blob={shot.blob} marks={[]} onCancel={() => setMarking(false)} onDone={(marks) => use(marks)} />}
     </div>
+  );
+}
+
+function FlipIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 9a8 8 0 0114.5-3.5L20 7" />
+      <path d="M20 3v4h-4" />
+      <path d="M20 15a8 8 0 01-14.5 3.5L4 17" />
+      <path d="M4 21v-4h4" />
+    </svg>
   );
 }
 

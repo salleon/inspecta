@@ -70,6 +70,11 @@ public class NativeCameraPlugin extends Plugin {
     private CameraSelector wideLens = null;
     private float wideFactor = 0f;
     private boolean onWide = false;
+    // the selfie camera instead of the back ones
+    private boolean onFront = false;
+    // the volume keys take the photo while the camera screen is up (MainActivity)
+    static volatile boolean shutterKeys = false;
+    private static NativeCameraPlugin instance;
     // zero shutter lag: off on phones where it hands back an old photo
     private boolean zsl = true;
     // On a phone taller than the photo: the picture sits at the top (its
@@ -273,6 +278,7 @@ public class NativeCameraPlugin extends Plugin {
                     }
                     findLenses();
                     onWide = false;
+                    onFront = false;
                     String failed = bindEither();
                     if (failed != null) {
                         // let go of the camera
@@ -287,12 +293,48 @@ public class NativeCameraPlugin extends Plugin {
         });
     }
 
+    /** The selfie camera (front: true) or the back ones (the main lens): { ...info }. */
+    @PluginMethod
+    public void setFacing(PluginCall call) {
+        boolean front = Boolean.TRUE.equals(call.getBoolean("front", false));
+        getActivity().runOnUiThread(() -> {
+            if (provider == null || camera == null || front == onFront) {
+                call.resolve(info());
+                return;
+            }
+            onFront = front;
+            onWide = false;
+            String failed = bindEither();
+            if (failed != null) {
+                // back to the camera that worked
+                onFront = !front;
+                bindEither();
+                call.reject("Couldn't switch camera: " + failed);
+                return;
+            }
+            call.resolve(info());
+        });
+    }
+
+    /** The volume keys work the shutter (on: true) or the volume as usual. */
+    @PluginMethod
+    public void setShutterKeys(PluginCall call) {
+        shutterKeys = Boolean.TRUE.equals(call.getBoolean("on", false));
+        call.resolve();
+    }
+
+    // a volume key went down while shutterKeys is on (from MainActivity)
+    static void shutterKeyPressed() {
+        NativeCameraPlugin p = instance;
+        if (p != null) p.notifyListeners("shutterKey", new JSObject());
+    }
+
     /** The ultra-wide lens (wide: true) or the main one: { ...info }. */
     @PluginMethod
     public void setLens(PluginCall call) {
         boolean wide = Boolean.TRUE.equals(call.getBoolean("wide", false));
         getActivity().runOnUiThread(() -> {
-            if (provider == null || camera == null || (wide && wideLens == null) || wide == onWide) {
+            if (provider == null || camera == null || onFront || (wide && wideLens == null) || wide == onWide) {
                 call.resolve(info());
                 return;
             }
@@ -373,12 +415,14 @@ public class NativeCameraPlugin extends Plugin {
     // Otherwise CameraX's own choices and its quickest ordinary capture.
     private void bind(boolean best) {
         Preview.Builder previewBuilder = new Preview.Builder();
+        // no flash on the selfie camera
+        boolean flash = flashOn && !onFront;
         ImageCapture.Builder captureBuilder = new ImageCapture.Builder()
-            .setFlashMode(flashOn ? ImageCapture.FLASH_MODE_ON : ImageCapture.FLASH_MODE_OFF)
+            .setFlashMode(flash ? ImageCapture.FLASH_MODE_ON : ImageCapture.FLASH_MODE_OFF)
             .setJpegQuality(92);
         // the flash as the torch, on until the photo's taken: a quick flash
         // was missed by the photo on some phones
-        if (flashOn) captureBuilder.setFlashType(ImageCapture.FLASH_TYPE_USE_TORCH_AS_FLASH);
+        if (flash) captureBuilder.setFlashType(ImageCapture.FLASH_TYPE_USE_TORCH_AS_FLASH);
         if (best) {
             previewBuilder.setResolutionSelector(
                 new ResolutionSelector.Builder().setAspectRatioStrategy(AspectRatioStrategy.RATIO_4_3_FALLBACK_AUTO_STRATEGY).build()
@@ -393,7 +437,7 @@ public class NativeCameraPlugin extends Plugin {
                 .setCaptureMode(
                     // zero shutter lag takes the photo from just before the
                     // press, before the flash: not with the flash on
-                    zsl && !flashOn ? ImageCapture.CAPTURE_MODE_ZERO_SHUTTER_LAG : ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY
+                    zsl && !flash ? ImageCapture.CAPTURE_MODE_ZERO_SHUTTER_LAG : ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY
                 );
         } else {
             captureBuilder.setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY);
@@ -402,7 +446,12 @@ public class NativeCameraPlugin extends Plugin {
         preview.setSurfaceProvider(previewView.getSurfaceProvider());
         imageCapture = captureBuilder.build();
         provider.unbindAll();
-        camera = provider.bindToLifecycle((LifecycleOwner) getActivity(), onWide && wideLens != null ? wideLens : mainLens, preview, imageCapture);
+        camera = provider.bindToLifecycle(
+            (LifecycleOwner) getActivity(),
+            onFront ? CameraSelector.DEFAULT_FRONT_CAMERA : onWide && wideLens != null ? wideLens : mainLens,
+            preview,
+            imageCapture
+        );
         if (orientation != null) orientation.enable();
     }
 
@@ -437,8 +486,15 @@ public class NativeCameraPlugin extends Plugin {
         res.put("zoom", now);
         res.put("hasFlash", flash);
         res.put("streaming", streaming);
-        res.put("wideFactor", wideLens != null ? wideFactor : 0);
-        res.put("lens", onWide ? "wide" : "main");
+        res.put("wideFactor", wideLens != null && !onFront ? wideFactor : 0);
+        res.put("lens", onFront ? "front" : onWide ? "wide" : "main");
+        boolean hasFront = false;
+        try {
+            hasFront = provider != null && provider.hasCamera(CameraSelector.DEFAULT_FRONT_CAMERA);
+        } catch (Throwable ignored) {
+            // no front camera
+        }
+        res.put("hasFront", hasFront);
         return res;
     }
 
@@ -489,6 +545,7 @@ public class NativeCameraPlugin extends Plugin {
 
     @Override
     public void load() {
+        instance = this;
         orientation = new OrientationEventListener(getContext()) {
             @Override
             public void onOrientationChanged(int degrees) {
@@ -503,6 +560,8 @@ public class NativeCameraPlugin extends Plugin {
 
     @Override
     protected void handleOnDestroy() {
+        shutterKeys = false;
+        if (instance == this) instance = null;
         if (orientation != null) orientation.disable();
         if (provider != null) provider.unbindAll();
     }

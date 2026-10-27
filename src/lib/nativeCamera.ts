@@ -15,7 +15,9 @@ export interface NativeCameraInfo {
   // the ultra-wide lens, if the phone lists it as a camera of its own: how
   // its view compares with the main lens (e.g. 0.55); 0 if there isn't one
   wideFactor: number;
-  lens: "main" | "wide";
+  lens: "main" | "wide" | "front";
+  // the phone has a selfie camera
+  hasFront?: boolean;
 }
 
 interface NativeCameraPlugin {
@@ -25,12 +27,16 @@ interface NativeCameraPlugin {
   stop(): Promise<void>;
   setZoom(o: { ratio: number }): Promise<void>;
   setLens(o: { wide: boolean }): Promise<NativeCameraInfo>;
+  setFacing(o: { front: boolean }): Promise<NativeCameraInfo>;
+  // the volume keys take the photo (a "shutterKey" event) instead of changing the volume
+  setShutterKeys(o: { on: boolean }): Promise<void>;
   setFlash(o: { on: boolean }): Promise<void>;
   setZsl(o: { on: boolean }): Promise<void>;
   setLayout(o: { fill: boolean; top: number; height: number }): Promise<void>;
   focus(o: { x: number; y: number }): Promise<void>;
   capture(): Promise<{ path: string }>;
   addListener(event: "state", fn: (s: { streaming: boolean }) => void): Promise<PluginListenerHandle>;
+  addListener(event: "shutterKey", fn: () => void): Promise<PluginListenerHandle>;
 }
 
 export const NativeCamera = registerPlugin<NativeCameraPlugin>("NativeCamera");

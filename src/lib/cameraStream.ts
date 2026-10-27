@@ -20,10 +20,25 @@ let stream: MediaStream | null = null;
 let opening: Promise<MediaStream> | null = null;
 let users = 0;
 let stopTimer: number | undefined;
+// the selfie camera instead of the back one
+let front = false;
+
+/** The selfie camera (true) or the back one: a change stops the picture, to open the other. */
+export function setCameraFacing(f: boolean) {
+  if (f === front) return;
+  front = f;
+  stopCamera();
+}
 
 function liveStream() {
   const track = stream?.getVideoTracks()[0];
   return track && track.readyState === "live" ? stream : null;
+}
+
+/** Is there a selfie camera (known once the camera's been allowed). */
+export async function hasFrontCamera(): Promise<boolean> {
+  const cams = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === "videoinput");
+  return cams.some((d) => /front|user|facing front/i.test(d.label));
 }
 
 /** The camera's picture, opening the camera if it isn't running. Pair with releaseCamera. */
@@ -38,7 +53,7 @@ function openStream(): Promise<MediaStream> {
   if (live) return Promise.resolve(live);
   stream = null;
   if (!opening) {
-    opening = openMainCamera()
+    opening = (front ? getUserMedia({ facingMode: { ideal: "user" }, ...PREVIEW }) : openMainCamera())
       .then((s) => {
         stream = s;
         // nobody's using it (it was warmed, then not used): stop it later
