@@ -7,6 +7,9 @@ the technical detail.
 
 ## 27 October 2026
 
+- **Build 9, out to coworkers.** The selfie camera and the volume-key
+  shutter. BUILD_LABEL is now 9.
+
 - **Camera: selfie camera.** A flip button to the right of the shutter
   switches to the front camera and back. The camera always opens on the
   back one, at 1×. No flash or .5× on the front camera.
