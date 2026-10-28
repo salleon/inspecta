@@ -21,7 +21,10 @@ export interface CameraLabel {
 
 export type PhotoToolRequest =
   | { kind: "camera"; label: CameraLabel; resolve: (r: Captured | null | "fallback") => void }
-  | { kind: "markup"; blob: Blob; marks: Mark[]; resolve: (marks: Mark[] | null) => void };
+  | { kind: "markup"; blob: Blob; marks: Mark[]; resolve: (r: MarkedUp | null) => void };
+
+/** What Mark up gives back: the marks, and the photo if it was turned (⟲). */
+export type MarkedUp = { marks: Mark[]; blob?: Blob };
 
 let request: PhotoToolRequest | null = null;
 const listeners = new Set<() => void>();
@@ -64,8 +67,8 @@ export async function capturePhoto(label: CameraLabel = { title: "New photo" }):
   return blob ? { blob } : null;
 }
 
-/** Opens the markup editor on a photo; the marks when Done, null if cancelled. */
-export function markUpPhoto(blob: Blob, marks: Mark[] = []): Promise<Mark[] | null> {
+/** Opens the markup editor on a photo; the marks (and the turned photo, if it was) when Done, null if cancelled. */
+export function markUpPhoto(blob: Blob, marks: Mark[] = []): Promise<MarkedUp | null> {
   return new Promise((resolve) =>
     show({
       kind: "markup",

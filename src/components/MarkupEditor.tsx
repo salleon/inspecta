@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent } from "react";
 import type { Mark } from "../db/types";
 import { useBackHandler } from "../lib/backButton";
-import { drawMark, labelBox, RED, YELLOW } from "../lib/markup";
+import { drawMark, labelBox, RED, rotateMark, rotatePhoto, rotatePhotoSafe, YELLOW } from "../lib/markup";
 import "./PhotoTools.css";
 
 // ✎ Mark up: draw on a photo. Two main tools:
@@ -10,8 +10,9 @@ import "./PhotoTools.css";
 //   ↔ Measure  drag between two points: a yellow double arrow, then type
 //              the measurement with its unit (650 mm, 1.2 m); drag its
 //              ends to adjust, tap the number to change it
-// and smaller: Arrow, Pen, Delete (the selected mark), Undo.
-// The photo itself is never changed; the marks are kept with it.
+// and smaller: Arrow, Pen, Delete (the selected mark), Undo. ⟲ over the
+// photo's corner turns it a quarter anticlockwise, marks and all.
+// The photo itself is only changed if it's turned; the marks are kept apart.
 
 type Tool = "circle" | "measure" | "arrow" | "pen";
 
@@ -19,7 +20,8 @@ interface Props {
   blob: Blob;
   marks: Mark[];
   onCancel: () => void;
-  onDone: (marks: Mark[]) => void;
+  // blob: the photo turned with ⟲ (only when it was)
+  onDone: (marks: Mark[], blob?: Blob) => void;
 }
 
 interface Rect {
@@ -43,6 +45,31 @@ const NEW_CIRCLE = 56; // px on screen
 export default function MarkupEditor({ blob, marks: initial, onCancel, onDone }: Props) {
   const [url] = useState(() => URL.createObjectURL(blob));
   useEffect(() => () => URL.revokeObjectURL(url), [url]);
+  // ⟲ quarter turns anticlockwise, and the turned photo shown (a smaller copy)
+  const [turns, setTurns] = useState(0);
+  const [turnedUrl, setTurnedUrl] = useState<string | null>(null);
+  // which undo steps were turns (their places in history)
+  const turnSteps = useRef<number[]>([]);
+  const finishing = useRef(false);
+  useEffect(() => {
+    if (turns % 4 === 0) {
+      setTurnedUrl(null);
+      return;
+    }
+    let live = true, made: string | null = null;
+    rotatePhoto(blob, turns, 2000)
+      .then((r) => {
+        if (!live) return;
+        made = URL.createObjectURL(r.blob);
+        setTurnedUrl(made);
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+      if (made) URL.revokeObjectURL(made);
+    };
+  }, [blob, turns]);
+  const shownUrl = turns % 4 ? turnedUrl : url;
   const [natural, setNatural] = useState<{ w: number; h: number } | null>(null);
   const areaRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -66,10 +93,35 @@ export default function MarkupEditor({ blob, marks: initial, onCancel, onDone }:
 
   // Android back keeps the marks, like Done (Cancel throws them away)
   useBackHandler(() => {
-    setEditing(-1);
-    onDone(marks);
+    void finish();
     return true;
   });
+
+  // Done (and Android back): the marks, and the photo turned if it was
+  async function finish() {
+    if (finishing.current) return;
+    finishing.current = true;
+    setEditing(-1);
+    if (turns % 4 === 0) {
+      onDone(marks);
+      return;
+    }
+    const turned = await rotatePhotoSafe(blob, turns);
+    if (turned) onDone(marks, turned);
+    else {
+      finishing.current = false;
+      alert("Couldn't turn the photo on this phone");
+    }
+  }
+
+  function rotate() {
+    finishLabel();
+    setSel(-1);
+    turnSteps.current.push(history.length);
+    commit(marks.map(rotateMark));
+    setTurns((t) => t + 1);
+    setNatural(null);
+  }
 
   // the area the photo is shown in
   useLayoutEffect(() => {
@@ -242,6 +294,11 @@ export default function MarkupEditor({ blob, marks: initial, onCancel, onDone }:
   function undo() {
     finishLabel();
     if (!history.length) return;
+    if (turnSteps.current[turnSteps.current.length - 1] === history.length - 1) {
+      turnSteps.current.pop();
+      setTurns((t) => t - 1);
+      setNatural(null);
+    }
     setMarks(history[history.length - 1]);
     setHistory(history.slice(0, -1));
     setSel(-1);
@@ -462,17 +519,15 @@ export default function MarkupEditor({ blob, marks: initial, onCancel, onDone }:
         <span className="t">Mark up</span>
         <button
           className="go"
-          onClick={() => {
-            finishLabel();
-            onDone(marks);
-          }}
+          onClick={() => void finish()}
         >
           Done
         </button>
       </div>
       <div className="mk-area" ref={areaRef} style={{ marginBottom: editing >= 0 ? `max(0px, calc(${PAD_H}px + var(--sa-bottom) - ${toolsH}px))` : 0 }}>
         <img
-          src={url}
+          key={shownUrl ?? ""}
+          src={shownUrl ?? undefined}
           alt=""
           onLoad={(e) => setNatural({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })}
           style={rect ? { left: rect.left, top: rect.top, width: rect.width, height: rect.height } : { opacity: 0 }}
@@ -488,6 +543,19 @@ export default function MarkupEditor({ blob, marks: initial, onCancel, onDone }:
             onPointerCancel={onPointerUp}
             onWheel={onWheel}
           />
+        )}
+        {rect && (
+          <button
+            className="mk-rotate"
+            aria-label="Rotate"
+            style={{ left: rect.left + rect.width - 52, top: rect.top + rect.height - 52 }}
+            onClick={rotate}
+          >
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 12a8 8 0 1 0 2.4-5.7" />
+              <path d="M4 4v4.5h4.5" />
+            </svg>
+          </button>
         )}
         {labelAt && editingMark?.t === "measure" && (
           <div className="mk-label" data-testid="measure-label" style={{ left: labelAt.left, top: labelAt.top }} onPointerDown={placeCaret}>

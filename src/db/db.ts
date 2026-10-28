@@ -314,16 +314,18 @@ export async function listPhotos(findingId: string) {
 
 // The marks drawn on a photo (✎ Mark up), changed or cleared. The original
 // is kept; the marked copy, its thumbnail and export copies are made again.
-export async function setPhotoMarks(photoId: string, marks: Mark[]) {
+// turned: the photo itself, turned in Mark up (⟲), replacing the original
+export async function setPhotoMarks(photoId: string, marks: Mark[], turned?: Blob) {
   const photo = await db.photos.get(photoId);
   if (!photo) return;
-  const marked = marks.length ? await renderMarkedSafe(photo.blob, marks) : undefined;
+  const base = turned ?? photo.blob;
+  const marked = marks.length ? await renderMarkedSafe(base, marks) : undefined;
   // let a thumbnail / copy still being made from the old one finish first,
   // so it can't be saved over the new one
   await thumbnailJobs.get(photoId)?.catch(() => {});
   await exportCopyJobs.get(photoId)?.catch(() => {});
   await db.transaction("rw", db.photos, db.thumbnails, db.exportCopies, async () => {
-    await db.photos.update(photoId, { marks: marks.length ? marks : undefined, marked });
+    await db.photos.update(photoId, { ...(turned ? { blob: turned } : {}), marks: marks.length ? marks : undefined, marked });
     await db.thumbnails.delete(photoId);
     await db.exportCopies.delete(photoId);
   });

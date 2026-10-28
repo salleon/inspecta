@@ -486,10 +486,12 @@ export default function InAppCamera({ label, onDone }: Props) {
     setMarking(false);
   }
 
-  function use(marks?: Mark[]) {
+  // turned: the photo turned in Mark up (⟲), used instead of the shot
+  function use(marks?: Mark[], turned?: Blob) {
     if (!shot) return;
-    void saveToGallery(shot.blob, Date.now(), shot.path);
-    onDone({ blob: shot.blob, marks: marks?.length ? marks : undefined });
+    if (turned) void saveToGallery(turned, Date.now());
+    else void saveToGallery(shot.blob, Date.now(), shot.path);
+    onDone({ blob: turned ?? shot.blob, marks: marks?.length ? marks : undefined });
   }
 
   // .5× is the ultra-wide where Android's camera found one (its own zoom,
@@ -609,7 +611,7 @@ export default function InAppCamera({ label, onDone }: Props) {
           )}
         </div>
       )}
-      {shot && marking && <MarkupEditor blob={shot.blob} marks={[]} onCancel={() => setMarking(false)} onDone={(marks) => use(marks)} />}
+      {shot && marking && <MarkupEditor blob={shot.blob} marks={[]} onCancel={() => setMarking(false)} onDone={(marks, blob) => use(marks, blob)} />}
     </div>
   );
 }

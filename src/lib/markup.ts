@@ -207,3 +207,57 @@ export async function renderMarkedSafe(original: Blob, marks: Mark[]): Promise<B
 export function shownBlob(photo: { blob: Blob; marked?: Blob; marks?: Mark[] }): Blob {
   return photo.marks?.length && photo.marked ? photo.marked : photo.blob;
 }
+
+// A photo turned a quarter anticlockwise `turns` times (a JPEG), at most
+// `maxEdge` px on its long side (0: full size). For ⟲ Rotate in Mark up.
+export async function rotatePhoto(original: Blob, turns: number, maxEdge = 0): Promise<{ blob: Blob; width: number; height: number }> {
+  const q = ((turns % 4) + 4) % 4;
+  const photo = await decodeUpright(original);
+  const scale = maxEdge ? Math.min(1, maxEdge / Math.max(photo.width, photo.height)) : 1;
+  const w = Math.max(1, Math.round(photo.width * scale)), h = Math.max(1, Math.round(photo.height * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = q % 2 ? h : w;
+  canvas.height = q % 2 ? w : h;
+  const g = canvas.getContext("2d")!;
+  g.imageSmoothingQuality = "high";
+  if (q === 1) g.translate(0, canvas.height);
+  else if (q === 2) g.translate(canvas.width, canvas.height);
+  else if (q === 3) g.translate(canvas.width, 0);
+  g.rotate((-q * Math.PI) / 2);
+  g.drawImage(photo.source, 0, 0, w, h);
+  photo.done();
+  const blob = await new Promise<Blob>((resolve, reject) =>
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("rotate encode failed"))), "image/jpeg", 0.95),
+  );
+  const out = { blob, width: canvas.width, height: canvas.height };
+  canvas.width = 0;
+  canvas.height = 0;
+  return out;
+}
+
+// rotatePhoto that tries smaller if the full size is too much for the phone
+export async function rotatePhotoSafe(original: Blob, turns: number): Promise<Blob | undefined> {
+  for (const edge of [0, 4000, 2400]) {
+    try {
+      return (await rotatePhoto(original, turns, edge)).blob;
+    } catch {
+      // try smaller
+    }
+  }
+  return undefined;
+}
+
+// a mark moved with its photo turned a quarter anticlockwise (marks are in
+// fractions of the photo's width and height)
+export function rotateMark(m: Mark): Mark {
+  const p = (x: number, y: number): [number, number] => [y, 1 - x];
+  if (m.t === "circle") {
+    const [cx, cy] = p(m.cx, m.cy);
+    return { ...m, cx, cy, rx: m.ry, ry: m.rx };
+  }
+  if (m.t === "measure" || m.t === "arrow") {
+    const [x0, y0] = p(m.x0, m.y0), [x1, y1] = p(m.x1, m.y1);
+    return { ...m, x0, y0, x1, y1 };
+  }
+  return { ...m, pts: m.pts.map(([x, y]) => p(x, y)) };
+}

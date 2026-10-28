@@ -9,5 +9,5 @@ export default function PhotoToolsHost() {
   const req = useSyncExternalStore(subscribePhotoTools, currentPhotoTool);
   if (!req) return null;
   if (req.kind === "camera") return <InAppCamera label={req.label} onDone={req.resolve} />;
-  return <MarkupEditor blob={req.blob} marks={req.marks} onCancel={() => req.resolve(null)} onDone={req.resolve} />;
+  return <MarkupEditor blob={req.blob} marks={req.marks} onCancel={() => req.resolve(null)} onDone={(marks, blob) => req.resolve({ marks, blob })} />;
 }
