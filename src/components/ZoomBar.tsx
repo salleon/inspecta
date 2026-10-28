@@ -28,33 +28,39 @@ function stopLabel(z: number) {
 
 export default function ZoomBar({ stops, zoom, min, max, onZoom }: Props) {
   const [open, setOpen] = useState(false);
-  const drag = useRef<{ x: number; z: number; on: boolean; timer: number } | null>(null);
+  const drag = useRef<{ x: number; z: number; on: boolean; timer: number; el: HTMLDivElement; id: number } | null>(null);
   const dragged = useRef(false);
 
   const nearest = stops.reduce((a, z) => (Math.abs(Math.log(z / zoom)) < Math.abs(Math.log(a / zoom)) ? z : a), stops[0] ?? 1);
 
   function start(e: ReactPointerEvent<HTMLDivElement>) {
-    e.currentTarget.setPointerCapture(e.pointerId);
+    // the pointer is only taken once it's a hold or a slide, so a plain tap
+    // still reaches the stop's button
     dragged.current = false;
     const timer = window.setTimeout(() => {
       if (!drag.current) return;
-      drag.current.on = true;
-      setOpen(true);
+      grab(drag.current);
     }, HOLD_MS);
-    drag.current = { x: e.clientX, z: zoom, on: false, timer };
+    drag.current = { x: e.clientX, z: zoom, on: false, timer, el: e.currentTarget, id: e.pointerId };
   }
   function move(e: ReactPointerEvent<HTMLDivElement>) {
     const d = drag.current;
     if (!d) return;
     const dx = e.clientX - d.x;
-    if (!d.on && Math.abs(dx) > 6) {
-      d.on = true;
-      setOpen(true);
-    }
+    if (!d.on && Math.abs(dx) > 6) grab(d);
     if (!d.on) return;
     // slide right to zoom in, left to zoom out (the dial's marks follow the
     // finger, so bigger zooms sit to the left)
     onZoom(Math.min(max, Math.max(min, Math.exp(Math.log(d.z) + dx / PX))));
+  }
+  function grab(d: NonNullable<typeof drag.current>) {
+    d.on = true;
+    try {
+      d.el.setPointerCapture(d.id);
+    } catch {
+      // the pointer's already gone
+    }
+    setOpen(true);
   }
   function end() {
     const d = drag.current;
