@@ -408,14 +408,9 @@ export default function MarkupEditor({ blob, marks: initial, onCancel, onDone }:
   }
 
   const editingMark = marks[editing];
-  // the typing box sits where the label will be drawn (bumped below a short line)
-  const labelAt = (() => {
-    if (editingMark?.t !== "measure" || !rect) return null;
-    const g = measureCtx();
-    if (!g) return { left: rect.left + ((editingMark.x0 + editingMark.x1) / 2) * rect.width, top: rect.top + ((editingMark.y0 + editingMark.y1) / 2) * rect.height };
-    const b = labelBox(g, { ...editingMark, label: editingMark.label.trim() || "00 cm" }, rect.width, rect.height);
-    return { left: rect.left + b.x + b.w / 2, top: rect.top + b.y + b.h / 2 };
-  })();
+  const labelAt = editingMark?.t === "measure" && rect
+    ? { left: rect.left + ((editingMark.x0 + editingMark.x1) / 2) * rect.width, top: rect.top + ((editingMark.y0 + editingMark.y1) / 2) * rect.height }
+    : null;
 
   return (
     <div className="mk-ed" data-testid="markup-editor">
@@ -585,11 +580,4 @@ function shift(m: Mark, dx: number, dy: number): Mark {
 function sizeCircle(m: Extract<Mark, { t: "circle" }>, k: number, rect: Rect): Mark {
   const min = 12;
   return { ...m, rx: Math.max(min / rect.width, m.rx * k), ry: Math.max(min / rect.height, m.ry * k) };
-}
-
-// a scratch canvas just for measuring label text
-let scratch: CanvasRenderingContext2D | null | undefined;
-function measureCtx() {
-  if (scratch === undefined) scratch = document.createElement("canvas").getContext("2d");
-  return scratch;
 }
