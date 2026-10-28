@@ -39,7 +39,30 @@ export function labelBox(g: CanvasRenderingContext2D, m: Extract<Mark, { t: "mea
   g.font = `800 ${Math.round(38 * u)}px "Manrope Variable", Manrope, system-ui, sans-serif`;
   const bw = g.measureText(m.label).width + 30 * u;
   const bh = 58 * u;
-  return { x: ((m.x0 + m.x1) / 2) * w - bw / 2, y: ((m.y0 + m.y1) / 2) * h - bh / 2, w: bw, h: bh };
+  const mx = ((m.x0 + m.x1) / 2) * w, my = ((m.y0 + m.y1) / 2) * h;
+  const dx = (m.x1 - m.x0) * w, dy = (m.y1 - m.y0) * h;
+  const len = Math.hypot(dx, dy);
+  let cx = mx, cy = my, bumped = false;
+  if (len > 0) {
+    const ux = dx / len, uy = dy / len;
+    // how much of the line the box covers; if it reaches the arrowheads
+    // (a short measurement), bump the label off the line, below it
+    const along = Math.abs(ux) * bw + Math.abs(uy) * bh;
+    if (along + 20 * u > len) {
+      let nx = -uy, ny = ux;
+      if (ny < 0 || (ny === 0 && nx < 0)) (nx = -nx), (ny = -ny);
+      const across = (Math.abs(nx) * bw + Math.abs(ny) * bh) / 2;
+      const off = across + 22 * u;
+      cx = mx + nx * off;
+      cy = my + ny * off;
+      // keep it on the photo; flip above if there's no room below
+      if (cy + bh / 2 > h) (cx = mx - nx * off), (cy = my - ny * off);
+      cx = Math.min(Math.max(cx, bw / 2), w - bw / 2);
+      cy = Math.min(Math.max(cy, bh / 2), h - bh / 2);
+      bumped = true;
+    }
+  }
+  return { x: cx - bw / 2, y: cy - bh / 2, w: bw, h: bh, bumped, mx, my };
 }
 
 // one mark, onto a canvas `w` × `h` px showing the whole photo.
@@ -80,6 +103,16 @@ export function drawMark(g: CanvasRenderingContext2D, m: Mark, w: number, h: num
     arrowHead(g, x0, y0, x1, y1, 30 * u);
     if (m.label.trim() && !noLabel) {
       const b = labelBox(g, m, w, h);
+      if (b.bumped) {
+        g.strokeStyle = YELLOW;
+        g.lineWidth = 3 * u;
+        g.setLineDash([8 * u, 6 * u]);
+        g.beginPath();
+        g.moveTo(b.mx, b.my);
+        g.lineTo(b.x + b.w / 2, b.y + b.h / 2);
+        g.stroke();
+        g.setLineDash([]);
+      }
       g.fillStyle = "rgba(14,39,64,.92)";
       g.strokeStyle = YELLOW;
       g.lineWidth = 4 * u;
