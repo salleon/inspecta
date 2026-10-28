@@ -52,8 +52,9 @@ export default function ZoomBar({ stops, zoom, min, max, onZoom }: Props) {
       setOpen(true);
     }
     if (!d.on) return;
-    // the dial's marks follow the finger: slide left to zoom in
-    onZoom(Math.min(max, Math.max(min, Math.exp(Math.log(d.z) - dx / PX))));
+    // slide right to zoom in, left to zoom out (the dial's marks follow the
+    // finger, so bigger zooms sit to the left)
+    onZoom(Math.min(max, Math.max(min, Math.exp(Math.log(d.z) + dx / PX))));
   }
   function end() {
     const d = drag.current;
@@ -69,7 +70,7 @@ export default function ZoomBar({ stops, zoom, min, max, onZoom }: Props) {
   if (open) {
     const majors = [...stops, 4, 8, 16].filter((m) => m >= min - 0.01 && m <= max + 0.01);
     for (let s = Math.max(min, 0.5); s <= max + 0.001; s = +(s + (s < 1 ? 0.05 : s < 2 ? 0.1 : s < 4 ? 0.25 : s < 8 ? 0.5 : 1)).toFixed(2)) {
-      const x = MID + Math.log(s / zoom) * PX;
+      const x = MID - Math.log(s / zoom) * PX;
       if (x < 14 || x > W - 14) continue;
       const major = majors.some((m) => Math.abs(m - s) < 0.03);
       const y0 = H - Math.sqrt(Math.max(0, 1 - ((x - MID) / R) ** 2)) * (H + 2);
