@@ -38,14 +38,6 @@ type Drag =
   | { kind: "pen"; pts: [number, number][] }
   | { kind: "tap"; px: number; py: number };
 
-const NO_TOOL_HINT = "Tap a mark to move or change it · tap a tool to add more";
-const HINTS: Record<Tool, string> = {
-  circle: "Tap the photo to add a circle · drag to move · drag the corner (or pinch) to size",
-  measure: "Drag from one point to the other, then type the measurement",
-  arrow: "Drag to draw an arrow",
-  pen: "Draw with your finger",
-};
-
 const NEW_CIRCLE = 56; // px on screen
 
 export default function MarkupEditor({ blob, marks: initial, onCancel, onDone }: Props) {
@@ -510,7 +502,6 @@ export default function MarkupEditor({ blob, marks: initial, onCancel, onDone }:
         )}
       </div>
       <div ref={toolsRef} className="mk-bottom">
-      <div className="mk-hint">{tool ? HINTS[tool] : NO_TOOL_HINT}</div>
       <div className="mk-tools">
         <div className="mk-big">
           <button className={`mk-bt${tool === "circle" ? " on" : ""}`} aria-pressed={tool === "circle"} onClick={() => pickTool("circle")}>

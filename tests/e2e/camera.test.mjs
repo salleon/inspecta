@@ -278,7 +278,6 @@ test("✎ Mark up on a finding opens the marks again to change them", async () =
   assert.equal(await circle.getAttribute("aria-pressed"), "true");
   await circle.click();
   assert.equal(await circle.getAttribute("aria-pressed"), "false");
-  assert.match(await page.locator(".mk-hint").innerText(), /Tap a mark to move or change it/);
   const c3 = await canvasBox();
   await page.mouse.click(c3.x + c3.width * 0.15, c3.y + c3.height * 0.2);
   await page.mouse.move(c3.x + c3.width * 0.1, c3.y + c3.height * 0.8);
