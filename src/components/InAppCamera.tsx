@@ -9,6 +9,7 @@ import CameraStartScreen from "./CameraStartScreen";
 import { acquireCamera, dropCamera, hasFrontCamera, releaseCamera, setCameraFacing } from "../lib/cameraStream";
 import { setCameraOpen } from "../lib/photoWork";
 import { acquireNative, captureNative, hasNativeCamera, NativeCamera, releaseNative, saveNativeError } from "../lib/nativeCamera";
+import ZoomBar from "./ZoomBar";
 import "./PhotoTools.css";
 
 // Inspecta's own camera (no Android camera app): the camera's picture full
@@ -500,7 +501,6 @@ export default function InAppCamera({ label, onDone }: Props) {
   }, [nativeError]);
 
   const zoomStops = caps.wide ? [caps.wide, 1, 2].filter((z) => z <= caps.zoom.max + 0.05) : [0.5, 1, 2].filter((z) => z >= caps.zoom.min - 0.05 && z <= caps.zoom.max + 0.05);
-  const nearest = zoomStops.reduce((a, z) => (Math.abs(z - zoom) < Math.abs(a - zoom) ? z : a), zoomStops[0] ?? 1);
   const flashKnown = caps.torch;
 
   return (
@@ -554,13 +554,7 @@ export default function InAppCamera({ label, onDone }: Props) {
         </div>
       )}
       {!shot && live && zoomStops.length > 1 && (
-        <div className="cam-zoom">
-          {zoomStops.map((z) => (
-            <button key={z} className={z === nearest ? "on" : ""} onClick={() => applyZoom(z)}>
-              {z === nearest && Math.abs(zoom - z) > 0.05 ? `${zoom.toFixed(1).replace(/\.0$/, "").replace(/^0/, "")}×` : z < 1 ? ".5×" : `${z}×`}
-            </button>
-          ))}
-        </div>
+        <ZoomBar stops={zoomStops} zoom={zoom} min={caps.zoom.min} max={caps.zoom.max} onZoom={applyZoom} />
       )}
       {shot && fit ? (
         // Use ✓ where the shutter was (the thumb stays put), Retake and

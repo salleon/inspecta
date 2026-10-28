@@ -114,6 +114,43 @@
   background: rgba(255, 255, 255, 0.2);
   color: #f5d36b;
 }
+/* the dots between the stops: a quiet sign the bar slides */
+.cam-zoom-dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.35);
+  align-self: center;
+  margin: 0 -2px;
+}
+.cam-zoom {
+  touch-action: none;
+  user-select: none;
+  transition: background 0.15s;
+}
+.cam-zoom button,
+.cam-zoom-dot {
+  transition: opacity 0.15s;
+}
+.cam-dial {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+}
+.cam-zoom.open {
+  background: transparent;
+}
+.cam-zoom.open button,
+.cam-zoom.open .cam-zoom-dot {
+  opacity: 0;
+}
+.cam-zoom.open .cam-dial {
+  opacity: 1;
+}
 .cam-bot {
   position: absolute;
   left: 0;
