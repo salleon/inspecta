@@ -32,6 +32,7 @@ interface Rect {
 type Drag =
   | { kind: "move"; i: number; start: Mark; px: number; py: number; moved: boolean }
   | { kind: "handle"; i: number; h: "x" | "y" }
+  | { kind: "corner"; i: number; start: Extract<Mark, { t: "circle" }>; dist: number }
   | { kind: "end"; i: number; end: 0 | 1 }
   | { kind: "draw"; t: "measure" | "arrow"; x0: number; y0: number; moved: boolean }
   | { kind: "pen"; pts: [number, number][] }
@@ -39,7 +40,7 @@ type Drag =
 
 const NO_TOOL_HINT = "Tap a mark to move or change it · tap a tool to add more";
 const HINTS: Record<Tool, string> = {
-  circle: "Tap the photo to add a circle · drag to move · pinch to size",
+  circle: "Tap the photo to add a circle · drag to move · drag the corner (or pinch) to size",
   measure: "Drag from one point to the other, then type the measurement",
   arrow: "Drag to draw an arrow",
   pen: "Draw with your finger",
@@ -129,15 +130,53 @@ export default function MarkupEditor({ blob, marks: initial, onCancel, onDone }:
     };
     if (m.t === "circle") {
       const cx = m.cx * w, cy = m.cy * h, rx = m.rx * w, ry = m.ry * h;
-      g.setLineDash([7, 6]);
-      g.strokeStyle = "rgba(255,255,255,.9)";
-      g.lineWidth = 1.5;
-      g.strokeRect(cx - rx - 10, cy - ry - 10, 2 * rx + 20, 2 * ry + 20);
-      g.setLineDash([]);
-      dot(cx + rx, cy, RED);
-      dot(cx - rx, cy, RED);
-      dot(cx, cy + ry, RED);
-      dot(cx, cy - ry, RED);
+      // a soft glow round it says it's selected
+      g.strokeStyle = "rgba(255,255,255,.22)";
+      g.lineWidth = 12;
+      g.beginPath();
+      g.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+      g.stroke();
+      // slim pills on the edge to stretch it into an oval
+      const pill = (x: number, y: number, upright: boolean) => {
+        const pw = upright ? 7 : 24, ph = upright ? 24 : 7;
+        g.fillStyle = "#fff";
+        g.strokeStyle = "rgba(0,0,0,.3)";
+        g.lineWidth = 1;
+        g.beginPath();
+        g.roundRect(x - pw / 2, y - ph / 2, pw, ph, 3.5);
+        g.fill();
+        g.stroke();
+      };
+      pill(cx + rx, cy, true);
+      pill(cx - rx, cy, true);
+      pill(cx, cy - ry, false);
+      pill(cx, cy + ry, false);
+      // the corner handle: drag it diagonally to size it, one-thumbed
+      const c = cornerAt(m, w, h);
+      const sx = Math.sign(c.x - cx) || 1, sy = Math.sign(c.y - cy) || 1;
+      const r = drag.current?.kind === "corner" ? 16 : 14;
+      g.fillStyle = "#fff";
+      g.strokeStyle = "rgba(0,0,0,.3)";
+      g.lineWidth = 1;
+      g.beginPath();
+      g.arc(c.x, c.y, r, 0, Math.PI * 2);
+      g.fill();
+      g.stroke();
+      g.strokeStyle = "#3a3a38";
+      g.lineWidth = 2;
+      g.lineCap = "round";
+      g.lineJoin = "round";
+      const a = 4.5;
+      g.beginPath();
+      g.moveTo(c.x - a * sx, c.y - a * sy);
+      g.lineTo(c.x + a * sx, c.y + a * sy);
+      g.moveTo(c.x - a * sx, c.y);
+      g.lineTo(c.x - a * sx, c.y - a * sy);
+      g.lineTo(c.x, c.y - a * sy);
+      g.moveTo(c.x + a * sx, c.y);
+      g.lineTo(c.x + a * sx, c.y + a * sy);
+      g.lineTo(c.x, c.y + a * sy);
+      g.stroke();
     } else if (m.t === "measure" || m.t === "arrow") {
       dot(m.x0 * w, m.y0 * h, m.t === "measure" ? YELLOW : RED);
       dot(m.x1 * w, m.y1 * h, m.t === "measure" ? YELLOW : RED);
@@ -234,13 +273,15 @@ export default function MarkupEditor({ blob, marks: initial, onCancel, onDone }:
   }
 
   // which mark (and which part of it) is at a point
-  function hit(x: number, y: number): { i: number; part: "body" | "hx" | "hy" | "end0" | "end1" | "label" } | null {
+  function hit(x: number, y: number): { i: number; part: "body" | "corner" | "hx" | "hy" | "end0" | "end1" | "label" } | null {
     if (!rect) return null;
     const w = rect.width, h = rect.height;
     // the selected one's handles first
     const s = marks[sel];
     if (s?.t === "circle") {
       const cx = s.cx * w, cy = s.cy * h, rx = s.rx * w, ry = s.ry * h;
+      const c = cornerAt(s, w, h);
+      if (Math.hypot(x - c.x, y - c.y) < 28) return { i: sel, part: "corner" };
       if (Math.hypot(x - (cx + rx), y - cy) < 22 || Math.hypot(x - (cx - rx), y - cy) < 22) return { i: sel, part: "hx" };
       if (Math.hypot(x - cx, y - (cy + ry)) < 22 || Math.hypot(x - cx, y - (cy - ry)) < 22) return { i: sel, part: "hy" };
     }
@@ -295,7 +336,9 @@ export default function MarkupEditor({ blob, marks: initial, onCancel, onDone }:
     if (found) {
       const m = marks[found.i];
       setSel(found.i);
-      if (found.part === "hx" || found.part === "hy") drag.current = { kind: "handle", i: found.i, h: found.part === "hx" ? "x" : "y" };
+      if (found.part === "corner" && m.t === "circle")
+        drag.current = { kind: "corner", i: found.i, start: m, dist: Math.max(10, Math.hypot(x - m.cx * rect.width, y - m.cy * rect.height)) };
+      else if (found.part === "hx" || found.part === "hy") drag.current = { kind: "handle", i: found.i, h: found.part === "hx" ? "x" : "y" };
       else if (found.part === "end0" || found.part === "end1") drag.current = { kind: "end", i: found.i, end: found.part === "end0" ? 0 : 1 };
       else drag.current = { kind: "move", i: found.i, start: m, px: x, py: y, moved: false };
       setHistory((h) => [...h, marks]);
@@ -327,6 +370,9 @@ export default function MarkupEditor({ blob, marks: initial, onCancel, onDone }:
       d.moved = true;
       const dx = (x - d.px) / rect.width, dy = (y - d.py) / rect.height;
       setMarks((ms) => ms.map((m, i) => (i === d.i ? shift(d.start, dx, dy) : m)));
+    } else if (d.kind === "corner") {
+      const k = Math.hypot(x - d.start.cx * rect.width, y - d.start.cy * rect.height) / d.dist;
+      setMarks((ms) => ms.map((m, i) => (i === d.i ? sizeCircle(d.start, k, rect) : m)));
     } else if (d.kind === "handle") {
       setMarks((ms) =>
         ms.map((m, i) => {
@@ -592,4 +638,15 @@ let scratch: CanvasRenderingContext2D | null | undefined;
 function measureCtx() {
   if (scratch === undefined) scratch = document.createElement("canvas").getContext("2d");
   return scratch;
+}
+
+// where a circle's corner handle goes: on its edge, bottom-right, or the
+// next corner round that's still on the photo (so a thumb can reach it)
+function cornerAt(m: Extract<Mark, { t: "circle" }>, w: number, h: number) {
+  const cx = m.cx * w, cy = m.cy * h, dx = m.rx * w * Math.SQRT1_2, dy = m.ry * h * Math.SQRT1_2, pad = 16;
+  for (const [sx, sy] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) {
+    const x = cx + sx * dx, y = cy + sy * dy;
+    if (x > pad && x < w - pad && y > pad && y < h - pad) return { x, y };
+  }
+  return { x: Math.min(Math.max(cx + dx, pad), w - pad), y: Math.min(Math.max(cy + dy, pad), h - pad) };
 }
