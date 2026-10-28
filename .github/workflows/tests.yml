@@ -9,7 +9,7 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04  # pinned: the Playwright browser install fails on the Ubuntu 26 runner
     steps:
       - name: Checkout
         uses: actions/checkout@v4
