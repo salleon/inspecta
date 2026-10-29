@@ -154,8 +154,8 @@ export default function Note() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [findingId]);
 
-  // a photo just marked up: its marked copy's still being made (db/addPhoto);
-  // shown with its marks as soon as it's ready
+  // marked-up photos: their full-size marked copy is made (db/withMarked)
+  // and shown as soon as it's ready
   useEffect(() => {
     if (!photos.some((p) => p.marks?.length && !p.marked)) return;
     let cancelled = false;

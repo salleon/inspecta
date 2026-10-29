@@ -220,7 +220,7 @@ export function shownBlob(photo: { blob: Blob; marked?: Blob; marks?: Mark[] }):
 
 // A photo turned a quarter anticlockwise `turns` times (a JPEG), at most
 // `maxEdge` px on its long side (0: full size). For ⟲ Rotate in Mark up.
-export async function rotatePhoto(original: Blob, turns: number, maxEdge = 0): Promise<{ blob: Blob; width: number; height: number }> {
+export async function rotatePhoto(original: Blob, turns: number, maxEdge = 0, quality = 0.95): Promise<{ blob: Blob; width: number; height: number }> {
   const q = ((turns % 4) + 4) % 4;
   const photo = await decodeUpright(original);
   const scale = maxEdge ? Math.min(1, maxEdge / Math.max(photo.width, photo.height)) : 1;
@@ -237,7 +237,7 @@ export async function rotatePhoto(original: Blob, turns: number, maxEdge = 0): P
   g.drawImage(photo.source, 0, 0, w, h);
   photo.done();
   const blob = await new Promise<Blob>((resolve, reject) =>
-    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("rotate encode failed"))), "image/jpeg", 0.95),
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("rotate encode failed"))), "image/jpeg", quality),
   );
   const out = { blob, width: canvas.width, height: canvas.height };
   canvas.width = 0;

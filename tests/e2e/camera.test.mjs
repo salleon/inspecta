@@ -154,22 +154,19 @@ test("shoot, retake, mark up with a circle and a measurement, use", async () => 
   const doneAt = Date.now();
   await page.getByRole("button", { name: "Done" }).click();
   await page.waitForURL(/\/note$/);
-  // saved straight away, the marks with it: the marked copy's drawn in
-  // after, in the background, so the next camera never waits for it
+  // saved straight away, the marks with it (the marked copy is drawn in
+  // when it's needed, never saved), so the next camera never waits
   assert.ok(Date.now() - doneAt < 1400, "on to the finding without waiting for the marked copy");
   {
     const [saved] = await photos();
     assert.ok(saved && saved.marks.length === 2, "saved with its marks straight away");
   }
-  const until = Date.now() + 10000;
-  while (!(await photos())[0]?.marked && Date.now() < until) await page.waitForTimeout(200);
-
   const [p] = await photos();
   assert.ok(p, "photo saved");
   assert.equal(p.marks.length, 2);
   assert.equal(p.marks[0].t, "circle");
   assert.deepEqual([p.marks[1].t, p.marks[1].label], ["measure", "1.2 m"], "the unit is as typed");
-  assert.ok(p.marked > 0 && p.marked !== p.blob, "a marked copy, the original kept");
+  assert.ok(p.blob > 0 && !p.marked, "the original kept, no marked copy saved");
   assert.equal(await page.getByLabel("Marked up").count(), 1, "✎ on the thumbnail");
 });
 
