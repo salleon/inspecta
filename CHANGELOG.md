@@ -7,11 +7,11 @@ the technical detail.
 
 ## 29 October 2026
 
-- **Build 10, out to coworkers.** Camera zoom dial with smooth lens
+- **Build 9.1, out to coworkers.** Camera zoom dial with smooth lens
   changes; Mark up rotate, one-thumb circle handles, sharp measurement
   arrows; photos saved at about 1 MB, no saved marked-up copies, old
   exports cleared; Excel register keeps a finding's photos in its row,
-  more than four in an Additional photos column. BUILD_LABEL is now 10.
+  more than four in an Additional photos column. BUILD_LABEL is now 9.1.
 
 ## 27 October 2026
 
