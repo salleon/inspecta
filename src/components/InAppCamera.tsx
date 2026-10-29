@@ -328,8 +328,9 @@ export default function InAppCamera({ label, onDone }: Props) {
         return nativeZoom(wantedZoom.current, true);
       }
     }
-    // on the main lens nothing below 1×; the camera keeps it in its range
-    const ratio = lensRef.current === "wide" && caps.wide ? Math.max(1, z / caps.wide) : Math.max(1, z);
+    // on the main lens nothing below 1× when there's a separate ultra-wide
+    // (where the main camera zooms out onto it itself, caps.wide is 0)
+    const ratio = lensRef.current === "wide" && caps.wide ? Math.max(1, z / caps.wide) : caps.wide ? Math.max(1, z) : z;
     await NativeCamera.setZoom({ ratio }).catch(() => {});
   }
 
@@ -511,7 +512,7 @@ export default function InAppCamera({ label, onDone }: Props) {
     return () => window.clearTimeout(id);
   }, [nativeError]);
 
-  const zoomStops = caps.wide ? [caps.wide, 1, 2].filter((z) => z <= caps.zoom.max + 0.05) : [0.5, 1, 2].filter((z) => z >= caps.zoom.min - 0.05 && z <= caps.zoom.max + 0.05);
+  const zoomStops = caps.wide ? [caps.wide, 1, 2].filter((z) => z <= caps.zoom.max + 0.05) : [caps.zoom.min < 0.95 ? caps.zoom.min : 0.5, 1, 2].filter((z) => z >= caps.zoom.min - 0.05 && z <= caps.zoom.max + 0.05);
   const flashKnown = caps.torch;
 
   return (

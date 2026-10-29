@@ -1,7 +1,10 @@
 package au.com.inspecta.app;
 
 import android.Manifest;
+import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.view.View;
+import android.widget.ImageView;
 import android.view.OrientationEventListener;
 import android.view.Surface;
 import android.view.ViewGroup;
@@ -60,6 +63,13 @@ public class NativeCameraPlugin extends Plugin {
     private Camera camera;
     private ImageCapture imageCapture;
     private PreviewView previewView;
+    // the last picture, held over the preview while the lens changes, so
+    // the change shows as a brief pause instead of black
+    private ImageView freeze;
+    private final Runnable releaseFreeze = this::releasePicture;
+    // the main camera zooms out onto the ultra-wide itself (a "logical"
+    // camera, e.g. Pixels and newer Samsungs): one smooth zoom, no lens change
+    private boolean mainZoomsWide = false;
     private boolean streaming = false;
     private int rotation = Surface.ROTATION_0;
     private OrientationEventListener orientation;
@@ -339,6 +349,7 @@ public class NativeCameraPlugin extends Plugin {
                 return;
             }
             onWide = wide;
+            holdPicture();
             String failed = bindEither();
             if (failed != null) {
                 // back to the lens that worked
@@ -476,6 +487,7 @@ public class NativeCameraPlugin extends Plugin {
             ZoomState zoom = camera.getCameraInfo().getZoomState().getValue();
             if (zoom != null) {
                 min = zoom.getMinZoomRatio();
+                if (!onWide && !onFront) mainZoomsWide = min < 0.95f;
                 max = zoom.getMaxZoomRatio();
                 now = zoom.getZoomRatio();
             }
@@ -486,7 +498,7 @@ public class NativeCameraPlugin extends Plugin {
         res.put("zoom", now);
         res.put("hasFlash", flash);
         res.put("streaming", streaming);
-        res.put("wideFactor", wideLens != null && !onFront ? wideFactor : 0);
+        res.put("wideFactor", wideLens != null && !onFront && !mainZoomsWide ? wideFactor : 0);
         res.put("lens", onFront ? "front" : onWide ? "wide" : "main");
         boolean hasFront = false;
         try {
@@ -514,10 +526,40 @@ public class NativeCameraPlugin extends Plugin {
             .getPreviewStreamState()
             .observe((LifecycleOwner) getActivity(), (state) -> {
                 streaming = state == PreviewView.StreamState.STREAMING;
+                if (streaming) releasePicture();
                 JSObject data = new JSObject();
                 data.put("streaming", streaming);
                 notifyListeners("state", data);
             });
+    }
+
+    private void holdPicture() {
+        if (previewView == null) return;
+        Bitmap last = previewView.getBitmap();
+        if (last == null) return;
+        if (freeze == null) {
+            freeze = new ImageView(getContext());
+            freeze.setScaleType(ImageView.ScaleType.FIT_XY);
+            ((ViewGroup) previewView.getParent()).addView(freeze, 1, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            getBridge().getWebView().bringToFront();
+        }
+        freeze.setLayoutParams(previewView.getLayoutParams());
+        freeze.setTranslationY(previewView.getTranslationY());
+        freeze.animate().cancel();
+        freeze.setAlpha(1f);
+        freeze.setImageBitmap(last);
+        freeze.setVisibility(View.VISIBLE);
+        // never left up if the new lens doesn't start
+        freeze.postDelayed(releaseFreeze, 2500);
+    }
+
+    private void releasePicture() {
+        if (freeze == null || freeze.getVisibility() != View.VISIBLE) return;
+        freeze.removeCallbacks(releaseFreeze);
+        freeze.animate().alpha(0f).setDuration(120).withEndAction(() -> {
+            freeze.setVisibility(View.GONE);
+            freeze.setImageBitmap(null);
+        });
     }
 
     // the picture at its place, or the whole screen
