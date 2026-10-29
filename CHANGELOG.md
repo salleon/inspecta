@@ -5,6 +5,14 @@ matches a commit on the `test` branch (called `advanced_controls` until
 29 September 2026) or `main`; the commit itself has
 the technical detail.
 
+## 29 October 2026
+
+- **Build 10, out to coworkers.** Camera zoom dial with smooth lens
+  changes; Mark up rotate, one-thumb circle handles, sharp measurement
+  arrows; photos saved at about 1 MB, no saved marked-up copies, old
+  exports cleared; Excel register keeps a finding's photos in its row,
+  more than four in an Additional photos column. BUILD_LABEL is now 10.
+
 ## 27 October 2026
 
 - **Build 9, out to coworkers.** The selfie camera and the volume-key
