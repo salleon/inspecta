@@ -1,4 +1,5 @@
 import type { Finding, FlowTest, Photo, Site, SpfSystem, StairTest } from "../db/types";
+import { fitPhotos } from "./excelPhotoFit";
 import { defectTypeStyle } from "./defectTypes";
 import { reportRows } from "./esrGrouping";
 import { suggestedCorrectiveAction } from "./correctiveAction";
@@ -202,29 +203,25 @@ export async function buildFindingsWorkbook(
       onProgress?.({ stage: "photos", done: ++donePhotos, total: totalPhotos });
     }
 
-    // Lay the photos out two per line under the note. If they'd push the
-    // row past Excel's max row height, carry on in an extra row below
-    // (the other columns are merged across those rows).
-    const rowHeights: number[] = [];
-    const placements: { imageId: number; rowIdx: number; x: number; y: number; h: number }[] = [];
-    let rowIdx = 0;
-    let y = PAD + (noteH ? noteH + GAP : 0);
+    // Lay the photos out under the note, all in the finding's one row
+    // (no extra rows, so the sheet's formatting holds). Two per line at
+    // full size; if that would pass Excel's max row height, they're made
+    // smaller to fit, three or more per line when that keeps them bigger.
+    const placements: { imageId: number; x: number; y: number; w: number; h: number }[] = [];
+    const top = PAD + (noteH ? noteH + GAP : 0);
     // Rectified / Outstanding add a second line under the Ref
     const refLines = defectTypeStyle(finding.defectType)?.previousInspection ? 2 : 1;
-    let rowFloor = Math.max(y, PAD + locH + PAD, PAD + actionH + PAD, PAD + refLines * LINE_PX + PAD, MIN_ROW_PX);
-    for (let i = 0; i < prepared.length; i += 2) {
-      const pair = prepared.slice(i, i + 2);
-      const pairH = Math.max(...pair.map((p) => p.heightPx));
-      if (y + pairH + PAD > MAX_ROW_PX && y > PAD) {
-        rowHeights.push(Math.max(rowFloor, y - GAP + PAD));
-        rowIdx++;
-        y = PAD;
-        rowFloor = MIN_ROW_PX;
-      }
-      pair.forEach((p, j) => placements.push({ imageId: p.imageId, rowIdx, x: PAD + j * (PHOTO_W + GAP), y, h: p.heightPx }));
-      y += pairH + GAP;
+    const rowFloor = Math.max(top, PAD + locH + PAD, PAD + actionH + PAD, PAD + refLines * LINE_PX + PAD, MIN_ROW_PX);
+    const { perLine, scale } = fitPhotos(prepared.map((p) => p.heightPx), MAX_ROW_PX - top - PAD, PHOTO_W, GAP);
+    const w = PHOTO_W * scale;
+    let y = top;
+    for (let i = 0; i < prepared.length; i += perLine) {
+      const line = prepared.slice(i, i + perLine);
+      const lineH = Math.max(...line.map((p) => p.heightPx * scale));
+      line.forEach((p, j) => placements.push({ imageId: p.imageId, x: PAD + j * (w + GAP), y, w, h: p.heightPx * scale }));
+      y += lineH + GAP;
     }
-    rowHeights.push(Math.max(rowFloor, prepared.length ? y - GAP + PAD : y + PAD));
+    const rowHeights = [Math.max(rowFloor, prepared.length ? y - GAP + PAD : y + PAD)];
 
     const first = rowNum;
     const last = rowNum + rowHeights.length - 1;
@@ -313,10 +310,10 @@ export async function buildFindingsWorkbook(
         tl: {
           nativeCol: COL.description - 1,
           nativeColOff: Math.round(p.x * EMU_PER_PX),
-          nativeRow: first - 1 + p.rowIdx,
+          nativeRow: first - 1,
           nativeRowOff: Math.round(p.y * EMU_PER_PX),
         } as never,
-        ext: { width: PHOTO_W_EMU / EMU_PER_PX + 1e-6, height: p.h },
+        ext: { width: p.w + 1e-6, height: p.h },
         editAs: "oneCell",
       });
     }
