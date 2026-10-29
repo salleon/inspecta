@@ -9,6 +9,7 @@ import CameraStartScreen from "./CameraStartScreen";
 import { acquireCamera, dropCamera, hasFrontCamera, releaseCamera, setCameraFacing } from "../lib/cameraStream";
 import { setCameraOpen } from "../lib/photoWork";
 import { acquireNative, captureNative, hasNativeCamera, NativeCamera, releaseNative, saveNativeError } from "../lib/nativeCamera";
+import ZoomBar from "./ZoomBar";
 import "./PhotoTools.css";
 
 // Inspecta's own camera (no Android camera app): the camera's picture full
@@ -298,28 +299,38 @@ export default function InAppCamera({ label, onDone }: Props) {
 
   // Android's camera: below 1× is the ultra-wide lens (its own zoom is the
   // asked-for zoom over its factor), 1× and up the main one. Changing lens
-  // takes a moment, so it's done once at a time, then the latest zoom asked
-  // for is applied.
+  // restarts the picture (a moment of black), so while the zoom is still
+  // moving it stays on its lens, and changes once the zoom has settled; one
+  // change at a time, then the latest zoom asked for is applied.
   const lensRef = useRef<"main" | "wide">("main");
   const switching = useRef(false);
   const wantedZoom = useRef(1);
-  async function nativeZoom(z: number) {
+  const lensTimer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(lensTimer.current), []);
+  async function nativeZoom(z: number, settled = false) {
     wantedZoom.current = z;
     if (switching.current) return;
     const lens = caps.wide && z < 0.999 ? "wide" : "main";
+    window.clearTimeout(lensTimer.current);
     if (lens !== lensRef.current) {
-      switching.current = true;
-      try {
-        await NativeCamera.setLens({ wide: lens === "wide" });
-        lensRef.current = lens;
-      } catch {
-        // stays on the lens it was on
-      } finally {
-        switching.current = false;
+      if (!settled) {
+        lensTimer.current = window.setTimeout(() => void nativeZoom(wantedZoom.current, true), 350);
+      } else {
+        switching.current = true;
+        try {
+          await NativeCamera.setLens({ wide: lens === "wide" });
+          lensRef.current = lens;
+        } catch {
+          // stays on the lens it was on
+        } finally {
+          switching.current = false;
+        }
+        return nativeZoom(wantedZoom.current, true);
       }
-      return nativeZoom(wantedZoom.current);
     }
-    const ratio = lensRef.current === "wide" && caps.wide ? Math.max(1, z / caps.wide) : z;
+    // on the main lens nothing below 1× when there's a separate ultra-wide
+    // (where the main camera zooms out onto it itself, caps.wide is 0)
+    const ratio = lensRef.current === "wide" && caps.wide ? Math.max(1, z / caps.wide) : caps.wide ? Math.max(1, z) : z;
     await NativeCamera.setZoom({ ratio }).catch(() => {});
   }
 
@@ -485,10 +496,12 @@ export default function InAppCamera({ label, onDone }: Props) {
     setMarking(false);
   }
 
-  function use(marks?: Mark[]) {
+  // turned: the photo turned in Mark up (⟲), used instead of the shot
+  function use(marks?: Mark[], turned?: Blob) {
     if (!shot) return;
-    void saveToGallery(shot.blob, Date.now(), shot.path);
-    onDone({ blob: shot.blob, marks: marks?.length ? marks : undefined });
+    if (turned) void saveToGallery(turned, Date.now());
+    else void saveToGallery(shot.blob, Date.now(), shot.path);
+    onDone({ blob: turned ?? shot.blob, marks: marks?.length ? marks : undefined });
   }
 
   // .5× is the ultra-wide where Android's camera found one (its own zoom,
@@ -499,8 +512,7 @@ export default function InAppCamera({ label, onDone }: Props) {
     return () => window.clearTimeout(id);
   }, [nativeError]);
 
-  const zoomStops = caps.wide ? [caps.wide, 1, 2].filter((z) => z <= caps.zoom.max + 0.05) : [0.5, 1, 2].filter((z) => z >= caps.zoom.min - 0.05 && z <= caps.zoom.max + 0.05);
-  const nearest = zoomStops.reduce((a, z) => (Math.abs(z - zoom) < Math.abs(a - zoom) ? z : a), zoomStops[0] ?? 1);
+  const zoomStops = caps.wide ? [caps.wide, 1, 2].filter((z) => z <= caps.zoom.max + 0.05) : [caps.zoom.min < 0.95 ? caps.zoom.min : 0.5, 1, 2].filter((z) => z >= caps.zoom.min - 0.05 && z <= caps.zoom.max + 0.05);
   const flashKnown = caps.torch;
 
   return (
@@ -554,13 +566,7 @@ export default function InAppCamera({ label, onDone }: Props) {
         </div>
       )}
       {!shot && live && zoomStops.length > 1 && (
-        <div className="cam-zoom">
-          {zoomStops.map((z) => (
-            <button key={z} className={z === nearest ? "on" : ""} onClick={() => applyZoom(z)}>
-              {z === nearest && Math.abs(zoom - z) > 0.05 ? `${zoom.toFixed(1).replace(/\.0$/, "").replace(/^0/, "")}×` : z < 1 ? ".5×" : `${z}×`}
-            </button>
-          ))}
-        </div>
+        <ZoomBar stops={zoomStops} zoom={zoom} min={caps.zoom.min} max={caps.zoom.max} onZoom={applyZoom} />
       )}
       {shot && fit ? (
         // Use ✓ where the shutter was (the thumb stays put), Retake and
@@ -615,7 +621,7 @@ export default function InAppCamera({ label, onDone }: Props) {
           )}
         </div>
       )}
-      {shot && marking && <MarkupEditor blob={shot.blob} marks={[]} onCancel={() => setMarking(false)} onDone={(marks) => use(marks)} />}
+      {shot && marking && <MarkupEditor blob={shot.blob} marks={[]} onCancel={() => setMarking(false)} onDone={(marks, blob) => use(marks, blob)} />}
     </div>
   );
 }

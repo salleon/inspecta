@@ -154,8 +154,8 @@ export default function Note() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [findingId]);
 
-  // a photo just marked up: its marked copy's still being made (db/addPhoto);
-  // shown with its marks as soon as it's ready
+  // marked-up photos: their full-size marked copy is made (db/withMarked)
+  // and shown as soon as it's ready
   useEffect(() => {
     if (!photos.some((p) => p.marks?.length && !p.marked)) return;
     let cancelled = false;
@@ -363,11 +363,11 @@ export default function Note() {
   // original, which is kept so they can be changed again later
   async function handleMarkUp() {
     if (!activePhoto || busy) return;
-    const marks = await markUpPhoto(activePhoto.blob, activePhoto.marks ?? []);
-    if (!marks) return; // cancelled
+    const r = await markUpPhoto(activePhoto.blob, activePhoto.marks ?? []);
+    if (!r) return; // cancelled
     setBusy(true);
     try {
-      await setPhotoMarks(activePhoto.id, marks);
+      await setPhotoMarks(activePhoto.id, r.marks, r.blob);
       const url = thumbCache.current.get(activePhoto.id);
       if (url) URL.revokeObjectURL(url);
       thumbCache.current.delete(activePhoto.id);

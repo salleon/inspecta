@@ -23,6 +23,14 @@ function arrowHead(g: CanvasRenderingContext2D, x0: number, y0: number, x1: numb
   g.fill();
 }
 
+// pulls (x1,y1) back towards (x0,y0) by d, so a line stops inside its
+// arrowhead instead of poking out past the tip
+function pullBack(x0: number, y0: number, x1: number, y1: number, d: number): [number, number] {
+  const len = Math.hypot(x1 - x0, y1 - y0);
+  const k = len > d ? d / len : 0;
+  return [x1 - (x1 - x0) * k, y1 - (y1 - y0) * k];
+}
+
 function roundRect(g: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   g.beginPath();
   g.moveTo(x + r, y);
@@ -39,7 +47,30 @@ export function labelBox(g: CanvasRenderingContext2D, m: Extract<Mark, { t: "mea
   g.font = `800 ${Math.round(38 * u)}px "Manrope Variable", Manrope, system-ui, sans-serif`;
   const bw = g.measureText(m.label).width + 30 * u;
   const bh = 58 * u;
-  return { x: ((m.x0 + m.x1) / 2) * w - bw / 2, y: ((m.y0 + m.y1) / 2) * h - bh / 2, w: bw, h: bh };
+  const mx = ((m.x0 + m.x1) / 2) * w, my = ((m.y0 + m.y1) / 2) * h;
+  const dx = (m.x1 - m.x0) * w, dy = (m.y1 - m.y0) * h;
+  const len = Math.hypot(dx, dy);
+  let cx = mx, cy = my, bumped = false;
+  if (len > 0) {
+    const ux = dx / len, uy = dy / len;
+    // how much of the line the box covers; if it reaches the arrowheads
+    // (a short measurement), bump the label off the line, below it
+    const along = Math.abs(ux) * bw + Math.abs(uy) * bh;
+    if (along + 20 * u > len) {
+      let nx = -uy, ny = ux;
+      if (ny < 0 || (ny === 0 && nx < 0)) (nx = -nx), (ny = -ny);
+      const across = (Math.abs(nx) * bw + Math.abs(ny) * bh) / 2;
+      const off = across + 22 * u;
+      cx = mx + nx * off;
+      cy = my + ny * off;
+      // keep it on the photo; flip above if there's no room below
+      if (cy + bh / 2 > h) (cx = mx - nx * off), (cy = my - ny * off);
+      cx = Math.min(Math.max(cx, bw / 2), w - bw / 2);
+      cy = Math.min(Math.max(cy, bh / 2), h - bh / 2);
+      bumped = true;
+    }
+  }
+  return { x: cx - bw / 2, y: cy - bh / 2, w: bw, h: bh, bumped, mx, my };
 }
 
 // one mark, onto a canvas `w` × `h` px showing the whole photo.
@@ -63,23 +94,35 @@ export function drawMark(g: CanvasRenderingContext2D, m: Mark, w: number, h: num
     g.stroke();
   } else if (m.t === "measure") {
     const x0 = m.x0 * w, y0 = m.y0 * h, x1 = m.x1 * w, y1 = m.y1 * h;
+    const [ax, ay] = pullBack(x1, y1, x0, y0, 20 * u);
+    const [bx, by] = pullBack(x0, y0, x1, y1, 20 * u);
     g.strokeStyle = "rgba(0,0,0,.4)";
     g.lineWidth = 10 * u;
     g.beginPath();
-    g.moveTo(x0, y0);
-    g.lineTo(x1, y1);
+    g.moveTo(ax, ay);
+    g.lineTo(bx, by);
     g.stroke();
     g.strokeStyle = YELLOW;
     g.fillStyle = YELLOW;
     g.lineWidth = 6 * u;
     g.beginPath();
-    g.moveTo(x0, y0);
-    g.lineTo(x1, y1);
+    g.moveTo(ax, ay);
+    g.lineTo(bx, by);
     g.stroke();
     arrowHead(g, x1, y1, x0, y0, 30 * u);
     arrowHead(g, x0, y0, x1, y1, 30 * u);
     if (m.label.trim() && !noLabel) {
       const b = labelBox(g, m, w, h);
+      if (b.bumped) {
+        g.strokeStyle = YELLOW;
+        g.lineWidth = 3 * u;
+        g.setLineDash([8 * u, 6 * u]);
+        g.beginPath();
+        g.moveTo(b.mx, b.my);
+        g.lineTo(b.x + b.w / 2, b.y + b.h / 2);
+        g.stroke();
+        g.setLineDash([]);
+      }
       g.fillStyle = "rgba(14,39,64,.92)";
       g.strokeStyle = YELLOW;
       g.lineWidth = 4 * u;
@@ -98,7 +141,7 @@ export function drawMark(g: CanvasRenderingContext2D, m: Mark, w: number, h: num
     g.lineWidth = 8 * u;
     g.beginPath();
     g.moveTo(x0, y0);
-    g.lineTo(x1, y1);
+    g.lineTo(...pullBack(x0, y0, x1, y1, 22 * u));
     g.stroke();
     arrowHead(g, x0, y0, x1, y1, 34 * u);
   } else if (m.pts.length) {
@@ -173,4 +216,58 @@ export async function renderMarkedSafe(original: Blob, marks: Mark[]): Promise<B
 // what's shown and exported for a photo: marked up if it has marks
 export function shownBlob(photo: { blob: Blob; marked?: Blob; marks?: Mark[] }): Blob {
   return photo.marks?.length && photo.marked ? photo.marked : photo.blob;
+}
+
+// A photo turned a quarter anticlockwise `turns` times (a JPEG), at most
+// `maxEdge` px on its long side (0: full size). For ⟲ Rotate in Mark up.
+export async function rotatePhoto(original: Blob, turns: number, maxEdge = 0, quality = 0.95): Promise<{ blob: Blob; width: number; height: number }> {
+  const q = ((turns % 4) + 4) % 4;
+  const photo = await decodeUpright(original);
+  const scale = maxEdge ? Math.min(1, maxEdge / Math.max(photo.width, photo.height)) : 1;
+  const w = Math.max(1, Math.round(photo.width * scale)), h = Math.max(1, Math.round(photo.height * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = q % 2 ? h : w;
+  canvas.height = q % 2 ? w : h;
+  const g = canvas.getContext("2d")!;
+  g.imageSmoothingQuality = "high";
+  if (q === 1) g.translate(0, canvas.height);
+  else if (q === 2) g.translate(canvas.width, canvas.height);
+  else if (q === 3) g.translate(canvas.width, 0);
+  g.rotate((-q * Math.PI) / 2);
+  g.drawImage(photo.source, 0, 0, w, h);
+  photo.done();
+  const blob = await new Promise<Blob>((resolve, reject) =>
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("rotate encode failed"))), "image/jpeg", quality),
+  );
+  const out = { blob, width: canvas.width, height: canvas.height };
+  canvas.width = 0;
+  canvas.height = 0;
+  return out;
+}
+
+// rotatePhoto that tries smaller if the full size is too much for the phone
+export async function rotatePhotoSafe(original: Blob, turns: number): Promise<Blob | undefined> {
+  for (const edge of [0, 4000, 2400]) {
+    try {
+      return (await rotatePhoto(original, turns, edge)).blob;
+    } catch {
+      // try smaller
+    }
+  }
+  return undefined;
+}
+
+// a mark moved with its photo turned a quarter anticlockwise (marks are in
+// fractions of the photo's width and height)
+export function rotateMark(m: Mark): Mark {
+  const p = (x: number, y: number): [number, number] => [y, 1 - x];
+  if (m.t === "circle") {
+    const [cx, cy] = p(m.cx, m.cy);
+    return { ...m, cx, cy, rx: m.ry, ry: m.rx };
+  }
+  if (m.t === "measure" || m.t === "arrow") {
+    const [x0, y0] = p(m.x0, m.y0), [x1, y1] = p(m.x1, m.y1);
+    return { ...m, x0, y0, x1, y1 };
+  }
+  return { ...m, pts: m.pts.map(([x, y]) => p(x, y)) };
 }

@@ -9,6 +9,29 @@ import { Directory, Filesystem } from "@capacitor/filesystem";
 
 const CHUNK_BYTES = 3 * 1024 * 1024;
 
+// exports go in their own folder in the cache, so they can be cleared out
+const DIR = "exports";
+// kept this long after they're made, so the app they were shared to
+// (Gmail, Drive…) has time to read them
+const KEEP_MS = 30 * 60 * 1000;
+// what older versions left loose in the cache itself
+const OLD_EXPORT = /\.(zip|pdf|xlsx|json)$/i;
+
+/** Deletes exports that were shared a while ago (all of them with keepMs 0),
+ *  and the ones older versions left behind. Best effort. */
+export async function clearOldExports(keepMs = KEEP_MS) {
+  const now = Date.now();
+  const sweep = async (path: string, match: (name: string) => boolean) => {
+    const { files } = await Filesystem.readdir({ path, directory: Directory.Cache }).catch(() => ({ files: [] }));
+    for (const f of files) {
+      if (f.type !== "file" || !match(f.name) || now - (f.mtime || 0) < keepMs) continue;
+      await Filesystem.deleteFile({ path: path ? `${path}/${f.name}` : f.name, directory: Directory.Cache }).catch(() => {});
+    }
+  };
+  await sweep(DIR, () => true);
+  await sweep("", (name) => OLD_EXPORT.test(name));
+}
+
 function toBase64(bytes: Uint8Array): string {
   let binary = "";
   for (let i = 0; i < bytes.length; i += 0x8000) {
@@ -25,7 +48,7 @@ export class CacheFileWriter {
   private filename: string;
 
   constructor(filename: string) {
-    this.filename = filename;
+    this.filename = `${DIR}/${filename}`;
   }
 
   async write(bytes: Uint8Array) {
@@ -59,7 +82,8 @@ export class CacheFileWriter {
   private async append(bytes: Uint8Array) {
     const data = toBase64(bytes);
     if (!this.started) {
-      const written = await Filesystem.writeFile({ path: this.filename, data, directory: Directory.Cache });
+      void clearOldExports();
+      const written = await Filesystem.writeFile({ path: this.filename, data, directory: Directory.Cache, recursive: true });
       this.uri = written.uri;
       this.started = true;
     } else {

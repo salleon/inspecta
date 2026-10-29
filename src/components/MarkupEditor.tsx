@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent } from "react";
 import type { Mark } from "../db/types";
 import { useBackHandler } from "../lib/backButton";
-import { drawMark, labelBox, RED, YELLOW } from "../lib/markup";
+import { drawMark, labelBox, RED, rotateMark, rotatePhotoSafe, YELLOW } from "../lib/markup";
 import "./PhotoTools.css";
 
 // ✎ Mark up: draw on a photo. Two main tools:
@@ -10,8 +10,9 @@ import "./PhotoTools.css";
 //   ↔ Measure  drag between two points: a yellow double arrow, then type
 //              the measurement with its unit (650 mm, 1.2 m); drag its
 //              ends to adjust, tap the number to change it
-// and smaller: Arrow, Pen, Delete (the selected mark), Undo.
-// The photo itself is never changed; the marks are kept with it.
+// and smaller: Arrow, Pen, Delete (the selected mark), Undo. ⟲ over the
+// photo's corner turns it a quarter anticlockwise, marks and all.
+// The photo itself is only changed if it's turned; the marks are kept apart.
 
 type Tool = "circle" | "measure" | "arrow" | "pen";
 
@@ -19,7 +20,8 @@ interface Props {
   blob: Blob;
   marks: Mark[];
   onCancel: () => void;
-  onDone: (marks: Mark[]) => void;
+  // blob: the photo turned with ⟲ (only when it was)
+  onDone: (marks: Mark[], blob?: Blob) => void;
 }
 
 interface Rect {
@@ -32,25 +34,27 @@ interface Rect {
 type Drag =
   | { kind: "move"; i: number; start: Mark; px: number; py: number; moved: boolean }
   | { kind: "handle"; i: number; h: "x" | "y" }
+  | { kind: "corner"; i: number; start: Extract<Mark, { t: "circle" }>; dist: number }
   | { kind: "end"; i: number; end: 0 | 1 }
   | { kind: "draw"; t: "measure" | "arrow"; x0: number; y0: number; moved: boolean }
   | { kind: "pen"; pts: [number, number][] }
   | { kind: "tap"; px: number; py: number };
-
-const NO_TOOL_HINT = "Tap a mark to move or change it · tap a tool to add more";
-const HINTS: Record<Tool, string> = {
-  circle: "Tap the photo to add a circle · drag to move · pinch to size",
-  measure: "Drag from one point to the other, then type the measurement",
-  arrow: "Drag to draw an arrow",
-  pen: "Draw with your finger",
-};
 
 const NEW_CIRCLE = 56; // px on screen
 
 export default function MarkupEditor({ blob, marks: initial, onCancel, onDone }: Props) {
   const [url] = useState(() => URL.createObjectURL(blob));
   useEffect(() => () => URL.revokeObjectURL(url), [url]);
-  const [natural, setNatural] = useState<{ w: number; h: number } | null>(null);
+  // ⟲ quarter turns anticlockwise; on screen the photo is only turned by
+  // CSS (instant), the turned photo itself is made once, on Done
+  const [turns, setTurns] = useState(0);
+  // which undo steps were turns (their places in history)
+  const turnSteps = useRef<number[]>([]);
+  const finishing = useRef(false);
+  // the photo's own size, as loaded
+  const [loaded, setLoaded] = useState<{ w: number; h: number } | null>(null);
+  const odd = turns % 2 !== 0;
+  const natural = loaded && (odd ? { w: loaded.h, h: loaded.w } : loaded);
   const areaRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [area, setArea] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
@@ -73,10 +77,34 @@ export default function MarkupEditor({ blob, marks: initial, onCancel, onDone }:
 
   // Android back keeps the marks, like Done (Cancel throws them away)
   useBackHandler(() => {
-    setEditing(-1);
-    onDone(marks);
+    void finish();
     return true;
   });
+
+  // Done (and Android back): the marks, and the photo turned if it was
+  async function finish() {
+    if (finishing.current) return;
+    finishing.current = true;
+    setEditing(-1);
+    if (turns % 4 === 0) {
+      onDone(marks);
+      return;
+    }
+    const turned = await rotatePhotoSafe(blob, turns);
+    if (turned) onDone(marks, turned);
+    else {
+      finishing.current = false;
+      alert("Couldn't turn the photo on this phone");
+    }
+  }
+
+  function rotate() {
+    finishLabel();
+    setSel(-1);
+    turnSteps.current.push(history.length);
+    commit(marks.map(rotateMark));
+    setTurns((t) => t + 1);
+  }
 
   // the area the photo is shown in
   useLayoutEffect(() => {
@@ -129,15 +157,53 @@ export default function MarkupEditor({ blob, marks: initial, onCancel, onDone }:
     };
     if (m.t === "circle") {
       const cx = m.cx * w, cy = m.cy * h, rx = m.rx * w, ry = m.ry * h;
-      g.setLineDash([7, 6]);
-      g.strokeStyle = "rgba(255,255,255,.9)";
-      g.lineWidth = 1.5;
-      g.strokeRect(cx - rx - 10, cy - ry - 10, 2 * rx + 20, 2 * ry + 20);
-      g.setLineDash([]);
-      dot(cx + rx, cy, RED);
-      dot(cx - rx, cy, RED);
-      dot(cx, cy + ry, RED);
-      dot(cx, cy - ry, RED);
+      // a soft glow round it says it's selected
+      g.strokeStyle = "rgba(255,255,255,.22)";
+      g.lineWidth = 12;
+      g.beginPath();
+      g.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+      g.stroke();
+      // slim pills on the edge to stretch it into an oval
+      const pill = (x: number, y: number, upright: boolean) => {
+        const pw = upright ? 7 : 24, ph = upright ? 24 : 7;
+        g.fillStyle = "#fff";
+        g.strokeStyle = "rgba(0,0,0,.3)";
+        g.lineWidth = 1;
+        g.beginPath();
+        g.roundRect(x - pw / 2, y - ph / 2, pw, ph, 3.5);
+        g.fill();
+        g.stroke();
+      };
+      pill(cx + rx, cy, true);
+      pill(cx - rx, cy, true);
+      pill(cx, cy - ry, false);
+      pill(cx, cy + ry, false);
+      // the corner handle: drag it diagonally to size it, one-thumbed
+      const c = cornerAt(m, w, h);
+      const sx = Math.sign(c.x - cx) || 1, sy = Math.sign(c.y - cy) || 1;
+      const r = drag.current?.kind === "corner" ? 16 : 14;
+      g.fillStyle = "#fff";
+      g.strokeStyle = "rgba(0,0,0,.3)";
+      g.lineWidth = 1;
+      g.beginPath();
+      g.arc(c.x, c.y, r, 0, Math.PI * 2);
+      g.fill();
+      g.stroke();
+      g.strokeStyle = "#3a3a38";
+      g.lineWidth = 2;
+      g.lineCap = "round";
+      g.lineJoin = "round";
+      const a = 4.5;
+      g.beginPath();
+      g.moveTo(c.x - a * sx, c.y - a * sy);
+      g.lineTo(c.x + a * sx, c.y + a * sy);
+      g.moveTo(c.x - a * sx, c.y);
+      g.lineTo(c.x - a * sx, c.y - a * sy);
+      g.lineTo(c.x, c.y - a * sy);
+      g.moveTo(c.x + a * sx, c.y);
+      g.lineTo(c.x + a * sx, c.y + a * sy);
+      g.lineTo(c.x, c.y + a * sy);
+      g.stroke();
     } else if (m.t === "measure" || m.t === "arrow") {
       dot(m.x0 * w, m.y0 * h, m.t === "measure" ? YELLOW : RED);
       dot(m.x1 * w, m.y1 * h, m.t === "measure" ? YELLOW : RED);
@@ -211,6 +277,10 @@ export default function MarkupEditor({ blob, marks: initial, onCancel, onDone }:
   function undo() {
     finishLabel();
     if (!history.length) return;
+    if (turnSteps.current[turnSteps.current.length - 1] === history.length - 1) {
+      turnSteps.current.pop();
+      setTurns((t) => t - 1);
+    }
     setMarks(history[history.length - 1]);
     setHistory(history.slice(0, -1));
     setSel(-1);
@@ -234,13 +304,15 @@ export default function MarkupEditor({ blob, marks: initial, onCancel, onDone }:
   }
 
   // which mark (and which part of it) is at a point
-  function hit(x: number, y: number): { i: number; part: "body" | "hx" | "hy" | "end0" | "end1" | "label" } | null {
+  function hit(x: number, y: number): { i: number; part: "body" | "corner" | "hx" | "hy" | "end0" | "end1" | "label" } | null {
     if (!rect) return null;
     const w = rect.width, h = rect.height;
     // the selected one's handles first
     const s = marks[sel];
     if (s?.t === "circle") {
       const cx = s.cx * w, cy = s.cy * h, rx = s.rx * w, ry = s.ry * h;
+      const c = cornerAt(s, w, h);
+      if (Math.hypot(x - c.x, y - c.y) < 28) return { i: sel, part: "corner" };
       if (Math.hypot(x - (cx + rx), y - cy) < 22 || Math.hypot(x - (cx - rx), y - cy) < 22) return { i: sel, part: "hx" };
       if (Math.hypot(x - cx, y - (cy + ry)) < 22 || Math.hypot(x - cx, y - (cy - ry)) < 22) return { i: sel, part: "hy" };
     }
@@ -295,7 +367,9 @@ export default function MarkupEditor({ blob, marks: initial, onCancel, onDone }:
     if (found) {
       const m = marks[found.i];
       setSel(found.i);
-      if (found.part === "hx" || found.part === "hy") drag.current = { kind: "handle", i: found.i, h: found.part === "hx" ? "x" : "y" };
+      if (found.part === "corner" && m.t === "circle")
+        drag.current = { kind: "corner", i: found.i, start: m, dist: Math.max(10, Math.hypot(x - m.cx * rect.width, y - m.cy * rect.height)) };
+      else if (found.part === "hx" || found.part === "hy") drag.current = { kind: "handle", i: found.i, h: found.part === "hx" ? "x" : "y" };
       else if (found.part === "end0" || found.part === "end1") drag.current = { kind: "end", i: found.i, end: found.part === "end0" ? 0 : 1 };
       else drag.current = { kind: "move", i: found.i, start: m, px: x, py: y, moved: false };
       setHistory((h) => [...h, marks]);
@@ -327,6 +401,9 @@ export default function MarkupEditor({ blob, marks: initial, onCancel, onDone }:
       d.moved = true;
       const dx = (x - d.px) / rect.width, dy = (y - d.py) / rect.height;
       setMarks((ms) => ms.map((m, i) => (i === d.i ? shift(d.start, dx, dy) : m)));
+    } else if (d.kind === "corner") {
+      const k = Math.hypot(x - d.start.cx * rect.width, y - d.start.cy * rect.height) / d.dist;
+      setMarks((ms) => ms.map((m, i) => (i === d.i ? sizeCircle(d.start, k, rect) : m)));
     } else if (d.kind === "handle") {
       setMarks((ms) =>
         ms.map((m, i) => {
@@ -408,9 +485,14 @@ export default function MarkupEditor({ blob, marks: initial, onCancel, onDone }:
   }
 
   const editingMark = marks[editing];
-  const labelAt = editingMark?.t === "measure" && rect
-    ? { left: rect.left + ((editingMark.x0 + editingMark.x1) / 2) * rect.width, top: rect.top + ((editingMark.y0 + editingMark.y1) / 2) * rect.height }
-    : null;
+  // the typing box sits where the label will be drawn (bumped below a short line)
+  const labelAt = (() => {
+    if (editingMark?.t !== "measure" || !rect) return null;
+    const g = measureCtx();
+    if (!g) return { left: rect.left + ((editingMark.x0 + editingMark.x1) / 2) * rect.width, top: rect.top + ((editingMark.y0 + editingMark.y1) / 2) * rect.height };
+    const b = labelBox(g, { ...editingMark, label: editingMark.label.trim() || "00 cm" }, rect.width, rect.height);
+    return { left: rect.left + b.x + b.w / 2, top: rect.top + b.y + b.h / 2 };
+  })();
 
   return (
     <div className="mk-ed" data-testid="markup-editor">
@@ -419,10 +501,7 @@ export default function MarkupEditor({ blob, marks: initial, onCancel, onDone }:
         <span className="t">Mark up</span>
         <button
           className="go"
-          onClick={() => {
-            finishLabel();
-            onDone(marks);
-          }}
+          onClick={() => void finish()}
         >
           Done
         </button>
@@ -431,8 +510,19 @@ export default function MarkupEditor({ blob, marks: initial, onCancel, onDone }:
         <img
           src={url}
           alt=""
-          onLoad={(e) => setNatural({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })}
-          style={rect ? { left: rect.left, top: rect.top, width: rect.width, height: rect.height } : { opacity: 0 }}
+          onLoad={(e) => setLoaded({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })}
+          style={
+            rect
+              ? {
+                  // the unturned photo, centred on where the turned one shows
+                  left: rect.left + (rect.width - (odd ? rect.height : rect.width)) / 2,
+                  top: rect.top + (rect.height - (odd ? rect.width : rect.height)) / 2,
+                  width: odd ? rect.height : rect.width,
+                  height: odd ? rect.width : rect.height,
+                  transform: turns % 4 ? `rotate(${-90 * (turns % 4)}deg)` : undefined,
+                }
+              : { opacity: 0 }
+          }
         />
         {rect && (
           <canvas
@@ -445,6 +535,19 @@ export default function MarkupEditor({ blob, marks: initial, onCancel, onDone }:
             onPointerCancel={onPointerUp}
             onWheel={onWheel}
           />
+        )}
+        {rect && (
+          <button
+            className="mk-rotate"
+            aria-label="Rotate"
+            style={{ left: rect.left + rect.width - 52, top: rect.top + rect.height - 52 }}
+            onClick={rotate}
+          >
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 12a8 8 0 1 0 2.4-5.7" />
+              <path d="M4 4v4.5h4.5" />
+            </svg>
+          </button>
         )}
         {labelAt && editingMark?.t === "measure" && (
           <div className="mk-label" data-testid="measure-label" style={{ left: labelAt.left, top: labelAt.top }} onPointerDown={placeCaret}>
@@ -459,7 +562,6 @@ export default function MarkupEditor({ blob, marks: initial, onCancel, onDone }:
         )}
       </div>
       <div ref={toolsRef} className="mk-bottom">
-      <div className="mk-hint">{tool ? HINTS[tool] : NO_TOOL_HINT}</div>
       <div className="mk-tools">
         <div className="mk-big">
           <button className={`mk-bt${tool === "circle" ? " on" : ""}`} aria-pressed={tool === "circle"} onClick={() => pickTool("circle")}>
@@ -580,4 +682,22 @@ function shift(m: Mark, dx: number, dy: number): Mark {
 function sizeCircle(m: Extract<Mark, { t: "circle" }>, k: number, rect: Rect): Mark {
   const min = 12;
   return { ...m, rx: Math.max(min / rect.width, m.rx * k), ry: Math.max(min / rect.height, m.ry * k) };
+}
+
+// a scratch canvas just for measuring label text
+let scratch: CanvasRenderingContext2D | null | undefined;
+function measureCtx() {
+  if (scratch === undefined) scratch = document.createElement("canvas").getContext("2d");
+  return scratch;
+}
+
+// where a circle's corner handle goes: on its edge, bottom-right, or the
+// next corner round that's still on the photo (so a thumb can reach it)
+function cornerAt(m: Extract<Mark, { t: "circle" }>, w: number, h: number) {
+  const cx = m.cx * w, cy = m.cy * h, dx = m.rx * w * Math.SQRT1_2, dy = m.ry * h * Math.SQRT1_2, pad = 16;
+  for (const [sx, sy] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) {
+    const x = cx + sx * dx, y = cy + sy * dy;
+    if (x > pad && x < w - pad && y > pad && y < h - pad) return { x, y };
+  }
+  return { x: Math.min(Math.max(cx + dx, pad), w - pad), y: Math.min(Math.max(cy + dy, pad), h - pad) };
 }

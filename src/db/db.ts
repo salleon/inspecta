@@ -4,7 +4,7 @@ import { makeThumbnail } from "../lib/thumbnail";
 import { makeExportCopy } from "../lib/exportCopy";
 import { RENAMED_CODES } from "../lib/esrCategories";
 import { isExportBusy } from "../lib/exportBusy";
-import { renderMarkedSafe, shownBlob } from "../lib/markup";
+import { renderMarkedSafe, rotatePhoto, shownBlob } from "../lib/markup";
 import { photoJob, whenCameraIdle } from "../lib/photoWork";
 
 class InspectaDB extends Dexie {
@@ -260,51 +260,70 @@ export async function addPhoto(findingId: string, siteId: string, blob: Blob, ta
   if (marks?.length) photo.marks = marks;
   await db.photos.add(photo);
   await db.findings.update(findingId, { updatedAt: Date.now() });
-  // Marked up: the copy with the marks drawn in is made in the background
-  // (a 12 MP photo takes a couple of seconds on some phones, and the next
-  // finding's camera shouldn't wait for it; see lib/photoWork). Then its
-  // thumbnail, then the copy the exports use, so lists and exports never
-  // wait on them; both wait for the marked copy, so neither is made
-  // without the marks.
-  if (photo.marks) startMarked(photo);
-  void getThumbnail(photo)
+  // In the background (see lib/photoWork), so the next finding's camera
+  // doesn't wait: the photo saved smaller, then its thumbnail, then the
+  // copy the exports use, so lists and exports never wait on them.
+  void shrinkPhoto(photo)
+    .catch(() => {})
+    .then(() => getThumbnail(photo))
     .catch(() => {})
     .then(() => getExportCopy(photo))
     .catch(() => {});
   return photo;
 }
 
-// ---- the marked copy, made in the background ----
+// Photos are kept at most this many px on their long side (about 1 MB):
+// twice what the reports use, still sharp zoomed in on the phone, and a
+// fraction of a 12 MP original's space.
+export const PHOTO_MAX_EDGE = 2400;
 
-const markedJobs = new Map<string, Promise<void>>();
-
-function startMarked(photo: Photo): Promise<void> {
-  let job = markedJobs.get(photo.id);
-  if (!job) {
-    job = (async () => {
-      if (!photo.marks?.length) return;
-      // (never fails: if the marks can't be drawn in, the photo's still
-      // saved with them, and they're drawn in when it's next needed)
-      const marks = photo.marks;
-      const marked = await photoJob(() => renderMarkedSafe(photo.blob, marks));
-      if (!marked) return;
-      await db.transaction("rw", db.photos, async () => {
-        const now = await db.photos.get(photo.id);
-        // only if it's still there with the same marks
-        if (now && !now.marked && JSON.stringify(now.marks) === JSON.stringify(photo.marks)) await db.photos.update(photo.id, { marked });
-      });
-    })().finally(() => markedJobs.delete(photo.id));
-    markedJobs.set(photo.id, job);
-  }
-  return job;
+async function shrinkPhoto(photo: Photo) {
+  const blob = photo.blob;
+  if (blob.size < 1.2 * 1024 * 1024) return;
+  const small = await photoJob(() => rotatePhoto(blob, 0, PHOTO_MAX_EDGE, 0.88));
+  if (small.blob.size >= blob.size) return;
+  await db.transaction("rw", db.photos, async () => {
+    const now = await db.photos.get(photo.id);
+    // only if it hasn't been turned or replaced meanwhile
+    if (now && now.blob.size === blob.size) await db.photos.update(photo.id, { blob: small.blob });
+  });
+  photo.blob = small.blob;
 }
 
-/** The photo with its marked copy, if it's marked up: waits for the copy if
- * it's being made (or makes it, if it never was, e.g. the app was closed). */
+// ---- the marked copy, made when it's needed ----
+
+// Not saved (it would double the space a marked-up photo takes); the
+// screen and export copies already have the marks drawn in, so the full
+// size one is only needed full screen and in the photos zip. The last few
+// are kept in memory.
+const markedCache = new Map<string, Promise<Blob | undefined>>();
+
+/** The photo with its marked copy, if it's marked up. */
 export async function withMarked(photo: Photo): Promise<Photo> {
   if (!photo.marks?.length || photo.marked) return photo;
-  await (markedJobs.get(photo.id) ?? startMarked(photo)).catch(() => {});
-  return (await db.photos.get(photo.id)) ?? photo;
+  const marks = photo.marks;
+  const key = `${photo.id} ${photo.blob.size} ${JSON.stringify(marks)}`;
+  let job = markedCache.get(key);
+  if (!job) {
+    job = photoJob(() => renderMarkedSafe(photo.blob, marks));
+    markedCache.set(key, job);
+    if (markedCache.size > 6) markedCache.delete(markedCache.keys().next().value!);
+  }
+  const marked = await job.catch(() => undefined);
+  return marked ? { ...photo, marked } : photo;
+}
+
+// Space older versions used: their saved marked copies are cleared out, and
+// full-size photos are saved smaller, one at a time in the background.
+export async function tidyPhotoStorage() {
+  await db.photos.filter((p) => !!p.marked).modify((p) => {
+    delete p.marked;
+  });
+  const big = await db.photos.filter((p) => p.blob.size >= 1.2 * 1024 * 1024).primaryKeys();
+  for (const id of big) {
+    const photo = await db.photos.get(id);
+    if (photo) await shrinkPhoto(photo).catch(() => {});
+  }
 }
 
 export async function listPhotos(findingId: string) {
@@ -313,17 +332,17 @@ export async function listPhotos(findingId: string) {
 }
 
 // The marks drawn on a photo (✎ Mark up), changed or cleared. The original
-// is kept; the marked copy, its thumbnail and export copies are made again.
-export async function setPhotoMarks(photoId: string, marks: Mark[]) {
+// is kept; its thumbnail and export copies are made again.
+// turned: the photo itself, turned in Mark up (⟲), replacing the original
+export async function setPhotoMarks(photoId: string, marks: Mark[], turned?: Blob) {
   const photo = await db.photos.get(photoId);
   if (!photo) return;
-  const marked = marks.length ? await renderMarkedSafe(photo.blob, marks) : undefined;
   // let a thumbnail / copy still being made from the old one finish first,
   // so it can't be saved over the new one
   await thumbnailJobs.get(photoId)?.catch(() => {});
   await exportCopyJobs.get(photoId)?.catch(() => {});
   await db.transaction("rw", db.photos, db.thumbnails, db.exportCopies, async () => {
-    await db.photos.update(photoId, { marks: marks.length ? marks : undefined, marked });
+    await db.photos.update(photoId, { ...(turned ? { blob: turned } : {}), marks: marks.length ? marks : undefined });
     await db.thumbnails.delete(photoId);
     await db.exportCopies.delete(photoId);
   });
@@ -552,7 +571,6 @@ export async function restoreSiteRecords(site: Site, findings: Finding[], flowTe
 }
 
 export async function restorePhoto(photo: Photo) {
-  // the marked copy isn't in a backup; it's made again from the marks
-  if (photo.marks?.length) photo.marked = await renderMarkedSafe(photo.blob, photo.marks);
+  delete photo.marked;
   await db.photos.add(photo);
 }

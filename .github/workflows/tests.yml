@@ -9,7 +9,7 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04  # pinned: the Playwright browser install fails on the Ubuntu 26 runner
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -28,4 +28,16 @@ jobs:
 
       # unit tests, then a production build, then the browser tests
       - name: Run tests
-        run: npm test
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee test-output.txt
+
+      # each failing test as an annotation, so it shows on the run's summary
+      - name: Show failing tests
+        if: failure()
+        run: |
+          grep -n -E "^not ok|^ *not ok" test-output.txt | head -20 | while IFS= read -r line; do
+            n=${line%%:*}
+            detail=$(sed -n "$((n+1)),$((n+25))p" test-output.txt | grep -E "error:|message|expected|actual|Error" | head -4 | tr '\n' ' ')
+            echo "::error title=Test failed::${line#*:} ${detail}"
+          done
