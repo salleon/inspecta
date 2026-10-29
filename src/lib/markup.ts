@@ -23,6 +23,14 @@ function arrowHead(g: CanvasRenderingContext2D, x0: number, y0: number, x1: numb
   g.fill();
 }
 
+// pulls (x1,y1) back towards (x0,y0) by d, so a line stops inside its
+// arrowhead instead of poking out past the tip
+function pullBack(x0: number, y0: number, x1: number, y1: number, d: number): [number, number] {
+  const len = Math.hypot(x1 - x0, y1 - y0);
+  const k = len > d ? d / len : 0;
+  return [x1 - (x1 - x0) * k, y1 - (y1 - y0) * k];
+}
+
 function roundRect(g: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   g.beginPath();
   g.moveTo(x + r, y);
@@ -86,18 +94,20 @@ export function drawMark(g: CanvasRenderingContext2D, m: Mark, w: number, h: num
     g.stroke();
   } else if (m.t === "measure") {
     const x0 = m.x0 * w, y0 = m.y0 * h, x1 = m.x1 * w, y1 = m.y1 * h;
+    const [ax, ay] = pullBack(x1, y1, x0, y0, 20 * u);
+    const [bx, by] = pullBack(x0, y0, x1, y1, 20 * u);
     g.strokeStyle = "rgba(0,0,0,.4)";
     g.lineWidth = 10 * u;
     g.beginPath();
-    g.moveTo(x0, y0);
-    g.lineTo(x1, y1);
+    g.moveTo(ax, ay);
+    g.lineTo(bx, by);
     g.stroke();
     g.strokeStyle = YELLOW;
     g.fillStyle = YELLOW;
     g.lineWidth = 6 * u;
     g.beginPath();
-    g.moveTo(x0, y0);
-    g.lineTo(x1, y1);
+    g.moveTo(ax, ay);
+    g.lineTo(bx, by);
     g.stroke();
     arrowHead(g, x1, y1, x0, y0, 30 * u);
     arrowHead(g, x0, y0, x1, y1, 30 * u);
@@ -131,7 +141,7 @@ export function drawMark(g: CanvasRenderingContext2D, m: Mark, w: number, h: num
     g.lineWidth = 8 * u;
     g.beginPath();
     g.moveTo(x0, y0);
-    g.lineTo(x1, y1);
+    g.lineTo(...pullBack(x0, y0, x1, y1, 22 * u));
     g.stroke();
     arrowHead(g, x0, y0, x1, y1, 34 * u);
   } else if (m.pts.length) {

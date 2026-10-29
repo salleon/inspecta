@@ -299,28 +299,37 @@ export default function InAppCamera({ label, onDone }: Props) {
 
   // Android's camera: below 1× is the ultra-wide lens (its own zoom is the
   // asked-for zoom over its factor), 1× and up the main one. Changing lens
-  // takes a moment, so it's done once at a time, then the latest zoom asked
-  // for is applied.
+  // restarts the picture (a moment of black), so while the zoom is still
+  // moving it stays on its lens, and changes once the zoom has settled; one
+  // change at a time, then the latest zoom asked for is applied.
   const lensRef = useRef<"main" | "wide">("main");
   const switching = useRef(false);
   const wantedZoom = useRef(1);
-  async function nativeZoom(z: number) {
+  const lensTimer = useRef<number>();
+  useEffect(() => () => window.clearTimeout(lensTimer.current), []);
+  async function nativeZoom(z: number, settled = false) {
     wantedZoom.current = z;
     if (switching.current) return;
     const lens = caps.wide && z < 0.999 ? "wide" : "main";
+    window.clearTimeout(lensTimer.current);
     if (lens !== lensRef.current) {
-      switching.current = true;
-      try {
-        await NativeCamera.setLens({ wide: lens === "wide" });
-        lensRef.current = lens;
-      } catch {
-        // stays on the lens it was on
-      } finally {
-        switching.current = false;
+      if (!settled) {
+        lensTimer.current = window.setTimeout(() => void nativeZoom(wantedZoom.current, true), 350);
+      } else {
+        switching.current = true;
+        try {
+          await NativeCamera.setLens({ wide: lens === "wide" });
+          lensRef.current = lens;
+        } catch {
+          // stays on the lens it was on
+        } finally {
+          switching.current = false;
+        }
+        return nativeZoom(wantedZoom.current, true);
       }
-      return nativeZoom(wantedZoom.current);
     }
-    const ratio = lensRef.current === "wide" && caps.wide ? Math.max(1, z / caps.wide) : z;
+    // on the main lens nothing below 1×; the camera keeps it in its range
+    const ratio = lensRef.current === "wide" && caps.wide ? Math.max(1, z / caps.wide) : Math.max(1, z);
     await NativeCamera.setZoom({ ratio }).catch(() => {});
   }
 

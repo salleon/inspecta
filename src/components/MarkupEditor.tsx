@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent } from "react";
 import type { Mark } from "../db/types";
 import { useBackHandler } from "../lib/backButton";
-import { drawMark, labelBox, RED, rotateMark, rotatePhoto, rotatePhotoSafe, YELLOW } from "../lib/markup";
+import { drawMark, labelBox, RED, rotateMark, rotatePhotoSafe, YELLOW } from "../lib/markup";
 import "./PhotoTools.css";
 
 // ✎ Mark up: draw on a photo. Two main tools:
@@ -45,32 +45,16 @@ const NEW_CIRCLE = 56; // px on screen
 export default function MarkupEditor({ blob, marks: initial, onCancel, onDone }: Props) {
   const [url] = useState(() => URL.createObjectURL(blob));
   useEffect(() => () => URL.revokeObjectURL(url), [url]);
-  // ⟲ quarter turns anticlockwise, and the turned photo shown (a smaller copy)
+  // ⟲ quarter turns anticlockwise; on screen the photo is only turned by
+  // CSS (instant), the turned photo itself is made once, on Done
   const [turns, setTurns] = useState(0);
-  const [turnedUrl, setTurnedUrl] = useState<string | null>(null);
   // which undo steps were turns (their places in history)
   const turnSteps = useRef<number[]>([]);
   const finishing = useRef(false);
-  useEffect(() => {
-    if (turns % 4 === 0) {
-      setTurnedUrl(null);
-      return;
-    }
-    let live = true, made: string | null = null;
-    rotatePhoto(blob, turns, 2000)
-      .then((r) => {
-        if (!live) return;
-        made = URL.createObjectURL(r.blob);
-        setTurnedUrl(made);
-      })
-      .catch(() => {});
-    return () => {
-      live = false;
-      if (made) URL.revokeObjectURL(made);
-    };
-  }, [blob, turns]);
-  const shownUrl = turns % 4 ? turnedUrl : url;
-  const [natural, setNatural] = useState<{ w: number; h: number } | null>(null);
+  // the photo's own size, as loaded
+  const [loaded, setLoaded] = useState<{ w: number; h: number } | null>(null);
+  const odd = turns % 2 !== 0;
+  const natural = loaded && (odd ? { w: loaded.h, h: loaded.w } : loaded);
   const areaRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [area, setArea] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
@@ -120,7 +104,6 @@ export default function MarkupEditor({ blob, marks: initial, onCancel, onDone }:
     turnSteps.current.push(history.length);
     commit(marks.map(rotateMark));
     setTurns((t) => t + 1);
-    setNatural(null);
   }
 
   // the area the photo is shown in
@@ -297,7 +280,6 @@ export default function MarkupEditor({ blob, marks: initial, onCancel, onDone }:
     if (turnSteps.current[turnSteps.current.length - 1] === history.length - 1) {
       turnSteps.current.pop();
       setTurns((t) => t - 1);
-      setNatural(null);
     }
     setMarks(history[history.length - 1]);
     setHistory(history.slice(0, -1));
@@ -526,11 +508,21 @@ export default function MarkupEditor({ blob, marks: initial, onCancel, onDone }:
       </div>
       <div className="mk-area" ref={areaRef} style={{ marginBottom: editing >= 0 ? `max(0px, calc(${PAD_H}px + var(--sa-bottom) - ${toolsH}px))` : 0 }}>
         <img
-          key={shownUrl ?? ""}
-          src={shownUrl ?? undefined}
+          src={url}
           alt=""
-          onLoad={(e) => setNatural({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })}
-          style={rect ? { left: rect.left, top: rect.top, width: rect.width, height: rect.height } : { opacity: 0 }}
+          onLoad={(e) => setLoaded({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })}
+          style={
+            rect
+              ? {
+                  // the unturned photo, centred on where the turned one shows
+                  left: rect.left + (rect.width - (odd ? rect.height : rect.width)) / 2,
+                  top: rect.top + (rect.height - (odd ? rect.width : rect.height)) / 2,
+                  width: odd ? rect.height : rect.width,
+                  height: odd ? rect.width : rect.height,
+                  transform: turns % 4 ? `rotate(${-90 * (turns % 4)}deg)` : undefined,
+                }
+              : { opacity: 0 }
+          }
         />
         {rect && (
           <canvas
