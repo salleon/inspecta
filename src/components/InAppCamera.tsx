@@ -305,7 +305,7 @@ export default function InAppCamera({ label, onDone }: Props) {
   const lensRef = useRef<"main" | "wide">("main");
   const switching = useRef(false);
   const wantedZoom = useRef(1);
-  const lensTimer = useRef<number>();
+  const lensTimer = useRef<number | undefined>(undefined);
   useEffect(() => () => window.clearTimeout(lensTimer.current), []);
   async function nativeZoom(z: number, settled = false) {
     wantedZoom.current = z;
