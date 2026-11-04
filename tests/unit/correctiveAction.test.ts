@@ -192,6 +192,21 @@ test("every defect in the table has wording, match words and categories", () => 
   }
 });
 
+test("a second match, tied or just behind, is offered too (never more than two)", () => {
+  const two = (note: string, category: string) => {
+    const s = suggestionFor(note, category);
+    return [s?.defect.id, s?.alternative?.id];
+  };
+  // just behind: escutcheon wins, sprinkler-to-ceiling also matches
+  assert.deepEqual(two("Sprinkler escutcheon plate dislodged from ceiling tile", "5.6"), ["EF-40", "CI-50"]);
+  assert.equal(suggestionFor("Sprinkler escutcheon plate dislodged from ceiling tile", "5.6")?.confidence, "Medium");
+  // tied: both, where it used to be blank
+  assert.deepEqual(two("Escutcheon loose, sprinkler too low below ceiling", "5.6"), ["CI-50", "EF-40"]);
+  // one clear match: no second option
+  assert.deepEqual(two("Exit sign not illuminated at level 3 lobby", "3.1"), ["CI-30", undefined]);
+  assert.equal(suggestionFor("Exit sign not illuminated at level 3 lobby", "3.1")?.confidence, "High");
+});
+
 test("confidence: High with the problem and subject in the note, Low when the category supplies the subject", () => {
   assert.equal(suggestionFor("Fire door held open with a wedge", "1.6")?.confidence, "High");
   assert.equal(suggestionFor("POT obstructed", "2.4")?.confidence, "High");

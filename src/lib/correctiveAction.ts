@@ -12,9 +12,11 @@ import { tokens } from "./esrSuggest";
 //   by different words, exactly (word endings aside: no typo guessing, which
 //   once read "point" as "paint"); only a group that just names the subject
 //   (door, sprinkler...) may be left to the category;
-// - none of its "unless" words, and no other defect equally likely.
-// Otherwise nothing, and the engineer writes it. The export shows it in red
-// so it gets checked.
+// - none of its "unless" words.
+// Otherwise nothing, and the engineer writes it. When a second defect also
+// matches (tied, or just behind), both are given, best first, never more
+// than two, for the engineer to pick. The export shows it in red so it gets
+// checked.
 
 type Tokens = string[];
 
@@ -106,6 +108,8 @@ function score(p: Prepared, note: Tokens, category: string): Match | null {
 export interface Suggestion {
   defect: CommonDefect;
   confidence: Confidence;
+  // the next best match, when there is one (never with High confidence)
+  alternative?: CommonDefect;
 }
 
 export function suggestionFor(note: string, esrCategory?: string): Suggestion | undefined {
@@ -119,11 +123,11 @@ export function suggestionFor(note: string, esrCategory?: string): Suggestion | 
   }
   if (!matches.length) return undefined;
   matches.sort((a, b) => b.m.score - a.m.score);
+  // a tie keeps the table's order
   const [best, next] = matches;
-  if (next && next.m.score === best.m.score) return undefined; // can't tell which
   const confidence: Confidence =
     best.m.fromNote <= 1 ? "Low" : !BROAD_SECTIONS.has(category) && !next ? "High" : "Medium";
-  return { defect: best.defect, confidence };
+  return { defect: best.defect, confidence, alternative: next?.defect };
 }
 
 export function commonDefectFor(note: string, esrCategory?: string): CommonDefect | undefined {

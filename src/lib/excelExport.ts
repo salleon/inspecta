@@ -189,7 +189,10 @@ export async function buildFindingsWorkbook(
     // a rectified defect needs no corrective action
     const suggestion = rectified ? undefined : suggestedCorrectiveAction(finding);
     const confidenceLine = suggestion ? `Confidence: ${suggestion.confidence}` : "";
-    const actionH = suggestion ? estimateTextPx(`${confidenceLine}\n\n${suggestion.defect.wording}`, actionPx) : 0;
+    const options = suggestion ? [suggestion.defect, suggestion.alternative].filter((d) => d !== undefined) : [];
+    const optionText = (i: number) => (options.length > 1 ? `Option ${i + 1}:\n` : "");
+    const actionText = options.map((d, i) => optionText(i) + d.wording).join("\n\n");
+    const actionH = suggestion ? estimateTextPx(`${confidenceLine}\n\n${actionText}`, actionPx) : 0;
 
     const prepared: PreparedPhoto[] = [];
     for (const p of photos) {
@@ -306,11 +309,18 @@ export async function buildFindingsWorkbook(
     const actionCell = row.getCell(COL.action);
     actionCell.alignment = topLeft;
     if (suggestion) {
-      // "Confidence: High" in bold over the wording, all red until checked
+      // "Confidence: High" in bold over the wording, all red until checked;
+      // two possible matches: "Option 1:" / "Option 2:" in bold over each
+      const bold = { ...FONT, bold: true, color: { argb: SUGGESTED_COLOUR } };
+      const plain = { ...FONT, color: { argb: SUGGESTED_COLOUR } };
       actionCell.value = {
         richText: [
-          { text: `${confidenceLine}\n\n`, font: { ...FONT, bold: true, color: { argb: SUGGESTED_COLOUR } } },
-          { text: suggestion.defect.wording, font: { ...FONT, color: { argb: SUGGESTED_COLOUR } } },
+          { text: `${confidenceLine}\n\n`, font: bold },
+          ...options.flatMap((d, i) => [
+            ...(i ? [{ text: "\n\n", font: plain }] : []),
+            ...(optionText(i) ? [{ text: optionText(i), font: bold }] : []),
+            { text: d.wording, font: plain },
+          ]),
         ],
       };
       actionCell.font = { ...FONT, color: { argb: SUGGESTED_COLOUR } };
