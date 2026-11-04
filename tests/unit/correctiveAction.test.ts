@@ -157,6 +157,26 @@ test("real reports: Coles Turramurra and Coles Epping", () => {
   for (const [note, category, want] of rows) assert.equal(id(note, category), want, note);
 });
 
+// A fifth finished report (101 Miller St, 2026): one note per new entry.
+test("real report: 101 Miller St 2026", () => {
+  const rows: [string, string, string | undefined][] = [
+    ["Shutter failed to release closed on activation of alarm", "1.1", "EF-36"],
+    ["Hydrant cupboard obstructed with garbage bins", "5.2", "EF-37"],
+    ["Portable extinguisher maintenance tag not stamped", "5.5", "EF-38"],
+    ["Portable extinguishers are missing location sign above mounted location", "5.5", "EF-39"],
+    ["Sprinkler escutcheon plate dislodged from ceiling tile", "5.6", "EF-40"],
+    ["No manual control over any Fire Fan Control Panel fans", "6.1", "EF-41"],
+    ["AHU did not start in fire mode", "6.1", "EF-42"],
+    ["Duct probes could not be located on essential AHUs", "6.1", "EF-43"],
+    ["Smoke detector covered with dust cover", "7.2", "EF-44"],
+    ["Detector programmed to incorrect zone", "7.2", "EF-45"],
+    ["EWIS tones clipping through speakers", "8.2", "EF-46"],
+    ["Shutter strobe failed to activate during pre-descent delay", "8", "EF-47"],
+    ["Alarm on Level 32 did not transfer to ASE", "9.1", "EF-48"],
+  ];
+  for (const [note, category, want] of rows) assert.equal(id(note, category), want, note);
+});
+
 test("unclear or uncommon notes stay blank", () => {
   for (const [note, c] of [["Cracked tile in bathroom", "13"], ["Door handle loose", "1.6"], ["Gap under fire door exceeds 10mm", "1.6"], ["", "1.6"]]) {
     assert.equal(id(note, c), undefined, note);
@@ -164,7 +184,7 @@ test("unclear or uncommon notes stay blank", () => {
 });
 
 test("every defect in the table has wording, match words and categories", () => {
-  assert.equal(COMMON_DEFECTS.length, 93);
+  assert.equal(COMMON_DEFECTS.length, 106);
   for (const d of COMMON_DEFECTS) {
     assert.ok(d.wording.trim(), d.id);
     assert.ok(d.match.length && d.match.every((g) => g.length), d.id);

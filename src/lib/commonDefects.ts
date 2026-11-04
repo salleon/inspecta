@@ -13,7 +13,8 @@
 // the defect out. The EF- entries are not in the spreadsheet: EF-01 was
 // supplied by EnFact after testing, the rest are taken from the wording in
 // EnFact's finished reports (Strawberry Hills Hotel, 2026; EF-20 on from
-// Coles Turramurra and Coles Epping, 2026).
+// Coles Turramurra and Coles Epping, 2026; EF-36 on from 101 Miller St,
+// 2026).
 
 export interface CommonDefect {
   id: string;
@@ -451,6 +452,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     match: [["extinguisher", "extinguishers", "pfe"], ["missing", "removed", "empty bracket", "bracket", "not present", "absent", "gone"]],
     categories: ["5.5"],
     subjectFromCategory: true,
+    unless: ["sign", "signage"],
     wording: "As per AS1851, extinguishers must be kept in their assigned location and be readily accessible.\n\nRemove storage and reinstall extinguisher.",
   },
   {
@@ -558,6 +560,7 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     issue: "AHU able to be manually overridden in fire mode (VSD override)",
     match: [["override", "overridden", "overridable", "hand mode", "manual mode", "manual control", "bypass"], ["ahu", "fan", "fans", "vsd", "air handling", "mechanical", "plant"]],
     categories: ["6"],
+    unless: ["no manual control", "not manually controllable", "ffcp", "fire fan control panel"],
     wording: "Fans must not be controllable via the VSD while in fire mode.\n\nMechanical contractor to reprogram the VSD to remove manual control in fire mode.",
   },
   {
@@ -846,5 +849,116 @@ export const COMMON_DEFECTS: CommonDefect[] = [
     categories: ["2.4"],
     unless: ["deadbolt", "deadbolted", "padlock", "locked", "obstructed"],
     wording: "Install closer and ensure door is not kept open.",
+  },
+  {
+    id: "EF-36",
+    measure: "Fire Shutters",
+    issue: "Fire shutter / curtain fails to release on alarm",
+    match: [["shutter", "shutters", "fire shutter", "roller shutter", "curtain", "fire curtain", "smoke curtain"], ["failed to release", "fail to release", "fails to release", "did not release", "didnt release", "not release", "failed to drop", "did not drop", "didnt drop", "not drop", "failed to close", "did not close", "didnt close", "not close", "failed to descend", "did not descend", "remained open", "stayed open"]],
+    categories: ["1.1", "1.5"],
+    wording: "As per AS 1670.1, after a period of 10-15 seconds a fire shutter shall be released by deactivation of an electromagnetic device.\n\nInvestigate and rectify cause for shutter failing to drop in alarm.",
+  },
+  {
+    id: "EF-37",
+    measure: "Fire Hydrants",
+    issue: "Hydrant obstructed / 1m clearance not maintained",
+    match: [["hydrant", "hydrants", "hydrant cupboard", "landing valve", "hydrant outlet"], ["obstructed", "obstruct", "obstruction", "blocked", "blocking", "bins", "garbage", "rubbish", "storage", "stored", "items", "boxes", "furniture", "clearance", "inaccessible"]],
+    categories: ["5.2"],
+    unless: ["storz", "stortz", "booster", "block plan", "coverage", "flow test", "handwheel", "hand wheel", "100mm", "100 mm", "too close"],
+    wording: "As per AS 2419.1 clearance requirements, a clearance of not less than 1m must be maintained in front of the hydrant outlet.\n\nRemove obstruction and ensure tenants are aware not to obstruct access to fire safety equipment.",
+  },
+  {
+    id: "EF-38",
+    measure: "Portable Fire Extinguishers",
+    issue: "Extinguisher maintenance tag not stamped",
+    match: [["extinguisher", "extinguishers", "pfe", "portable"], ["tag", "maintenance tag", "stamp", "stamps", "stamped", "punched"], ["no", "not", "missing", "without", "unstamped", "blank", "out of date", "expired", "overdue"]],
+    categories: ["5.5"],
+    subjectFromCategory: true,
+    wording: "Portable fire extinguishers are required to be maintained every 6 months as per AS 1851 maintenance requirements.\n\nPerform inspection and maintenance on portable extinguisher and add inspection stamp to maintenance tag.",
+  },
+  {
+    id: "EF-39",
+    measure: "Portable Fire Extinguishers",
+    issue: "Extinguisher location sign missing",
+    match: [["extinguisher", "extinguishers", "pfe", "portable"], ["location sign", "sign", "signage", "id sign"], ["missing", "no", "not provided", "absent", "none", "without", "required", "not installed"]],
+    categories: ["5.5"],
+    subjectFromCategory: true,
+    wording: "Fire Extinguisher location sign needs to be installed 2000mm from floor, directly above extinguisher as per AS2444.",
+  },
+  {
+    id: "EF-40",
+    measure: "Fire Sprinkler Systems",
+    issue: "Sprinkler escutcheon plate loose / dislodged",
+    match: [["escutcheon", "escutcheon plate", "escutcheons", "cover plate", "rosette"], ["loose", "dislodged", "not flush", "dropped", "hanging", "missing", "displaced", "gap"]],
+    categories: ["5.6"],
+    wording: "Remount escutcheon plate flush to ceiling tile to prevent disruption to the sprinkler spray pattern.",
+  },
+  {
+    id: "EF-41",
+    measure: "Air Handling Systems",
+    issue: "No manual control of fans from the FFCP",
+    match: [["ffcp", "fire fan control panel", "fan control panel", "fan", "fans"], ["no manual control", "not manually controllable", "cannot be controlled", "cant be controlled", "unable to control", "no control", "manual control not", "controls not working", "switches not working", "would not start", "would not stop"]],
+    categories: ["6.1", "6"],
+    wording: "AS 1668.1-1998: Manual controls must be operable at all times, whether the system is in normal mode or fire mode.\n\nInvestigate and rectify the failure of fans on the Fire Fan Control Panel to be manually controllable.",
+  },
+  {
+    id: "EF-42",
+    measure: "Air Handling Systems",
+    issue: "AHU / fan fails to start in fire mode",
+    match: [["ahu", "ahus", "air handling unit", "fan", "fans", "smoke exhaust", "purge"], ["failed to start", "fail to start", "fails to start", "did not start", "didnt start", "not start", "failed to run", "did not run", "didnt run", "not run", "not called"], ["fire mode", "fire trip", "alarm", "trip", "fire test", "activation"]],
+    categories: ["6.1", "6"],
+    wording: "AHU should be called to run in fire trip, as it forms part of the AS 1668.1 purge system installed on site.\n\nInvestigate whether problem is programming or hardware, and rectify accordingly to ensure AHU runs in fire mode.",
+  },
+  {
+    id: "EF-43",
+    measure: "Air Handling Systems",
+    issue: "No duct probe on essential AHU",
+    match: [["duct probe", "duct probes", "duct detector", "duct detectors", "duct smoke detector"], ["no", "missing", "none", "not installed", "not located", "could not be located", "not provided", "without", "absent"]],
+    categories: ["6.1", "6"],
+    wording: "An AHU forming part of a smoke hazard management system must be automatically shut down when an associated supply air duct probe detects smoke drawn into the fresh air intake, as per AS 1668.1 relating to purge systems.\n\nEnsure duct probes are installed on all essential air handling units.",
+  },
+  {
+    id: "EF-44",
+    measure: "Automatic Fire Detection",
+    issue: "Smoke detector covered / obstructed",
+    match: [["detector", "detectors", "smoke detector", "thermal detector", "heat detector"], ["covered", "cover", "bagged", "bag", "capped", "cap", "taped", "obstructed", "obstruction", "dust cover", "non operational", "isolated"]],
+    categories: ["7.2", "7"],
+    subjectFromCategory: true,
+    unless: ["supply air", "diffuser"],
+    wording: "Remove covering from smoke detector and recommended to undertake a review of the smoke detectors throughout the building to ensure all detectors are unobstructed.",
+  },
+  {
+    id: "EF-45",
+    measure: "Automatic Fire Detection",
+    issue: "Detector programmed to incorrect zone",
+    match: [["detector", "detectors", "device", "smoke detector"], ["wrong zone", "incorrect zone", "different zone", "other zone", "same zone", "zoning", "programmed", "programming", "did not activate", "didnt activate"]],
+    categories: ["7.2", "7"],
+    subjectFromCategory: true,
+    wording: "Investigate and rectify incorrect programming to ensure alarm activates in accordance with the smoke/fire/EWIS zone in which it is installed.",
+  },
+  {
+    id: "EF-46",
+    measure: "Occupant Warning System",
+    issue: "Tones clipping / amplifier overloaded",
+    match: [["tone", "tones", "speaker", "speakers", "amplifier", "amp", "ewis", "bow"], ["clipping", "clip", "distorted", "distortion", "overloaded", "overload", "crackling", "crackle"]],
+    categories: ["8"],
+    wording: "Amplification circuit should be inspected for faults.\n\nAmplifier to be adjusted to ensure no clipping occurs through the speakers. If minimum 65dB sound level / 10dB above ambient noise cannot be achieved, then additional speakers may need to be installed or the amplifier upgraded.",
+  },
+  {
+    id: "EF-47",
+    measure: "Occupant Warning System",
+    issue: "Shutter strobe fails to activate",
+    match: [["strobe", "strobes", "beacon", "warning light", "flashing light"], ["failed", "fail", "fails", "did not", "didnt", "not activate", "not working", "not operat", "faulty", "inoperable", "no"]],
+    categories: ["8", "1.1"],
+    unless: ["sign", "signage"],
+    wording: "As per AS 1670.1 3.14.2, when the fire alarm system or localised smoke/heat detector initiates a fire trip, the strobe light must flash red during the 10 to 15 second pre-descent warning delay and remain active while the shutter closes.\n\nRepair non-functional strobe to ensure it operates as per AS 1670.1.",
+  },
+  {
+    id: "EF-48",
+    measure: "Interconnections",
+    issue: "Alarm did not transfer to ASE",
+    match: [["ase", "alarm signalling equipment", "monitoring", "brigade", "fire brigade"], ["did not transfer", "didnt transfer", "not transfer", "failed to transfer", "not signal", "did not signal", "not received", "no signal", "not sent", "failed to signal"]],
+    categories: ["9.1", "9"],
+    wording: "Alarm signal must transfer to the Alarm Signalling Equipment (ASE) on activation.\n\nInvestigate and rectify.",
   },
 ];
