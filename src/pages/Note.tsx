@@ -51,6 +51,7 @@ export default function Note() {
   const [thumbUrls, setThumbUrls] = useState<Record<string, string>>({});
   const [selected, setSelected] = useState(0);
   const [note, setNote] = useState("");
+  const [rectification, setRectification] = useState("");
   const [location, setLocation] = useState("");
   // locations already used on this site's other findings, most recent
   // first, for the suggestion buttons under the Location box
@@ -121,6 +122,7 @@ export default function Note() {
     if (!findingId) return;
     const f = await getFinding(findingId);
     setNote(f?.note ?? "");
+    setRectification(f?.rectification ?? "");
     setLocation(f?.location ?? "");
     setDefectType(f?.defectType);
     setLevel(f?.level);
@@ -277,11 +279,11 @@ export default function Note() {
     if (!findingId) return;
     // a finding left with nothing in it (e.g. the pen button tapped by
     // mistake) isn't kept; the level alone doesn't count, it's carried over
-    if (leaving && !photos.length && !note.trim() && !location.trim() && !defectType && !esrCategory) {
+    if (leaving && !photos.length && !note.trim() && !rectification.trim() && !location.trim() && !defectType && !esrCategory) {
       await deleteFinding(findingId);
       return;
     }
-    await updateFinding(findingId, { note, location, defectType, level, esrCategory });
+    await updateFinding(findingId, { note, rectification, location, defectType, level, esrCategory });
   }
 
   // Used by both the back button and "Save & close" — they're the same
@@ -712,7 +714,7 @@ export default function Note() {
 
         {/* note */}
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <label htmlFor="noteInput" style={labelStyle}>Note</label>
+          <label htmlFor="noteInput" style={labelStyle}>{isProject ? "Note" : "Defect"}</label>
           <textarea
             id="noteInput"
             rows={fieldFocused ? 2 : 3}
@@ -724,6 +726,24 @@ export default function Note() {
             style={fieldStyle}
           />
         </div>
+
+        {/* the inspector's rectification notes, apart from the defect (AFSS
+            sites: they go in the reports beside the corrective action) */}
+        {!isProject && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <label htmlFor="rectificationInput" style={labelStyle}>Rectification notes</label>
+            <textarea
+              id="rectificationInput"
+              rows={fieldFocused ? 2 : 3}
+              placeholder="Tap to add"
+              value={rectification}
+              onChange={(e) => setRectification(e.target.value)}
+              onFocus={() => setFieldFocused(true)}
+              onBlur={() => setFieldFocused(false)}
+              style={fieldStyle}
+            />
+          </div>
+        )}
 
         {/* location, with suggestions from this site's other findings while
             typing (data-keep-visible keeps the buttons above the keyboard) */}

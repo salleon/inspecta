@@ -180,7 +180,7 @@ export async function createFinding(siteId: string, carried: Partial<Pick<Findin
 
 export async function updateFinding(
   findingId: string,
-  changes: Partial<Pick<Finding, "note" | "location" | "defectType" | "level" | "esrCategory">>,
+  changes: Partial<Pick<Finding, "note" | "rectification" | "location" | "defectType" | "level" | "esrCategory">>,
 ) {
   await db.findings.update(findingId, { ...changes, updatedAt: Date.now() });
 }

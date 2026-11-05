@@ -87,6 +87,25 @@ test("back with the category list open saves and goes to the findings list in on
   await page.locator("text=typed then pressed back").waitFor();
 });
 
+test("defect and rectification notes are saved apart", async () => {
+  await go(page, app, "/site/s1/finding/f2/note", 1500);
+  assert.equal(await page.locator('label[for="noteInput"]').innerText(), "DEFECT");
+  await page.fill("#noteInput", "Hydrant cupboard obstructed with garbage bins");
+  await page.fill("#rectificationInput", "Remove bins and advise tenants");
+  await page.click("text=Save & close");
+  await page.waitForURL(/#\/site\/s1\/findings$/);
+  const saved = await page.evaluate(async () => {
+    const req = indexedDB.open("inspecta");
+    const idb = await new Promise((r) => (req.onsuccess = () => r(req.result)));
+    const f = await new Promise((r) => (idb.transaction("findings").objectStore("findings").get("f2").onsuccess = (e) => r(e.target.result)));
+    idb.close();
+    return [f.note, f.rectification];
+  });
+  assert.deepEqual(saved, ["Hydrant cupboard obstructed with garbage bins", "Remove bins and advise tenants"]);
+  await go(page, app, "/site/s1/finding/f2/note", 1500);
+  assert.equal(await page.inputValue("#rectificationInput"), "Remove bins and advise tenants");
+});
+
 test("no page errors", () => {
   assert.deepEqual(errors, []);
 });

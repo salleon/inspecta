@@ -18,6 +18,9 @@ const pickCode = (code) => page.locator(`button:has(> span:text-is("${code}"))`)
 const current = () =>
   page.evaluate(() => [...document.querySelectorAll("div")].find((d) => d.style.fontSize === "15px" && d.style.fontWeight === "800" && d.innerText !== "Categorise")?.innerText);
 
+// the inspector's own rectification notes, on some findings only
+const RECTIFICATION = { f1: "Reinstall extinguisher on bracket", f5: "Provide logbook on site", f3: "   " };
+
 before(async () => {
   app = await startApp(import.meta.url);
   ({ page, errors } = await openPage(app));
@@ -31,7 +34,7 @@ before(async () => {
   ];
   await seed(page, {
     sites: [{ id: "s1", name: "Harbour Tower", address: "1 Harbour St" }],
-    findings: notes.map(([id, note, defectType], i) => ({ id, siteId: "s1", note, defectType, location: `Area ${i}`, level: `Level ${i}` })),
+    findings: notes.map(([id, note, defectType], i) => ({ id, siteId: "s1", note, defectType, location: `Area ${i}`, level: `Level ${i}`, rectification: RECTIFICATION[id] })),
     photos: notes.slice(0, 5).map(([id], i) => ({ id: `p${i}`, findingId: id, siteId: "s1", color: `hsl(${i * 60},40%,45%)` })),
   });
 });
@@ -138,8 +141,15 @@ test("Excel: blue / yellow / grey rows, refs, kept old number in purple, Uncateg
   assert.match(text(action("3.1.1")), /^Confidence: High\n\nAs per AS 2293, exit signs must be permanently illuminated/);
   assert.equal(action("3.1.1").value.richText[0].font.bold, true);
   assert.ok(action("3.1.1").value.richText.every((r) => r.font.color.argb === "FFFF0000"), "all red");
-  assert.match(text(action("5.5.1")), /^Confidence: \w+\n\n.*extinguisher/is);
-  assert.equal(action("13.1").value, null, "Logbook not on site: not a common defect");
+  // the inspector's notes first, in black, then the suggestion in red
+  assert.match(text(action("5.5.1")), /^Inspector notes:\nReinstall extinguisher on bracket\n\nConfidence: \w+\n\n.*extinguisher/is);
+  const [label, notes] = action("5.5.1").value.richText;
+  assert.equal(label.font.bold, true);
+  assert.ok(!label.font.color && !notes.font.color, "notes not red");
+  // notes but no suggestion: just the notes
+  assert.equal(text(action("13.1")), "Inspector notes:\nProvide logbook on site");
+  // blank notes: nothing added
+  assert.doesNotMatch(text(action("6.3.4.1")), /Inspector notes/);
 });
 
 test("photo-less findings are in the PDF", async () => {
@@ -154,6 +164,11 @@ test("photo-less findings are in the PDF", async () => {
   const text = (await readFile(pdf.path)).toString("latin1");
   assert.ok(text.includes("Logbook not on site"), "photo-less finding present");
   assert.ok(text.includes("No photo"), "No photo box drawn");
+  // rectification notes only where written; no suggested wording in the PDF
+  assert.ok(text.includes("Provide logbook on site"));
+  assert.ok(text.includes("Reinstall extinguisher on bracket"));
+  assert.equal(text.split("Rectification:").length - 1, 2, "only the two findings with notes");
+  assert.ok(!text.includes("As per AS 2293"), "no suggested corrective action in the PDF");
 });
 
 test("no page errors", () => {

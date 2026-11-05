@@ -192,7 +192,12 @@ export async function buildFindingsWorkbook(
     const options = suggestion ? [suggestion.defect, suggestion.alternative].filter((d) => d !== undefined) : [];
     const optionText = (i: number) => (options.length > 1 ? `Option ${i + 1}:\n` : "");
     const actionText = options.map((d, i) => optionText(i) + d.wording).join("\n\n");
-    const actionH = suggestion ? estimateTextPx(`${confidenceLine}\n\n${actionText}`, actionPx) : 0;
+    // the inspector's own rectification notes, first, over the suggestion
+    const rectification = finding.rectification?.trim() ?? "";
+    const actionH = estimateTextPx(
+      [rectification && `Inspector notes:\n${rectification}`, suggestion && `${confidenceLine}\n\n${actionText}`].filter(Boolean).join("\n\n"),
+      actionPx,
+    );
 
     const prepared: PreparedPhoto[] = [];
     for (const p of photos) {
@@ -308,14 +313,17 @@ export async function buildFindingsWorkbook(
 
     const actionCell = row.getCell(COL.action);
     actionCell.alignment = topLeft;
-    if (suggestion) {
-      // "Confidence: High" in bold over the wording, all red until checked;
+    if (suggestion || rectification) {
+      // the inspector's notes (if any) in black, then "Confidence: High" in
+      // bold over the suggested wording, all red until checked;
       // two possible matches: "Option 1:" / "Option 2:" in bold over each
       const bold = { ...FONT, bold: true, color: { argb: SUGGESTED_COLOUR } };
       const plain = { ...FONT, color: { argb: SUGGESTED_COLOUR } };
       actionCell.value = {
         richText: [
-          { text: `${confidenceLine}\n\n`, font: bold },
+          ...(rectification ? [{ text: "Inspector notes:\n", font: { ...FONT, bold: true } }, { text: rectification, font: FONT }] : []),
+          ...(rectification && suggestion ? [{ text: "\n\n", font: FONT }] : []),
+          ...(suggestion ? [{ text: `${confidenceLine}\n\n`, font: bold }] : []),
           ...options.flatMap((d, i) => [
             ...(i ? [{ text: "\n\n", font: plain }] : []),
             ...(optionText(i) ? [{ text: optionText(i), font: bold }] : []),
@@ -323,7 +331,7 @@ export async function buildFindingsWorkbook(
           ]),
         ],
       };
-      actionCell.font = { ...FONT, color: { argb: SUGGESTED_COLOUR } };
+      actionCell.font = suggestion ? { ...FONT, color: { argb: SUGGESTED_COLOUR } } : FONT;
     }
 
     if (last > first) {

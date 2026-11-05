@@ -408,9 +408,15 @@ export default function ExportPreview() {
       const defect = defectTypeStyle(item.finding.defectType);
       // level (as a subheading) and location, each on its own grey line
       const placeLines = [item.finding.level, item.finding.location].filter((t): t is string => !!t);
+      // the inspector's rectification notes under them, only when written
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      const rectification = item.finding.rectification?.trim();
+      const rectLines: string[] = rectification ? doc.splitTextToSize(rectification, textColW) : [];
       const textBlockH =
         titleLines.length * 15 +
         (placeLines.length ? 18 + (placeLines.length - 1) * 13 : 0) +
+        (rectLines.length ? 8 + 13 + rectLines.length * 13 : 0) +
         (defect ? PILL_H + 10 : 0);
 
       const blockH = Math.max(photosBlockH, textBlockH);
@@ -476,6 +482,16 @@ export default function ExportPreview() {
         doc.setFontSize(10);
         doc.setTextColor(140, 140, 140);
         placeLines.forEach((line, i) => doc.text(line, textX, ty + i * 13));
+      }
+
+      if (rectLines.length) {
+        const ry = ty + (placeLines.length ? placeLines.length * 13 + 8 : 0);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.setTextColor(28, 30, 36);
+        doc.text("Rectification:", textX, ry);
+        doc.setFont("helvetica", "normal");
+        doc.text(rectLines, textX, ry + 13);
       }
 
       // the photos, two across; a row that won't fit goes on the next page,
