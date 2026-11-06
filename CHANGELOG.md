@@ -5,6 +5,35 @@ matches a commit on the `test` branch (called `advanced_controls` until
 29 September 2026) or `main`; the commit itself has
 the technical detail.
 
+## 6 November 2026
+
+- **Build 9.2, out to coworkers.** Defect and Rectification notes on
+  findings, in the Excel register and PDF; two suggested corrective
+  actions when two defects match; thirteen new EnFact wordings
+  (EF-36 to EF-48). BUILD_LABEL is now 9.2.
+
+## 5 November 2026
+
+- **Findings: Defect and Rectification notes.** On AFSS sites the Note
+  box is now called Defect, with a Rectification notes box under it for
+  the fix. In the Excel register your notes go first in the Corrective
+  Action cell, in black under "Inspector notes:", with the suggested
+  wording still under them in red. In the PDF they go under the level
+  and location as "Rectification:". Left blank, nothing is added. The
+  suggestion only reads the Defect box. Projects sites are unchanged.
+
+## 4 November 2026
+
+- **Suggested corrective action: two options.** When two common defects
+  match a note (tied, or one just behind), the Excel cell shows both
+  wordings as Option 1 and Option 2, best first, never more than two.
+  A tie used to leave the cell blank.
+- **Thirteen new EnFact wordings (EF-36 to EF-48)** from the 101 Miller
+  St report: fire shutters and their strobes, hydrant obstruction,
+  extinguisher tags and location signs, escutcheon plates, FFCP manual
+  control, AHUs in fire mode, duct probes, covered or mis-zoned
+  detectors, clipping tones, and alarms not reaching the ASE.
+
 ## 29 October 2026
 
 - **Build 9.1, out to coworkers.** Camera zoom dial with smooth lens
