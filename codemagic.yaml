@@ -13,7 +13,7 @@ workflows:
           source: true
     integrations:
       # the name of the App Store Connect key in Codemagic (Team integrations > Developer Portal)
-      app_store_connect: codemagic
+      app_store_connect: Scemo
     environment:
       ios_signing:
         distribution_type: app_store
