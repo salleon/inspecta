@@ -7,6 +7,8 @@ the technical detail.
 
 ## 10 November 2026
 
+- **iPhone: the keyboard stays up when you tap Level + or −.** On the iPhone, tapping the level buttons (and the quick level chips, the defect type and category buttons) closed the keyboard first, so the level box jumped around the screen before it changed. It now stays put, as on Android.
+
 - **Fixes from a check over the app.**
   - A finding's typed note, location and rectification are saved when the phone locks or you switch apps, so Android closing Inspecta in the background no longer loses them.
   - Retaking a photo keeps the old one until the new one is saved, so a failed save can't lose both.

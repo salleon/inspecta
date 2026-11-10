@@ -815,6 +815,7 @@ export default function Note() {
               // blur re-expands the photo, shoving this button down so the
               // tap misses it (it'd take a second tap to open).
               onPointerDown={(e) => e.preventDefault()}
+              onMouseDown={(e) => e.preventDefault()}
               onClick={() => {
                 (document.activeElement as HTMLElement | null)?.blur();
                 setPickingDefectType(true);
@@ -1071,6 +1072,7 @@ function CategoryBoxButton({ label, open, onClick }: { label: string; open: bool
       // same as the defect type button: don't let the blur of a focused
       // field shift the layout under the tap
       onPointerDown={(e) => e.preventDefault()}
+      onMouseDown={(e) => e.preventDefault()}
       onClick={() => {
         (document.activeElement as HTMLElement | null)?.blur();
         onClick();

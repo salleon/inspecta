@@ -1,4 +1,4 @@
-import { useRef, useState, type CSSProperties, type PointerEvent } from "react";
+import { useRef, useState, type CSSProperties } from "react";
 import { formatLevel, parseLevel, stepLevel } from "../lib/levels";
 
 // Level input for a finding: − [ Level 25 ✕ ] +
@@ -29,7 +29,10 @@ export default function LevelField({
   // Buttons around the box don't take focus from it — if the keyboard is up
   // it stays up, and the Note screen's photo doesn't re-expand and shove
   // the button out from under your finger mid-tap.
-  function keepFocus(e: PointerEvent) {
+  // the box keeps focus (and the keyboard stays up) while a button is
+  // tapped: Android blurs on pointerdown, the iPhone on the mousedown it
+  // fires after the touch, so both are stopped
+  function keepFocus(e: { preventDefault: () => void }) {
     e.preventDefault();
   }
 
@@ -43,6 +46,7 @@ export default function LevelField({
   function quick(text: string) {
     return {
       onPointerDown: keepFocus,
+      onMouseDown: keepFocus,
       onClick: () => {
         onChange(text);
         inputRef.current?.focus();
@@ -55,7 +59,7 @@ export default function LevelField({
     // quick buttons in view (see lib/keepFocusedVisible)
     <div data-keep-visible style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       <div style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
-        <button type="button" aria-label="Down one level" onPointerDown={keepFocus} onClick={() => onChange(stepLevel(value, -1))} style={stepButtonStyle}>
+        <button type="button" aria-label="Down one level" onPointerDown={keepFocus} onMouseDown={keepFocus} onClick={() => onChange(stepLevel(value, -1))} style={stepButtonStyle}>
           −
         </button>
         <div
@@ -97,7 +101,7 @@ export default function LevelField({
             <button
               type="button"
               aria-label="Clear level"
-              onPointerDown={keepFocus}
+              onPointerDown={keepFocus} onMouseDown={keepFocus}
               onClick={(e) => {
                 e.stopPropagation();
                 onChange(undefined);
@@ -108,7 +112,7 @@ export default function LevelField({
             </button>
           )}
         </div>
-        <button type="button" aria-label="Up one level" onPointerDown={keepFocus} onClick={() => onChange(stepLevel(value, 1))} style={stepButtonStyle}>
+        <button type="button" aria-label="Up one level" onPointerDown={keepFocus} onMouseDown={keepFocus} onClick={() => onChange(stepLevel(value, 1))} style={stepButtonStyle}>
           +
         </button>
       </div>

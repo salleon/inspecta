@@ -28,6 +28,7 @@ function CategoryButton({ item, best, active, onPick, children }: { item: EsrIte
     <button
       type="button"
       onPointerDown={keepLayout}
+      onMouseDown={keepLayout}
       onClick={() => {
         blurActive();
         onPick(item.code);
@@ -143,6 +144,7 @@ export function EsrSelectedCard({ code, onClear }: { code: string; onClear: () =
         type="button"
         aria-label="Clear ESR category"
         onPointerDown={keepLayout}
+      onMouseDown={keepLayout}
         onClick={() => {
           blurActive();
           onClear();
@@ -160,6 +162,7 @@ export function EsrLink({ onClick, children }: { onClick: () => void; children: 
     <button
       type="button"
       onPointerDown={keepLayout}
+      onMouseDown={keepLayout}
       onClick={() => {
         blurActive();
         onClick();
