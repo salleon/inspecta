@@ -1,6 +1,6 @@
 // Stair pressurisation (canvas StairTestSimple, SiteTests, SpfTidy,
 // SpfStairPad): a Stair
-// pressurisation site from + New site, the system set up once, a test
+// pressurisation site from + New job, the system set up once, a test
 // picked, a velocity typed at a level with the keypad (Done saves and
 // closes: the app never moves you on), the report; and on an AFSS site the
 // Other tests tab, + Add a test and the export chooser.
@@ -27,8 +27,8 @@ after(async () => {
   await app?.close();
 });
 
-test("a Stair pressurisation site from + New site", async () => {
-  await page.getByRole("button", { name: /new site/i }).first().click();
+test("a Stair pressurisation site from + New job", async () => {
+  await page.getByRole("button", { name: /new job/i }).first().click();
   await page.getByRole("button", { name: "Stair pressurisation" }).click();
   assert.match(await page.getByRole("button", { name: /Stair pressurisation/ }).innerText(), /BETA/, "the beta ribbon");
   assert.match(await page.locator("form").innerText(), /Just stair pressurisation tests/);

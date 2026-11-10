@@ -9,7 +9,7 @@ import type { FlowReading } from "../db/types";
 // every screen has something to show, moving screen to screen on Next.
 // They're deleted when the tour ends (Done, Skip or Android back).
 // Settings → Replay tour runs it again. Real sites are never touched. A
-// step can set a "scene" that a screen acts out (the New site sheet open,
+// step can set a "scene" that a screen acts out (the New job sheet open,
 // the readings full screen...): see useTourScene. See components/Tour.
 
 const OFFERED_KEY = "inspecta.tourOffered"; // the welcome has been shown
@@ -150,7 +150,7 @@ export function useTour(): TourState {
 }
 
 // A screen acting out a tour step: `on` when the step with this scene
-// starts, `off` when it ends (e.g. open the New site sheet, then close it).
+// starts, `off` when it ends (e.g. open the New job sheet, then close it).
 export function useTourScene(scene: string, on: () => void, off?: () => void) {
   const tour = useTour();
   const hit = tour.active && !tour.topics && tour.scene === scene;

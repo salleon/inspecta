@@ -39,7 +39,7 @@ const site = (ids: TourIds) => `/site/${ids.siteId}`;
 // canvas TourFull: 8 topics, 24 steps
 const STEPS: Step[] = [
   // 1. sites
-  { chapter: 0, route: () => "/", targets: t('[data-tour="new-site"]'), title: "Start a site", body: <>Tap {b("+")} to start a new site. Each site holds its own findings, photos and flow tests, and makes its own report.</> },
+  { chapter: 0, route: () => "/", targets: t('[data-tour="new-site"]'), title: "Start a job", body: <>Tap {b("New job")} to start a new site. Each site holds its own findings, photos and flow tests, and makes its own report.</> },
   {
     chapter: 0,
     route: () => "/",

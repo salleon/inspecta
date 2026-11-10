@@ -211,7 +211,7 @@ button:active:not(:disabled) {
   flex-shrink: 0;
 }
 
-/* bottom sheet + its backdrop (Dashboard "new site") */
+/* bottom sheet + its backdrop (Dashboard "New job") */
 .sheet-backdrop {
   animation: backdropIn 180ms ease-out;
 }

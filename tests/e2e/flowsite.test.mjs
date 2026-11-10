@@ -43,13 +43,13 @@ after(async () => {
   await app?.close();
 });
 
-test("New site offers Flow testing; the home page groups flow testing sites", async () => {
+test("New job offers Flow testing; the home page groups flow testing sites", async () => {
   await go(page, app, "/");
   await page.reload();
   await page.waitForTimeout(1200);
   assert.equal(await page.getByText("Flow testing", { exact: true }).count(), 1, "the group heading");
   assert.equal(await page.getByText("2 flow tests").count(), 1);
-  await page.click('[aria-label="Start new site inspection"]');
+  await page.click('[aria-label="New job"]');
   await page.waitForTimeout(300);
   // the keyboard waits: nothing is focused until Site name is tapped
   assert.notEqual(await page.evaluate(() => document.activeElement?.tagName), "INPUT");

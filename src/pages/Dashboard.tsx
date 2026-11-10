@@ -22,7 +22,7 @@ export default function Dashboard() {
   const [sites, setSites] = useState<SiteRow[]>([]);
   const [query, setQuery] = useState("");
   const [adding, setAdding] = useState(false);
-  // the tour opens the New site sheet to show the kinds of site
+  // the tour opens the New job sheet to show the kinds of site
   useTourScene("new-site", () => setAdding(true), () => setAdding(false));
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
@@ -254,7 +254,7 @@ export default function Dashboard() {
       {/* New job: a pill centred at the bottom, clear of the cards' dates and
           counts on the right; a light sweep when the screen opens, a soft glow */}
       <button
-        aria-label="Start new site inspection"
+        aria-label="New job"
         data-tour="new-site"
         onClick={() => setAdding(true)}
         className="glow-sweep fab-pulse"
@@ -309,7 +309,7 @@ export default function Dashboard() {
               gap: 14,
             }}
           >
-            <div style={{ fontSize: 16, fontWeight: 800 }}>New site</div>
+            <div style={{ fontSize: 16, fontWeight: 800 }}>New job</div>
             {/* two by two, so all four kinds fit (canvas SiteTests) */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }} data-tour="site-kinds">
               <button
@@ -427,7 +427,7 @@ const sectionHeaderStyle: CSSProperties = {
 };
 
 // stair pressurisation is still being built: a BETA tag on its home heading
-// and a ribbon on its New site button (take both out when it's finished)
+// and a ribbon on its New job button (take both out when it's finished)
 const BETA = "#f7b977";
 function BetaTag() {
   return <span style={{ padding: "2px 7px", borderRadius: 4, background: BETA, color: "#2e1a04", fontSize: 10, fontWeight: 800, letterSpacing: "0.06em" }}>BETA</span>;

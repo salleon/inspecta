@@ -78,7 +78,7 @@ test("Show me around walks through all 8 topics on example sites, then removes t
   await page.evaluate(() => localStorage.removeItem("inspecta.tourOffered"));
   await reopen();
   await page.getByRole("button", { name: "Show me around" }).click();
-  assert.equal(await tipTitle(), "Start a site");
+  assert.equal(await tipTitle(), "Start a job");
   assert.deepEqual(await sites(), ["Example pump room", "Example site", "Harbour Tower"]);
   assert.equal(await topic(), "SITES · 1 OF 2");
   assert.match(new URL(page.url()).hash, /^(#\/)?$/, "on the sites screen");
@@ -88,7 +88,7 @@ test("Show me around walks through all 8 topics on example sites, then removes t
 
   // each step's title, and what its screen shows
   const want = [
-    ["Pick the kind of site", async () => assert.equal(await page.locator('[data-tour="site-kinds"]').count(), 1, "the New site sheet opens")],
+    ["Pick the kind of site", async () => assert.equal(await page.locator('[data-tour="site-kinds"]').count(), 1, "the New job sheet opens")],
     ["Log a finding", async () => assert.match(page.url(), /#\/site\/[^/]+\/findings$/)],
     ["Photos", async () => assert.match(page.url(), /\/finding\/[^/]+\/note$/)],
     ["Save & next"],
@@ -138,7 +138,7 @@ test("Back goes to the step before, its screen and all; not before the first", a
   await page.click('button[aria-label="Settings"]');
   await page.click('button:has-text("Replay tour")');
   const back = () => page.getByRole("button", { name: "‹ Back" }).click();
-  assert.equal(await tipTitle(), "Start a site");
+  assert.equal(await tipTitle(), "Start a job");
   assert.equal(await page.getByRole("button", { name: "‹ Back" }).count(), 0, "nothing before the first step");
   await next();
   await tipTitle();
@@ -146,7 +146,7 @@ test("Back goes to the step before, its screen and all; not before the first", a
   assert.equal(await tipTitle(), "Log a finding");
   await back();
   assert.equal(await tipTitle(), "Pick the kind of site");
-  assert.equal(await page.locator('[data-tour="site-kinds"]').count(), 1, "the New site sheet opens again");
+  assert.equal(await page.locator('[data-tour="site-kinds"]').count(), 1, "the New job sheet opens again");
   // into the full screen readings and back out of them
   await page.getByRole("button", { name: "☰ Topics" }).click();
   await page.locator('[role="dialog"][aria-label="Pick a topic"]').getByRole("button", { name: /Run the whole tour/ }).click();
@@ -191,7 +191,7 @@ test("Pick a topic runs just that topic, then comes back to the list", async () 
   assert.equal(await list.count(), 1, "back on the list");
   // ☰ Topics on a tip opens it too; Done ends the tour
   await list.getByRole("button", { name: /Sites/ }).click();
-  assert.equal(await tipTitle(), "Start a site");
+  assert.equal(await tipTitle(), "Start a job");
   await page.getByRole("button", { name: "☰ Topics" }).click();
   await page.waitForTimeout(300);
   await list.getByRole("button", { name: "Done", exact: true }).click();
@@ -209,7 +209,7 @@ test("an old Advanced controls switch-off is ignored: the ESR steps are always i
     await next();
     titles.push(await tipTitle());
   }
-  assert.deepEqual(titles, ["Start a site", "Pick the kind of site", "Log a finding", "Photos", "Save & next", "ESR category"]);
+  assert.deepEqual(titles, ["Start a job", "Pick the kind of site", "Log a finding", "Photos", "Save & next", "ESR category"]);
   await page.getByRole("button", { name: "Skip", exact: true }).click();
   await page.waitForTimeout(500);
   await page.evaluate(() => localStorage.removeItem("inspecta.advancedControls"));

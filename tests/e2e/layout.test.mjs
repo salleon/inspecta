@@ -33,7 +33,7 @@ test("scrolled to the bottom, the last site is above the + button; the list bump
     const rows = [...document.querySelectorAll("*")].filter((e) => /^Site \d+$/.test(e.textContent?.trim() ?? "") && e.children.length === 0);
     return Math.max(...rows.map((r) => r.getBoundingClientRect().bottom));
   });
-  const fab = await page.locator('[aria-label="Start new site inspection"]').boundingBox();
+  const fab = await page.locator('[aria-label="New job"]').boundingBox();
   assert.ok(last < fab.y, `last row ends ${last}, + starts ${fab.y}`);
   // a wheel past the bottom bumps
   await list.hover();

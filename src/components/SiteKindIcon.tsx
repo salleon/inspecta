@@ -1,6 +1,6 @@
 import type { SiteKind } from "../db/types";
 
-// A small icon for each kind of site (home page groups and New site):
+// A small icon for each kind of site (home page groups and New job):
 // AFSS a clipboard with a tick, Projects a hard hat, Flow testing a drop,
 // Stair pressurisation a small staircase.
 export const KIND_COLOUR: Record<SiteKind, string> = { afss: "#2ec4b6", project: "#f5a55c", flow: "#5ab0ff", spf: "#b18cff" };
