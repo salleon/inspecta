@@ -77,7 +77,7 @@ test("the report keeps every column; anything not tested is blank", () => {
   assert.deepEqual(page.rows[0].cells, ["3", "2", "0.9", "", ""], "force isn't in this test, so it stays blank");
   assert.deepEqual(page.rows[0].fails, [false, false, true, false, false]);
   assert.ok(page.boxes.every((b) => b.value === ""));
-  assert.equal(page.subtitle, "Stair 1 (Front)");
+  assert.equal(page.subtitle, "SPF-1 · Front");
 });
 
 test("levels are a type and a number; ground in any range across it, the others only at the ends", () => {
@@ -121,9 +121,9 @@ test("a level has one door unless more are set: on every level, or added at one"
 
 test("stairs are named by their name, else their fan; and sit in their groups", () => {
   const st = (id: string, fan: string, group?: string, name = "") => ({ id, name, from: "G", to: "1", extra: [], fan, group });
-  assert.equal(stairLabel(st("a", "SPF 2"), 0), "SPF 2");
-  assert.equal(stairLabel(st("a", "SPF-", undefined, "Front"), 0), "Front");
-  assert.equal(stairLabel(st("a", "SPF-"), 2), "Stair 3");
+  assert.equal(stairLabel(st("a", "SPF 2")), "SPF 2");
+  assert.equal(stairLabel(st("a", "SPF 2", undefined, "East stairwell")), "SPF 2 · East stairwell");
+  assert.equal(stairLabel(st("a", "SPF-")), "No fan name");
   const groups = stairGroups({ stairs: [st("a", "SPF 1", "Basement"), st("b", "SPF 3", "Tower"), st("c", "SPF 2", "basement ")] });
   assert.deepEqual(groups.map((g) => [g.name, g.stairs.map((x) => x.id).join("")]), [["Basement", "ac"], ["Tower", "b"]]);
 });
@@ -160,7 +160,7 @@ test("general system testing: velocities plus what's added, runs, and each door'
   const [page] = stairPages(t, s, { name: "Site", address: "" });
   assert.equal(page.subtitle, "All stairs");
   assert.deepEqual(page.tables!.map((x) => x.title.replace(/\d\d:\d\d/, "T")), ["Run 1 · T · As found · Average velocity m/s (min 1)", "Run 2 · T · damper shut · Average velocity m/s (min 1)"]);
-  assert.deepEqual(page.tables![1].head, ["Level", "Front"]);
+  assert.deepEqual(page.tables![1].head, ["Level", "SPF-1\nFront"]);
   assert.deepEqual(page.tables![1].rows[0], { cells: ["3", "1.2"], fails: [false, false], warns: [false, false] });
   assert.deepEqual(page.tables![0].rows[0].fails, [false, true]);
 });

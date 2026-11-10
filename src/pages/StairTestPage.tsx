@@ -1,7 +1,7 @@
 import { useState, type CSSProperties } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import type { StairSection } from "../db/types";
-import { ALL_SECTIONS, doorStats, KIND_LABEL, onceStatus, runCount, SECTION, stairDoors, stairLabel } from "../lib/stairTest";
+import { ALL_SECTIONS, doorStats, KIND_LABEL, onceStatus, runCount, SECTION, stairDoors, stairFan } from "../lib/stairTest";
 import { useBackHandler } from "../lib/backButton";
 import { card, cardLabel, fieldInput, PageHeader, Pill, useStairTest } from "../components/StairUi";
 import ConfirmDialog from "../components/ConfirmDialog";
@@ -114,7 +114,7 @@ export default function StairTestPage() {
         <>
           {/* a tab per stair, sideways for any number of them */}
           <div style={{ flexShrink: 0, display: "flex", gap: 5, overflowX: "auto", padding: "4px 14px 2px", scrollbarWidth: "none" }}>
-            {stairs.map((s, i) => {
+            {stairs.map((s) => {
               const on = s.id === stair.id;
               const every = test.sections.find((x) => SECTION[x].every) as "vel" | "force" | "latch" | undefined;
               const done = every && sys ? doorStats(test, s, every, sys).done : 0;
@@ -124,7 +124,8 @@ export default function StairTestPage() {
                   onClick={() => setParams({ stair: s.id }, { replace: true })}
                   style={{ flex: "0 0 auto", textAlign: "left", fontSize: 12, fontWeight: 800, padding: "7px 11px", borderRadius: 9, lineHeight: 1.25, background: on ? "rgba(46,196,182,.14)" : "var(--panel-2)", border: on ? "1px solid var(--accent)" : "1px solid var(--border-strong)", color: on ? "#5ff0e0" : "var(--muted)" }}
                 >
-                  {stairLabel(s, i)}
+                  {stairFan(s) || "No fan name"}
+                  {s.name.trim() && <small style={{ display: "block", fontSize: 10.5, fontWeight: 600 }}>{s.name.trim()}</small>}
                   <small style={{ display: "block", fontSize: 10.5, fontWeight: 700 }}>{every ? `${done} of ${stairDoors(s).length}` : `${stairDoors(s).length} doors`}</small>
                 </button>
               );

@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import type { Site, SpfEdition, SpfStair, SpfSystem, SpfType, StairTest } from "../db/types";
 import { getSite, listStairTests, saveSiteSpf, saveStairTest } from "../db/db";
-import { defaultSystem, doorsEach, EDITIONS, joinLevel, LEVEL_TYPES, levelChanges, levelName, levelsEdited, levelsRead, levelType, newStair, renameDoorLevels, splitLevel, stairDoors, stairGroups, stairRange, TYPES, typeFor, type LevelType } from "../lib/stairTest";
+import { defaultSystem, doorsEach, EDITIONS, joinLevel, LEVEL_TYPES, levelChanges, levelName, levelsEdited, levelsRead, levelType, newStair, renameDoorLevels, splitLevel, stairFan, stairLabel, stairDoors, stairGroups, stairRange, TYPES, typeFor, type LevelType } from "../lib/stairTest";
 import { useBackHandler } from "../lib/backButton";
 import { AMBER, card, cardLabel, fieldInput, PageHeader, RulesBox, Seg } from "../components/StairUi";
 import NumPad, { k, numberKeys, PadTag } from "../components/NumPad";
@@ -29,6 +29,8 @@ const field = (w: Which): "to" | "from" => (w === "hi" ? "to" : "from");
 const ready = (st: SpfStair) => !!(st.from.trim() && st.to.trim());
 // the fan name before its number is typed
 const bareFan = (fan: string) => !fan.trim() || fan.trim().toUpperCase() === "SPF-";
+// a stair nothing was entered for (dropped on save)
+const blank = (st: SpfStair) => !st.name.trim() && !st.from.trim() && !st.to.trim() && bareFan(st.fan) && !st.extra.length;
 
 export default function StairSystem() {
   const { siteId } = useParams<{ siteId: string }>();
@@ -74,7 +76,6 @@ export default function StairSystem() {
     if (saveTimer.current !== null) window.clearTimeout(saveTimer.current);
     saveTimer.current = null;
     // a stair added and left completely empty isn't kept
-    const blank = (st: SpfStair) => !st.name.trim() && !st.from.trim() && !st.to.trim() && bareFan(st.fan) && !st.extra.length;
     // a fan name with no number isn't one
     if (latest.current && siteId)
       await saveSiteSpf(siteId, { ...latest.current, stairs: latest.current.stairs.filter((st) => !blank(st)).map((st) => (bareFan(st.fan) ? { ...st, fan: "" } : st)) });
@@ -171,6 +172,9 @@ export default function StairSystem() {
   }
 
   const hasStairs = sys.stairs.length > 0;
+  // every stair needs its fan name: it's what the stair goes by
+  const needsFan = sys.stairs.some((st) => !blank(st) && bareFan(st.fan));
+  const canSave = hasStairs && !needsFan;
   const guardStair = sys.stairs.find((s) => s.id === guard?.id) ?? newStair();
   const guardEdited = levelsEdited(guardStair);
   const reviewing = review ? sys.stairs.find((s) => s.id === review) : undefined;
@@ -307,10 +311,10 @@ export default function StairSystem() {
                 >
                   <span style={numBadge}>{i + 1}</span>
                   <span style={{ flex: 1, minWidth: 0, fontSize: 14.5, fontWeight: 800 }}>
-                    {st.name.trim() || `Stair ${i + 1}`}
+                    {stairFan(st) ? stairLabel(st) : <span style={{ color: "#f7b977" }}>{stairLabel(st)}</span>}
                     {levelsEdited(st) && <span className="lr-tag" style={{ marginLeft: 6 }}>levels edited</span>}
                     <small style={{ display: "block", fontSize: 12, color: "var(--muted)", fontWeight: 600, marginTop: 2, lineHeight: 1.4 }}>
-                      {stairRange(st)} · {stairDoors(st).length} doors{bareFan(st.fan) ? "" : ` · Fan ${st.fan.trim()}`}
+                      {stairRange(st)} · {stairDoors(st).length} doors
                     </small>
                   </span>
                   <span style={editPill}>Edit</span>
@@ -332,11 +336,11 @@ export default function StairSystem() {
         <div style={{ flexShrink: 0, padding: "10px 16px calc(24px + env(safe-area-inset-bottom))" }}>
           <button
             onClick={leave}
-            disabled={!hasStairs}
-            className={hasStairs ? "glow-sweep" : undefined}
-            style={{ position: "relative", overflow: "hidden", width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: hasStairs ? "var(--accent)" : "#143452", color: hasStairs ? "var(--accent-text)" : "var(--muted)", fontSize: 16, fontWeight: 800 }}
+            disabled={!canSave}
+            className={canSave ? "glow-sweep" : undefined}
+            style={{ position: "relative", overflow: "hidden", width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: canSave ? "var(--accent)" : "#143452", color: canSave ? "var(--accent-text)" : "var(--muted)", fontSize: 16, fontWeight: 800 }}
           >
-            {hasStairs ? "Save and continue ›" : "Add a stair to continue"}
+            {!hasStairs ? "Add a stair to continue" : needsFan ? "Add a fan name to continue" : "Save and continue ›"}
           </button>
         </div>
       )}
@@ -378,8 +382,7 @@ export default function StairSystem() {
                   {label(pad.which)}
                 </div>
                 <div style={{ fontSize: 11.5, color: "var(--muted)", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis" }}>
-                  Stair {sys.stairs.indexOf(padStair) + 1}
-                  {padStair.name.trim() ? ` · ${padStair.name.trim()}` : ""}
+                  {stairLabel(padStair)}
                   {padStair[field(pad.which)] ? ` · ${levelName(padStair[field(pad.which)])}` : ""}
                 </div>
               </div>

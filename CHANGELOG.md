@@ -7,6 +7,8 @@ the technical detail.
 
 ## 10 November 2026
 
+- **Stairs go by their fan name.** A stair is now shown as its fan, "SPF 1", or "SPF 1 · East stairwell" when a stairwell name is entered, on the setup, the readings and the report (where the stairwell sits on a second line under the fan). The app no longer makes up names like "Stair 4" that didn't match the fan. Every stair needs its fan name before the setup can be saved.
+
 - **New job button.** The round + on the home screen is now a "+ New job" pill centred at the bottom, so it no longer hides the date and findings count of the card under it on small phones. The list fades out beneath it to show there's more to scroll, and the button has a light sweep and a soft glow.
 
 - **Settings is shorter.** The In-app camera switch is gone: Inspecta's own camera is always used, and the phone's camera still steps in if it can't start. The Converter tool (L/s to L/min) is gone altogether.

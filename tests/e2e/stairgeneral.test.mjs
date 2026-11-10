@@ -54,7 +54,7 @@ test("General system testing starts on its velocities, with other tests to add",
   await page.getByRole("button", { name: "Start ›" }).click();
   await page.waitForURL(/\/spf\/[^/]+\/vel/);
   await page.getByTestId("spf-runs").waitFor();
-  assert.match(await page.locator("body").innerText(), /General system testing\s*Velocity · Stair 1/);
+  assert.match(await page.locator("body").innerText(), /General system testing\s*Velocity · SPF 1/);
   assert.match(await page.getByTestId("spf-stairs").innerText(), /SPF 1 · Basement[\s\S]*SPF 2 · Basement[\s\S]*SPF 3 · Tower/);
   assert.match(await page.getByTestId("spf-tests").innerText(), /Velocity\s*\+ Test/);
 });
@@ -95,8 +95,8 @@ test("+ Run: what changed, then the same doors again beside the last run's", asy
   assert.match(await page.locator('[data-i="1"]').innerText(), /B\s*<0\.25\s*Fail/);
   // another stair, from its card
   await page.getByTestId("spf-stairs").getByRole("button", { name: /SPF 2/ }).click();
-  await page.getByText("Velocity · Stair 2").waitFor();
-  assert.match(await page.locator("body").innerText(), /Velocity · Stair 2[\s\S]*0 of 3/);
+  await page.getByText("Velocity · SPF 2").waitFor();
+  assert.match(await page.locator("body").innerText(), /Velocity · SPF 2[\s\S]*0 of 3/);
 });
 
 test("the report: a page per group, a table per run with its stairs side by side", async () => {

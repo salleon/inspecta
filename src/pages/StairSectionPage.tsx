@@ -28,9 +28,9 @@ import {
   runDoors,
   SECTION,
   stairGroups,
+  stairFan,
   stairLabel,
   stairLevels,
-  stairName,
   type Every,
 } from "../lib/stairTest";
 import { meterOffset, setMeterOffset, startMeter, type Meter } from "../lib/soundMeter";
@@ -117,7 +117,7 @@ const chip = (on: boolean, dashed = false) =>
     color: on ? "#d6c4ff" : dashed ? "var(--muted)" : "#bfd0de",
   }) as const;
 
-function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack, run, onStair, onRun, onSection }: EveryProps) {
+function EveryDoor({ section, sys, stair, test, setTest, setSpf, onBack, run, onStair, onRun, onSection }: EveryProps) {
   const general = test.kind === "general";
   const levels = stairLevels(stair);
   const mine = runDoors(test, run)[stair.id] ?? {};
@@ -262,7 +262,7 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
-      <PageHeader title={general ? KIND_LABEL.general : info.name} sub={general ? `${info.name} · ${stairName(stair, stairNo)}` : stairName(stair, stairNo)} onBack={onBack} />
+      <PageHeader title={general ? KIND_LABEL.general : info.name} sub={general ? `${info.name} · ${stairLabel(stair)}` : stairLabel(stair)} onBack={onBack} />
       <div style={{ flexShrink: 0, padding: "0 14px", display: "flex", flexDirection: "column", gap: 7 }}>
         {/* the stairs, group by group: the main thing to switch */}
         {sys.stairs.length > 1 && (
@@ -278,7 +278,7 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack
                     style={{ flex: "1 0 auto", minWidth: 84, textAlign: "left", padding: "7px 10px", borderRadius: 10, background: on ? "rgba(177,140,255,.18)" : "var(--panel)", border: on ? "1px solid #b18cff" : "1px solid var(--border-strong)", color: "var(--text)" }}
                   >
                     <b style={{ display: "block", fontSize: 12.5, whiteSpace: "nowrap" }}>
-                      {stairLabel(st, sys.stairs.indexOf(st))}
+                      {stairFan(st) || "No fan name"}
                       {g.name && <span style={{ color: "var(--muted)", fontWeight: 700, fontSize: 10.5 }}> · {g.name}</span>}
                     </b>
                     <span style={{ fontSize: 11, fontWeight: 800, whiteSpace: "nowrap", color: x.fails ? FAIL : x.marginal ? WARN : x.done ? PASS : "var(--muted)" }}>
@@ -569,7 +569,7 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack
 
 type OnceNum = "noiseStair" | "noiseOcc" | "ambient" | "restTime" | "pa";
 
-function Once({ section, sys, stair, stairNo, test, setTest, onBack }: Props & { section: StairSection }) {
+function Once({ section, sys, stair, test, setTest, onBack }: Props & { section: StairSection }) {
   const once = test.once[stair.id] ?? {};
   const l = limits(sys);
   const [pad, setPad] = useState<{ field: OnceNum; label: string; sub: string } | null>(null);
@@ -617,7 +617,7 @@ function Once({ section, sys, stair, stairNo, test, setTest, onBack }: Props & {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
-      <PageHeader title={SECTION[section].name} sub={`${stairName(stair, stairNo)}${section === "fan" && fan ? ` · ${fan}` : ""}`} onBack={onBack} />
+      <PageHeader title={SECTION[section].name} sub={`${stairLabel(stair)}${section === "fan" && fan ? ` · ${fan}` : ""}`} onBack={onBack} />
       <div style={{ flexGrow: 1, overflowY: "auto", padding: `4px 14px ${pad ? 360 : 16}px`, display: "flex", flexDirection: "column", gap: 7 }}>
         {section === "noise" && (
           <>

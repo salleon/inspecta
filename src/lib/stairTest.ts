@@ -160,8 +160,10 @@ export function stairDoors(stair: Pick<SpfStair, "from" | "to" | "extra" | "leve
   });
 }
 
-// a stair on a tab or in a table: its name, else its fan, else its number
-export const stairLabel = (stair: SpfStair, i: number) => stair.name.trim() || (/^SPF-?\s*$/i.test(stair.fan.trim()) ? "" : stair.fan.trim()) || `Stair ${i + 1}`;
+// A stair goes by its fan ("SPF 1"), with its stairwell's name when one was
+// entered ("SPF 1 · East stairwell"). Never a made-up "Stair 3".
+export const stairFan = (stair: SpfStair) => (/^SPF-?\s*$/i.test(stair.fan.trim()) ? "" : stair.fan.trim());
+export const stairLabel = (stair: SpfStair) => [stairFan(stair) || "No fan name", stair.name.trim()].filter(Boolean).join(" · ");
 
 // the stairs in their groups ("Basement", "Tower"), in the order the groups
 // first appear; one unnamed group when none are set
@@ -176,7 +178,6 @@ export function stairGroups(sys: Pick<SpfSystem, "stairs">): { name: string; sta
   return out;
 }
 
-export const stairName = (stair: SpfStair, i: number) => `Stair ${i + 1}${stair.name.trim() ? ` · ${stair.name.trim()}` : ""}`;
 // "B2 to 26"
 export const stairRange = (stair: SpfStair) => (stair.from.trim() && stair.to.trim() ? `${stair.from.trim()} to ${stair.to.trim()}` : "No levels yet");
 
