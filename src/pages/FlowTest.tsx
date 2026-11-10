@@ -176,7 +176,9 @@ export default function FlowTest() {
     timer.current = null;
     const next = pending.current;
     pending.current = null;
-    if (next) writing.current = writing.current.then(() => saveFlowTest(next)).catch(() => {});
+    // a failed save is passed on to the app's "Couldn't save" message
+    // (components/StorageFull), without stopping the saves that follow
+    if (next) writing.current = writing.current.then(() => saveFlowTest(next)).catch((err) => void Promise.reject(err));
     return writing.current;
   };
   useEffect(() => {

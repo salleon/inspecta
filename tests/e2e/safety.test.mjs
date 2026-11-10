@@ -1,6 +1,7 @@
 // The safety nets: a screen that fails shows "Something went wrong" (not a
 // blank app) and the app carries on; a flow test with no supply left still
-// opens; Settings says when the last backup was made.
+// opens; a save the phone refuses says so; Settings says when the last
+// backup was made.
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { startApp, openPage, go, seed } from "./helpers.mjs";
@@ -41,6 +42,22 @@ test("a flow test with no supply left still opens, with a blank one", async () =
   await go(page, app, "/site/ok/flow/f0", 1500);
   assert.equal(await page.getByRole("alert").count(), 0);
   assert.match(await page.locator("body").innerText(), /Demand points/i);
+});
+
+test("a save the phone refuses says Couldn't save", async () => {
+  await page.evaluate(() => {
+    const put = IDBObjectStore.prototype.put;
+    IDBObjectStore.prototype.put = function () {
+      throw new DOMException("refused", "DataError");
+    };
+    window.__restorePut = () => (IDBObjectStore.prototype.put = put);
+  });
+  await page.locator("input").first().fill("x");
+  await page.getByText("Couldn't save", { exact: true }).waitFor({ timeout: 5000 });
+  await page.evaluate(() => window.__restorePut());
+  await page.getByRole("button", { name: "OK" }).click();
+  await page.locator("input").first().fill(""); // back as it was, saved this time
+  await page.waitForTimeout(800);
 });
 
 test("Settings says when the last backup was made", async () => {
