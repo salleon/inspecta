@@ -7,6 +7,8 @@ the technical detail.
 
 ## 10 November 2026
 
+- **New job button.** The round + on the home screen is now a "+ New job" pill centred at the bottom, so it no longer hides the date and findings count of the card under it on small phones. The list fades out beneath it to show there's more to scroll, and the button has a light sweep and a soft glow.
+
 - **Settings is shorter.** The In-app camera switch is gone: Inspecta's own camera is always used, and the phone's camera still steps in if it can't start. The Converter tool (L/s to L/min) is gone altogether.
 - **Back up all data pulses amber when a backup is overdue.** When the Settings cog has its amber dot, the Back up all data row in Settings pulses amber to show where to go. It stops once a backup is made.
 

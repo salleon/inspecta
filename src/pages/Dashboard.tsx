@@ -239,7 +239,7 @@ export default function Dashboard() {
       <div ref={listRef} style={{ flexGrow: 1, overflowY: "auto", padding: "0 20px calc(100px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 22 }}>
         {filtered.length === 0 && (
           <div style={{ padding: "40px 8px", textAlign: "center", color: "var(--muted-2)", fontSize: 14, fontWeight: 500 }}>
-            {sites.length === 0 ? "No sites yet — tap + to start your first inspection." : "No sites match your search."}
+            {sites.length === 0 ? "No sites yet — tap New job to start your first inspection." : "No sites match your search."}
           </div>
         )}
         {renderSiteGroup("AFSS", "afss", afssSites)}
@@ -248,29 +248,39 @@ export default function Dashboard() {
         {renderSiteGroup("Stair pressurisation", "spf", spfSites)}
       </div>
 
-      {/* new site fab */}
+      {/* the list fades out under the New job pill, so it reads as scrolling on */}
+      <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "calc(130px + env(safe-area-inset-bottom))", background: "linear-gradient(rgba(7,27,44,0), var(--bg) 70%)", pointerEvents: "none" }} />
+
+      {/* New job: a pill centred at the bottom, clear of the cards' dates and
+          counts on the right; a light sweep when the screen opens, a soft glow */}
       <button
         aria-label="Start new site inspection"
         data-tour="new-site"
         onClick={() => setAdding(true)}
-        className={`glow-sweep${sites.length === 0 ? " fab-pulse" : ""}`}
+        className="glow-sweep fab-pulse"
         style={{
           position: "absolute",
-          right: 20,
-          bottom: "calc(28px + env(safe-area-inset-bottom))",
-          width: 58,
-          height: 58,
-          borderRadius: "50%",
+          left: "50%",
+          transform: "translateX(-50%)",
+          bottom: "calc(26px + env(safe-area-inset-bottom))",
+          height: 52,
+          padding: "0 26px",
+          borderRadius: 26,
           background: "var(--accent)",
+          color: "var(--accent-text)",
           border: "none",
           display: "flex",
           alignItems: "center",
-          justifyContent: "center",
+          gap: 8,
+          fontSize: 16,
+          fontWeight: 800,
+          whiteSpace: "nowrap",
           boxShadow: "0 8px 20px rgba(0,0,0,0.35)",
           overflow: "hidden",
         }}
       >
-        <IconPlus size={24} color="var(--accent-text)" strokeWidth={2.4} />
+        <IconPlus size={20} color="var(--accent-text)" strokeWidth={2.4} />
+        New job
       </button>
 
       {adding && (
