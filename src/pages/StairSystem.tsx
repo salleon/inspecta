@@ -45,6 +45,8 @@ export default function StairSystem() {
   // the site's stair tests: a renamed level takes its readings with it, and
   // a level with readings is asked about before it's removed
   const [tests, setTests] = useState<StairTest[]>([]);
+  // the stairs already asked about changing their range, this visit
+  const asked = useRef(new Set<string>());
   const saveTimer = useRef<number | null>(null);
   const latest = useRef<SpfSystem | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
@@ -126,7 +128,10 @@ export default function StairSystem() {
     change({ ...base, stairs: base.stairs.map((s) => (s.id === id ? { ...s, ...patch } : s)) });
   };
   // a new range makes a new suggestion: asked first if the levels were edited
-  const rangeEdit = (st: SpfStair, then: () => void) => (levelsEdited(st) ? setGuard({ id: st.id, go: then }) : then());
+  // changing a stair's range rebuilds its levels: asked first when the levels
+  // were edited or the stair has readings (once per stair, per visit)
+  const hasRead = (st: SpfStair) => levelsRead(tests, st.id).size > 0;
+  const rangeEdit = (st: SpfStair, then: () => void) => (!asked.current.has(st.id) && (levelsEdited(st) || hasRead(st)) ? setGuard({ id: st.id, go: then }) : then());
   // the pad or the type list closed: a stair with its range set and not yet reviewed goes to its review
   const toReview = (id: string) => {
     const st = (latest.current ?? sys).stairs.find((s) => s.id === id);
@@ -166,6 +171,8 @@ export default function StairSystem() {
   }
 
   const hasStairs = sys.stairs.length > 0;
+  const guardStair = sys.stairs.find((s) => s.id === guard?.id) ?? newStair();
+  const guardEdited = levelsEdited(guardStair);
   const reviewing = review ? sys.stairs.find((s) => s.id === review) : undefined;
   if (reviewing)
     return (
@@ -337,15 +344,17 @@ export default function StairSystem() {
       {guard && (
         <>
           <div className="lr-dim" onClick={() => setGuard(null)} />
-          <div className="lr-dlg" role="dialog" aria-label="Replace the edited levels?">
-            <h3>Replace the edited levels?</h3>
-            <p>{levelChanges(sys.stairs.find((s) => s.id === guard.id) ?? newStair()).join(", ")}</p>
+          <div className="lr-dlg" role="dialog" aria-label={guardEdited ? "Replace the edited levels?" : "Change the range?"}>
+            <h3>{guardEdited ? "Replace the edited levels?" : "Change the range?"}</h3>
+            {guardEdited && <p>{levelChanges(guardStair).join(", ")}</p>}
+            {hasRead(guardStair) && <p>This stair has readings. Any at a level outside the new range stay saved, but won't show on the test or its report.</p>}
             <div className="bb">
-              <button onClick={() => setGuard(null)}>Keep my edits</button>
+              <button onClick={() => setGuard(null)}>{guardEdited ? "Keep my edits" : "Cancel"}</button>
               <button
                 className="warn"
                 onClick={() => {
-                  setStair(guard.id, { levels: undefined, reviewed: false });
+                  asked.current.add(guard.id);
+                  if (guardEdited) setStair(guard.id, { levels: undefined, reviewed: false });
                   setGuard(null);
                   guard.go();
                 }}
