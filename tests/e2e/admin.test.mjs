@@ -99,6 +99,10 @@ test("share the keyword file, reset, and load it back", async () => {
   await page.click('button:has-text("Reset keywords")');
   await page.getByRole("button", { name: "Reset", exact: true }).click();
   assert.equal(await page.locator("text=Built-in list, no changes").count(), 1);
+  // a wrong file: the app's own dialog, not the phone's alert box
+  await page.setInputFiles('input[type=file][accept*=".json"]', { name: "x.json", mimeType: "application/json", buffer: Buffer.from("nope") });
+  await page.getByText("Couldn't read the file", { exact: true }).waitFor({ timeout: 5000 });
+  await page.getByRole("button", { name: "OK", exact: true }).click();
   await page.setInputFiles('input[type=file][accept*=".json"]', file.path);
   await page.getByRole("button", { name: "Load", exact: true }).click();
   assert.equal(await page.locator("text=1 edited on this phone").count(), 1);

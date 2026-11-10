@@ -1,3 +1,4 @@
+import { say } from "../components/Message";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { jsPDF } from "jspdf";
@@ -654,7 +655,7 @@ export default function ExportPreview() {
       // surface it instead of silently doing nothing
       if (!(err instanceof Error) || !/cancell?ed/i.test(err.message)) {
         console.error(`${kind} share failed`, err);
-        alert(`Couldn't share the ${SHARE_LABEL[kind]}. Please try again.`);
+        say(`Couldn't share the ${SHARE_LABEL[kind]}`);
       }
     } finally {
       setSharing(null);

@@ -7,6 +7,8 @@ the technical detail.
 
 ## 10 November 2026
 
+- **Error messages look like the app.** The eight messages that used the phone's plain pop-up (a failed export or share, a wrong keyword file, a photo that can't be turned) now use the app's own dialog, with a short title such as "Couldn't export the PDF" and "Please try again." underneath.
+
 - **A change that doesn't save now says so.** If the phone refuses to save something (a finding, a reading, a site), the app shows "Couldn't save. The last change wasn't saved. Please try again." Before, only a full phone got a message, and a flow test reading that failed to save was dropped without a word.
 
 - **Changing a stair's range asks first when it has readings.** Tapping Highest or Lowest level on a stair that's already been tested now warns that readings at levels outside the new range stay saved but won't show. It asks once per stair each time you open the setup.

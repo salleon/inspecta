@@ -1,3 +1,4 @@
+import { say } from "../components/Message";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Share } from "@capacitor/share";
@@ -81,7 +82,7 @@ export default function FlowExport() {
     } catch (err) {
       if (!(err instanceof Error) || !/cancell?ed/i.test(err.message)) {
         console.error(`${kind} export failed`, err);
-        alert(`Couldn't export the ${kind === "pdf" ? "PDF" : "Excel file"}. Please try again.`);
+        say(`Couldn't export the ${kind === "pdf" ? "PDF" : "Excel file"}`);
       }
     } finally {
       setBusy(null);

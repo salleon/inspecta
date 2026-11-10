@@ -1,3 +1,4 @@
+import { say } from "./Message";
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent } from "react";
 import type { Mark } from "../db/types";
 import { useBackHandler } from "../lib/backButton";
@@ -94,7 +95,7 @@ export default function MarkupEditor({ blob, marks: initial, onCancel, onDone }:
     if (turned) onDone(marks, turned);
     else {
       finishing.current = false;
-      alert("Couldn't turn the photo on this phone");
+      say("Couldn't turn the photo", "It can't be turned on this phone.");
     }
   }
 

@@ -1,3 +1,4 @@
+import { say } from "../components/Message";
 import { useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Share } from "@capacitor/share";
@@ -264,7 +265,7 @@ function AdminHome() {
       if (Capacitor.isNativePlatform()) await Share.share({ title: "Inspecta admin recovery code", text });
       else window.location.href = `mailto:?subject=${encodeURIComponent("Inspecta admin recovery code")}&body=${encodeURIComponent(text)}`;
     } catch (err) {
-      if (!cancelled(err)) alert("Couldn't open the share menu. Please try again.");
+      if (!cancelled(err)) say("Couldn't open the share menu");
     }
   }
 
@@ -345,7 +346,7 @@ function KeywordMenu() {
     try {
       await shareBlob(keywordFile(), keywordFileName(), "Inspecta keyword changes");
     } catch (err) {
-      if (!cancelled(err)) alert("Couldn't share the keyword file. Please try again.");
+      if (!cancelled(err)) say("Couldn't share the keyword file");
     }
   }
 
@@ -354,7 +355,7 @@ function KeywordMenu() {
     try {
       setLoaded({ edits: readKeywordFile(await file.text()), name: file.name });
     } catch {
-      alert("That isn't an Inspecta keyword file.");
+      say("Couldn't read the file", "That isn't an Inspecta keyword file.");
     }
   }
 

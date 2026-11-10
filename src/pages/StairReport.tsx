@@ -1,3 +1,4 @@
+import { say } from "../components/Message";
 import { useRef, useState, type CSSProperties } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { stairPages, type StairPage, type StairRow } from "../lib/stairPrint";
@@ -33,7 +34,7 @@ export default function StairReport() {
     } catch (err) {
       if (!(err instanceof Error) || !/cancell?ed/i.test(err.message)) {
         console.error("stair export failed", err);
-        alert(`Couldn't export the ${kind === "pdf" ? "PDF" : "Excel file"}. Please try again.`);
+        say(`Couldn't export the ${kind === "pdf" ? "PDF" : "Excel file"}`);
       }
     } finally {
       const left = MIN_LOADER_MS - (performance.now() - started.current);

@@ -1,3 +1,4 @@
+import { say } from "./Message";
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import type { FlowKind, FlowTest, Site, StairTest } from "../db/types";
@@ -144,7 +145,7 @@ export default function TestsList({ site, mode, onCount }: { site: Site; mode: "
     } catch (err) {
       if (!(err instanceof Error) || !/cancell?ed/i.test(err.message)) {
         console.error("tests export failed", err);
-        alert("Couldn't export the tests. Please try again.");
+        say("Couldn't export the tests");
       }
     } finally {
       const left = MIN_LOADER_MS - (performance.now() - started.current);
