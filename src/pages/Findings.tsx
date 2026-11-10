@@ -247,7 +247,7 @@ export default function Findings() {
     if (!siteId || busy || reordering) return;
     setBusy(true);
     try {
-      const shot = await capturePhoto({ title: "New finding" });
+      const shot = await capturePhoto({ title: "New finding", siteId });
       if (!shot) return; // cancelled
       const finding = await createFinding(siteId);
       await addPhoto(finding.id, siteId, shot.blob, undefined, shot.marks);

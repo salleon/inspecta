@@ -20,7 +20,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-// Saves a photo from the in-app camera to the phone's gallery (DCIM/Inspecta),
+// Saves a photo from the in-app camera to the phone's gallery (DCIM/Inspecta,
+// or DCIM/Inspecta/<album> for a site's photos),
 // the way the Android camera's "save to gallery" did. Android 10+ needs no
 // permission for this; older phones save it only if storage access was given.
 @CapacitorPlugin(name = "Gallery")
@@ -36,7 +37,7 @@ public class GalleryPlugin extends Plugin {
         }
         byte[] bytes = Base64.decode(data, Base64.DEFAULT);
         try {
-            save(new ByteArrayInputStream(bytes), name);
+            save(new ByteArrayInputStream(bytes), name, folder(call));
             call.resolve();
         } catch (Exception e) {
             call.reject("Couldn't save to the gallery: " + e.getMessage());
@@ -60,7 +61,7 @@ public class GalleryPlugin extends Plugin {
                 return;
             }
             try (InputStream in = new FileInputStream(file)) {
-                save(in, name);
+                save(in, name, folder(call));
             }
             call.resolve();
         } catch (Exception e) {
@@ -68,13 +69,18 @@ public class GalleryPlugin extends Plugin {
         }
     }
 
-    private void save(InputStream in, String name) throws Exception {
+    private static String folder(PluginCall call) {
+        String album = call.getString("album");
+        return album == null || album.isEmpty() ? "Inspecta" : "Inspecta/" + album;
+    }
+
+    private void save(InputStream in, String name, String folder) throws Exception {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             ContentResolver resolver = getContext().getContentResolver();
             ContentValues values = new ContentValues();
             values.put(MediaStore.Images.Media.DISPLAY_NAME, name + ".jpg");
             values.put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg");
-            values.put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_DCIM + "/Inspecta");
+            values.put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_DCIM + "/" + folder);
             values.put(MediaStore.Images.Media.IS_PENDING, 1);
             Uri uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
             if (uri == null) throw new Exception("insert failed");
@@ -86,7 +92,7 @@ public class GalleryPlugin extends Plugin {
             values.put(MediaStore.Images.Media.IS_PENDING, 0);
             resolver.update(uri, values, null, null);
         } else {
-            File dir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM), "Inspecta");
+            File dir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM), folder);
             if (!dir.exists() && !dir.mkdirs()) throw new Exception("no folder");
             File file = new File(dir, name + ".jpg");
             try (FileOutputStream out = new FileOutputStream(file)) {

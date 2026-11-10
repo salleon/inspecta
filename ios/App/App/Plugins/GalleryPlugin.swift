@@ -1,8 +1,8 @@
 import Capacitor
 import Photos
 
-// Saves a copy of an in-app camera photo to the Photos library
-// (the same calls as android/.../GalleryPlugin.java).
+// Saves a copy of an in-app camera photo to the Photos library, in the site's album
+// inside an "Inspecta" folder (the same calls as android/.../GalleryPlugin.java).
 @objc(GalleryPlugin)
 public class GalleryPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "GalleryPlugin"
@@ -11,6 +11,8 @@ public class GalleryPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "savePhoto", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "savePhotoFile", returnType: CAPPluginReturnPromise),
     ]
+
+    private static let folderTitle = "Inspecta"
 
     @objc func savePhoto(_ call: CAPPluginCall) {
         guard let data = Data(base64Encoded: call.getString("data") ?? "", options: .ignoreUnknownCharacters), !data.isEmpty else {
@@ -30,13 +32,21 @@ public class GalleryPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     private func save(_ call: CAPPluginCall, add: @escaping (PHAssetCreationRequest, PHAssetResourceCreationOptions) -> Void) {
-        PHPhotoLibrary.requestAuthorization(for: .addOnly) { status in
+        let album = call.getString("album").flatMap { $0.isEmpty ? nil : $0 }
+        PHPhotoLibrary.requestAuthorization(for: album == nil ? .addOnly : .readWrite) { status in
             guard status == .authorized || status == .limited else {
                 return call.reject("Couldn't save to the gallery: no permission")
             }
             let options = PHAssetResourceCreationOptions()
             options.originalFilename = (call.getString("name") ?? "IMG") + ".jpg"
-            PHPhotoLibrary.shared().performChanges({ add(PHAssetCreationRequest.forAsset(), options) }) { saved, error in
+            PHPhotoLibrary.shared().performChanges({
+                let request = PHAssetCreationRequest.forAsset()
+                add(request, options)
+                // albums need full access; with less, the photo is still saved
+                if let album, status == .authorized, let photo = request.placeholderForCreatedAsset {
+                    Self.file(photo, in: album)
+                }
+            }) { saved, error in
                 if saved {
                     call.resolve()
                 } else {
@@ -44,5 +54,31 @@ public class GalleryPlugin: CAPPlugin, CAPBridgedPlugin {
                 }
             }
         }
+    }
+
+    // Adds the photo to the site's album, making the album and the folder if they aren't there.
+    private static func file(_ photo: PHObjectPlaceholder, in title: String) {
+        let folder = find(PHCollectionList.fetchCollectionLists(with: .folder, subtype: .regularFolder, options: nil), titled: folderTitle)
+        let album = folder.flatMap { find(PHCollection.fetchCollections(in: $0, options: nil), titled: title) as? PHAssetCollection }
+        if let album {
+            PHAssetCollectionChangeRequest(for: album)?.addAssets([photo] as NSArray)
+            return
+        }
+        let newAlbum = PHAssetCollectionChangeRequest.creationRequestForAssetCollection(withTitle: title)
+        newAlbum.addAssets([photo] as NSArray)
+        let folderRequest = folder.flatMap { PHCollectionListChangeRequest(for: $0) }
+            ?? PHCollectionListChangeRequest.creationRequestForCollectionList(withTitle: folderTitle)
+        folderRequest.addChildCollections([newAlbum.placeholderForCreatedAssetCollection] as NSArray)
+    }
+
+    private static func find<T: PHCollection>(_ result: PHFetchResult<T>, titled title: String) -> T? {
+        var found: T?
+        result.enumerateObjects { item, _, stop in
+            if item.localizedTitle == title {
+                found = item
+                stop.pointee = true
+            }
+        }
+        return found
     }
 }

@@ -100,7 +100,7 @@ The same web app in an iOS shell (`ios/`, Capacitor), like `android/`:
 - `npx cap sync ios` copies the built web app in (`ios/App/App/public` isn't tracked).
 - `.github/workflows/build-ios.yml` checks it compiles on every push that touches it.
 
-Differences from Android: the back camera zooms out to the ultra-wide by itself (no lens change), the volume-button shutter needs iOS 17.2+, photos go to the main photo library rather than an Inspecta folder, and updates come through TestFlight / the App Store instead of the in-app prompt.
+Differences from Android: the back camera zooms out to the ultra-wide by itself (no lens change), the volume-button shutter needs iOS 17.2+, each site's photos go in an album inside an "Inspecta" folder in Photos (`DCIM/Inspecta/<site>` on Android), and updates come through TestFlight / the App Store instead of the in-app prompt.
 
 ## Running it as a web app instead
 

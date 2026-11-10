@@ -33,7 +33,7 @@
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Inspecta saves a copy of each photo you take to your photo library.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Inspecta lets you add existing photos from your library to a finding.</string>
+	<string>Inspecta adds existing photos from your library to findings, and files the photos you take into an album for each site.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

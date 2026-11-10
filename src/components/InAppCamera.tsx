@@ -499,8 +499,8 @@ export default function InAppCamera({ label, onDone }: Props) {
   // turned: the photo turned in Mark up (⟲), used instead of the shot
   function use(marks?: Mark[], turned?: Blob) {
     if (!shot) return;
-    if (turned) void saveToGallery(turned, Date.now());
-    else void saveToGallery(shot.blob, Date.now(), shot.path);
+    if (turned) void saveToGallery(turned, Date.now(), undefined, label.siteId);
+    else void saveToGallery(shot.blob, Date.now(), shot.path, label.siteId);
     onDone({ blob: turned ?? shot.blob, marks: marks?.length ? marks : undefined });
   }
 

@@ -3,6 +3,7 @@ import { Capacitor, registerPlugin } from "@capacitor/core";
 import type { Mark } from "../db/types";
 import { getInAppCamera } from "./settings";
 import { hasNativeCamera } from "./nativeCamera";
+import { getSite } from "../db/db";
 
 // A photo from the camera, with any marks drawn on it straight away
 // (✎ Mark up on the camera's quick check).
@@ -15,6 +16,8 @@ export interface Captured {
 export interface CameraLabel {
   title: string;
   level?: string;
+  // the site the photo is for: its gallery copy goes in that site's album
+  siteId?: string;
 }
 
 // ---- the in-app camera and the markup editor, shown by PhotoToolsHost ----
@@ -84,13 +87,15 @@ export function markUpPhoto(blob: Blob, marks: Mark[] = []): Promise<MarkedUp | 
 
 // the app's own native bit (android/.../GalleryPlugin.java)
 const Gallery = registerPlugin<{
-  savePhoto(o: { data: string; name: string }): Promise<void>;
-  savePhotoFile(o: { path: string; name: string }): Promise<void>;
+  savePhoto(o: { data: string; name: string; album?: string }): Promise<void>;
+  savePhotoFile(o: { path: string; name: string; album?: string }): Promise<void>;
 }>("Gallery");
 
-/** A copy of a photo from the in-app camera into the phone's gallery (DCIM/Inspecta). Best effort. */
-export async function saveToGallery(blob: Blob, takenAt = Date.now(), path?: string) {
+/** A copy of a photo from the in-app camera into the phone's gallery, in the site's album
+ * (Android: DCIM/Inspecta/<site>; iPhone: Inspecta > <site>). Best effort. */
+export async function saveToGallery(blob: Blob, takenAt = Date.now(), path?: string, siteId?: string) {
   if (!Capacitor.isNativePlatform()) return;
+  const album = siteId ? albumName((await getSite(siteId).catch(() => undefined))?.name) : undefined;
   const d = new Date(takenAt);
   const p = (n: number) => String(n).padStart(2, "0");
   const name = `IMG_${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
@@ -99,7 +104,7 @@ export async function saveToGallery(blob: Blob, takenAt = Date.now(), path?: str
   // every shot, held the app up)
   if (path) {
     try {
-      await Gallery.savePhotoFile({ path, name });
+      await Gallery.savePhotoFile({ path, name, album });
       return;
     } catch {
       // as text, then
@@ -112,10 +117,15 @@ export async function saveToGallery(blob: Blob, takenAt = Date.now(), path?: str
       reader.onerror = () => reject(reader.error);
       reader.readAsDataURL(blob);
     });
-    await Gallery.savePhoto({ data, name });
+    await Gallery.savePhoto({ data, name, album });
   } catch {
     // the photo is in the app either way
   }
+}
+
+// a site name as a folder / album name
+export function albumName(site?: string): string | undefined {
+  return site?.replace(/[\\/:*?"<>|\x00-\x1f]/g, " ").replace(/\s+/g, " ").trim().replace(/^\.+|\.+$/g, "") || undefined;
 }
 
 /**

@@ -319,7 +319,7 @@ export default function Note() {
       // carry the level over to the next finding — a
       // cleared level carries nothing, so the next one starts empty too
       const carry = level || undefined;
-      const shot = await capturePhoto({ title: "Next finding", level: carry });
+      const shot = await capturePhoto({ title: "Next finding", level: carry, siteId });
       if (!shot) {
         navigate(`/site/${siteId}/findings`);
         return;
@@ -336,7 +336,7 @@ export default function Note() {
     if (!findingId || !siteId || busy || !activePhoto) return;
     setBusy(true);
     try {
-      const shot = await capturePhoto({ title: "Retake", level: level || undefined });
+      const shot = await capturePhoto({ title: "Retake", level: level || undefined, siteId });
       if (!shot) return; // cancelled
       const idx = selected;
       await deletePhoto(activePhoto.id);
@@ -352,7 +352,7 @@ export default function Note() {
     setBusy(true);
     try {
       await persist(); // don't lose a typed note/location while the camera is open
-      const shot = await capturePhoto({ title: `Photo ${photos.length + 1}`, level: level || undefined });
+      const shot = await capturePhoto({ title: `Photo ${photos.length + 1}`, level: level || undefined, siteId });
       if (!shot) return; // cancelled
       await addPhoto(findingId, siteId, shot.blob, undefined, shot.marks);
       await refresh(photos.length); // select the newly added photo
