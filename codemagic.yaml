@@ -1,0 +1,33 @@
+# Builds the iPhone app and sends it to TestFlight (started by hand in Codemagic).
+workflows:
+  ios-testflight:
+    name: Inspecta iOS to TestFlight
+    max_build_duration: 60
+    integrations:
+      # the name of the App Store Connect key in Codemagic (Team integrations > Developer Portal)
+      app_store_connect: codemagic
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: au.com.inspecta.app
+      node: 22
+      xcode: latest
+    scripts:
+      - name: Build the web app
+        script: |
+          npm ci
+          npm run build
+          npx cap sync ios
+      - name: Set up signing
+        script: xcode-project use-profiles
+      - name: Set the build number
+        script: cd ios/App && agvtool new-version -all $BUILD_NUMBER
+      - name: Build the app
+        script: xcode-project build-ipa --project ios/App/App.xcodeproj --scheme App
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
