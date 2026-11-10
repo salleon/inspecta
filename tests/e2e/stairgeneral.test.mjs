@@ -1,6 +1,6 @@
 // General system testing (the Stair general system testing canvas): the test
 // kinds by mode and in their order, velocities run against run, a door added
-// at a level, "<" for below the meter, a pass that's only just one in
+// at a level, a pass that's only just one in
 // yellow, the report run by run, and in Review level layout the groups and
 // the pop-up that changes the other car parks to basements.
 import { test, before, after } from "node:test";
@@ -59,20 +59,20 @@ test("General system testing starts on its velocities, with other tests to add",
   assert.match(await page.getByTestId("spf-tests").innerText(), /Velocity\s*\+ Test/);
 });
 
-test("a pass within 0.1 m/s is marginal; < is below the meter; + Door adds a door at a level", async () => {
+test("a pass within 0.1 m/s is marginal; + Door adds a door at a level", async () => {
   await page.getByRole("button", { name: "Level P1", exact: true }).click();
   // the pad: ⌫ top right, ▲ ▼ together, < beside 0
-  assert.deepEqual(await page.locator(".np-key").allInnerTexts(), ["7", "8", "9", "⌫", "4", "5", "6", "▲", "1", "2", "3", "▼", ".", "0", "<", "Done ✓"]);
+  assert.deepEqual(await page.locator(".np-key").allInnerTexts(), ["7", "8", "9", "⌫", "4", "5", "6", "▲", "1", "2", "3", "▼", ".", "0", "Done ✓"]);
   await tap(["1", ".", "0", "5", "Done"]);
   assert.match(await page.locator('[data-i="0"]').innerText(), /P1[\s\S]*1\.05\s*Pass/);
   assert.match(await page.locator("body").innerText(), /1 of 3 · 1 marginal/);
   assert.equal(await page.getByRole("button", { name: "Level P1", exact: true }).evaluate((el) => getComputedStyle(el).color), "rgb(247, 201, 72)", "yellow");
   await page.getByRole("button", { name: "Add a door on level P2" }).click();
   await page.getByRole("button", { name: "Level P2 door B" }).click();
-  await tap(["Below the meter", "0", ".", "2", "5"]);
-  assert.equal((await page.getByTestId("spf-value").innerText()).replace(/\s+/g, ""), "<0.25m/s");
+  await tap(["0", ".", "2"]);
+  assert.equal((await page.getByTestId("spf-value").innerText()).replace(/\s+/g, ""), "0.2m/s");
   await tap(["Done"]);
-  assert.match(await page.locator('[data-i="1"]').innerText(), /P2[\s\S]*A\s*—[\s\S]*B\s*<0\.25\s*Fail/);
+  assert.match(await page.locator('[data-i="1"]').innerText(), /P2[\s\S]*A\s*—[\s\S]*B\s*0\.2\s*Fail/);
   assert.match(await page.locator("body").innerText(), /2 of 4 · 1 fail · 1 marginal/);
 });
 
@@ -83,16 +83,16 @@ test("+ Run: what changed, then the same doors again beside the last run's", asy
   await onRun(2);
   assert.match(await page.getByTestId("spf-runs").innerText(), /Run 1\s*Run 2\s*P3 relief damper shut\s*\+ Run/);
   // nothing read in this run yet: run 1's reading is beside the blank
-  assert.match(await page.locator('[data-i="1"]').innerText(), /B\s*—\s*<0\.25/);
+  assert.match(await page.locator('[data-i="1"]').innerText(), /B\s*—\s*0\.2/);
   await page.getByRole("button", { name: "Level P2 door B" }).click();
   await tap(["1", ".", "3", "Done"]);
-  assert.match(await page.locator('[data-i="1"]').innerText(), /B\s*1\.3\s*<0\.25 ↑/);
+  assert.match(await page.locator('[data-i="1"]').innerText(), /B\s*1\.3\s*0\.2 ↑/);
   // the stair counts each door's latest reading
   assert.match(await page.locator("body").innerText(), /2 of 4 · 1 marginal/);
   // run 1 is still as it was
   await page.getByRole("button", { name: "Run 1", exact: true }).click();
   await onRun(1);
-  assert.match(await page.locator('[data-i="1"]').innerText(), /B\s*<0\.25\s*Fail/);
+  assert.match(await page.locator('[data-i="1"]').innerText(), /B\s*0\.2\s*Fail/);
   // another stair, from its card
   await page.getByTestId("spf-stairs").getByRole("button", { name: /SPF 2/ }).click();
   await page.getByText("Velocity · SPF 2").waitFor();
@@ -106,7 +106,7 @@ test("the report: a page per group, a table per run with its stairs side by side
   assert.match(sheet, /Stair pressurisation · General system testing\s*Basement/);
   const tables = await page.getByTestId("spf-page").first().getByTestId("spf-run-table").allInnerTexts();
   assert.equal(tables.length, 2);
-  assert.match(tables[0], /Run 1 · \d\d:\d\d · As found · Average velocity m\/s \(min 1\)\s*Level\s*SPF 1 A\s*SPF 1 B\s*P1\s*1\.05\s*P2\s*<0\.25/);
+  assert.match(tables[0], /Run 1 · \d\d:\d\d · As found · Average velocity m\/s \(min 1\)\s*Level\s*SPF 1 A\s*SPF 1 B\s*P1\s*1\.05\s*P2\s*0\.2/);
   assert.match(tables[1], /Run 2 · \d\d:\d\d · P3 relief damper shut[\s\S]*P2\s*1\.3/);
   assert.equal(await page.getByTestId("spf-page").count(), 2, "Basement and Tower");
   assert.deepEqual(errors, []);

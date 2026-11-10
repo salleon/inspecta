@@ -495,7 +495,7 @@ function EveryDoor({ section, sys, stair, test, setTest, setSpf, onBack, run, on
           keys={
             section === "latch"
               ? [k("y", "Yes", "yes"), k("n", "No", "no"), k("bs", "⌫", "bs", "Clear"), k("up", "▲", "ins", "Level above"), k("down", "▼", "ins", "Level below"), k("done", "Done ✓", "go1", "Done")]
-              : readingKeys(k(".", ".", "fn"), section === "vel" ? k("lt", "<", "fn", "Below the meter") : null)
+              : readingKeys(k(".", ".", "fn"), null)
           }
           onKey={key}
         />

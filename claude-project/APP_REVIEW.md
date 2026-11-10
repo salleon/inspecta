@@ -15,7 +15,7 @@ Already on your list, so not repeated below: cutting hint text (specific ones ar
 - [x] **A5. Browser-style pop-ups for errors.** Done 10 Nov: all eight use the app's own dialog, with a short title. *(code)* Eight failures ("Couldn't export the PDF…") use the phone's plain alert box instead of the app's own dialog.
 - [x] **A6. Home: the + button covers the card under it on small phones.** Done 10 Nov: a "+ New job" pill centred at the bottom over a fade (canvas option A3), with a light sweep and a soft glow. *(seen)* It hides the date and count of the last visible site.
 - [x] **A7. Stair setup: the stair's number and its fan disagree.** Done 10 Nov: a stair goes by its fan ("SPF 1"), with its stairwell's name when entered ("SPF 1 · East stairwell"; stacked in tabs and report headings). No made-up "Stair 4"; saving needs every fan name. *(seen)* A stair is titled "Stair 4" with "Fan SPF 3" under it. Title it by its fan or name.
-- [ ] **A8. Stair pad: the < key looks like a back arrow.** *(seen)* It draws as a small "‹".
+- [x] **A8. Stair pad: the < key looks like a back arrow.** Done 10 Nov: the < key is gone; Done takes its place, two keys wide. *(seen)* It draws as a small "‹".
 - [ ] **A9. Stair readings: the Open column is a dash on every row for Zone systems.** *(seen)* Hide it when there's nothing to show.
 - [ ] **A10. General report: one extra door widens the whole table.** *(seen)* A stair with three doors on one level prints "SPF 1 A / B / C" columns that are blank everywhere else. Print the extra doors as extra rows.
 - [ ] **A11. General testing gaps.** *(code)* Noise, restoration and pressure aren't per run. (Deleting a run: done 10 Nov, Delete run in the run's sheet.)

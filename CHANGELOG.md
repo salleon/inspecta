@@ -7,6 +7,8 @@ the technical detail.
 
 ## 10 November 2026
 
+- **Stair pad: no < key.** The "below the meter" key, which looked like a back arrow, is gone, and Done is now two keys wide in its place. Readings already saved as below the meter still show as before.
+
 - **"New site" is now "New job" everywhere.** The sheet that opens from the home screen and the tour say New job too. Sites are still called sites elsewhere ("Search sites", the site screens).
 
 - **Stairs go by their fan name.** A stair is now shown as its fan, "SPF 1", or "SPF 1 · East stairwell" when a stairwell name is entered, on the setup, the readings and the report (where the stairwell sits on a second line under the fan). The app no longer makes up names like "Stair 4" that didn't match the fan. Every stair needs its fan name before the setup can be saved.
