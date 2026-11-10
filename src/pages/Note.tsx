@@ -286,6 +286,22 @@ export default function Note() {
     await updateFinding(findingId, { note, rectification, location, defectType, level, esrCategory });
   }
 
+  // the phone locks, or another app comes up: what's typed so far is saved,
+  // so Android closing the app in the background doesn't lose it
+  const persistNow = useRef(persist);
+  persistNow.current = persist;
+  useEffect(() => {
+    const away = () => {
+      if (document.visibilityState === "hidden") void persistNow.current();
+    };
+    document.addEventListener("visibilitychange", away);
+    window.addEventListener("pagehide", away);
+    return () => {
+      document.removeEventListener("visibilitychange", away);
+      window.removeEventListener("pagehide", away);
+    };
+  }, []);
+
   // Used by both the back button and "Save & close" — they're the same
   // action (persist the note/location, then return to the list).
   async function handleBack() {
@@ -339,8 +355,9 @@ export default function Note() {
       const shot = await capturePhoto({ title: "Retake", level: level || undefined, siteId });
       if (!shot) return; // cancelled
       const idx = selected;
-      await deletePhoto(activePhoto.id);
+      // the new photo is saved first, so a failed save never loses the old one
       await addPhoto(findingId, siteId, shot.blob, undefined, shot.marks);
+      await deletePhoto(activePhoto.id);
       await refresh(idx);
     } finally {
       setBusy(false);

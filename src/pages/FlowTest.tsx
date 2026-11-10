@@ -257,7 +257,12 @@ export default function FlowTest() {
     setDeleting(true);
     pending.current = null;
     if (timer.current !== null) window.clearTimeout(timer.current);
-    await deleteFlowTest(test.id);
+    try {
+      await deleteFlowTest(test.id);
+    } catch (err) {
+      setDeleting(false);
+      throw err; // the app's "Couldn't save" says so
+    }
     navigate(`/site/${siteId}/findings?tab=flow`, { replace: true });
   }
 

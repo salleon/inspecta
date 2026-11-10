@@ -7,6 +7,13 @@ the technical detail.
 
 ## 10 November 2026
 
+- **Fixes from a check over the app.**
+  - A finding's typed note, location and rectification are saved when the phone locks or you switch apps, so Android closing Inspecta in the background no longer loses them.
+  - Retaking a photo keeps the old one until the new one is saved, so a failed save can't lose both.
+  - Removing a stair that has readings now asks first (the readings stay saved but leave the test and report).
+  - An open stair card in the setup showed "Stair 1"; it now shows the fan name like everywhere else.
+  - Deleting a flow test that fails no longer leaves its dialog stuck on Deleting.
+
 - **Stair pad: no < key.** The "below the meter" key, which looked like a back arrow, is gone, and Done is now two keys wide in its place. Readings already saved as below the meter still show as before.
 
 - **"New site" is now "New job" everywhere.** The sheet that opens from the home screen and the tour say New job too. Sites are still called sites elsewhere ("Search sites", the site screens).

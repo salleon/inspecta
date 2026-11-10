@@ -44,6 +44,8 @@ export default function StairSystem() {
   const [menu, setMenu] = useState<{ id: string; which: Which } | null>(null);
   const [review, setReview] = useState<string | null>(null);
   const [guard, setGuard] = useState<{ id: string; go: () => void } | null>(null);
+  // a stair with readings, asked about before it's removed
+  const [removing, setRemoving] = useState<string | null>(null);
   // the site's stair tests: a renamed level takes its readings with it, and
   // a level with readings is asked about before it's removed
   const [tests, setTests] = useState<StairTest[]>([]);
@@ -83,7 +85,8 @@ export default function StairSystem() {
   // written before leaving, so the next screen reads it
   const leave = () => void save().then(() => navigate(back, { replace: true }));
   useBackHandler(() => {
-    if (guard) setGuard(null);
+    if (removing) setRemoving(null);
+    else if (guard) setGuard(null);
     else if (menu) setMenu(null);
     else if (pad) setPad(null);
     else leave();
@@ -132,6 +135,12 @@ export default function StairSystem() {
   // changing a stair's range rebuilds its levels: asked first when the levels
   // were edited or the stair has readings (once per stair, per visit)
   const hasRead = (st: SpfStair) => levelsRead(tests, st.id).size > 0;
+  const removeStair = (id: string) => {
+    change({ ...sys, stairs: sys.stairs.filter((s) => s.id !== id) });
+    setOpen(null);
+    setPad(null);
+    setRemoving(null);
+  };
   const rangeEdit = (st: SpfStair, then: () => void) => (!asked.current.has(st.id) && (levelsEdited(st) || hasRead(st)) ? setGuard({ id: st.id, go: then }) : then());
   // the pad or the type list closed: a stair with its range set and not yet reviewed goes to its review
   const toReview = (id: string) => {
@@ -291,11 +300,7 @@ export default function StairSystem() {
                   onReview={() => (setPad(null), setMenu(null), setReview(st.id))}
                   onClose={() => (setOpen(null), setPad(null), setMenu(null))}
                   onText={() => (setPad(null), setMenu(null))}
-                  onRemove={() => {
-                    change({ ...sys, stairs: sys.stairs.filter((s) => s.id !== st.id) });
-                    setOpen(null);
-                    setPad(null);
-                  }}
+                  onRemove={() => (hasRead(st) ? setRemoving(st.id) : removeStair(st.id))}
                 />
               ) : (
                 <button
@@ -343,6 +348,22 @@ export default function StairSystem() {
             {!hasStairs ? "Add a stair to continue" : needsFan ? "Add a fan name to continue" : "Save and continue ›"}
           </button>
         </div>
+      )}
+
+      {removing && (
+        <>
+          <div className="lr-dim" onClick={() => setRemoving(null)} />
+          <div className="lr-dlg" role="dialog" aria-label="Remove this stair?">
+            <h3>Remove {stairLabel(sys.stairs.find((s) => s.id === removing) ?? newStair())}?</h3>
+            <p>It has readings in a stair test. They stay saved, but won't show on the test or its report.</p>
+            <div className="bb">
+              <button onClick={() => setRemoving(null)}>Keep it</button>
+              <button className="warn" onClick={() => removeStair(removing)}>
+                Remove
+              </button>
+            </div>
+          </div>
+        </>
       )}
 
       {guard && (
@@ -437,7 +458,7 @@ function StairCard({
     <div data-stair={stair.id} style={{ background: "var(--panel)", border: "1px solid var(--accent)", boxShadow: "0 0 0 3px rgba(46,196,182,.12)", borderRadius: 14, padding: "11px 12px", display: "flex", flexDirection: "column", gap: 9 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
         <span style={numBadge}>{n}</span>
-        <span style={{ fontSize: 15, fontWeight: 800, whiteSpace: "nowrap" }}>Stair {n}</span>
+        <span style={{ fontSize: 15, fontWeight: 800, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0, color: stairFan(stair) ? undefined : "#f7b977" }}>{stairLabel(stair)}</span>
         <span style={{ marginLeft: "auto", fontSize: 12, fontWeight: 800, borderRadius: 999, padding: "5px 10px", whiteSpace: "nowrap", color: count ? "#5ff0e0" : "#6a8098", background: count ? "rgba(46,196,182,.1)" : "#143452" }}>
           {count ? `${count} door${count === 1 ? "" : "s"}` : "— doors"}
         </span>
