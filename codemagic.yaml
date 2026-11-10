@@ -1,8 +1,16 @@
-# Builds the iPhone app and sends it to TestFlight (started by hand in Codemagic).
+# Builds the iPhone app and sends it to TestFlight: on every push to main
+# (test builds are started by hand in Codemagic).
 workflows:
   ios-testflight:
     name: Inspecta iOS to TestFlight
     max_build_duration: 60
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+          include: true
+          source: true
     integrations:
       # the name of the App Store Connect key in Codemagic (Team integrations > Developer Portal)
       app_store_connect: codemagic
