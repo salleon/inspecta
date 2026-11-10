@@ -77,6 +77,17 @@ Limits come from `limits()` in `src/lib/stairTest.ts`. The report is a page per 
 - Count `pa` in `stairTestHasData`.
 - Add an e2e test.
 
+## The review list (from 10 Nov)
+
+`claude-project/APP_REVIEW.md` is the whole-app review: bugs, speed, layout, wording and polish, with tick boxes. The owner is working through it one item (or a few) at a time, with oversight. Tick an item off there when it's done and add a CHANGELOG entry.
+
+- Done so far: A1, A3, A12 to A15, and deleting a run (A11). A2 is part done.
+- Waiting on the owner: A2's backup reminder (no reminder; an amber dot on the Settings cog after two weeks; or a pop-up after an export). Recommended the dot.
+- Waiting on the owner: sending to iPhone. TestFlight only builds on a push to `main` (Codemagic), so it means merging `test` into `main`. Not done; ask first.
+- **No builds until the owner says** (10 Nov). Don't run Build Android APK. Pushing to `test` is fine: it only runs the tests and the iPhone compile check.
+- The phone has the first stair build of 10 Nov (general system testing). Everything after it (the remove/clear controls, A1 to A3) is on `test` but not on a phone.
+- Browser tests need `CHROMIUM_PATH=/opt/pw-browsers/chromium` in a cloud session. One tour test ("Pick a topic runs just that topic") fails there on untouched code and passes on GitHub.
+
 ## Owner's preferences (learned)
 
 - Wants things brief, in chat and in the app. Called out a too-wordy note in a mock-up.
