@@ -33,7 +33,6 @@ import RoundIconButton from "../components/RoundIconButton";
 import ConfirmDialog from "../components/ConfirmDialog";
 import { useBackHandler } from "../lib/backButton";
 import { applyEquipment, deviceFor, deviceLabel, matchDevices, overLimit, type FlowDevice } from "../lib/flowEquipment";
-import FlowConverter from "../components/FlowConverter";
 import { useFlowMode } from "../lib/settings";
 import { useTourScene } from "../lib/tour";
 import CellPad from "../components/CellPad";
@@ -279,7 +278,6 @@ export default function FlowTest() {
 
   const footer = (
     <>
-      <FlowConverter />
       <button
         onClick={() => void saveAndClose()}
         style={{ marginTop: 2, padding: "14px 0", borderRadius: 12, background: "var(--accent)", border: "none", color: "var(--accent-text)", fontSize: 14, fontWeight: 800 }}

@@ -16,22 +16,6 @@ function subscribe(listener: () => void) {
   };
 }
 
-// Converter tool (L/s ⇄ L/min) on the flow test screens: OFF by default,
-// and its Settings switch is gone, so it only shows where it was already on.
-const CONVERTER_KEY = "inspecta.converterTool";
-
-function getConverterTool(): boolean {
-  try {
-    return localStorage.getItem(CONVERTER_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
-export function useConverterTool(): boolean {
-  return useSyncExternalStore(subscribe, getConverterTool);
-}
-
 // Flow testing mode (Admin): "enfact", the stripped-down version for
 // EnFact's consultants (graph always discharge + town main, no line
 // options; supplies Town main / Electric / Diesel or a custom name), or

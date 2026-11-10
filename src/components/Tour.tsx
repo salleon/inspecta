@@ -220,7 +220,7 @@ const STEPS: Step[] = [
   { chapter: 6, route: (ids) => `${site(ids)}/export`, targets: t('[aria-label$=" report"]'), title: "It's saved", body: <>Each report gets a chip at the top. Tap it to preview and export it again; it keeps up as findings change. {b("Press and hold")} to change or delete it.</> },
   // 8. backups & settings
   { chapter: 7, route: () => "/settings", targets: t('[data-tour="backup"]'), title: "Back up your work", body: <>Everything lives only on this phone. {b("Back up all data")} saves every site, finding and photo in one file: put it on OneDrive. {b("Restore")} brings it back on any phone.</> },
-  { chapter: 7, route: () => "/settings", targets: t('[data-tour="replay-tour"]'), title: "Settings", body: <>Your {b("name")} for the reports, the {b("L/s ⇄ L/min converter")}, updates, and {b("Replay tour")} to see any of this again. That's it!</> },
+  { chapter: 7, route: () => "/settings", targets: t('[data-tour="replay-tour"]'), title: "Settings", body: <>Your {b("name")} for the reports, {b("backups")}, updates, and {b("Replay tour")} to see any of this again. That's it!</> },
 ];
 
 const firstOf = (chapter: number) => STEPS.findIndex((s) => s.chapter === chapter);

@@ -7,7 +7,7 @@ the technical detail.
 
 ## 10 November 2026
 
-- **Settings is shorter.** The In-app camera switch is gone: Inspecta's own camera is always used, and the phone's camera still steps in if it can't start. The Converter tool switch is gone too (the converter stays on phones where it was already switched on).
+- **Settings is shorter.** The In-app camera switch is gone: Inspecta's own camera is always used, and the phone's camera still steps in if it can't start. The Converter tool (L/s to L/min) is gone altogether.
 - **Back up all data pulses amber when a backup is overdue.** When the Settings cog has its amber dot, the Back up all data row in Settings pulses amber to show where to go. It stops once a backup is made.
 
 - **Error messages look like the app.** The eight messages that used the phone's plain pop-up (a failed export or share, a wrong keyword file, a photo that can't be turned) now use the app's own dialog, with a short title such as "Couldn't export the PDF" and "Please try again." underneath.

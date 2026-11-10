@@ -8,7 +8,6 @@ import { KIND_LABEL as STAIR_KIND, stairTestSummary, systemLine } from "../lib/s
 import { exportTests, type TestsFormat } from "../lib/testsExport";
 import { useBackHandler } from "../lib/backButton";
 import ConfirmDialog from "./ConfirmDialog";
-import FlowConverter from "./FlowConverter";
 import ProgressOverlay from "./ProgressOverlay";
 import SiteKindIcon from "./SiteKindIcon";
 import { Pill } from "./StairUi";
@@ -204,7 +203,6 @@ export default function TestsList({ site, mode, onCount }: { site: Site; mode: "
       </div>
 
       <div style={{ flexShrink: 0, padding: "12px 16px calc(28px + env(safe-area-inset-bottom))", borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 10 }}>
-        {mode === "other" && <FlowConverter />}
         {!!items?.length && (
           <button
             data-tour="flow-export-only"

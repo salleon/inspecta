@@ -5,11 +5,9 @@ import { addFlowTest, deleteFlowTest, listFlowTests } from "../db/db";
 import { blankThumbSvg, chartSvg, KIND_HINT, KIND_LABEL, newFlowTest, readingCount, summary } from "../lib/flowTest";
 import { useBackHandler } from "../lib/backButton";
 import ConfirmDialog from "./ConfirmDialog";
-import FlowConverter from "./FlowConverter";
 
 // The Flow tests tab of a site (canvas option E1): its flow tests, each
-// with a small graph and its result, swipe left to delete; the converter
-// tool; and + New flow test, which asks what kind.
+// with a small graph and its result, swipe left to delete; and + New flow test, which asks what kind.
 
 const KINDS: FlowKind[] = ["sprinkler", "hydrant", "combined", "blank"];
 
@@ -92,7 +90,6 @@ export default function FlowTestList({ siteId, onCount, onExport, exportLabel = 
       </div>
 
       <div style={{ flexShrink: 0, padding: "12px 16px calc(28px + env(safe-area-inset-bottom))", borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 10 }}>
-        <FlowConverter />
         {onExport && !!tests?.length && (
           <button
             data-tour="flow-export-only"
