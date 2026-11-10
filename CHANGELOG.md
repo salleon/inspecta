@@ -7,6 +7,8 @@ the technical detail.
 
 ## 10 November 2026
 
+- **Backup reminder.** The Settings cog on the home screen gets a small amber dot when nothing has been backed up for two weeks (or, if you've never backed up, once your oldest site is two weeks old). It clears as soon as you make a backup.
+
 - **A screen that fails no longer blanks the app.** It shows "Something
   went wrong", with Try again and Back to home; before, every screen
   stayed blank until the app was closed. A flow test that somehow has no

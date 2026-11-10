@@ -1,3 +1,4 @@
+import { LAST_BACKUP_KEY, lastBackupAt } from "../lib/backupDue";
 import { useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Capacitor } from "@capacitor/core";
 import { Share } from "@capacitor/share";
@@ -13,10 +14,9 @@ import { applyRestore, backupCounts, backupFileName, readBackup, writeBackup, ty
 // the file is picked (reading a big backup takes a while).
 
 // when the last backup was made on this phone (not whether the file was kept)
-const LAST_BACKUP_KEY = "inspecta.lastBackup";
 function lastBackup(): string {
   try {
-    const at = Number(localStorage.getItem(LAST_BACKUP_KEY));
+    const at = lastBackupAt();
     return at ? `Last backup made ${new Date(at).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}` : "Not backed up yet";
   } catch {
     return "Not backed up yet";
