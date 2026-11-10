@@ -7,6 +7,8 @@ the technical detail.
 
 ## 10 November 2026
 
+- **Flow test readings: no hint underneath.** The line under the readings ("Type the flow in L/min. RPM shows for a diesel pump…") is gone.
+
 - **No more "e.g." examples in empty boxes.** Boxes that showed an example ("e.g. Chubb", "e.g. 2006", "Type the equipment, e.g. Fire pump 3" and so on) now show a plain label, such as Notes, Equipment, Name, Where, Level name or Report name, or nothing at all.
 
 - **iPhone: the keyboard stays up when you tap Level + or −.** On the iPhone, tapping the level buttons (and the quick level chips, the defect type and category buttons) closed the keyboard first, so the level box jumped around the screen before it changed. It now stays put, as on Android.

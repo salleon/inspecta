@@ -834,18 +834,6 @@ export default function FlowTest() {
             {device.model === "20T" ? " Over it, use the 21T." : ""}
           </div>
         )}
-        <div style={{ fontSize: 11.5, color: "var(--muted-2)", lineHeight: 1.45 }}>
-          {hydrant ? (
-            "Flows in L/s. "
-          ) : device ? (
-            <>
-              Flows worked out from " Hg: <b style={{ color: "#5ff0e0" }}>{deviceLabel(device)}</b>, {device.q1} × √" Hg. Type over a flow to change it.{" "}
-            </>
-          ) : (
-            `Type the flow in ${unitLabel}. `
-          )}
-          {test.kind === "combined" ? "RPM shows for diesel pumps, Amps for electric." : "RPM shows for a diesel pump, Amps for an electric pump."}
-        </div>
       </div>
 
       {wide && (
