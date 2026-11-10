@@ -338,7 +338,7 @@ export default function LevelReview({
               autoFocus
               aria-label="Level name"
               maxLength={24}
-              placeholder="e.g. Plant room"
+              placeholder="Level name"
               value={named.value}
               onChange={(e) => setNamed({ ...named, value: e.target.value })}
               onKeyDown={(e) => e.key === "Enter" && saveName()}

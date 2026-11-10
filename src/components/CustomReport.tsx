@@ -277,7 +277,7 @@ export default function CustomReport({
           value={name}
           onChange={(e) => setName(e.target.value)}
           aria-label="Report name"
-          placeholder="Name this report, e.g. Level 2 defects"
+          placeholder="Report name"
           style={{ width: "100%", boxSizing: "border-box", padding: "13px 14px", borderRadius: 12, background: "var(--panel-2)", border: "1px solid var(--border-strong)", fontSize: 15, fontWeight: 700, color: "var(--text)", outline: "none" }}
         />
         <div style={label}>Bulk refine findings</div>

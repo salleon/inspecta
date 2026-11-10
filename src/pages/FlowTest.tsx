@@ -595,7 +595,6 @@ export default function FlowTest() {
             ) : (
               <input
                 value={test[key] ?? ""}
-                placeholder="e.g. Chubb"
                 onChange={(e) => change((t) => void (t[key] = e.target.value))}
                 style={{ ...cellStyle(14), textAlign: "left", padding: "8px 10px" }}
               />
@@ -609,7 +608,6 @@ export default function FlowTest() {
               value={test.yearInstalled ?? ""}
               inputMode="numeric"
               aria-label="Year installed"
-              placeholder="e.g. 2006"
               onChange={(e) => change((t) => void (t.yearInstalled = e.target.value))}
               style={{ ...cellStyle(14), textAlign: "left", padding: "8px 10px" }}
             />
@@ -887,7 +885,7 @@ export default function FlowTest() {
         <textarea
           value={test.comment ?? ""}
           aria-label="Comments"
-          placeholder="Anything to note on the report, e.g. Diesel pump fuel tank at 60%."
+          placeholder="Notes"
           rows={3}
           onChange={(e) => change((t) => void (t.comment = e.target.value))}
           style={{ ...cellStyle(14), textAlign: "left", padding: "10px 12px", fontWeight: 600, lineHeight: 1.45, resize: "vertical", fontFamily: "inherit", minHeight: 84 /* never dragged too small to open again */ }}
@@ -1023,7 +1021,7 @@ function SectionTabs({
                   autoFocus
                   value={custom}
                   aria-label={combined ? "Pump name" : "Supply name"}
-                  placeholder="Type the equipment, e.g. Fire pump 3"
+                  placeholder="Equipment"
                   onChange={(e) => setCustom(e.target.value)}
                   style={{ ...cellStyle(14), textAlign: "left", padding: "8px 10px", flexGrow: 1 }}
                 />
@@ -1528,7 +1526,7 @@ function ColumnBox({ test, index, onClose, onSave, onRemove }: { test: FlowTestR
       <div onClick={(e) => e.stopPropagation()} role="dialog" aria-label={existing ? "Edit column" : "Add a column"} style={{ width: 340, maxWidth: "100%", boxSizing: "border-box", background: "var(--panel)", border: "1px solid #2e6a8e", borderRadius: 16, padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
         <div style={{ fontSize: 15, fontWeight: 800 }}>{existing ? "Column" : "Add a column"}</div>
         <div style={{ display: "flex", gap: 8 }}>
-          <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Name, e.g. Oil pressure" aria-label="Column name" style={{ ...field, flex: 2 }} />
+          <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" aria-label="Column name" style={{ ...field, flex: 2 }} />
           <input value={unitText} onChange={(e) => setUnitText(e.target.value)} placeholder="Unit" aria-label="Column unit" style={{ ...field, flex: 1 }} />
         </div>
         {!existing && (
@@ -1758,7 +1756,6 @@ function EquipmentField({ value, flows, onChange }: { value: string; flows: bool
         value={value}
         aria-label="Equipment"
         autoComplete="off"
-        placeholder={flows ? "Start typing, e.g. 20T 80" : "e.g. 65 mm / Pitot"}
         onFocus={() => setOpen(true)}
         onBlur={() => setOpen(false)}
         onChange={(e) => {

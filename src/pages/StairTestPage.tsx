@@ -200,7 +200,7 @@ export default function StairTestPage() {
                   <span style={{ ...cardLabel, color: "#5ff0e0" }}>{i + 1}</span>
                   <input
                     aria-label={`Note ${i + 1} location`}
-                    placeholder="Where (e.g. L.16)"
+                    placeholder="Where"
                     value={n.location}
                     onChange={(e) => setTest((t) => ({ ...t, notes: t.notes.map((x, j) => (j === i ? { ...x, location: e.target.value } : x)) }))}
                     style={{ ...fieldInput, flex: 1, padding: "7px 9px", fontSize: 13 }}

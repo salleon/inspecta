@@ -499,7 +499,7 @@ function KeywordDetail({ code }: { code: string }) {
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8, borderTop: "1px solid var(--border)", paddingTop: 14 }}>
         <span style={sectionStyle}>Add a keyword</span>
-        <input type="text" placeholder="e.g. FHR, hose reel cabinet" aria-label="New keyword" value={text} onChange={(e) => setText(e.target.value)} style={fieldStyle} />
+        <input type="text" placeholder="Keywords" aria-label="New keyword" value={text} onChange={(e) => setText(e.target.value)} style={fieldStyle} />
         <div style={{ display: "flex", gap: 6 }}>
           {KINDS.map((k) => (
             <button
