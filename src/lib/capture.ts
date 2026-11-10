@@ -1,7 +1,6 @@
 import { Camera, CameraDirection } from "@capacitor/camera";
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import type { Mark } from "../db/types";
-import { getInAppCamera } from "./settings";
 import { hasNativeCamera } from "./nativeCamera";
 import { getSite } from "../db/db";
 
@@ -49,11 +48,11 @@ function show(r: PhotoToolRequest | null) {
 /**
  * Takes a photo: with Inspecta's own camera (no Android camera app, and a
  * quick check after the shot: Retake / ✎ Mark up / Use), or the Android
- * camera if that's switched on in Settings or the in-app one can't start.
+ * camera if the in-app one can't start.
  * Null if cancelled. Either way a copy goes to the phone's gallery.
  */
 export async function capturePhoto(label: CameraLabel = { title: "New photo" }): Promise<Captured | null> {
-  if (getInAppCamera() && (hasNativeCamera() || typeof navigator.mediaDevices?.getUserMedia === "function")) {
+  if (hasNativeCamera() || typeof navigator.mediaDevices?.getUserMedia === "function") {
     const r = await new Promise<Captured | null | "fallback">((resolve) =>
       show({
         kind: "camera",

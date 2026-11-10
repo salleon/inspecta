@@ -2,14 +2,12 @@ import { useState, type FormEvent, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import RoundIconButton from "../components/RoundIconButton";
 import { IconChevronLeft, IconChevronRight } from "../components/Icons";
-import Switch from "../components/Switch";
 import FormActions from "../components/FormActions";
 import BackupSettings from "../components/BackupSettings";
 import { UpdateSettingsRow } from "../components/UpdatePrompt";
-import { BLUE, Group, ORANGE, RowIcon, groupHintStyle, groupRowStyle } from "../components/SettingsList";
+import { Group, ORANGE, RowIcon, groupHintStyle, groupRowStyle } from "../components/SettingsList";
 import { getInspectorName, setInspectorName } from "../lib/profile";
-import { hasNativeCamera, lastNativeError } from "../lib/nativeCamera";
-import { setConverterTool, setInAppCamera, useConverterTool, useInAppCamera } from "../lib/settings";
+import { lastNativeError } from "../lib/nativeCamera";
 import { startTour } from "../lib/tour";
 import { useBackHandler } from "../lib/backButton";
 import { IS_TEST_BUILD } from "../lib/buildInfo";
@@ -35,8 +33,6 @@ function Item({ icon, title, hint, right, onClick, switchOn, tour }: { icon: Rea
 
 export default function Settings() {
   const navigate = useNavigate();
-  const converterTool = useConverterTool();
-  const inAppCamera = useInAppCamera();
   const [name, setName] = useState(() => getInspectorName());
   const [draft, setDraft] = useState<string | null>(null);
 
@@ -67,31 +63,13 @@ export default function Settings() {
         <Group heading="You">
           <Item icon={<RowIcon name="user" />} title="Your name" hint={`${name || "Not set"} · on your reports`} onClick={() => setDraft(name)} />
         </Group>
-        <Group heading="Photos">
-          <Item
-            icon={<RowIcon name="camera" />}
-            title="In-app camera"
-            hint={inAppCamera ? (hasNativeCamera() ? "Inspecta's camera on the phone's own camera system" : "Inspecta's own camera, with a quick check and ✎ Mark up") : "Off: the phone's camera app"}
-            switchOn={inAppCamera}
-            right={<Switch on={inAppCamera} />}
-            onClick={() => setInAppCamera(!inAppCamera)}
-          />
-          {lastNativeError() && (
-            <div data-testid="native-camera-error" style={{ padding: "6px 14px 12px", fontSize: 11.5, lineHeight: 1.45, color: "#f7b977", wordBreak: "break-word" }}>
+        {lastNativeError() && (
+          <Group heading="Photos">
+            <div data-testid="native-camera-error" style={{ padding: "12px 14px", fontSize: 11.5, lineHeight: 1.45, color: "#f7b977", wordBreak: "break-word" }}>
               Camera's last error: {lastNativeError()}
             </div>
-          )}
-        </Group>
-        <Group heading="Flow testing">
-          <Item
-            icon={<RowIcon name="swap" colour={BLUE} />}
-            title="Converter tool"
-            hint="L/s ⇄ L/min on the flow test screens"
-            switchOn={converterTool}
-            right={<Switch on={converterTool} />}
-            onClick={() => setConverterTool(!converterTool)}
-          />
-        </Group>
+          </Group>
+        )}
         <Group tour="backup" heading="Backup" foot="Save backups to OneDrive or similar. Everything else lives only on this phone.">
           <BackupSettings rowStyle={groupRowStyle} hintStyle={groupHintStyle} onRestored={() => {}} icons={[<RowIcon key="u" name="up" />, <RowIcon key="d" name="down" />]} />
         </Group>

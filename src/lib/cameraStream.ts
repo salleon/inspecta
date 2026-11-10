@@ -1,4 +1,3 @@
-import { getInAppCamera } from "./settings";
 import { hasNativeCamera, warmNative } from "./nativeCamera";
 
 // The in-app camera's picture, kept running for five minutes after the
@@ -80,7 +79,6 @@ export function dropCamera() {
 
 /** Start the camera early (a finger is on a camera button). */
 export function warmCamera() {
-  if (!getInAppCamera()) return;
   // on the phone: Android's own camera (lib/nativeCamera)
   if (hasNativeCamera()) return warmNative();
   if (typeof navigator.mediaDevices?.getUserMedia !== "function") return;

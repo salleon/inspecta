@@ -774,3 +774,21 @@ button:active:not(:disabled) {
 .settings-group > .settings-row:not(:first-child) {
   border-top: 1px solid var(--border) !important;
 }
+
+/* Settings: Back up all data pulses amber when a backup is overdue */
+.backup-due {
+  border-radius: 13px 13px 0 0;
+  animation: backupDue 1.8s ease-in-out infinite;
+}
+
+@keyframes backupDue {
+  0%,
+  100% {
+    box-shadow: inset 0 0 0 2px rgba(247, 185, 119, 0.9);
+    background-color: rgba(247, 185, 119, 0.14);
+  }
+  50% {
+    box-shadow: inset 0 0 0 2px rgba(247, 185, 119, 0.45);
+    background-color: rgba(247, 185, 119, 0.05);
+  }
+}

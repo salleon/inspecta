@@ -17,7 +17,7 @@ function subscribe(listener: () => void) {
 }
 
 // Converter tool (L/s ⇄ L/min) on the flow test screens: OFF by default,
-// turned on from Settings.
+// and its Settings switch is gone, so it only shows where it was already on.
 const CONVERTER_KEY = "inspecta.converterTool";
 
 function getConverterTool(): boolean {
@@ -26,15 +26,6 @@ function getConverterTool(): boolean {
   } catch {
     return false;
   }
-}
-
-export function setConverterTool(on: boolean) {
-  try {
-    localStorage.setItem(CONVERTER_KEY, on ? "1" : "0");
-  } catch {
-    // best-effort
-  }
-  listeners.forEach((l) => l());
 }
 
 export function useConverterTool(): boolean {
@@ -67,30 +58,6 @@ export function setFlowMode(mode: FlowMode) {
 
 export function useFlowMode(): FlowMode {
   return useSyncExternalStore(subscribe, getFlowMode);
-}
-
-// The camera: Inspecta's own (on, the default) or the Android camera app.
-const IN_APP_CAMERA_KEY = "inspecta.inAppCamera";
-
-export function getInAppCamera(): boolean {
-  try {
-    return localStorage.getItem(IN_APP_CAMERA_KEY) !== "0";
-  } catch {
-    return true;
-  }
-}
-
-export function setInAppCamera(on: boolean) {
-  try {
-    localStorage.setItem(IN_APP_CAMERA_KEY, on ? "1" : "0");
-  } catch {
-    // best-effort
-  }
-  listeners.forEach((l) => l());
-}
-
-export function useInAppCamera(): boolean {
-  return useSyncExternalStore(subscribe, getInAppCamera);
 }
 
 // Zero shutter lag on the Android camera system: the photo is the moment the

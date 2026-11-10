@@ -289,16 +289,6 @@ test("✎ Mark up on a finding opens the marks again to change them", async () =
   assert.deepEqual(errors, []);
 });
 
-test("in-app camera off in Settings: the Android camera (file input on web)", async () => {
-  await page.evaluate(() => localStorage.setItem("inspecta.inAppCamera", "0"));
-  await go(page, app, "/site/s1/findings");
-  const chooser = page.waitForEvent("filechooser", { timeout: 5000 });
-  await page.getByRole("button", { name: "New finding", exact: true }).click();
-  await chooser;
-  assert.equal(await page.getByTestId("in-app-camera").count(), 0);
-  await page.evaluate(() => localStorage.removeItem("inspecta.inAppCamera"));
-});
-
 test("on a tall phone: the picture at the top on dotted navy, the same after the shutter", async () => {
   await go(page, app, "/site/s1/findings");
   await page.getByRole("button", { name: "New finding", exact: true }).click();

@@ -1,5 +1,6 @@
-import { LAST_BACKUP_KEY, lastBackupAt } from "../lib/backupDue";
-import { useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { backupDue, LAST_BACKUP_KEY, lastBackupAt } from "../lib/backupDue";
+import { listSites } from "../db/db";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Capacitor } from "@capacitor/core";
 import { Share } from "@capacitor/share";
 import ConfirmDialog from "./ConfirmDialog";
@@ -31,6 +32,11 @@ export default function BackupSettings({ rowStyle, hintStyle, onRestored, icons 
   const [plan, setPlan] = useState<RestorePlan | null>(null);
   const [message, setMessage] = useState<{ title: string; text: string } | null>(null);
   const [last, setLast] = useState(lastBackup);
+  // a backup is overdue (the amber dot on the home screen's cog): the row pulses amber
+  const [due, setDue] = useState(false);
+  useEffect(() => {
+    void listSites().then((sites) => setDue(backupDue(lastBackupAt(), sites.length ? Math.min(...sites.map((s) => s.createdAt)) : 0, Date.now())));
+  }, [last]);
 
   async function backup() {
     const counts = await backupCounts();
@@ -129,7 +135,7 @@ export default function BackupSettings({ rowStyle, hintStyle, onRestored, icons 
 
   return (
     <>
-      <button type="button" onClick={backup} style={rowStyle}>
+      <button type="button" onClick={backup} className={due ? "backup-due" : undefined} style={rowStyle}>
         {icons?.[0]}
         <div style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
           <span style={{ fontSize: 14, fontWeight: 700 }}>Back up all data</span>

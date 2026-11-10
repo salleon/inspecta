@@ -111,12 +111,9 @@ test("the Other tests tab lists the site's tests with their results", async () =
   assert.equal(await page.locator("text=ALPHA TEST").count(), 0);
   // the town main is only a reference, so the line is the electric pump's
   assert.equal(await page.locator("text=Electric pump above all demand points").count(), 1);
-  // the converter is hidden until it's switched on in Settings
+  // the converter is hidden unless it was switched on (the Settings switch is gone)
   assert.equal(await page.locator("text=Converter tool").count(), 0);
-  await go(page, app, "/");
-  await page.click('[aria-label="Settings"]');
-  await page.click('[role="switch"]:has-text("Converter tool")');
-  assert.equal(await page.getAttribute('[role="switch"]:has-text("Converter tool")', "aria-checked"), "true");
+  await page.evaluate(() => localStorage.setItem("inspecta.converterTool", "1"));
   await go(page, app, "/site/s1/findings?tab=flow");
   assert.equal(await page.locator("text=Converter tool").count(), 1);
   await page.fill('[aria-label="Litres per second"]', "4.5");
