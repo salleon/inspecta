@@ -14,6 +14,8 @@ import PhotoToolsHost from "./components/PhotoToolsHost";
 import { hasInspectorName } from "./lib/profile";
 import { useKeepFocusedFieldVisible } from "./lib/keepFocusedVisible";
 import { BACK_EVENT, parentRoute } from "./lib/backButton";
+import ErrorBoundary from "./components/ErrorBoundary";
+import StorageFull from "./components/StorageFull";
 
 // The Export screen carries the PDF library (and loads the Excel one), so
 // it's only fetched when first opened rather than parsed at every app
@@ -78,6 +80,7 @@ function App() {
       )}
       {splashVisible && <Splash leaving={splashLeaving} />}
       <UpdatePrompt ready={!splashVisible && !needsOnboarding} />
+      <StorageFull />
     </div>
   );
 }
@@ -137,6 +140,7 @@ function AnimatedRoutes() {
     // keyed on pathname so each screen remounts (and replays its enter
     // animation) on navigation, without disturbing state within a screen
     <div key={location.pathname} className={direction === "forward" ? "route-slide-in" : "route-slide-back"}>
+      <ErrorBoundary>
       <Suspense fallback={null}>
         <Routes location={location}>
           <Route path="/" element={<Dashboard />} />
@@ -155,6 +159,7 @@ function AnimatedRoutes() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>
+      </ErrorBoundary>
     </div>
   );
 }

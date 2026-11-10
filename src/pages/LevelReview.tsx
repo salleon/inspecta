@@ -49,7 +49,23 @@ function parts(L: string[]): Part[] {
 
 const list3 = (a: string[]) => (a.length <= 3 ? a.join(", ").replace(/, ([^,]*)$/, " and $1") : `${a[0]} to ${a[a.length - 1]}`);
 
-export default function LevelReview({ stair, n, onChange, onBack, onDone }: { stair: SpfStair; n: number; onChange: (levels: string[] | undefined) => void; onBack: () => void; onDone: () => void }) {
+export default function LevelReview({
+  stair,
+  n,
+  read,
+  onChange,
+  onRename,
+  onBack,
+  onDone,
+}: {
+  stair: SpfStair;
+  n: number;
+  read?: Set<string>; // the levels with readings in a stair test
+  onChange: (levels: string[] | undefined) => void;
+  onRename?: (names: Record<string, string>) => void; // old name to new: their readings go with them
+  onBack: () => void;
+  onDone: () => void;
+}) {
   const L = stairLevels(stair);
   const suggested = suggestLevels(stair);
   const edited = !!stair.levels && stair.levels.join("\n") !== suggested.join("\n");
@@ -58,11 +74,13 @@ export default function LevelReview({ stair, n, onChange, onBack, onDone }: { st
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const [edit, setEdit] = useState<{ i: number; was: string; type: LevelType; num: string; menu: boolean } | null>(null);
   const [named, setNamed] = useState<{ rename: boolean; value: string } | null>(null);
+  const [removing, setRemoving] = useState<number | null>(null);
   const [swap, setSwap] = useState<{ was: string; now: string; from: "P" | "B"; to: "P" | "B" } | null>(null);
   const list = useRef<HTMLDivElement>(null);
 
   useBackHandler(() => {
-    if (swap) setSwap(null);
+    if (removing !== null) setRemoving(null);
+    else if (swap) setSwap(null);
     else if (edit) setEdit(null);
     else if (named) setNamed(null);
     else onBack();
@@ -99,6 +117,7 @@ export default function LevelReview({ stair, n, onChange, onBack, onDone }: { st
       if (named.rename) next[sel] = code;
       else next.splice(at(), 0, code);
       put(next);
+      if (named.rename && code !== L[sel]) onRename?.({ [L[sel]]: code });
       if (!named.rename) setSel(at());
     }
     setNamed(null);
@@ -112,6 +131,7 @@ export default function LevelReview({ stair, n, onChange, onBack, onDone }: { st
         const next = [...L];
         next[edit.i] = code;
         put(next);
+        if (code !== edit.was) onRename?.({ [edit.was]: code });
         // a car park made a basement (or back): the rest can follow
         const was = isCustomLevel(edit.was) ? null : splitLevel(edit.was).type;
         const now = splitLevel(code).type;
@@ -195,6 +215,8 @@ export default function LevelReview({ stair, n, onChange, onBack, onDone }: { st
               <button
                 className="rm"
                 onClick={() => {
+                  // a level with readings is asked about first
+                  if (read?.has(c)) return setRemoving(sel);
                   put(L.filter((_, j) => j !== sel));
                   setSel(null);
                 }}
@@ -247,6 +269,29 @@ export default function LevelReview({ stair, n, onChange, onBack, onDone }: { st
         </button>
       </div>
 
+      {removing !== null && (
+        <>
+          <div className="lr-dim" onClick={() => setRemoving(null)} />
+          <div className="lr-dlg" role="dialog" aria-label={`Remove ${L[removing]}?`}>
+            <h3>Remove {L[removing]}?</h3>
+            <p>It has readings in a stair test. They stay saved, but won't show on the test or its report.</p>
+            <div className="bb">
+              <button onClick={() => setRemoving(null)}>Keep it</button>
+              <button
+                className="warn"
+                onClick={() => {
+                  put(L.filter((_, j) => j !== removing));
+                  setSel(null);
+                  setRemoving(null);
+                }}
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
       {swap && (
         <>
           <div className="lr-dim" onClick={() => setSwap(null)} />
@@ -264,12 +309,17 @@ export default function LevelReview({ stair, n, onChange, onBack, onDone }: { st
                 onClick={() => {
                   // one that would double up with a level already there is left as it is
                   const next = [...L];
+                  const names: Record<string, string> = {};
                   next.forEach((x, i) => {
                     if (isCustomLevel(x) || splitLevel(x).type !== swap.from) return;
                     const to = matched(x);
-                    if (!next.includes(to)) next[i] = to;
+                    if (!next.includes(to)) {
+                      next[i] = to;
+                      names[x] = to;
+                    }
                   });
                   put(next);
+                  onRename?.(names);
                   setSwap(null);
                 }}
               >

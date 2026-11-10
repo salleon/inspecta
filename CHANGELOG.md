@@ -7,6 +7,19 @@ the technical detail.
 
 ## 10 November 2026
 
+- **A screen that fails no longer blanks the app.** It shows "Something
+  went wrong", with Try again and Back to home; before, every screen
+  stayed blank until the app was closed. A flow test that somehow has no
+  supply left opens with a blank one.
+- **Looking after the data.** The app asks the phone to keep its storage
+  (so the phone doesn't clear it when it runs short). If the phone is out
+  of storage when something is saved, a message says so. Settings shows
+  when the last backup was made, in place of the line under Back up all
+  data.
+- **Stair setup: a renamed level keeps its readings.** Changing a level
+  in Review level layout (P2 to B2, a new name, or Change all) moves its
+  readings in every stair test, and any doors added there, to the new
+  name. Removing a level that has readings asks first.
 - **Stair tests: what's added can be removed.** A door added at a level
   with + Door: open it and tap Remove door in the pad's heading (the last
   door added on that level; it asks first if the door has readings). A

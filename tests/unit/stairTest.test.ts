@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { levelsRead, renameDoorLevels } from "../../src/lib/stairTest";
 import { doorFails, doorMarginal, kindsFor, latestDoor, newRun, stairDoors, stairGroups, stairLabel } from "../../src/lib/stairTest";
 import { adjacentDoor, doorsOpen, doorStats, isCustomLevel, joinLevel, levelChanges, levelChip, levelName, levelsEdited, limits, onceStatus, sectionsFor, splitLevel, stairLevels, stairTestHasData, stairTestSummary, typeFor } from "../../src/lib/stairTest";
 import { stairPages } from "../../src/lib/stairPrint";
@@ -170,4 +171,16 @@ test("a level with two doors has a report row for each", () => {
   const [page] = stairPages(test0({ doors: { s1: { "2": { vel: "1.05" }, "2\tB": { vel: "0.5" } } } }), s, { name: "Site", address: "" });
   assert.deepEqual(page.rows.map((r) => r.cells[0]), ["3", "2 A", "2 B", "1", "G"]);
   assert.deepEqual([page.rows[1].cells[2], page.rows[1].warns![2], page.rows[2].cells[2], page.rows[2].fails[2]], ["1.05", true, "0.5", true]);
+});
+
+test("a renamed level takes its readings with it: every door, every run", () => {
+  const t = test0({ kind: "general", doors: { s1: { P1: { vel: "1.2" }, "P1\tB": { vel: "0.9" }, P2: { vel: "1" } }, s2: { P1: { vel: "2" } } }, runs: [{ at: 0, change: "", doors: { s1: { P1: { vel: "1.4" } } } }] });
+  assert.deepEqual([...levelsRead([t], "s1")].sort(), ["P1", "P2"]);
+  const next = renameDoorLevels(t, "s1", { P1: "B1" })!;
+  assert.deepEqual(Object.keys(next.doors.s1).sort(), ["B1", "B1\tB", "P2"]);
+  assert.equal(next.runs![0].doors.s1.B1.vel, "1.4");
+  assert.deepEqual(next.doors.s2, { P1: { vel: "2" } }, "other stairs are left alone");
+  assert.equal(renameDoorLevels(t, "s1", { P9: "B9" }), null, "nothing to move");
+  // a name that already has readings keeps its own
+  assert.equal(renameDoorLevels(t, "s1", { P1: "P2" }), null);
 });

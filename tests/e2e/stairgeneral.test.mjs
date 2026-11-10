@@ -178,5 +178,28 @@ test("Review level layout: groups that open, and P to B offers to change the res
   assert.match(await dlg.innerText(), /Do you want to change the other basement levels to match\? P2 and P3 would become B2 and B3\./);
   await dlg.getByRole("button", { name: "Change all" }).click();
   assert.match(await list.innerText(), /Basement\s*B1 to B3 · 3 levels[\s\S]*B1[\s\S]*B2[\s\S]*B3/);
+  // the readings went with the names: P1's velocity is now B1's
+  await page.waitForTimeout(400);
+  const keys = await page.evaluate(async () => {
+    const req = indexedDB.open("inspecta");
+    const idb = await new Promise((r) => (req.onsuccess = () => r(req.result)));
+    const all = await new Promise((r) => {
+      const q = idb.transaction("stairTests").objectStore("stairTests").getAll();
+      q.onsuccess = () => r(q.result);
+    });
+    idb.close();
+    return all.map((t) => [Object.keys(t.doors.s1 ?? {}).sort().join(","), t.doors.s1?.B1?.vel]);
+  });
+  assert.deepEqual(keys, [["B1", "1.05"]]);
+  // a level with readings is asked about before it's removed (B1 is still picked)
+  await page.getByRole("button", { name: "Remove", exact: true }).click();
+  const ask = page.getByRole("dialog", { name: "Remove B1?" });
+  assert.match(await ask.innerText(), /It has readings in a stair test/);
+  await ask.getByRole("button", { name: "Keep it" }).click();
+  assert.equal(await list.locator('[data-level="B1"]').count(), 1);
+  // the door added at P2 is now at B2
+  await page.getByRole("button", { name: /Looks right/ }).click();
+  await page.locator('[data-stair="s1"]').click();
+  assert.match(await page.locator('[data-stair="s1"]').innerText(), /Added while testing: B2 \+1/);
   assert.deepEqual(errors, []);
 });

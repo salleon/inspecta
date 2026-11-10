@@ -22,6 +22,9 @@ void setUpOfflineCache()
 if (Capacitor.isNativePlatform()) void clearOldExports(0)
 // a little after opening, so the first screen isn't slowed
 setTimeout(() => void tidyPhotoStorage().catch(() => {}), 5000)
+// ask the phone not to clear the app's data when it runs short of space
+// (everything lives only on the phone until it's backed up)
+void navigator.storage?.persist?.().catch(() => {})
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

@@ -1,8 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import type { Site, SpfEdition, SpfStair, SpfSystem, SpfType } from "../db/types";
-import { getSite, saveSiteSpf } from "../db/db";
-import { defaultSystem, doorsEach, EDITIONS, joinLevel, LEVEL_TYPES, levelChanges, levelName, levelsEdited, levelType, newStair, splitLevel, stairDoors, stairGroups, stairRange, TYPES, typeFor, type LevelType } from "../lib/stairTest";
+import type { Site, SpfEdition, SpfStair, SpfSystem, SpfType, StairTest } from "../db/types";
+import { getSite, listStairTests, saveSiteSpf, saveStairTest } from "../db/db";
+import { defaultSystem, doorsEach, EDITIONS, joinLevel, LEVEL_TYPES, levelChanges, levelName, levelsEdited, levelsRead, levelType, newStair, renameDoorLevels, splitLevel, stairDoors, stairGroups, stairRange, TYPES, typeFor, type LevelType } from "../lib/stairTest";
 import { useBackHandler } from "../lib/backButton";
 import { AMBER, card, cardLabel, fieldInput, PageHeader, RulesBox, Seg } from "../components/StairUi";
 import NumPad, { k, numberKeys, PadTag } from "../components/NumPad";
@@ -42,6 +42,9 @@ export default function StairSystem() {
   const [menu, setMenu] = useState<{ id: string; which: Which } | null>(null);
   const [review, setReview] = useState<string | null>(null);
   const [guard, setGuard] = useState<{ id: string; go: () => void } | null>(null);
+  // the site's stair tests: a renamed level takes its readings with it, and
+  // a level with readings is asked about before it's removed
+  const [tests, setTests] = useState<StairTest[]>([]);
   const saveTimer = useRef<number | null>(null);
   const latest = useRef<SpfSystem | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
@@ -58,6 +61,10 @@ export default function StairSystem() {
       setSys(next);
       latest.current = next;
     });
+  }, [siteId]);
+
+  useEffect(() => {
+    if (siteId) void listStairTests(siteId).then(setTests);
   }, [siteId]);
 
   const back = params.get("back") || `/site/${siteId}/findings?tab=flow`;
@@ -165,7 +172,20 @@ export default function StairSystem() {
       <LevelReview
         stair={reviewing}
         n={sys.stairs.indexOf(reviewing) + 1}
+        read={levelsRead(tests, reviewing.id)}
         onChange={(levels) => setStair(reviewing.id, { levels })}
+        onRename={(names) => {
+          // doors added at a level, and every test's readings there, follow the new name
+          const st = (latest.current ?? sys).stairs.find((s) => s.id === reviewing.id);
+          if (st?.more) setStair(reviewing.id, { more: Object.fromEntries(Object.entries(st.more).map(([level, v]) => [names[level] ?? level, v])) });
+          setTests((all) =>
+            all.map((t) => {
+              const next = renameDoorLevels(t, reviewing.id, names);
+              if (next) void saveStairTest(next);
+              return next ?? t;
+            }),
+          );
+        }}
         onBack={() => setReview(null)}
         onDone={() => {
           setStair(reviewing.id, { reviewed: true });

@@ -12,6 +12,17 @@ import { applyRestore, backupCounts, backupFileName, readBackup, writeBackup, ty
 // lib/backup). Both show the packed-box animation, restoring from the moment
 // the file is picked (reading a big backup takes a while).
 
+// when the last backup was made on this phone (not whether the file was kept)
+const LAST_BACKUP_KEY = "inspecta.lastBackup";
+function lastBackup(): string {
+  try {
+    const at = Number(localStorage.getItem(LAST_BACKUP_KEY));
+    return at ? `Last backup made ${new Date(at).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}` : "Not backed up yet";
+  } catch {
+    return "Not backed up yet";
+  }
+}
+
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 export default function BackupSettings({ rowStyle, hintStyle, onRestored, icons }: { rowStyle: CSSProperties; hintStyle: CSSProperties; onRestored: () => void; icons?: [ReactNode, ReactNode] }) {
@@ -19,6 +30,7 @@ export default function BackupSettings({ rowStyle, hintStyle, onRestored, icons 
   const [progress, setProgress] = useState<{ title: string; percent: number; step: string } | null>(null);
   const [plan, setPlan] = useState<RestorePlan | null>(null);
   const [message, setMessage] = useState<{ title: string; text: string } | null>(null);
+  const [last, setLast] = useState(lastBackup);
 
   async function backup() {
     const counts = await backupCounts();
@@ -53,6 +65,12 @@ export default function BackupSettings({ rowStyle, hintStyle, onRestored, icons 
         URL.revokeObjectURL(url);
       }
       numbered.shared();
+      try {
+        localStorage.setItem(LAST_BACKUP_KEY, String(Date.now()));
+      } catch {
+        // best-effort
+      }
+      setLast(lastBackup());
     } catch (err) {
       if (!(err instanceof Error) || !/cancell?ed/i.test(err.message)) {
         console.error("backup failed", err);
@@ -115,7 +133,9 @@ export default function BackupSettings({ rowStyle, hintStyle, onRestored, icons 
         {icons?.[0]}
         <div style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
           <span style={{ fontSize: 14, fontWeight: 700 }}>Back up all data</span>
-          <span style={hintStyle}>Every site, finding and photo in one file.</span>
+          <span data-testid="last-backup" style={hintStyle}>
+            {last}
+          </span>
         </div>
         <IconChevronRight color="var(--muted)" />
       </button>

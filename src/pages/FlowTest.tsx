@@ -201,6 +201,8 @@ export default function FlowTest() {
         navigate(`/site/${siteId}/findings?tab=flow`, { replace: true });
         return;
       }
+      // a test with no supply left (a damaged backup) gets a blank one, so it still opens
+      if (t.kind !== "blank" && !t.sections?.length) t.sections = [{ name: "", rows: blankRows(t.kind) }];
       setSite(s ?? null);
       setTest(t);
     })();

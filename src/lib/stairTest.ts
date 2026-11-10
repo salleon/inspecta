@@ -353,6 +353,44 @@ export function doorMarginal(section: Every, door: StairDoor | undefined, sys: P
 export const doorValue = (section: Every, door: StairDoor | undefined): string =>
   section === "latch" ? (door?.latch === "y" ? "Yes" : door?.latch === "n" ? "No" : "") : (door?.[section] ?? "").trim();
 
+// ---- readings and the level layout ----
+
+// Readings are kept under the level's name, so when a level is renamed its
+// readings move with it: every door of that level, in every run. A new name
+// that already has readings keeps its own. null when nothing changed.
+export function renameDoorLevels(test: StairTest, stairId: string, names: Record<string, string>): StairTest | null {
+  let changed = false;
+  // the levels with readings in any run: a name among them isn't moved on to
+  const taken = new Set([test.doors, ...(test.runs ?? []).map((r) => r.doors)].flatMap((all) => Object.keys(all[stairId] ?? {}).map((key) => key.split("\t")[0])));
+  const move = (all: StairTest["doors"]) => {
+    const forStair = all[stairId];
+    if (!forStair) return all;
+    const next: Record<string, StairDoor> = {};
+    for (const [key, door] of Object.entries(forStair)) {
+      const [level, ...rest] = key.split("\t");
+      const to = names[level];
+      const target = to === undefined || taken.has(to) ? key : [to, ...rest].join("\t");
+      if (target !== key) {
+        next[target] = door;
+        changed = true;
+      } else next[key] = door;
+    }
+    return { ...all, [stairId]: next };
+  };
+  const doors = move(test.doors);
+  const runs = test.runs?.map((r) => ({ ...r, doors: move(r.doors) }));
+  return changed ? { ...test, doors, runs } : null;
+}
+
+// the levels of a stair that have a door reading in any of these tests
+export function levelsRead(tests: StairTest[], stairId: string): Set<string> {
+  const out = new Set<string>();
+  for (const t of tests)
+    for (const all of [t.doors, ...(t.runs ?? []).map((r) => r.doors)])
+      for (const [key, d] of Object.entries(all[stairId] ?? {})) if (d.vel?.trim() || d.force?.trim() || d.latch) out.add(key.split("\t")[0]);
+  return out;
+}
+
 // ---- runs (general system testing) ----
 
 // Run 1 is the test's own readings; each run after it has what was changed
