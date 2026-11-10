@@ -2,7 +2,7 @@
 
 A list to work through one at a time. Tick an item off (or strike it) once it's decided.
 
-**How this was done:** the app was run at phone size (390×844 and 320×568) with sample data, every main screen was captured and looked at, and the code was scanned for patterns. **Not checked:** a real phone, the camera, Mark up, the tour, the look of exported PDF and Excel files, backup and restore. Items marked *(seen)* were seen on screen; *(code)* come from reading the code.
+**How this was done:** the app was run at phone size (390×844 and 320×568) with sample data, every main screen was captured and looked at, and the code was scanned for patterns. **Not checked:** a real phone, the camera, Mark up, the tour, the look of exported PDF and Excel files, backup and restore. Items marked *(seen)* were seen on screen; *(code)* come from reading the code; *(owner)* were added by the owner.
 
 Already on your list, so not repeated below: cutting hint text (specific ones are in section D), and reworking the tour.
 
@@ -18,7 +18,8 @@ Already on your list, so not repeated below: cutting hint text (specific ones ar
 - [ ] **A8. Stair pad: the < key looks like a back arrow.** *(seen)* It draws as a small "‹".
 - [ ] **A9. Stair readings: the Open column is a dash on every row for Zone systems.** *(seen)* Hide it when there's nothing to show.
 - [ ] **A10. General report: one extra door widens the whole table.** *(seen)* A stair with three doors on one level prints "SPF 1 A / B / C" columns that are blank everywhere else. Print the extra doors as extra rows.
-- [ ] **A11. General testing gaps.** *(code)* A run can't be deleted; noise, restoration and pressure aren't per run; doors added with + Door can only be removed all at once.
+- [ ] **A11. General testing gaps.** *(code)* A run can't be deleted; noise, restoration and pressure aren't per run.
+- [ ] **A12. Stair testing: no way to delete a door on a level.** *(owner)* + Door adds one, but a door added by mistake can't be taken off that level. Today the only way is Remove on the stair's card in setup, which clears every added door on the stair.
 
 ## B. Speed and fewer steps
 
@@ -44,6 +45,8 @@ Already on your list, so not repeated below: cutting hint text (specific ones ar
 - [ ] **C10. Small tap targets.** *(seen)* + Door, the edit pencils in headers and list rows, the ✕ on demand rows, text links like Remove. Aim for 44 px.
 - [ ] **C11. Headers don't match.** *(seen)* Findings and site screens centre the title; Settings, Finding and the stair screens left-align it, at different sizes.
 - [ ] **C12. Home cards: three small right-hand items.** *(seen)* Tag, date and count stack at 10 to 11 px, and a long site name wraps to three lines on a small phone.
+
+- [ ] **C13. Carry the opening screen's texture through to the site screen?** *(owner, a maybe)* The grid texture behind the home screen stops at the site screens, which are flat navy. Try it on the site screen and see if it reads as one app or gets in the way of the lists.
 
 ## D. Wording and consistency
 
