@@ -48,12 +48,20 @@ If the e2e tests hang in a cloud container, Playwright can't find its browser. P
 
 Marked **BETA** in exactly two places: a tag after the Stair pressurisation heading on the home screen, and a ribbon on its New site button (`BetaTag`/`BetaRibbon` in `src/pages/Dashboard.tsx`). Remove both when it's finished. The owner doesn't want other beta labels, banners or dismiss buttons.
 
-**How it works:** a site's system is set up once (the AS 1668.1 edition and type, the stairs with their highest and lowest levels and fan name, and a reviewed level layout). A stair test is Three-monthly check, Annual Testing, Commissioning or Custom. Sections:
+**How it works:** a site's system is set up once (the AS 1668.1 edition and type, the stairs with their highest and lowest levels and fan name, and a reviewed level layout). A stair test is General system testing, Annual Testing, Commissioning, Three-monthly check or Custom (EnFact mode, the Flow testing mode switch, shows only General, Annual and Custom). Sections:
 - At every door: velocity, door force, door closes & latches
 - Once per stair: noise (stair, occupied space, ambient, phone meter reference), pressure restoration, stair pressure with doors closed (`pa`), fan checks
 - Three-monthly: ticks only
 
 Limits come from `limits()` in `src/lib/stairTest.ts`. The report is a page per stair (`stairPrint.ts`), laid out like the AS 1851 record sheet, with blank columns where something wasn't tested.
+
+**Built 10 Nov (on `test`, from the general system testing canvas):**
+- General system testing: runs (`StairTest.runs`; run 1 is the test's own `doors`), each door's latest reading counts everywhere but the run's own screen and the report, which prints run by run with a page per group.
+- Doors: one a level; `SpfStair.doors` sets more on every level, `SpfStair.more` holds doors added at a level from the readings screen (+ Door). A door's key is the level for the first door, `level<tab>B` on (`stairDoors` in `stairTest.ts`).
+- Groups: `SpfStair.group`, a text field on the stair with chips for the groups already used (the mock-up had a + Group button).
+- Marginal (yellow): within 0.1 m/s or 5 N of the limit and still a pass (`doorMarginal`).
+- Review level layout in three drop-downs, and the P to B "change the rest" pop-up.
+- Not done: the stair cards show every stair in a sideways row with the group after the name, not a "Tower ›" button; a run can't be deleted; once-a-stair readings (noise, restoration, pressure) aren't per run.
 
 **Decided (25 Oct):**
 1. Ambient noise: one reading per stair, re-recorded at a noisier door (the button highlights when Noisiest door changes). Done.
@@ -79,4 +87,5 @@ Limits come from `limits()` in `src/lib/stairTest.ts`. The report is a page per 
 ## Links
 
 - Mock-up canvas for the Beta marking: https://claude.ai/artifact/BBAmhXo4u3mvATQsxEYLUa
+- Mock-up canvas for general system testing, doors, groups and the level review: https://claude.ai/artifact/WWJ6jKYhTJA7AjVGJayQ9M
 - Repo: https://github.com/salleon/inspecta

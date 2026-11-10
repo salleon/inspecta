@@ -2,11 +2,16 @@ import { useEffect, useState, type CSSProperties } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import type { Site, StairSection, StairTestKind } from "../db/types";
 import { addStairTest, getSite } from "../db/db";
-import { CUSTOM_SECTIONS, KIND_HINT, KIND_LABEL, KINDS, newStairTest, SECTION, systemLine } from "../lib/stairTest";
+import { CUSTOM_SECTIONS, GENERAL_EXTRA, KIND_HINT, KIND_LABEL, kindsFor, newStairTest, SECTION, systemLine } from "../lib/stairTest";
+import { useFlowMode } from "../lib/settings";
 import { getInspectorName } from "../lib/profile";
 import { PageHeader, Pill } from "../components/StairUi";
 
-// A new stair test (design canvas StairTestSimple, "1 · Pick the test"):
+// A new stair test (design canvas StairTestSimple, "1 · Pick the test"; the
+// kinds and their order from the Stair general system testing canvas, 1a and
+// 1b: EnFact mode has General system testing, Annual Testing and Custom;
+// Contractor mode adds Commissioning and the Three-monthly check. General
+// system testing is velocities, with chips to add other tests to it):
 // the system is already set for the site, so it only asks what's being
 // tested. Annual Testing to start with (an AFSS site's is always
 // annual, but it can still be changed). Before the system is set up it shows
@@ -53,6 +58,7 @@ export default function StairNew() {
   const [kind, setKind] = useState<StairTestKind>("annual");
   const [picked, setPicked] = useState<StairSection[]>([]);
   const [busy, setBusy] = useState(false);
+  const kinds = kindsFor(useFlowMode());
 
   useEffect(() => {
     if (siteId) void getSite(siteId).then((s) => setSite(s ?? null));
@@ -70,6 +76,8 @@ export default function StairNew() {
     try {
       const test = await addStairTest(newStairTest(siteId, kind, picked, getInspectorName()));
       navigate(`/site/${siteId}/spf/${test.id}`, { replace: true });
+      // general system testing goes straight to its velocities (back is the test)
+      if (kind === "general") navigate(`/site/${siteId}/spf/${test.id}/vel?stair=${site?.spf?.stairs[0]?.id ?? ""}`);
     } finally {
       setBusy(false);
     }
@@ -118,7 +126,7 @@ export default function StairNew() {
           </>
         )}
         <div aria-disabled={steps || undefined} style={{ display: "flex", flexDirection: "column", gap: 8, opacity: steps ? 0.38 : 1, pointerEvents: steps ? "none" : undefined }}>
-          {KINDS.map((k) => {
+          {kinds.map((k) => {
             const on = kind === k;
             return (
               <div
@@ -126,7 +134,10 @@ export default function StairNew() {
                 role="radio"
                 aria-checked={on}
                 tabIndex={0}
-                onClick={() => setKind(k)}
+                onClick={() => {
+                  if (k !== kind) setPicked([]);
+                  setKind(k);
+                }}
                 style={{ background: on ? "rgba(46,196,182,.08)" : "var(--panel)", border: on ? "1px solid var(--accent)" : "1px solid var(--border)", boxShadow: on ? "0 0 0 3px rgba(46,196,182,.14)" : "none", borderRadius: 14, padding: "11px 12px", cursor: "pointer" }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 15, fontWeight: 800 }}>
@@ -134,21 +145,22 @@ export default function StairNew() {
                   {KIND_LABEL[k]}
                 </div>
                 <div style={{ fontSize: 12, color: "var(--muted)", margin: "3px 0 0 24px", lineHeight: 1.4 }}>{KIND_HINT[k]}</div>
-                {k === "custom" && on && (
+                {(k === "custom" || k === "general") && on && (
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 5, margin: "8px 0 0 24px" }}>
-                    {CUSTOM_SECTIONS.map((s) => {
-                      const sel = kind === "custom" && picked.includes(s);
+                    {k === "general" && <span style={{ fontSize: 11, fontWeight: 800, padding: "5px 9px", borderRadius: 999, background: "rgba(46,196,182,.16)", border: "1px solid var(--accent)", color: "#5ff0e0" }}>Velocity</span>}
+                    {(k === "general" ? GENERAL_EXTRA : CUSTOM_SECTIONS).map((s) => {
+                      const sel = picked.includes(s);
                       return (
                         <button
                           key={s}
                           aria-pressed={sel}
                           onClick={(e) => {
                             e.stopPropagation();
-                            setKind("custom");
                             setPicked((p) => (sel ? p.filter((x) => x !== s) : [...p.filter((x) => x !== s), s]));
                           }}
                           style={{ fontSize: 11, fontWeight: 800, padding: "5px 9px", borderRadius: 999, background: sel ? "rgba(46,196,182,.16)" : "var(--panel-2)", border: sel ? "1px solid var(--accent)" : "1px solid var(--border-strong)", color: sel ? "#5ff0e0" : "var(--muted)" }}
                         >
+                          {k === "general" && !sel ? "+ " : ""}
                           {SECTION[s].name}
                         </button>
                       );

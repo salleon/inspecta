@@ -6,46 +6,48 @@ import { PageHeader } from "../components/StairUi";
 import NumPad, { BLANK, numberKeys, PadTag } from "../components/NumPad";
 import "./LevelReview.css";
 
-// Review level layout (design canvas SpfLevelPlay): opens once a stair's
-// range is set. The suggested doors top to bottom, runs of numbered levels
-// folded to one line (tap to open, ▴ Fold to close). Tap a level to Edit it
-// (its type from the list, its number on the purple pad), Remove it, or add
-// one above or below it, or a custom name for an odd layout. Every change is
-// kept on the stair as it's made; Looks right ✓ finishes.
+// Review level layout (design canvas SpfLevelPlay; the groups and the P / B
+// pop-up from the Stair general system testing canvas, 2b and 2c): opens once
+// a stair's range is set. The suggested doors top to bottom, in three
+// drop-downs: Roof, Levels and Basement (car parks too). A small group starts
+// open, a big one closed, so only the part being changed has to be opened.
+// Tap a level to Edit it (its type from the list, its number on the purple
+// pad), Remove it, or add one above or below it, or a custom name for an odd
+// layout. Changing a car park to a basement (or back) offers to change the
+// rest to match. Every change is kept on the stair as it's made; Looks right
+// ✓ finishes.
 
-type Item = { run: true; i: number; j: number; key: string } | { fold: string; i: number; j: number } | { i: number };
 const numeric = (c: string) => /^\d+$/.test(c);
 
-// numbered runs (four or more) fold to one line; a picked level splits its
-// run, the parts either side staying folded; an opened run can fold back up
-function items(L: string[], sel: number | null, open: Record<string, boolean>): Item[] {
-  const out: Item[] = [];
-  let i = 0;
-  while (i < L.length) {
-    let j = i;
-    if (numeric(L[i]) && i > 0) while (j + 1 < L.length - 1 && numeric(L[j + 1]) && +L[j + 1] < +L[j]) j++;
-    const key = `${L[i]}-${L[j]}`;
-    const parts =
-      sel !== null && sel >= i && sel <= j && !open[key]
-        ? [
-            [i, sel - 1],
-            [sel, sel],
-            [sel + 1, j],
-          ]
-        : [[i, j]];
-    for (const [a, b] of parts) {
-      if (b < a) continue;
-      const k2 = `${L[a]}-${L[b]}`;
-      if (b - a + 1 >= 4 && !open[key] && !open[k2]) out.push({ run: true, i: a, j: b, key: k2 });
-      else {
-        if (b - a + 1 >= 4) out.push({ fold: open[key] ? key : k2, i: a, j: b });
-        for (let x = a; x <= b; x++) out.push({ i: x });
-      }
+type Group = "Roof" | "Levels" | "Basement";
+type Part = { group: Group; key: string; i: number; j: number };
+const OPEN_UP_TO = 6;
+
+// the list as runs of one group, top to bottom; a typed name sits with the
+// level above it (at the very top, with the one below)
+function parts(L: string[]): Part[] {
+  const of = (c: string): Group | null => {
+    if (isCustomLevel(c)) return null;
+    const t = splitLevel(c).type;
+    return t === "R" ? "Roof" : t === "B" || t === "P" ? "Basement" : "Levels";
+  };
+  const g = L.map(of);
+  const first = g.find((x) => x) ?? "Levels";
+  const out: Part[] = [];
+  const seen: Record<string, number> = {};
+  L.forEach((_, i) => {
+    const group = g[i] ?? (i > 0 ? out[out.length - 1].group : first);
+    const last = out[out.length - 1];
+    if (last && last.group === group) last.j = i;
+    else {
+      seen[group] = (seen[group] ?? 0) + 1;
+      out.push({ group, key: `${group} ${seen[group]}`, i, j: i });
     }
-    i = j + 1;
-  }
+  });
   return out;
 }
+
+const list3 = (a: string[]) => (a.length <= 3 ? a.join(", ").replace(/, ([^,]*)$/, " and $1") : `${a[0]} to ${a[a.length - 1]}`);
 
 export default function LevelReview({ stair, n, onChange, onBack, onDone }: { stair: SpfStair; n: number; onChange: (levels: string[] | undefined) => void; onBack: () => void; onDone: () => void }) {
   const L = stairLevels(stair);
@@ -56,10 +58,12 @@ export default function LevelReview({ stair, n, onChange, onBack, onDone }: { st
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const [edit, setEdit] = useState<{ i: number; was: string; type: LevelType; num: string; menu: boolean } | null>(null);
   const [named, setNamed] = useState<{ rename: boolean; value: string } | null>(null);
+  const [swap, setSwap] = useState<{ was: string; now: string; from: "P" | "B"; to: "P" | "B" } | null>(null);
   const list = useRef<HTMLDivElement>(null);
 
   useBackHandler(() => {
-    if (edit) setEdit(null);
+    if (swap) setSwap(null);
+    else if (edit) setEdit(null);
     else if (named) setNamed(null);
     else onBack();
     return true;
@@ -108,6 +112,10 @@ export default function LevelReview({ stair, n, onChange, onBack, onDone }: { st
         const next = [...L];
         next[edit.i] = code;
         put(next);
+        // a car park made a basement (or back): the rest can follow
+        const was = isCustomLevel(edit.was) ? null : splitLevel(edit.was).type;
+        const now = splitLevel(code).type;
+        if ((was === "P" || was === "B") && (now === "P" || now === "B") && was !== now && next.some((c) => !isCustomLevel(c) && splitLevel(c).type === was)) setSwap({ was: edit.was, now: code, from: was, to: now });
       }
       setEdit(null);
       return;
@@ -117,45 +125,47 @@ export default function LevelReview({ stair, n, onChange, onBack, onDone }: { st
     else if (/^\d$/.test(key) && edit.num.length < 3) setEdit({ ...edit, num: edit.num + key });
   }
 
-  const rows = items(L, sel, open).map((it) => {
-    if ("fold" in it)
-      return (
-        <button key={`f${it.fold}`} className="lr-lv run fold" onClick={() => (setOpen({}), setSel(null))}>
-          <span className="c">▴</span>
-          <small>
-            Fold levels {L[it.i]} to {L[it.j]}
-          </small>
-          <span className="ch">▴</span>
-        </button>
-      );
-    if ("run" in it) {
-      const top = +L[it.i];
-      const bot = +L[it.j];
-      const have = L.slice(it.i, it.j + 1);
-      const miss: number[] = [];
-      for (let x = top; x >= bot; x--) if (!have.includes(String(x))) miss.push(x);
-      return (
-        <button key={`r${it.key}`} className="lr-lv run" onClick={() => setOpen({ ...open, [it.key]: true })}>
-          <span className="c">
-            {top}–{bot}
-          </span>
-          <small>
-            Levels {top} to {bot}
-            {miss.length ? ` · no ${miss.join(", ")}` : ""}
-          </small>
-          <span className="ch">▾</span>
-        </button>
-      );
-    }
-    const c = L[it.i];
-    const on = sel === it.i;
-    return (
-      <button key={`l${it.i}`} data-level={c} className={`lr-lv${on ? " sel" : suggested.includes(c) ? "" : " new"}`} onClick={() => setSel(on ? null : it.i)}>
-        <span className="c">{levelChip(c)}</span>
-        <small>{levelName(c)}</small>
-        <span className="ch">{on ? "✓" : "›"}</span>
+  const others = swap ? L.filter((x) => !isCustomLevel(x) && splitLevel(x).type === swap.from) : [];
+  const matched = (x: string) => swap!.to + splitLevel(x).num;
+
+  const rows = parts(L).flatMap((p) => {
+    const count = p.j - p.i + 1;
+    const isOpen = open[p.key] ?? count <= OPEN_UP_TO;
+    const head = (
+      <button
+        key={`g${p.key}`}
+        data-group={p.group}
+        aria-expanded={isOpen}
+        className={`lr-lv grp${isOpen ? " on" : ""}`}
+        onClick={() => {
+          if (isOpen && sel !== null && sel >= p.i && sel <= p.j) setSel(null);
+          setOpen({ ...open, [p.key]: !isOpen });
+        }}
+      >
+        <b>{p.group}</b>
+        <small>
+          {count === 1 ? levelChip(L[p.i]) : `${levelChip(L[p.i])} to ${levelChip(L[p.j])}`} · {count} level{count === 1 ? "" : "s"}
+        </small>
+        <span className="ch">{isOpen ? "▴" : "▾"}</span>
       </button>
     );
+    if (!isOpen) return [head];
+    return [
+      head,
+      <div key={`l${p.key}`} className="lr-in">
+        {L.slice(p.i, p.j + 1).map((code, k) => {
+          const i = p.i + k;
+          const on = sel === i;
+          return (
+            <button key={`${i} ${code}`} data-level={code} className={`lr-lv${on ? " sel" : suggested.includes(code) ? "" : " new"}`} onClick={() => setSel(on ? null : i)}>
+              <span className="c">{levelChip(code)}</span>
+              <small>{levelName(code)}</small>
+              <span className="ch">{on ? "✓" : "›"}</span>
+            </button>
+          );
+        })}
+      </div>,
+    ];
   });
 
   const c = sel === null ? "" : L[sel];
@@ -166,9 +176,7 @@ export default function LevelReview({ stair, n, onChange, onBack, onDone }: { st
       <PageHeader title="Review level layout" sub={`Stair ${n}${stair.name.trim() ? ` · ${stair.name.trim()}` : ""} · ${L.length} doors`} onBack={onBack} />
       <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: 9, padding: "4px 14px 0" }}>
         <div ref={list} className="lr-list" data-testid="level-list">
-          <div className="lr-end">Top</div>
           {rows}
-          <div className="lr-end">Bottom</div>
         </div>
         {sel !== null && (
           <div className="lr-tools">
@@ -238,6 +246,39 @@ export default function LevelReview({ stair, n, onChange, onBack, onDone }: { st
           )}
         </button>
       </div>
+
+      {swap && (
+        <>
+          <div className="lr-dim" onClick={() => setSwap(null)} />
+          <div className="lr-dlg" role="dialog" aria-label={`${swap.was} is now ${swap.now}`}>
+            <h3>
+              {swap.was} is now {swap.now}
+            </h3>
+            <p>
+              Do you want to change the other basement levels to match? {list3(others)} would become {list3(others.map(matched))}.
+            </p>
+            <div className="bb">
+              <button onClick={() => setSwap(null)}>Just {swap.now}</button>
+              <button
+                className="warn"
+                onClick={() => {
+                  // one that would double up with a level already there is left as it is
+                  const next = [...L];
+                  next.forEach((x, i) => {
+                    if (isCustomLevel(x) || splitLevel(x).type !== swap.from) return;
+                    const to = matched(x);
+                    if (!next.includes(to)) next[i] = to;
+                  });
+                  put(next);
+                  setSwap(null);
+                }}
+              >
+                Change all
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       {named && (
         <>

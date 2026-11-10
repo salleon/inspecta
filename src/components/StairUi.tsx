@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { Site, SpfSystem, StairTest } from "../db/types";
-import { getSite, getStairTest, saveStairTest } from "../db/db";
+import { getSite, getStairTest, saveSiteSpf, saveStairTest } from "../db/db";
 import { doorsOpen, limitTiles } from "../lib/stairTest";
 import { IconChevronLeft } from "./Icons";
 import RoundIconButton from "./RoundIconButton";
@@ -152,5 +152,15 @@ export function useStairTest(siteId: string | undefined, testId: string | undefi
     [flush],
   );
 
-  return { site, test, setTest, flush };
+  // a change to the site's system made from a test (a door added at a level)
+  const setSpf = useCallback((update: (s: SpfSystem) => SpfSystem) => {
+    setSite((cur) => {
+      if (!cur?.spf) return cur;
+      const spf = update(cur.spf);
+      void saveSiteSpf(cur.id, spf);
+      return { ...cur, spf };
+    });
+  }, []);
+
+  return { site, test, setTest, setSpf, flush };
 }

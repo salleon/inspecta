@@ -1,7 +1,7 @@
 import { useState, type CSSProperties } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import type { StairSection } from "../db/types";
-import { ALL_SECTIONS, doorStats, KIND_LABEL, onceStatus, SECTION, stairLevels } from "../lib/stairTest";
+import { ALL_SECTIONS, doorStats, KIND_LABEL, onceStatus, runCount, SECTION, stairDoors, stairLabel } from "../lib/stairTest";
 import { useBackHandler } from "../lib/backButton";
 import { card, cardLabel, fieldInput, PageHeader, Pill, useStairTest } from "../components/StairUi";
 
@@ -49,9 +49,9 @@ export default function StairTestPage() {
     if (!sys || !stair) return null;
     if (info.every) {
       const x = doorStats(test, stair, s as "vel" | "force" | "latch", sys);
-      sub = `${x.done} of ${x.total}`;
+      sub = `${x.done} of ${x.total}${test.kind === "general" && runCount(test) > 1 ? ` · ${runCount(test)} runs` : ""}`;
       right = x.fails ? `${x.fails} fail${x.fails === 1 ? "" : "s"}` : x.done ? (x.done === x.total ? "All pass" : "OK so far") : "—";
-      colour = x.fails ? "#ff7a6a" : x.done ? "#2bd47a" : "#5f7890";
+      colour = x.fails ? "#ff7a6a" : x.marginal ? "#f7c948" : x.done ? "#2bd47a" : "#5f7890";
       pct = x.total ? Math.round((100 * x.done) / x.total) : 0;
     } else {
       const o = onceStatus(s, test.once[stair.id], sys);
@@ -107,8 +107,8 @@ export default function StairTestPage() {
                   onClick={() => setParams({ stair: s.id }, { replace: true })}
                   style={{ flex: "0 0 auto", textAlign: "left", fontSize: 12, fontWeight: 800, padding: "7px 11px", borderRadius: 9, lineHeight: 1.25, background: on ? "rgba(46,196,182,.14)" : "var(--panel-2)", border: on ? "1px solid var(--accent)" : "1px solid var(--border-strong)", color: on ? "#5ff0e0" : "var(--muted)" }}
                 >
-                  {s.name.trim() || `Stair ${i + 1}`}
-                  <small style={{ display: "block", fontSize: 10.5, fontWeight: 700 }}>{every ? `${done} of ${stairLevels(s).length}` : `${stairLevels(s).length} doors`}</small>
+                  {stairLabel(s, i)}
+                  <small style={{ display: "block", fontSize: 10.5, fontWeight: 700 }}>{every ? `${done} of ${stairDoors(s).length}` : `${stairDoors(s).length} doors`}</small>
                 </button>
               );
             })}

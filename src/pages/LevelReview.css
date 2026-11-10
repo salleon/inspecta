@@ -60,6 +60,29 @@
   color: #5f7890;
   font-size: 13px;
 }
+/* a group's drop-down (Roof, Levels, Basement) and the levels inside it */
+.lr-lv.grp {
+  padding: 11px 10px;
+}
+.lr-lv.grp b {
+  font-size: 13.5px;
+  min-width: 76px;
+}
+.lr-lv.grp small,
+.lr-lv.grp .ch {
+  color: #bfd0de;
+}
+.lr-lv.grp.on {
+  background: rgba(177, 140, 255, 0.1);
+  border-color: rgba(177, 140, 255, 0.5);
+}
+.lr-in {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-left: 12px;
+  flex-shrink: 0;
+}
 .lr-lv.run {
   background: transparent;
   border: 1px dashed #2a5a82;

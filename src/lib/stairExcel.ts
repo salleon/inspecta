@@ -1,6 +1,6 @@
 import type { Workbook } from "exceljs";
 import type { Site, SpfSystem, StairTest } from "../db/types";
-import { stairPages } from "./stairPrint";
+import { stairPages, type StairRow } from "./stairPrint";
 
 // Stair tests in Excel: a sheet per stair, laid out like the preview and the
 // PDF (lib/stairPrint): title, details, the once-a-stair readings, the
@@ -14,6 +14,8 @@ const NAVY = "FF0B3550";
 const LINE = "FFD5DEE6";
 const FAIL_FILL = "FFFFD9D4";
 const FAIL_INK = "FFB3261E";
+const WARN_FILL = "FFFFF0B8";
+const WARN_INK = "FF6B4A00";
 const WIDTHS = [10, 16, 20, 18, 20];
 
 function sheetName(wb: Workbook, base: string): string {
@@ -37,7 +39,8 @@ export function addStairSheets(wb: Workbook, tests: StairTest[], sys: SpfSystem,
       const ws = wb.addWorksheet(sheetName(wb, `SPF ${page.subtitle}`), {
         pageSetup: { paperSize: 9, orientation: "portrait", fitToPage: true, fitToWidth: 1, fitToHeight: 0, margins: { left: 0.5, right: 0.5, top: 0.6, bottom: 0.6, header: 0.3, footer: 0.3 } },
       });
-      ws.columns = WIDTHS.map((width) => ({ width }));
+      const across = Math.max(WIDTHS.length, ...(page.tables ?? []).map((t) => t.head.length));
+      ws.columns = Array.from({ length: across }, (_, i) => ({ width: page.tables ? (i === 0 ? 12 : 13) : WIDTHS[i] }));
       let r = 1;
       const put = (text: string, opts: { bold?: boolean; size?: number; color?: string } = {}) => {
         const c = ws.getCell(r, 1);
@@ -57,49 +60,62 @@ export function addStairSheets(wb: Workbook, tests: StairTest[], sys: SpfSystem,
       }
       r++;
       // the once-a-stair readings: a label row, then the values
-      page.boxes.forEach((b, i) => {
-        const col = i + 2;
-        const lab = ws.getCell(r, col);
-        lab.value = b.label;
-        lab.font = { name: FONT, size: 8, color: { argb: SOFT } };
-        lab.alignment = { wrapText: true, vertical: "top" };
-        const v = ws.getCell(r + 1, col);
-        v.value = b.value + (b.ref ? `  (${b.ref.join(" · ")})` : "");
-        v.font = { name: FONT, bold: true, size: 10, color: { argb: b.fail ? FAIL_INK : INK } };
-        lab.border = box;
-        v.border = box;
-      });
-      ws.getRow(r).height = 24;
-      r += 3;
-      // the table
-      page.head.forEach((h, i) => {
-        const c = ws.getCell(r, i + 1);
-        c.value = h;
-        c.font = { name: FONT, bold: true, size: 8.5, color: { argb: "FFFFFFFF" } };
-        c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: NAVY } };
-        c.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
-        c.border = box;
-      });
-      ws.getRow(r).height = 30;
-      r++;
-      for (const row of page.rows) {
-        row.cells.forEach((v, i) => {
-          const c = ws.getCell(r, i + 1);
-          c.value = value(v);
-          c.font = { name: FONT, size: 9, bold: i === 0 || row.fails[i], color: { argb: row.fails[i] ? FAIL_INK : INK } };
-          c.alignment = { horizontal: "center" };
-          c.border = box;
-          if (row.fails[i]) c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: FAIL_FILL } };
+      if (page.boxes.length) {
+        page.boxes.forEach((b, i) => {
+          const col = i + 2;
+          const lab = ws.getCell(r, col);
+          lab.value = b.label;
+          lab.font = { name: FONT, size: 8, color: { argb: SOFT } };
+          lab.alignment = { wrapText: true, vertical: "top" };
+          const v = ws.getCell(r + 1, col);
+          v.value = b.value + (b.ref ? `  (${b.ref.join(" · ")})` : "");
+          v.font = { name: FONT, bold: true, size: 10, color: { argb: b.fail ? FAIL_INK : INK } };
+          lab.border = box;
+          v.border = box;
         });
-        r++;
+        ws.getRow(r).height = 24;
+        r += 3;
       }
-      r++;
+      // a table: fails in red, a pass that's only just one in yellow
+      const table = (heads: string[], rows: StairRow[]) => {
+        heads.forEach((h, i) => {
+          const c = ws.getCell(r, i + 1);
+          c.value = h;
+          c.font = { name: FONT, bold: true, size: 8.5, color: { argb: "FFFFFFFF" } };
+          c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: NAVY } };
+          c.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+          c.border = box;
+        });
+        ws.getRow(r).height = 30;
+        r++;
+        for (const row of rows) {
+          row.cells.forEach((v, i) => {
+            const fail = row.fails[i];
+            const warn = !fail && !!row.warns?.[i];
+            const c = ws.getCell(r, i + 1);
+            c.value = value(v);
+            c.font = { name: FONT, size: 9, bold: i === 0 || fail || warn, color: { argb: fail ? FAIL_INK : warn ? WARN_INK : INK } };
+            c.alignment = { horizontal: "center" };
+            c.border = box;
+            if (fail || warn) c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: fail ? FAIL_FILL : WARN_FILL } };
+          });
+          r++;
+        }
+        r++;
+      };
+      if (page.tables)
+        for (const t of page.tables) {
+          put(t.title, { bold: true, size: 9 });
+          table(t.head, t.rows);
+        }
+      else table(page.head, page.rows);
       const block = (label: string, lines: string[]) => {
         put(label, { bold: true, size: 9 });
         for (const l of lines) put(l, { size: 9 });
         r++;
       };
-      block(page.fanLabel, [page.fan]);
+      if (page.readings?.length) block("Other readings", page.readings);
+      if (page.fanLabel) block(page.fanLabel, [page.fan]);
       if (page.quick !== null) block("Three-monthly check (AS 1851-2012 Table 13.4.2.2)", [page.quick]);
       if (page.siteNotes) block("Site notes", page.siteNotes.split("\n"));
       if (page.notes.length) block("Notes", page.notes);

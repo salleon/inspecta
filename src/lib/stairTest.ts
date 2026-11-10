@@ -1,4 +1,4 @@
-import type { SpfEdition, SpfStair, SpfSystem, SpfType, StairDoor, StairOnce, StairSection, StairTest, StairTestKind, Tick } from "../db/types";
+import type { StairRun, SpfEdition, SpfStair, SpfSystem, SpfType, StairDoor, StairOnce, StairSection, StairTest, StairTestKind, Tick } from "../db/types";
 
 // Stair pressurisation testing (design canvas StairTestSimple, StairTestRules).
 // The system is set once per site: the AS 1668.1 edition it was built to and
@@ -133,6 +133,49 @@ export function levelChanges(stair: Pick<SpfStair, "from" | "to" | "levels">): s
 }
 export const levelsEdited = (stair: Pick<SpfStair, "from" | "to" | "levels">) => !!stair.levels && stair.levels.join("\n") !== suggestLevels(stair).join("\n");
 
+// ---- doors ----
+
+// A level has one door unless the stair says more: so many on every level
+// (doors), and any added at a level while testing (more). A door's readings
+// are kept under its key: the level for the first door, "level<tab>B" on.
+const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+export const doorLetter = (n: number) => LETTERS[n] ?? String(n + 1);
+export const doorKey = (level: string, n: number) => (n === 0 ? level : `${level}\t${doorLetter(n)}`);
+export const doorsEach = (stair: Pick<SpfStair, "doors">) => Math.max(1, Math.min(9, Math.round(stair.doors ?? 1) || 1));
+export const doorsAt = (stair: Pick<SpfStair, "doors" | "more">, level: string) => doorsEach(stair) + Math.max(0, stair.more?.[level] ?? 0);
+
+export interface DoorRef {
+  level: string;
+  li: number; // the level's place in the stair, top down
+  n: number; // which of the level's doors
+  of: number; // how many the level has
+  key: string;
+  label: string; // "P2", or "P2 B" when the level has more than one
+}
+// a stair's doors, top to bottom
+export function stairDoors(stair: Pick<SpfStair, "from" | "to" | "extra" | "levels" | "doors" | "more">): DoorRef[] {
+  return stairLevels(stair).flatMap((level, li) => {
+    const of = doorsAt(stair, level);
+    return Array.from({ length: of }, (_, n) => ({ level, li, n, of, key: doorKey(level, n), label: of > 1 ? `${level} ${doorLetter(n)}` : level }));
+  });
+}
+
+// a stair on a tab or in a table: its name, else its fan, else its number
+export const stairLabel = (stair: SpfStair, i: number) => stair.name.trim() || (/^SPF-?\s*$/i.test(stair.fan.trim()) ? "" : stair.fan.trim()) || `Stair ${i + 1}`;
+
+// the stairs in their groups ("Basement", "Tower"), in the order the groups
+// first appear; one unnamed group when none are set
+export function stairGroups(sys: Pick<SpfSystem, "stairs">): { name: string; stairs: SpfStair[] }[] {
+  const out: { name: string; stairs: SpfStair[] }[] = [];
+  for (const st of sys.stairs) {
+    const name = (st.group ?? "").trim();
+    const g = out.find((x) => x.name.toLowerCase() === name.toLowerCase());
+    if (g) g.stairs.push(st);
+    else out.push({ name, stairs: [st] });
+  }
+  return out;
+}
+
 export const stairName = (stair: SpfStair, i: number) => `Stair ${i + 1}${stair.name.trim() ? ` · ${stair.name.trim()}` : ""}`;
 // "B2 to 26"
 export const stairRange = (stair: SpfStair) => (stair.from.trim() && stair.to.trim() ? `${stair.from.trim()} to ${stair.to.trim()}` : "No levels yet");
@@ -195,15 +238,20 @@ export const systemLine = (sys: SpfSystem | undefined) =>
 
 // ---- the tests ----
 
-export const KIND_LABEL: Record<StairTestKind, string> = { quick: "Three-monthly check", annual: "Annual Testing", comm: "Commissioning", custom: "Custom" };
+export const KIND_LABEL: Record<StairTestKind, string> = { general: "General system testing", quick: "Three-monthly check", annual: "Annual Testing", comm: "Commissioning", custom: "Custom" };
 export const KIND_HINT: Record<StairTestKind, string> = {
+  general: "Runs: test, adjust, test again",
   quick: "Panel start: tick it works",
   annual: "All doors: velocities, forces, latches etc",
   comm: "All tests",
   custom: "Pick the tests",
 };
-export const KINDS: StairTestKind[] = ["quick", "annual", "comm", "custom"];
-export const KIND_SECTIONS: Record<Exclude<StairTestKind, "custom">, StairSection[]> = {
+export const KINDS: StairTestKind[] = ["general", "annual", "comm", "quick", "custom"];
+// EnFact's consultants don't commission or do the three-monthly check
+export const kindsFor = (mode: "enfact" | "contractor"): StairTestKind[] => (mode === "enfact" ? ["general", "annual", "custom"] : KINDS);
+// general system testing is velocities, and whatever else is added to it
+export const GENERAL_EXTRA: StairSection[] = ["force", "latch", "pa", "noise", "rest"];
+export const KIND_SECTIONS: Record<Exclude<StairTestKind, "custom" | "general">, StairSection[]> = {
   quick: ["quick"],
   annual: ["vel", "force", "latch", "noise", "rest", "fan"],
   comm: ["vel", "force", "latch", "noise", "rest", "pa", "fan"],
@@ -264,7 +312,7 @@ export const QUICK_CHECKS: [string, string][] = [
 ];
 
 export function sectionsFor(kind: StairTestKind, picked: StairSection[] = []): StairSection[] {
-  const list = kind === "custom" ? picked : KIND_SECTIONS[kind];
+  const list = kind === "custom" ? picked : kind === "general" ? ["vel", ...picked] : KIND_SECTIONS[kind];
   return ALL_SECTIONS.filter((s) => list.includes(s));
 }
 
@@ -272,15 +320,20 @@ export function newStairTest(siteId: string, kind: StairTestKind, sections: Stai
   return { siteId, kind, sections: sectionsFor(kind, sections), testedAt: Date.now(), testedBy, doors: {}, once: {}, notes: [] };
 }
 
+// "<0.25" is below what the meter reads: just under the number typed
 const num = (v: string | undefined) => {
   const t = (v ?? "").trim();
-  if (!t) return null;
-  const n = Number(t);
-  return Number.isFinite(n) ? n : null;
+  const below = t.startsWith("<");
+  const body = below ? t.slice(1).trim() : t;
+  if (!body) return null;
+  const n = Number(body);
+  return Number.isFinite(n) ? (below ? n - 1e-6 : n) : null;
 };
 
+export type Every = "vel" | "force" | "latch";
+
 // does a reading fail? null when there's nothing to judge
-export function doorFails(section: "vel" | "force" | "latch", door: StairDoor | undefined, sys: Pick<SpfSystem, "edition">): boolean | null {
+export function doorFails(section: Every, door: StairDoor | undefined, sys: Pick<SpfSystem, "edition">): boolean | null {
   const l = limits(sys);
   if (section === "latch") return door?.latch ? door.latch === "n" : null;
   const n = num(door?.[section]);
@@ -288,21 +341,52 @@ export function doorFails(section: "vel" | "force" | "latch", door: StairDoor | 
   return section === "vel" ? n < l.vel : n > l.force;
 }
 
-export const doorValue = (section: "vel" | "force" | "latch", door: StairDoor | undefined): string =>
+// a pass, but only just: within 0.1 m/s of the velocity limit, or 5 N of the force limit
+export const MARGIN = { vel: 0.1, force: 5 };
+export function doorMarginal(section: Every, door: StairDoor | undefined, sys: Pick<SpfSystem, "edition">): boolean {
+  if (section === "latch" || doorFails(section, door, sys) !== false) return false;
+  const l = limits(sys);
+  const n = num(door?.[section])!;
+  return section === "vel" ? n <= l.vel + MARGIN.vel + 1e-9 : n >= l.force - MARGIN.force - 1e-9;
+}
+
+export const doorValue = (section: Every, door: StairDoor | undefined): string =>
   section === "latch" ? (door?.latch === "y" ? "Yes" : door?.latch === "n" ? "No" : "") : (door?.[section] ?? "").trim();
 
-// a stair's doors done, and failing, for one reading
-export function doorStats(test: StairTest, stair: SpfStair, section: "vel" | "force" | "latch", sys: Pick<SpfSystem, "edition">) {
-  const levels = stairLevels(stair);
-  const doors = test.doors[stair.id] ?? {};
+// ---- runs (general system testing) ----
+
+// Run 1 is the test's own readings; each run after it has what was changed
+// and its own. Everywhere but the run's own screen and the report, a door
+// counts as its latest reading.
+export const runCount = (test: Pick<StairTest, "runs">) => 1 + (test.runs?.length ?? 0);
+export const runDoors = (test: Pick<StairTest, "doors" | "runs">, run: number) => (run <= 0 ? test.doors : (test.runs?.[run - 1]?.doors ?? {}));
+export const runChange = (test: Pick<StairTest, "runs">, run: number) => (run <= 0 ? "As found" : (test.runs?.[run - 1]?.change ?? "").trim());
+export const runAt = (test: Pick<StairTest, "runs" | "testedAt">, run: number) => (run <= 0 ? test.testedAt : (test.runs?.[run - 1]?.at ?? test.testedAt));
+export const newRun = (change: string): StairRun => ({ at: Date.now(), change: change.trim(), doors: {} });
+
+// a door's latest reading for a section, looking back from a run (the last, unless given)
+export function latestDoor(test: Pick<StairTest, "doors" | "runs">, stairId: string, key: string, section: Every, from = runCount(test) - 1): StairDoor | undefined {
+  for (let r = Math.min(from, runCount(test) - 1); r >= 0; r--) {
+    const d = runDoors(test, r)[stairId]?.[key];
+    if (doorValue(section, d)) return d;
+  }
+  return undefined;
+}
+
+// a stair's doors done, failing and only just passing, for one reading
+export function doorStats(test: StairTest, stair: SpfStair, section: Every, sys: Pick<SpfSystem, "edition">) {
+  const doors = stairDoors(stair);
   let done = 0;
   let fails = 0;
-  for (const l of levels) {
-    if (!doorValue(section, doors[l])) continue;
+  let marginal = 0;
+  for (const d of doors) {
+    const x = latestDoor(test, stair.id, d.key, section);
+    if (!x) continue;
     done++;
-    if (doorFails(section, doors[l], sys)) fails++;
+    if (doorFails(section, x, sys)) fails++;
+    else if (doorMarginal(section, x, sys)) marginal++;
   }
-  return { done, fails, total: levels.length };
+  return { done, fails, marginal, total: doors.length };
 }
 
 export const tickCount = (ticks: Record<string, Tick> | undefined) => Object.values(ticks ?? {}).filter(Boolean).length;
@@ -340,19 +424,18 @@ export function onceStatus(section: StairSection, once: StairOnce | undefined, s
 // the stair test's line on the tests list: doors done and fails, or ticks
 export function stairTestSummary(test: StairTest, sys: SpfSystem | undefined): { text: string; fail: boolean } {
   if (!sys || !sys.stairs.length) return { text: "Set up the system to start", fail: false };
-  const every = test.sections.filter((s): s is "vel" | "force" | "latch" => SECTION[s].every);
+  const every = test.sections.filter((s): s is Every => SECTION[s].every);
   if (every.length) {
     let done = 0;
     let total = 0;
     let fails = 0;
     for (const stair of sys.stairs) {
-      const levels = stairLevels(stair);
-      const doors = test.doors[stair.id] ?? {};
-      total += levels.length;
-      for (const l of levels) {
-        const d = doors[l];
-        if (every.some((s) => doorValue(s, d))) done++;
-        if (every.some((s) => doorFails(s, d, sys))) fails++;
+      const doors = stairDoors(stair);
+      total += doors.length;
+      for (const d of doors) {
+        const got = every.map((s) => [s, latestDoor(test, stair.id, d.key, s)] as const);
+        if (got.some(([, x]) => x)) done++;
+        if (got.some(([s, x]) => doorFails(s, x, sys))) fails++;
       }
     }
     if (!done) return { text: "No readings yet", fail: false };
@@ -366,7 +449,7 @@ export function stairTestSummary(test: StairTest, sys: SpfSystem | undefined): {
 
 // has anything been entered (the empty ones stay off the site's report)
 export function stairTestHasData(test: StairTest): boolean {
-  const anyDoor = Object.values(test.doors).some((byLevel) => Object.values(byLevel).some((d) => !!(d.vel?.trim() || d.force?.trim() || d.latch)));
+  const anyDoor = [test.doors, ...(test.runs ?? []).map((r) => r.doors)].some((all) => Object.values(all).some((byDoor) => Object.values(byDoor).some((d) => !!(d.vel?.trim() || d.force?.trim() || d.latch))));
   const anyOnce = Object.values(test.once).some(
     (o) => !!(o.noiseStair?.trim() || o.noiseOcc?.trim() || o.ambient?.trim() || o.restTime?.trim() || o.pa?.trim() || tickCount(o.fan) || tickCount(o.quick)),
   );

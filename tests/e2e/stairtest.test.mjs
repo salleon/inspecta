@@ -44,7 +44,8 @@ test("the system is set once: edition, type, stairs; the rules follow the editio
   // the steps: 1 · set up the system, 2 · the test kinds, greyed out until then
   assert.match(await page.locator("body").innerText(), /1\s*Set up the system[\s\S]*2\s*What are you testing\?\s*After the system is set up/);
   assert.ok(await page.getByRole("button", { name: "Set up the system first" }).isDisabled());
-  assert.equal(await page.locator('[aria-disabled="true"] [role="radio"]').count(), 4);
+  // EnFact mode: General system testing, Annual Testing and Custom
+  assert.equal(await page.locator('[aria-disabled="true"] [role="radio"]').count(), 3);
   await page.getByRole("button", { name: "Set up the system ›" }).click();
   await page.getByRole("radiogroup", { name: "AS 1668.1 edition" }).waitFor();
   assert.match(await page.getByTestId("spf-rules").innerText(), /AS 1668.1-1998 · PURGE[\s\S]*Compartment above[\s\S]*≤ 65 dB\(A\)/i);
@@ -75,11 +76,11 @@ test("the system is set once: edition, type, stairs; the rules follow the editio
     ["Roof", "Level", "Mezzanine", "Upper ground", "Ground", "Lower ground", "Car park", "Basement"],
   );
   await page.getByRole("option", { name: /^Ground/ }).click();
-  // the range set: its levels to review, top to bottom
+  // the range set: its levels to review, top to bottom, in their group
   const list = page.getByTestId("level-list");
   await list.waitFor();
   assert.match(await page.locator("body").innerText(), /Review level layout\s*Stair 1 · Front · 4 doors/);
-  assert.match(await list.innerText(), /Top[\s\S]*3[\s\S]*2[\s\S]*1[\s\S]*G[\s\S]*Bottom/i);
+  assert.match(await list.innerText(), /Levels\s*3 to G · 4 levels[\s\S]*3[\s\S]*2[\s\S]*1[\s\S]*G/);
   // a level with a name of its own, above 3, then removed again
   await list.locator('[data-level="3"]').click();
   await page.getByRole("button", { name: "+ Custom name…" }).click();

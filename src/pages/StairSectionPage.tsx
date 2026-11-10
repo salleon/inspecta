@@ -1,28 +1,62 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import type { SpfStair, SpfSystem, StairDoor, StairOnce, StairSection, StairTest, Tick } from "../db/types";
-import { adjacentDoor, doorFails, doorsOpen, doorStats, doorValue, FAN_CHECKS, FAN_SOURCE, isCustomLevel, levelChip, limits, QUICK_CHECKS, SECTION, stairLevels, stairName } from "../lib/stairTest";
+import {
+  adjacentDoor,
+  ALL_SECTIONS,
+  doorFails,
+  doorKey,
+  doorLetter,
+  doorMarginal,
+  doorsAt,
+  doorsOpen,
+  doorStats,
+  doorValue,
+  FAN_CHECKS,
+  FAN_SOURCE,
+  GENERAL_EXTRA,
+  isCustomLevel,
+  KIND_LABEL,
+  latestDoor,
+  levelChip,
+  limits,
+  newRun,
+  QUICK_CHECKS,
+  runChange,
+  runCount,
+  runDoors,
+  SECTION,
+  stairGroups,
+  stairLabel,
+  stairLevels,
+  stairName,
+  type Every,
+} from "../lib/stairTest";
 import { meterOffset, setMeterOffset, startMeter, type Meter } from "../lib/soundMeter";
 import { useBackHandler } from "../lib/backButton";
 import { AMBER, PageHeader, useStairTest } from "../components/StairUi";
-import NumPad, { BLANK, k, numberKeys, PadTag } from "../components/NumPad";
+import NumPad, { BLANK, k, numberKeys, PadTag, readingKeys } from "../components/NumPad";
 
 // One section of a stair test (design canvas StairTestSimple, phones 3 and 4;
-// tidied on SpfTidy). A reading at every door is the whole stair, a button
-// per level: tap one and the purple pad opens for it; Done ✓ saves it and
-// closes, ▲ ▼ step to the level above or below. You move yourself; the app
-// never moves you on. A reading done once is a short screen of its own,
-// its numbers typed on the same pad.
+// tidied on SpfTidy; general system testing on the Stair general system
+// testing canvas, board 3). A reading at every door is the whole stair, a row
+// per level with a cell for each of its doors: tap one and the purple pad
+// opens for it; Done ✓ saves it and closes, ▲ ▼ step to the level above or
+// below. You move yourself; the app never moves you on. + Door at the end of
+// a row adds a door at that level. The stairs are cards across the top;
+// general system testing has its runs under them (each run's readings beside
+// the last one's) and the tests in the run. A reading done once is a short
+// screen of its own, its numbers typed on the same pad.
 
-type Every = "vel" | "force" | "latch";
 const PASS = "#2bd47a";
 const FAIL = "#ff7a6a";
+const WARN = "#f7c948";
 
 export default function StairSectionPage() {
   const { siteId, testId, section } = useParams<{ siteId: string; testId: string; section: StairSection }>();
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
-  const { site, test, setTest, flush } = useStairTest(siteId, testId);
+  const { site, test, setTest, setSpf, flush } = useStairTest(siteId, testId);
   const backTo = `/site/${siteId}/spf/${testId}?stair=${params.get("stair") ?? ""}`;
   const leave = () => {
     flush();
@@ -34,36 +68,77 @@ export default function StairSectionPage() {
   const i = Math.max(0, sys.stairs.findIndex((s) => s.id === params.get("stair")));
   const stair = sys.stairs[i];
   if (!stair) return <div style={{ height: "100%" }} />;
+  // the run being read: the latest, unless one is picked
+  const runs = runCount(test);
+  const picked = params.get("run");
+  const run = test.kind === "general" ? Math.min(runs - 1, Math.max(0, picked === null ? runs - 1 : Number(picked) || 0)) : 0;
+  const query = (stairId: string, r: number) => `?stair=${stairId}${test.kind === "general" ? `&run=${r}` : ""}`;
   return SECTION[section].every ? (
-    <EveryDoor section={section as Every} sys={sys} stair={stair} stairNo={i} test={test} setTest={setTest} onBack={leave} />
+    <EveryDoor
+      key={`${stair.id} ${section} ${run}`}
+      section={section as Every}
+      sys={sys}
+      stair={stair}
+      stairNo={i}
+      test={test}
+      setTest={setTest}
+      setSpf={setSpf}
+      onBack={leave}
+      run={run}
+      onStair={(id) => setParams(query(id, run), { replace: true })}
+      onRun={(r) => setParams(query(stair.id, r), { replace: true })}
+      onSection={(s) => {
+        flush();
+        navigate(`/site/${siteId}/spf/${testId}/${s}${query(stair.id, run)}`, { replace: true });
+      }}
+    />
   ) : (
     <Once section={section} sys={sys} stair={stair} stairNo={i} test={test} setTest={setTest} onBack={leave} />
   );
 }
 
 type Props = { sys: SpfSystem; stair: SpfStair; stairNo: number; test: StairTest; setTest: (u: (t: StairTest) => StairTest) => void; onBack: () => void };
+type EveryProps = Props & { section: Every; run: number; setSpf: (u: (s: SpfSystem) => SpfSystem) => void; onStair: (id: string) => void; onRun: (run: number) => void; onSection: (s: StairSection) => void };
 
-function EveryDoor({ section, sys, stair, stairNo, test, setTest, onBack }: Props & { section: Every }) {
+const chip = (on: boolean, dashed = false) =>
+  ({
+    flex: "0 0 auto",
+    padding: "6px 11px",
+    borderRadius: 999,
+    fontSize: 12,
+    fontWeight: 800,
+    whiteSpace: "nowrap",
+    background: on ? "rgba(177,140,255,.18)" : dashed ? "none" : "var(--panel)",
+    border: on ? "1px solid #b18cff" : dashed ? "1px dashed #3f5a74" : "1px solid var(--border-strong)",
+    color: on ? "#d6c4ff" : dashed ? "var(--muted)" : "#bfd0de",
+  }) as const;
+
+function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack, run, onStair, onRun, onSection }: EveryProps) {
+  const general = test.kind === "general";
   const levels = stairLevels(stair);
-  const doors = test.doors[stair.id] ?? {};
-  const [cur, setCur] = useState<number | null>(null);
-  const [flash, setFlash] = useState<number | null>(null);
+  const mine = runDoors(test, run)[stair.id] ?? {};
+  const [cur, setCur] = useState<{ li: number; n: number } | null>(null);
+  const [flash, setFlash] = useState<string | null>(null);
+  const [sheet, setSheet] = useState<{ edit: boolean; text: string } | null>(null);
+  const [adding, setAdding] = useState(false);
   const list = useRef<HTMLDivElement>(null);
   const info = SECTION[section];
   const stats = doorStats(test, stair, section, sys);
   const l = limits(sys);
   const word = sys.edition === "1979" ? "storey" : sys.edition === "1991" ? "floor" : "compartment";
+  const runs = runCount(test);
 
   useBackHandler(() => {
-    if (cur === null) return false;
-    setCur(null);
+    if (sheet) setSheet(null);
+    else if (cur !== null) setCur(null);
+    else return false;
     return true;
   });
 
   // the level being typed stays in view above the keypad
   useEffect(() => {
     if (cur === null || !list.current) return;
-    const row = list.current.querySelector<HTMLElement>(`[data-i="${cur}"]`);
+    const row = list.current.querySelector<HTMLElement>(`[data-i="${cur.li}"]`);
     if (!row) return;
     const box = list.current.getBoundingClientRect();
     const r = row.getBoundingClientRect();
@@ -71,61 +146,152 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, onBack }: Prop
     if (r.top < box.top || r.bottom > box.top + visible) list.current.scrollTop += r.top - box.top - Math.max(0, visible - 3 * r.height);
   }, [cur]);
 
-  const setDoor = (level: string, patch: Partial<StairDoor>) =>
+  // a door's reading in this run, from the latest so quick taps never drop a digit
+  const write = (key: string, change: (d: StairDoor) => StairDoor | null) =>
     setTest((t) => {
-      const forStair = { ...t.doors[stair.id] };
-      const next = { ...forStair[level], ...patch };
+      const all = runDoors(t, run);
+      const forStair = { ...all[stair.id] };
+      const next = change({ ...forStair[key] });
+      if (!next) return t;
       if (!next.vel) delete next.vel;
       if (!next.force) delete next.force;
       if (!next.latch) delete next.latch;
-      forStair[level] = next;
-      return { ...t, doors: { ...t.doors, [stair.id]: forStair } };
+      forStair[key] = next;
+      const doors = { ...all, [stair.id]: forStair };
+      return run === 0 ? { ...t, doors } : { ...t, runs: (t.runs ?? []).map((x, j) => (j === run - 1 ? { ...x, doors } : x)) };
     });
 
+  const curKey = cur === null ? "" : doorKey(levels[cur.li], cur.n);
   function key(k: string) {
     if (cur === null) return;
-    const level = levels[cur];
-    const d = doors[level];
     if (k === "done") {
-      if (doorValue(section, d)) {
-        setFlash(cur);
+      if (doorValue(section, mine[curKey])) {
+        setFlash(curKey);
         setTimeout(() => setFlash(null), 1400);
       }
       setCur(null);
       return;
     }
-    if (k === "up") return setCur(Math.max(0, cur - 1));
-    if (k === "down") return setCur(Math.min(levels.length - 1, cur + 1));
+    if (k === "up" || k === "down") {
+      const li = Math.max(0, Math.min(levels.length - 1, cur.li + (k === "up" ? -1 : 1)));
+      return setCur({ li, n: Math.min(cur.n, doorsAt(stair, levels[li]) - 1) });
+    }
     if (section === "latch") {
-      if (k === "y" || k === "n") setDoor(level, { latch: k });
+      if (k === "y" || k === "n") write(curKey, (d) => ({ ...d, latch: k }));
       return;
     }
     const field = section;
-    // from the latest value, so quick taps never drop a digit
-    setTest((t) => {
-      const forStair = { ...t.doors[stair.id] };
-      const v = forStair[level]?.[field] ?? "";
-      let next = v;
-      if (k === "bs") next = v.slice(0, -1);
-      else if (k === "." && v.includes(".")) return t;
-      else if (v.length >= 6) return t;
-      else next = v === "" && k === "." ? "0." : v + k;
-      const door = { ...forStair[level], [field]: next };
-      if (!door[field]) delete door[field];
-      forStair[level] = door;
-      return { ...t, doors: { ...t.doors, [stair.id]: forStair } };
+    write(curKey, (d) => {
+      const v = d[field] ?? "";
+      const below = v.startsWith("<");
+      const body = below ? v.slice(1) : v;
+      let next: string;
+      // below what the meter reads: "<" and then its lowest reading
+      if (k === "lt") next = below ? body : `<${body}`;
+      else if (k === "bs") next = v.slice(0, -1);
+      else if (k === "." && body.includes(".")) return null;
+      else if (body.length >= 6) return null;
+      else next = (below ? "<" : "") + (body === "" && k === "." ? "0." : body + k);
+      return { ...d, [field]: next };
     });
   }
 
-  const value = cur === null ? "" : doorValue(section, doors[levels[cur]]);
-  const fails = cur === null ? null : doorFails(section, doors[levels[cur]], sys);
-  const grid = "44px 44px 1fr 50px 12px";
+  const addDoor = (level: string) => setSpf((s) => ({ ...s, stairs: s.stairs.map((st) => (st.id === stair.id ? { ...st, more: { ...st.more, [level]: (st.more?.[level] ?? 0) + 1 } } : st)) }));
+
+  const value = cur === null ? "" : doorValue(section, mine[curKey]);
+  const fails = cur === null ? null : doorFails(section, mine[curKey], sys);
+  const close = cur !== null && doorMarginal(section, mine[curKey], sys);
+  const before = cur !== null && run > 0 ? doorValue(section, latestDoor(test, stair.id, curKey, section, run - 1)) : "";
   const rule = (b: ReactNode) => <b style={{ color: "#ffd9a8" }}>{b}</b>;
+  const colour = (d: StairDoor | undefined) => (doorFails(section, d, sys) ? FAIL : doorMarginal(section, d, sys) ? WARN : PASS);
+  const missing = GENERAL_EXTRA.filter((s) => !test.sections.includes(s));
+  const lead = section === "vel" ? "44px 44px" : "44px";
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
-      <PageHeader title={info.name} sub={stairName(stair, stairNo)} onBack={onBack} />
-      <div style={{ flexShrink: 0, padding: "0 14px" }}>
+      <PageHeader title={general ? KIND_LABEL.general : info.name} sub={general ? `${info.name} · ${stairName(stair, stairNo)}` : stairName(stair, stairNo)} onBack={onBack} />
+      <div style={{ flexShrink: 0, padding: "0 14px", display: "flex", flexDirection: "column", gap: 7 }}>
+        {/* the stairs, group by group: the main thing to switch */}
+        {sys.stairs.length > 1 && (
+          <div data-testid="spf-stairs" style={{ display: "flex", gap: 6, overflowX: "auto", scrollbarWidth: "none", margin: "0 -14px", padding: "0 14px" }}>
+            {stairGroups(sys).flatMap((g) =>
+              g.stairs.map((st) => {
+                const x = doorStats(test, st, section, sys);
+                const on = st.id === stair.id;
+                return (
+                  <button
+                    key={st.id}
+                    onClick={() => onStair(st.id)}
+                    style={{ flex: "1 0 auto", minWidth: 84, textAlign: "left", padding: "7px 10px", borderRadius: 10, background: on ? "rgba(177,140,255,.18)" : "var(--panel)", border: on ? "1px solid #b18cff" : "1px solid var(--border-strong)", color: "var(--text)" }}
+                  >
+                    <b style={{ display: "block", fontSize: 12.5, whiteSpace: "nowrap" }}>
+                      {stairLabel(st, sys.stairs.indexOf(st))}
+                      {g.name && <span style={{ color: "var(--muted)", fontWeight: 700, fontSize: 10.5 }}> · {g.name}</span>}
+                    </b>
+                    <span style={{ fontSize: 11, fontWeight: 800, whiteSpace: "nowrap", color: x.fails ? FAIL : x.marginal ? WARN : x.done ? PASS : "var(--muted)" }}>
+                      {x.done} of {x.total}
+                      {x.fails ? ` · ${x.fails} fail${x.fails === 1 ? "" : "s"}` : x.done ? " · pass" : ""}
+                    </span>
+                  </button>
+                );
+              }),
+            )}
+          </div>
+        )}
+        {general && (
+          <>
+            <div data-testid="spf-runs" style={{ display: "flex", alignItems: "center", gap: 5 }}>
+              <div style={{ display: "flex", gap: 5, overflowX: "auto", scrollbarWidth: "none", flexShrink: 1, minWidth: 0 }}>
+                {Array.from({ length: runs }, (_, r) => (
+                  <button
+                    key={r}
+                    aria-pressed={r === run}
+                    onClick={() => onRun(r)}
+                    style={{ flex: "0 0 auto", padding: "8px 12px", borderRadius: 10, fontSize: 13, fontWeight: 800, background: r === run ? "rgba(46,196,182,.14)" : "#0a2135", border: r === run ? "1px solid var(--accent)" : "1px solid var(--border-strong)", color: r === run ? "var(--text)" : "var(--muted)" }}
+                  >
+                    Run {r + 1}
+                  </button>
+                ))}
+              </div>
+              <button
+                disabled={run === 0}
+                onClick={() => setSheet({ edit: true, text: runChange(test, run) })}
+                style={{ flex: "1 1 0", minWidth: 0, textAlign: "left", border: "none", background: "none", padding: "6px 2px", fontSize: 11.5, fontWeight: 700, color: "#9eeee5", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
+              >
+                {runChange(test, run) || "What changed?"}
+              </button>
+              <button onClick={() => setSheet({ edit: false, text: "" })} style={{ flex: "0 0 auto", padding: "8px 12px", borderRadius: 10, background: "none", border: "1px dashed var(--accent)", color: "#5ff0e0", fontSize: 13, fontWeight: 800 }}>
+                + Run
+              </button>
+            </div>
+            <div data-testid="spf-tests" style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+              {test.sections.map((s) => (
+                <button key={s} aria-pressed={s === section} onClick={() => s !== section && onSection(s)} style={chip(s === section)}>
+                  {SECTION[s].name}
+                </button>
+              ))}
+              {missing.length > 0 && (
+                <button aria-expanded={adding} onClick={() => setAdding(!adding)} style={chip(false, true)}>
+                  + Test
+                </button>
+              )}
+              {adding &&
+                missing.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => {
+                      setTest((t) => ({ ...t, sections: ALL_SECTIONS.filter((x) => t.sections.includes(x) || x === s) }));
+                      setAdding(false);
+                      if (SECTION[s].every) onSection(s);
+                    }}
+                    style={chip(false, true)}
+                  >
+                    + {SECTION[s].name}
+                  </button>
+                ))}
+            </div>
+          </>
+        )}
         <div data-testid="spf-rules" style={{ background: `${AMBER}.07)`, border: `1px solid ${AMBER}.45)`, borderRadius: 11, padding: "7px 9px", display: "flex", flexDirection: "column", gap: 4, fontSize: 12, color: "#d8c4a8", lineHeight: 1.4 }}>
           <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", color: "#f7b977" }}>
             Requirements · <span style={{ color: "#ffd9a8" }}>AS 1668.1-{sys.edition}{sys.type === "One test" ? "" : ` · ${sys.type}`}</span>
@@ -148,61 +314,92 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, onBack }: Prop
             <div>From fully open, each door must {rule("close and latch")}</div>
           )}
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, fontSize: 12, color: "var(--muted)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--muted)" }}>
           <span style={{ whiteSpace: "nowrap" }}>
             <b style={{ color: "var(--text)" }}>
               {stats.done} of {stats.total}
             </b>
             {stats.fails > 0 && <span style={{ color: FAIL }}> · {stats.fails} fail{stats.fails === 1 ? "" : "s"}</span>}
+            {stats.marginal > 0 && <span style={{ color: WARN }}> · {stats.marginal} marginal</span>}
             {stats.done === stats.total && stats.total > 0 && <span style={{ color: PASS }}> · all done ✓</span>}
           </span>
           <span style={{ flex: 1, height: 5, borderRadius: 3, background: "#143452", overflow: "hidden" }}>
             <span style={{ display: "block", height: "100%", width: `${stats.total ? (100 * stats.done) / stats.total : 0}%`, background: "var(--accent)", transition: "width .3s" }} />
           </span>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: grid, gap: 6, padding: "8px 14px 4px 7px", fontSize: 10.5, fontWeight: 800, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-          <span>Level</span>
-          <span>{section === "vel" ? "Open" : ""}</span>
+        <div style={{ display: "grid", gridTemplateColumns: `${lead} 1fr 54px`, gap: 6, padding: "1px 0 4px", fontSize: 10.5, fontWeight: 800, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+          <span style={{ textAlign: "center" }}>Level</span>
+          {section === "vel" && <span style={{ textAlign: "center" }}>Open</span>}
           <span style={{ textAlign: "center" }}>{info.unit ?? "Latches"}</span>
-          <span />
           <span />
         </div>
       </div>
       <div ref={list} style={{ flexGrow: 1, overflowY: "auto", padding: `0 14px ${cur === null ? 20 : 360}px`, display: "flex", flexDirection: "column", gap: 6 }}>
-        {levels.map((level, j) => {
-          const d = doors[level];
-          const v = doorValue(section, d);
-          const bad = doorFails(section, d, sys);
-          const editing = cur === j;
+        {levels.map((level, li) => {
+          const of = doorsAt(stair, level);
           return (
-            <button
-              key={level}
-              data-i={j}
-              onClick={() => setCur(j)}
-              style={{
-                display: "grid",
-                gridTemplateColumns: grid,
-                gap: 6,
-                alignItems: "center",
-                width: "100%",
-                flexShrink: 0,
-                padding: "6px 8px 6px 6px",
-                borderRadius: 12,
-                border: `1px solid ${editing ? "#b18cff" : bad ? "rgba(255,90,74,.55)" : "var(--border-strong)"}`,
-                boxShadow: editing ? "0 0 0 3px rgba(177,140,255,.18)" : "0 1px 0 rgba(0,0,0,.25)",
-                background: flash === j ? "rgba(43,212,122,.25)" : "var(--panel)",
-                transition: "background 1.2s ease-out",
-                color: "var(--text)",
-              }}
-            >
-              <span style={{ height: 30, borderRadius: 8, background: "#143452", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 14, overflow: "hidden", whiteSpace: "nowrap" }}>{levelChip(level)}</span>
-              <span style={{ fontSize: 12.5, color: "var(--muted)", fontWeight: 700, textAlign: "center" }}>{section === "vel" ? adjacentDoor(levels, j, sys) || "–" : ""}</span>
-              <span style={{ fontSize: 15, fontWeight: 800, textAlign: "center", color: v ? (bad ? FAIL : PASS) : "#6a8098" }}>{v || "—"}</span>
-              <span style={{ fontSize: 11.5, fontWeight: 800, textAlign: editing ? "center" : "right", borderRadius: 6, padding: "2px 0", color: editing ? "#1a0d33" : bad ? FAIL : PASS, background: editing ? "#b18cff" : "none" }}>
-                {editing ? "Editing" : v ? (bad ? "Fail" : "Pass") : ""}
+            <div key={level} data-i={li} style={{ display: "grid", gridTemplateColumns: `${lead} 1fr 54px`, gap: 6, alignItems: "center", flexShrink: 0 }}>
+              <span style={{ height: 40, borderRadius: 8, background: "#143452", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 14, overflow: "hidden", whiteSpace: "nowrap" }}>{levelChip(level)}</span>
+              {section === "vel" && <span style={{ fontSize: 12.5, color: "var(--muted)", fontWeight: 700, textAlign: "center" }}>{adjacentDoor(levels, li, sys) || "–"}</span>}
+              <span style={{ display: "flex", gap: 6, minWidth: 0 }}>
+                {Array.from({ length: of }, (_, n) => {
+                  const dk = doorKey(level, n);
+                  const d = mine[dk];
+                  const v = doorValue(section, d);
+                  const bad = doorFails(section, d, sys);
+                  const editing = cur?.li === li && cur.n === n;
+                  const was = run > 0 ? doorValue(section, latestDoor(test, stair.id, dk, section, run - 1)) : "";
+                  const up = v && was && section !== "latch" ? (parseFloat(v.replace("<", "")) >= parseFloat(was.replace("<", "")) ? " ↑" : " ↓") : "";
+                  return (
+                    <button
+                      key={n}
+                      aria-label={`${isCustomLevel(level) ? level : `Level ${level}`}${of > 1 ? ` door ${doorLetter(n)}` : ""}`}
+                      onClick={() => setCur({ li, n })}
+                      style={{
+                        flex: "1 1 0",
+                        minWidth: 0,
+                        height: 40,
+                        display: "flex",
+                        alignItems: "baseline",
+                        justifyContent: "center",
+                        gap: 5,
+                        padding: "0 4px",
+                        borderRadius: 9,
+                        border: `1px solid ${editing ? "#b18cff" : bad ? "rgba(255,90,74,.55)" : v && doorMarginal(section, d, sys) ? "rgba(247,201,72,.55)" : "var(--border-strong)"}`,
+                        boxShadow: editing ? "0 0 0 3px rgba(177,140,255,.18)" : "none",
+                        background: flash === dk ? "rgba(43,212,122,.25)" : "var(--panel)",
+                        transition: "background 1.2s ease-out",
+                        color: v ? colour(d) : "#6a8098",
+                        lineHeight: "38px",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                      }}
+                    >
+                      {of > 1 && <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 800 }}>{doorLetter(n)}</span>}
+                      <b style={{ fontSize: 16 }}>{v || "—"}</b>
+                      {of <= 2 &&
+                        (editing ? (
+                          <span style={{ fontSize: 10.5, fontWeight: 800, color: "#1a0d33", background: "#b18cff", borderRadius: 6, padding: "2px 5px", lineHeight: 1.2 }}>Editing</span>
+                        ) : was ? (
+                          <span style={{ fontSize: 11, color: "#6a8098", fontWeight: 700 }}>
+                            {was}
+                            {up}
+                          </span>
+                        ) : v ? (
+                          <span style={{ fontSize: 11, fontWeight: 800 }}>{bad ? "Fail" : "Pass"}</span>
+                        ) : null)}
+                    </button>
+                  );
+                })}
               </span>
-              <span style={{ color: "#5f7890", fontSize: 15, textAlign: "right" }}>{editing ? "" : "›"}</span>
-            </button>
+              <button
+                aria-label={`Add a door on ${isCustomLevel(level) ? level : `level ${level}`}`}
+                onClick={() => addDoor(level)}
+                style={{ height: 40, borderRadius: 9, background: "none", border: "1px dashed #3f5a74", color: "var(--muted)", fontSize: 10.5, fontWeight: 800, padding: 0 }}
+              >
+                + Door
+              </button>
+            </div>
           );
         })}
       </div>
@@ -215,20 +412,23 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, onBack }: Prop
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontSize: 20, fontWeight: 800, whiteSpace: "nowrap" }}>
                   <PadTag />
-                  {isCustomLevel(levels[cur]) ? levels[cur] : `Level ${levels[cur]}`}
+                  {isCustomLevel(levels[cur.li]) ? levels[cur.li] : `Level ${levels[cur.li]}`}
+                  {doorsAt(stair, levels[cur.li]) > 1 ? ` · Door ${doorLetter(cur.n)}` : ""}
                 </div>
                 <div style={{ fontSize: 11.5, color: "var(--muted)", fontWeight: 700, lineHeight: 1.35 }}>
                   {section === "vel" && (
                     <>
-                      Open: {levels[cur]}
-                      {adjacentDoor(levels, cur, sys) ? ` + ${adjacentDoor(levels, cur, sys)}` : ""} + discharge
+                      Open: {levels[cur.li]}
+                      {adjacentDoor(levels, cur.li, sys) ? ` + ${adjacentDoor(levels, cur.li, sys)}` : ""} + discharge
                       <br />
                     </>
                   )}
+                  {general ? `Run ${run + 1} · ` : ""}
                   {section === "vel" ? `≥ ${l.vel} m/s` : section === "force" ? `≤ ${l.force} N` : "Yes to pass"}
+                  {before ? ` · before: ${before}` : ""}
                 </div>
               </div>
-              <div data-testid="spf-value" style={{ marginLeft: "auto", fontSize: 34, fontWeight: 800, minWidth: 90, textAlign: "right", color: fails === null ? "var(--text)" : fails ? FAIL : PASS, whiteSpace: "nowrap" }}>
+              <div data-testid="spf-value" style={{ marginLeft: "auto", fontSize: 34, fontWeight: 800, minWidth: 90, textAlign: "right", color: fails === null ? "var(--text)" : fails ? FAIL : close ? WARN : PASS, whiteSpace: "nowrap" }}>
                 {value || <span style={{ fontSize: 13, color: "var(--muted)" }}>{section === "latch" ? "Yes / No" : "type"}</span>}
                 {value && info.unit && <span style={{ fontSize: 13, color: "var(--muted)", marginLeft: 4 }}>{info.unit}</span>}
               </div>
@@ -237,10 +437,51 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, onBack }: Prop
           keys={
             section === "latch"
               ? [k("y", "Yes", "yes"), k("n", "No", "no"), k("up", "▲", "ins", "Level above"), k("down", "▼", "ins", "Level below"), k("done", "Done ✓", "go", "Done")]
-              : numberKeys(k("up", "▲", "ins", "Level above"), k("down", "▼", "ins", "Level below"), k(".", ".", "fn"))
+              : readingKeys(k(".", ".", "fn"), section === "vel" ? k("lt", "<", "fn", "Below the meter") : null)
           }
           onKey={key}
         />
+      )}
+
+      {sheet && (
+        <div className="sheet-backdrop" onClick={() => setSheet(null)} style={{ position: "absolute", inset: 0, background: "rgba(10,11,13,0.6)", display: "flex", alignItems: "flex-end", zIndex: 6 }}>
+          <div className="sheet-panel" onClick={(e) => e.stopPropagation()} style={{ width: "100%", background: "var(--panel)", borderRadius: "20px 20px 0 0", padding: "18px 18px calc(24px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+              <b style={{ fontSize: 18 }}>Run {sheet.edit ? run + 1 : runs + 1}</b>
+              <span style={{ fontSize: 12.5, color: "var(--muted)", fontWeight: 700 }}>after run {sheet.edit ? run : runs}</span>
+            </div>
+            <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <span style={{ fontSize: 12, fontWeight: 800, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>What changed</span>
+              <textarea
+                aria-label="What changed"
+                autoFocus
+                rows={2}
+                value={sheet.text}
+                onChange={(e) => setSheet({ ...sheet, text: e.target.value })}
+                style={{ resize: "none", padding: "11px 12px", borderRadius: 11, background: "#0a2135", border: "1px solid var(--accent)", color: "var(--text)", fontSize: 15, fontWeight: 700, fontFamily: "inherit", lineHeight: 1.4, outline: "none" }}
+              />
+            </label>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={() => setSheet(null)} style={{ flex: 1, padding: "15px 0", borderRadius: 13, background: "none", border: "1px solid var(--border-strong)", color: "#bfd0de", fontSize: 15, fontWeight: 800 }}>
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  const text = sheet.text;
+                  if (sheet.edit) setTest((t) => ({ ...t, runs: (t.runs ?? []).map((x, j) => (j === run - 1 ? { ...x, change: text.trim() } : x)) }));
+                  else {
+                    setTest((t) => ({ ...t, runs: [...(t.runs ?? []), newRun(text)] }));
+                    onRun(runs);
+                  }
+                  setSheet(null);
+                }}
+                style={{ flex: 2, padding: "15px 0", borderRadius: 13, background: "var(--accent)", border: "none", color: "var(--accent-text)", fontSize: 15, fontWeight: 800 }}
+              >
+                {sheet.edit ? "Save" : `Start run ${runs + 1}`}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

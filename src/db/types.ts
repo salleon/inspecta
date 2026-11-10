@@ -193,6 +193,9 @@ export interface SpfStair {
   fan: string; // "SPF-1"
   levels?: string[]; // its doors top to bottom, when the reviewed layout isn't the suggestion
   reviewed?: boolean; // its level layout has been looked over (Looks right ✓)
+  group?: string; // "Basement", "Tower"… (stairs tested and reported together)
+  doors?: number; // doors on each level (1 unless set)
+  more?: Record<string, number>; // doors added at a level, on top of that
 }
 
 export interface SpfSystem {
@@ -202,9 +205,9 @@ export interface SpfSystem {
   notes: string; // site notes, at the bottom of the report
 }
 
-// three-monthly check, Annual Testing, commissioning, or the inspector's
-// own pick of readings
-export type StairTestKind = "quick" | "annual" | "comm" | "custom";
+// general system testing (runs: test, adjust, test again), three-monthly
+// check, Annual Testing, commissioning, or the inspector's own pick of readings
+export type StairTestKind = "general" | "quick" | "annual" | "comm" | "custom";
 // the readings: at every door (vel, force, latch) or once a stair
 export type StairSection = "vel" | "force" | "latch" | "noise" | "rest" | "pa" | "fan" | "quick";
 export type Tick = "y" | "n";
@@ -232,6 +235,14 @@ export interface StairOnce {
   quick?: Record<string, Tick>; // three-monthly checks
 }
 
+// a run after the first, in general system testing: what was changed
+// before it, and its door readings (the first run's are the test's own)
+export interface StairRun {
+  at: number;
+  change: string;
+  doors: Record<string, Record<string, StairDoor>>;
+}
+
 export interface StairNote {
   location: string;
   text: string;
@@ -244,8 +255,10 @@ export interface StairTest {
   sections: StairSection[];
   testedAt: number;
   testedBy?: string;
-  // by stair id: its doors by level, and its once-off readings
+  // by stair id: its doors by door key (the level; a level's further doors
+  // are "level<tab>B"…, see lib/stairTest stairDoors), and its once-off readings
   doors: Record<string, Record<string, StairDoor>>;
+  runs?: StairRun[]; // general system testing: the runs after the first
   once: Record<string, StairOnce>;
   notes: StairNote[];
   order: number;

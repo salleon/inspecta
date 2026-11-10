@@ -1,6 +1,6 @@
 import { useRef, useState, type CSSProperties } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { stairPages, type StairPage } from "../lib/stairPrint";
+import { stairPages, type StairPage, type StairRow } from "../lib/stairPrint";
 import { KIND_LABEL, stairFileName } from "../lib/stairTest";
 import { exportTests, type TestsFormat } from "../lib/testsExport";
 import ProgressOverlay from "../components/ProgressOverlay";
@@ -85,7 +85,6 @@ export default function StairReport() {
 
 // one stair as it prints, on white paper
 function Paper({ page }: { page: StairPage }) {
-  const cell: CSSProperties = { border: "1px solid #d5dee6", padding: "2px 3px", textAlign: "center" };
   return (
     <div data-testid="spf-page" style={{ background: "#fff", color: "#14212e", borderRadius: 6, padding: "16px 14px", display: "flex", flexDirection: "column", gap: 7, boxShadow: "0 8px 24px rgba(0,0,0,.35)", fontFamily: "Helvetica, Arial, sans-serif", fontSize: 10 }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
@@ -101,46 +100,70 @@ function Paper({ page }: { page: StairPage }) {
           <Detail key={d.label} label={d.label} value={d.value} />
         ))}
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 5 }}>
-        {page.boxes.map((b) => (
-          <div key={b.label} style={{ border: "1px solid #c9d6e0", borderRadius: 5, padding: "4px 5px", fontSize: 8, color: "#4a6175", minHeight: 34 }}>
-            {b.label}
-            <b style={{ display: "block", fontSize: 11, color: b.fail ? "#b3261e" : "#14212e" }}>{b.value || " "}</b>
-            {b.ref?.map((r) => (
-              <span key={r} style={{ display: "block", fontSize: 7.5 }}>
-                {r}
-              </span>
-            ))}
-          </div>
-        ))}
-      </div>
-      <table style={{ borderCollapse: "collapse", width: "100%", fontSize: 9 }}>
-        <thead>
-          <tr>
-            {page.head.map((h) => (
-              <th key={h} style={{ background: "#0b3550", color: "#fff", fontWeight: 700, padding: "4px 3px", fontSize: 8, lineHeight: 1.2 }}>
-                {h}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {page.rows.map((r) => (
-            <tr key={r.cells[0]}>
-              {r.cells.map((c, j) => (
-                <td key={j} style={{ ...cell, fontWeight: j === 0 || r.fails[j] ? 700 : 400, background: r.fails[j] ? "#ffd9d4" : undefined, color: r.fails[j] ? "#b3261e" : undefined }}>
-                  {c}
-                </td>
+      {page.boxes.length > 0 && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 5 }}>
+          {page.boxes.map((b) => (
+            <div key={b.label} style={{ border: "1px solid #c9d6e0", borderRadius: 5, padding: "4px 5px", fontSize: 8, color: "#4a6175", minHeight: 34 }}>
+              {b.label}
+              <b style={{ display: "block", fontSize: 11, color: b.fail ? "#b3261e" : "#14212e" }}>{b.value || " "}</b>
+              {b.ref?.map((r) => (
+                <span key={r} style={{ display: "block", fontSize: 7.5 }}>
+                  {r}
+                </span>
               ))}
-            </tr>
+            </div>
           ))}
-        </tbody>
-      </table>
-      <Block label={page.fanLabel} lines={[page.fan || " "]} />
+        </div>
+      )}
+      {page.tables ? (
+        page.tables.map((t, i) => (
+          <div key={i} data-testid="spf-run-table" style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            <b style={{ fontSize: 9 }}>{t.title}</b>
+            <Table head={t.head} rows={t.rows} />
+          </div>
+        ))
+      ) : (
+        <Table head={page.head} rows={page.rows} />
+      )}
+      {!!page.readings?.length && <Block label="Other readings" lines={page.readings} />}
+      {page.fanLabel && <Block label={page.fanLabel} lines={[page.fan || " "]} />}
       {page.quick !== null && <Block label="Three-monthly check (AS 1851-2012 Table 13.4.2.2)" lines={[page.quick || " "]} />}
       {page.siteNotes && <Block label="Site notes" lines={[page.siteNotes]} />}
       {page.notes.length > 0 && <Block label="Notes" lines={page.notes} />}
     </div>
+  );
+}
+
+// a table as it prints: fails in red, a pass that's only just one in yellow
+function Table({ head, rows }: { head: string[]; rows: StairRow[] }) {
+  const cell: CSSProperties = { border: "1px solid #d5dee6", padding: "2px 3px", textAlign: "center" };
+  return (
+    <table style={{ borderCollapse: "collapse", width: "100%", fontSize: 9 }}>
+      <thead>
+        <tr>
+          {head.map((h, i) => (
+            <th key={i} style={{ background: "#0b3550", color: "#fff", fontWeight: 700, padding: "4px 3px", fontSize: 8, lineHeight: 1.2 }}>
+              {h}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((r) => (
+          <tr key={r.cells[0]}>
+            {r.cells.map((c, j) => {
+              const fail = r.fails[j];
+              const warn = !fail && !!r.warns?.[j];
+              return (
+                <td key={j} style={{ ...cell, fontWeight: j === 0 || fail || warn ? 700 : 400, background: fail ? "#ffd9d4" : warn ? "#fff0b8" : undefined, color: fail ? "#b3261e" : warn ? "#6b4a00" : undefined }}>
+                  {c}
+                </td>
+              );
+            })}
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 

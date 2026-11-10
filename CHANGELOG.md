@@ -5,6 +5,38 @@ matches a commit on the `test` branch (called `advanced_controls` until
 29 September 2026) or `main`; the commit itself has
 the technical detail.
 
+## 10 November 2026
+
+- **Stair tests: General system testing.** A new kind of stair test for
+  test, adjust, test again. It starts on velocities, with chips to add
+  door force, closes & latches, pressure, noise and restoration. + Run
+  asks what changed and starts the next run; each door then shows this
+  run's reading with the last one beside it. Run 1 is "As found". The
+  report prints run by run: a page per group of stairs, and for each run
+  one table with its stairs side by side (only the stairs read in it).
+- **New stair test: the kinds, reordered.** General system testing,
+  Annual Testing, Commissioning, Three-monthly check, Custom. EnFact mode
+  (the Flow testing mode switch in Admin) shows only General, Annual and
+  Custom; Contractor mode shows all five.
+- **Stair readings screen.** The stairs are cards across the top, so you
+  change stair without going back. Each level is a row with a cell per
+  door and a small dotted + Door at the end to add a door at that level.
+  The pad is now 7 8 9 ⌫ / 4 5 6 ▲ / 1 2 3 ▼ / . 0 < Done; < records a
+  velocity as below the meter ("<0.25"), which fails.
+- **Marginal readings in yellow.** A velocity that passes within 0.1 m/s
+  of the limit, or a door force within 5 N of it, is yellow on the
+  readings screen and shaded yellow on the report, PDF and Excel. A fail
+  is still red.
+- **Stair setup: doors and groups.** Every level has one door; Doors on
+  each level (− 1 +) sets more for the whole stair, and doors added while
+  testing are listed on the stair with Remove. A stair can be given a
+  Group (Basement, Tower): the list and the general report are headed by
+  group. Tabs and tables name a stair by its name, else its fan (SPF 2).
+- **Review level layout, in groups.** The levels are three drop-downs,
+  Roof, Levels and Basement (car parks too), each showing its range and
+  count. A group of up to six levels starts open, a bigger one closed.
+  Changing a car park level to a basement (or back) asks "P1 is now B1.
+  Do you want to change the other basement levels to match?".
 ## 6 November 2026
 
 - **Build 9.2, out to coworkers.** Defect and Rectification notes on

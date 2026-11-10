@@ -7,13 +7,18 @@ import "./NumPad.css";
 // with ⌫ always third row, right; the two keys above it and the one bottom
 // left change with the screen; Done ✓ is bottom right.
 
-export type PadKey = { key: string; label: ReactNode; kind?: "num" | "fn" | "ins" | "bs" | "go" | "blank" | "yes" | "no"; aria?: string };
+export type PadKey = { key: string; label: ReactNode; kind?: "num" | "fn" | "ins" | "bs" | "go" | "go1" | "blank" | "yes" | "no"; aria?: string };
 
 export const k = (key: string, label: ReactNode = key, kind: PadKey["kind"] = "num", aria?: string): PadKey => ({ key, label, kind, aria });
 
 // 7 8 9 a / 4 5 6 b / 1 2 3 ⌫ / c 0 Done
 export function numberKeys(a: PadKey, b: PadKey, c: PadKey): PadKey[] {
   return [k("7"), k("8"), k("9"), a, k("4"), k("5"), k("6"), b, k("1"), k("2"), k("3"), k("bs", "⌫", "bs", "Backspace"), c, k("0"), k("done", "Done ✓", "go", "Done")];
+}
+// the stair readings' pad: ⌫ top right, ▲ ▼ together under it, the last
+// row c 0 d Done (d = null: Done is two keys wide)
+export function readingKeys(c: PadKey, d: PadKey | null): PadKey[] {
+  return [k("7"), k("8"), k("9"), k("bs", "⌫", "bs", "Backspace"), k("4"), k("5"), k("6"), k("up", "▲", "ins", "Level above"), k("1"), k("2"), k("3"), k("down", "▼", "ins", "Level below"), c, k("0"), ...(d ? [d] : []), k("done", "Done ✓", d ? "go1" : "go", "Done")];
 }
 export const BLANK = (n: number) => k(`blank${n}`, "", "blank");
 
