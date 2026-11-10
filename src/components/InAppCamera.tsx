@@ -562,7 +562,7 @@ export default function InAppCamera({ label, onDone }: Props) {
       </div>
       {nativeError && (
         <div className="cam-note" role="status">
-          Android camera couldn't start, using the browser camera: {nativeError}
+          The phone's camera couldn't start, using the browser camera: {nativeError}
         </div>
       )}
       {!shot && live && zoomStops.length > 1 && (

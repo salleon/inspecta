@@ -71,14 +71,14 @@ export default function Settings() {
           <Item
             icon={<RowIcon name="camera" />}
             title="In-app camera"
-            hint={inAppCamera ? (hasNativeCamera() ? "Inspecta's camera on Android's camera system (CameraX)" : "Inspecta's own camera, with a quick check and ✎ Mark up") : "Off: the Android camera app"}
+            hint={inAppCamera ? (hasNativeCamera() ? "Inspecta's camera on the phone's own camera system" : "Inspecta's own camera, with a quick check and ✎ Mark up") : "Off: the phone's camera app"}
             switchOn={inAppCamera}
             right={<Switch on={inAppCamera} />}
             onClick={() => setInAppCamera(!inAppCamera)}
           />
           {lastNativeError() && (
             <div data-testid="native-camera-error" style={{ padding: "6px 14px 12px", fontSize: 11.5, lineHeight: 1.45, color: "#f7b977", wordBreak: "break-word" }}>
-              Android camera's last error: {lastNativeError()}
+              Camera's last error: {lastNativeError()}
             </div>
           )}
         </Group>

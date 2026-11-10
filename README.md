@@ -91,6 +91,17 @@ When it's time to make two apps, the plan is **one codebase with two editions**,
 
 To decide first: the contractor app's name, icon and branding; its Play listing (same developer account, public or private testing); and whether contractors need accounts, shared sites or cloud sync (everything is on the phone today — the biggest decision).
 
+## The iPhone app
+
+The same web app in an iOS shell (`ios/`, Capacitor), like `android/`:
+
+- `ios/App/App/Plugins/` has the Swift side of the app's own plugins, matching the Android ones call for call: `NativeCameraPlugin.swift` (the in-app camera, `src/lib/nativeCamera.ts`) and `GalleryPlugin.swift` (copies photos to the photo library). They're registered in `MainViewController.swift`.
+- Permissions wording, portrait lock and status bar are in `ios/App/App/Info.plist`.
+- `npx cap sync ios` copies the built web app in (`ios/App/App/public` isn't tracked).
+- `.github/workflows/build-ios.yml` checks it compiles on every push that touches it.
+
+Differences from Android: the back camera zooms out to the ultra-wide by itself (no lens change), the volume-button shutter needs iOS 17.2+, photos go to the main photo library rather than an Inspecta folder, and updates come through TestFlight / the App Store instead of the in-app prompt.
+
 ## Running it as a web app instead
 
 You'll need [Node.js](https://nodejs.org) (18+) installed.
