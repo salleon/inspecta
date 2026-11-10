@@ -170,6 +170,12 @@ export interface PickedPhoto {
  */
 export async function pickFromGallery(): Promise<PickedPhoto[]> {
   try {
+    // iPhone: the older picker, which hands back JPEGs (the newer one gives
+    // HEIC files as they are, which the app can't show or export)
+    if (Capacitor.getPlatform() === "ios") {
+      const { photos } = await Camera.pickImages({ quality: 92 });
+      return await Promise.all(photos.map(async (p) => ({ blob: await (await fetch(p.webPath)).blob(), takenAt: dateTaken(p.exif) })));
+    }
     const { results } = await Camera.chooseFromGallery({ allowMultipleSelection: true, includeMetadata: true, limit: 0 });
     const picked: PickedPhoto[] = [];
     for (const r of results) {
