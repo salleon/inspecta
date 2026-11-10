@@ -1,5 +1,6 @@
 import { useEffect, type CSSProperties, type ReactNode } from "react";
 import { App as CapacitorApp } from "@capacitor/app";
+import { Capacitor } from "@capacitor/core";
 import { checkForUpdate, dismissUpdate, finishUpdate, startUpdate, useAppUpdate } from "../lib/appUpdate";
 import { useBackHandler } from "../lib/backButton";
 import { IconRetake } from "./Icons";
@@ -72,7 +73,7 @@ function UpdateDialog() {
 export function UpdateSettingsRow({ rowStyle, hintStyle, onAction, icon, version }: { rowStyle: CSSProperties; hintStyle: CSSProperties; onAction: () => void; icon?: ReactNode; version?: string }) {
   const { status, progress } = useAppUpdate();
   const hint = {
-    unsupported: "Updates come through Google Play.",
+    unsupported: Capacitor.getPlatform() === "ios" ? "Updates come through TestFlight or the App Store." : "Updates come through Google Play.",
     checking: "Checking…",
     none: "You're on the latest version.",
     available: "A new version is ready to install.",
