@@ -112,6 +112,44 @@ test("the report: a page per group, a table per run with its stairs side by side
   assert.deepEqual(errors, []);
 });
 
+test("what's added can be taken away: a Yes / No answer, a door, a run, a test", async () => {
+  await page.getByRole("button", { name: "Back" }).click();
+  // Door closes & latches added to the test, an answer given and cleared again
+  await page.getByRole("button", { name: "+ Add" }).nth(1).click();
+  await page.getByRole("button", { name: /Door closes & latches/ }).first().click();
+  await page.getByRole("button", { name: "Level P1", exact: true }).click();
+  await tap(["Yes"]);
+  assert.match(await page.getByTestId("spf-value").innerText(), /Yes/);
+  await tap(["Clear"]);
+  assert.match(await page.getByTestId("spf-value").innerText(), /Yes \/ No/);
+  await tap(["Done"]);
+  // the door added at P2: Remove door in the pad's heading, asked first as it has readings
+  await page.getByRole("button", { name: "Level P2 door B" }).click();
+  await page.getByRole("button", { name: "Remove door B" }).click();
+  const dlg = page.getByText("Remove door B on P2?");
+  await dlg.waitFor();
+  await page.getByRole("button", { name: "Remove", exact: true }).click();
+  await page.getByRole("button", { name: "Level P2", exact: true }).waitFor();
+  assert.equal(await page.getByRole("button", { name: "Level P2 door B" }).count(), 0);
+  // (added back, for the setup screen below)
+  await page.getByRole("button", { name: "Add a door on level P2" }).click();
+  await page.getByRole("button", { name: "Level P2 door B" }).waitFor();
+  // run 2: Delete run in its sheet
+  await page.getByRole("button", { name: "P3 relief damper shut" }).click();
+  await page.getByRole("button", { name: "Delete run 2" }).click();
+  await page.getByText("Delete run 2?").waitFor();
+  await page.getByRole("button", { name: "Delete", exact: true }).click();
+  await onRun(1);
+  assert.match(await page.getByTestId("spf-runs").innerText(), /^Run 1\s*As found\s*\+ Run$/);
+  // the test comes off the stair test again
+  await page.getByRole("button", { name: "Back" }).click();
+  await page.getByRole("button", { name: "Remove the Door closes & latches test" }).click();
+  await page.getByText("Additional tests").waitFor();
+  assert.equal(await page.getByRole("button", { name: "Remove the Door closes & latches test" }).count(), 0);
+  assert.equal(await page.getByRole("button", { name: "Remove the Velocity test" }).count(), 0, "the last test stays");
+  assert.deepEqual(errors, []);
+});
+
 test("Review level layout: groups that open, and P to B offers to change the rest", async () => {
   await go(page, app, "/site/g1/spf-system", 1200);
   assert.match(await page.locator("body").innerText(), /BASEMENT\s*2 stairs[\s\S]*TOWER\s*1 stair/i);

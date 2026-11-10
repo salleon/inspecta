@@ -4,12 +4,14 @@ import type { StairSection } from "../db/types";
 import { ALL_SECTIONS, doorStats, KIND_LABEL, onceStatus, runCount, SECTION, stairDoors, stairLabel } from "../lib/stairTest";
 import { useBackHandler } from "../lib/backButton";
 import { card, cardLabel, fieldInput, PageHeader, Pill, useStairTest } from "../components/StairUi";
+import ConfirmDialog from "../components/ConfirmDialog";
 
 // A stair test (design canvas StairTestSimple, "2 · The sections"; tidied on
 // SpfTidy): a tab per stair (scrolls sideways for any number), then only the
 // sections this test has, each with its progress and fails. The rest are
 // under Additional tests; every one is optional, and anything not tested is
-// left blank on the report.
+// left blank on the report. ✕ beside a section takes it off the test again
+// (its readings are kept, and come back if it's added back).
 
 const ICON: Record<StairSection, string> = { vel: "≋", force: "⇥", latch: "⊡", noise: "◖", rest: "↻", pa: "▣", fan: "✻", quick: "✓" };
 const formatDay = (ms: number) => new Date(ms).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" });
@@ -20,12 +22,17 @@ export default function StairTestPage() {
   const [params, setParams] = useSearchParams();
   const { site, test, setTest, flush } = useStairTest(siteId, testId);
   const [notesOpen, setNotesOpen] = useState(false);
+  const [dropping, setDropping] = useState<StairSection | null>(null);
 
   const back = () => {
     flush();
     navigate(`/site/${siteId}/findings?tab=flow`);
   };
   useBackHandler(() => {
+    if (dropping) {
+      setDropping(null);
+      return true;
+    }
     if (notesOpen) {
       setNotesOpen(false);
       return true;
@@ -46,6 +53,7 @@ export default function StairTestPage() {
     let right: string;
     let colour: string;
     let pct: number;
+    let read = false;
     if (!sys || !stair) return null;
     if (info.every) {
       const x = doorStats(test, stair, s as "vel" | "force" | "latch", sys);
@@ -53,20 +61,23 @@ export default function StairTestPage() {
       right = x.fails ? `${x.fails} fail${x.fails === 1 ? "" : "s"}` : x.done ? (x.done === x.total ? "All pass" : "OK so far") : "—";
       colour = x.fails ? "#ff7a6a" : x.marginal ? "#f7c948" : x.done ? "#2bd47a" : "#5f7890";
       pct = x.total ? Math.round((100 * x.done) / x.total) : 0;
+      read = stairs.some((st) => doorStats(test, st, s as "vel" | "force" | "latch", sys).done > 0);
     } else {
       const o = onceStatus(s, test.once[stair.id], sys);
       right = o.text || "—";
       colour = o.fail ? "#ff7a6a" : o.text ? "#2bd47a" : "#5f7890";
       pct = o.done ? 100 : o.text ? 50 : 0;
+      read = stairs.some((st) => !!onceStatus(s, test.once[st.id], sys).text);
     }
+    const drop = () => setTest((t) => ({ ...t, sections: t.sections.filter((x) => x !== s) }));
     return (
+      <div key={s} style={{ display: "flex", gap: 6, alignItems: "stretch" }}>
       <button
-        key={s}
         onClick={() => {
           flush();
           navigate(`/site/${siteId}/spf/${testId}/${s}?stair=${stair.id}`);
         }}
-        style={{ display: "flex", alignItems: "center", gap: 11, width: "100%", textAlign: "left", padding: "10px 12px", borderRadius: 13, background: "var(--panel)", border: "1px solid var(--border)", color: "var(--text)" }}
+        style={{ display: "flex", alignItems: "center", gap: 11, flex: 1, minWidth: 0, textAlign: "left", padding: "10px 12px", borderRadius: 13, background: "var(--panel)", border: "1px solid var(--border)", color: "var(--text)" }}
       >
         <span style={{ width: 34, height: 34, borderRadius: 10, background: pct === 100 ? "rgba(43,212,122,.16)" : "#143452", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>{ICON[s]}</span>
         <span style={{ flexGrow: 1, minWidth: 0 }}>
@@ -80,6 +91,12 @@ export default function StairTestPage() {
         </span>
         <span style={{ fontSize: 12, fontWeight: 800, color: colour, whiteSpace: "nowrap" }}>{right}</span>
       </button>
+      {test.sections.length > 1 && (
+        <button aria-label={`Remove the ${info.name} test`} onClick={() => (read ? setDropping(s) : drop())} style={{ flex: "0 0 44px", borderRadius: 13, background: "none", border: "1px solid var(--border)", color: "var(--muted)", fontSize: 15 }}>
+          ✕
+        </button>
+      )}
+      </div>
     );
   };
 
@@ -155,6 +172,21 @@ export default function StairTestPage() {
             </button>
           </div>
         </>
+      )}
+
+      {dropping && (
+        <div style={{ position: "absolute", inset: 0, zIndex: 8 }}>
+          <ConfirmDialog
+            title={`Remove ${SECTION[dropping].name}?`}
+            message="It comes off this test and its report. Its readings are kept, and come back if you add it again."
+            confirmLabel="Remove"
+            onCancel={() => setDropping(null)}
+            onConfirm={() => {
+              setTest((t) => ({ ...t, sections: t.sections.filter((x) => x !== dropping) }));
+              setDropping(null);
+            }}
+          />
+        </div>
       )}
 
       {notesOpen && (

@@ -7,6 +7,14 @@ the technical detail.
 
 ## 10 November 2026
 
+- **Stair tests: what's added can be removed.** A door added at a level
+  with + Door: open it and tap Remove door in the pad's heading (the last
+  door added on that level; it asks first if the door has readings). A
+  run: tap its "what changed" line, then Delete run. A test added to a
+  stair test: ✕ beside it on the test page (its readings are kept and
+  come back if it's added again; the last test stays). A Yes / No answer:
+  ⌫ on the pad sets it back to not tested. The phone meter's saved
+  reference: tap Ref. … ✕ to clear it.
 - **Stair tests: General system testing.** A new kind of stair test for
   test, adjust, test again. It starts on velocities, with chips to add
   door force, closes & latches, pressure, noise and restoration. + Run

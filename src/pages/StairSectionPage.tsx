@@ -9,6 +9,7 @@ import {
   doorLetter,
   doorMarginal,
   doorsAt,
+  doorsEach,
   doorsOpen,
   doorStats,
   doorValue,
@@ -36,6 +37,7 @@ import { meterOffset, setMeterOffset, startMeter, type Meter } from "../lib/soun
 import { useBackHandler } from "../lib/backButton";
 import { AMBER, PageHeader, useStairTest } from "../components/StairUi";
 import NumPad, { BLANK, k, numberKeys, PadTag, readingKeys } from "../components/NumPad";
+import ConfirmDialog from "../components/ConfirmDialog";
 
 // One section of a stair test (design canvas StairTestSimple, phones 3 and 4;
 // tidied on SpfTidy; general system testing on the Stair general system
@@ -46,7 +48,9 @@ import NumPad, { BLANK, k, numberKeys, PadTag, readingKeys } from "../components
 // a row adds a door at that level. The stairs are cards across the top;
 // general system testing has its runs under them (each run's readings beside
 // the last one's) and the tests in the run. A reading done once is a short
-// screen of its own, its numbers typed on the same pad.
+// screen of its own, its numbers typed on the same pad. Whatever is added
+// can be taken away again: Remove door in the pad's heading (the last door
+// added at a level), Delete run in a run's sheet, ⌫ for a Yes / No answer.
 
 const PASS = "#2bd47a";
 const FAIL = "#ff7a6a";
@@ -121,6 +125,7 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack
   const [flash, setFlash] = useState<string | null>(null);
   const [sheet, setSheet] = useState<{ edit: boolean; text: string } | null>(null);
   const [adding, setAdding] = useState(false);
+  const [ask, setAsk] = useState<{ title: string; message: string; label: string; go: () => void } | null>(null);
   const list = useRef<HTMLDivElement>(null);
   const info = SECTION[section];
   const stats = doorStats(test, stair, section, sys);
@@ -129,7 +134,8 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack
   const runs = runCount(test);
 
   useBackHandler(() => {
-    if (sheet) setSheet(null);
+    if (ask) setAsk(null);
+    else if (sheet) setSheet(null);
     else if (cur !== null) setCur(null);
     else return false;
     return true;
@@ -178,6 +184,8 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack
     }
     if (section === "latch") {
       if (k === "y" || k === "n") write(curKey, (d) => ({ ...d, latch: k }));
+      // ⌫: back to not tested
+      else if (k === "bs") write(curKey, (d) => ({ ...d, latch: undefined }));
       return;
     }
     const field = section;
@@ -197,6 +205,51 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack
   }
 
   const addDoor = (level: string) => setSpf((s) => ({ ...s, stairs: s.stairs.map((st) => (st.id === stair.id ? { ...st, more: { ...st.more, [level]: (st.more?.[level] ?? 0) + 1 } } : st)) }));
+
+  // the last door added at a level comes off again, with its readings in this test
+  const removeDoor = (level: string, key: string) => {
+    setSpf((s) => ({
+      ...s,
+      stairs: s.stairs.map((st) => {
+        if (st.id !== stair.id) return st;
+        const more = { ...st.more };
+        if ((more[level] ?? 0) > 1) more[level]--;
+        else delete more[level];
+        return { ...st, more: Object.keys(more).length ? more : undefined };
+      }),
+    }));
+    const drop = (all: StairTest["doors"]) => {
+      if (!all[stair.id]?.[key]) return all;
+      const forStair = { ...all[stair.id] };
+      delete forStair[key];
+      return { ...all, [stair.id]: forStair };
+    };
+    setTest((t) => ({ ...t, doors: drop(t.doors), runs: t.runs?.map((x) => ({ ...x, doors: drop(x.doors) })) }));
+    setCur(null);
+  };
+  // only the last door on a level, and only one that was added here (the stair's own count is set in the system)
+  const removable = cur !== null && cur.n > 0 && cur.n === doorsAt(stair, levels[cur.li]) - 1 && cur.n >= doorsEach(stair);
+  const askRemoveDoor = () => {
+    if (cur === null) return;
+    const level = levels[cur.li];
+    const key = curKey;
+    const read = Array.from({ length: runs }, (_, r) => runDoors(test, r)[stair.id]?.[key]).some((d) => d && (d.vel || d.force || d.latch));
+    if (!read) return removeDoor(level, key);
+    setCur(null);
+    setAsk({ title: `Remove door ${doorLetter(cur.n)} on ${level}?`, message: "Its readings in this test go with it.", label: "Remove", go: () => removeDoor(level, key) });
+  };
+  const deleteRun = () => {
+    setSheet(null);
+    setAsk({
+      title: `Delete run ${run + 1}?`,
+      message: `Its readings go with it.${run < runs - 1 ? " The runs after it move up one." : ""}`,
+      label: "Delete",
+      go: () => {
+        setTest((t) => ({ ...t, runs: (t.runs ?? []).filter((_, j) => j !== run - 1) }));
+        onRun(run - 1);
+      },
+    });
+  };
 
   const value = cur === null ? "" : doorValue(section, mine[curKey]);
   const fails = cur === null ? null : doorFails(section, mine[curKey], sys);
@@ -427,6 +480,11 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack
                   {section === "vel" ? `≥ ${l.vel} m/s` : section === "force" ? `≤ ${l.force} N` : "Yes to pass"}
                   {before ? ` · before: ${before}` : ""}
                 </div>
+                {removable && (
+                  <button onClick={askRemoveDoor} style={{ marginTop: 4, padding: "5px 10px", borderRadius: 8, background: "rgba(255,92,106,.12)", border: "1px solid rgba(255,120,130,.45)", color: "#ff9aa4", fontSize: 11.5, fontWeight: 800 }}>
+                    Remove door {doorLetter(cur.n)}
+                  </button>
+                )}
               </div>
               <div data-testid="spf-value" style={{ marginLeft: "auto", fontSize: 34, fontWeight: 800, minWidth: 90, textAlign: "right", color: fails === null ? "var(--text)" : fails ? FAIL : close ? WARN : PASS, whiteSpace: "nowrap" }}>
                 {value || <span style={{ fontSize: 13, color: "var(--muted)" }}>{section === "latch" ? "Yes / No" : "type"}</span>}
@@ -436,7 +494,7 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack
           }
           keys={
             section === "latch"
-              ? [k("y", "Yes", "yes"), k("n", "No", "no"), k("up", "▲", "ins", "Level above"), k("down", "▼", "ins", "Level below"), k("done", "Done ✓", "go", "Done")]
+              ? [k("y", "Yes", "yes"), k("n", "No", "no"), k("bs", "⌫", "bs", "Clear"), k("up", "▲", "ins", "Level above"), k("down", "▼", "ins", "Level below"), k("done", "Done ✓", "go1", "Done")]
               : readingKeys(k(".", ".", "fn"), section === "vel" ? k("lt", "<", "fn", "Below the meter") : null)
           }
           onKey={key}
@@ -461,6 +519,11 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack
                 style={{ resize: "none", padding: "11px 12px", borderRadius: 11, background: "#0a2135", border: "1px solid var(--accent)", color: "var(--text)", fontSize: 15, fontWeight: 700, fontFamily: "inherit", lineHeight: 1.4, outline: "none" }}
               />
             </label>
+            {sheet.edit && (
+              <button onClick={deleteRun} style={{ alignSelf: "flex-start", padding: "8px 12px", borderRadius: 10, background: "rgba(255,92,106,.12)", border: "1px solid rgba(255,120,130,.45)", color: "#ff9aa4", fontSize: 13, fontWeight: 800 }}>
+                Delete run {run + 1}
+              </button>
+            )}
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={() => setSheet(null)} style={{ flex: 1, padding: "15px 0", borderRadius: 13, background: "none", border: "1px solid var(--border-strong)", color: "#bfd0de", fontSize: 15, fontWeight: 800 }}>
                 Cancel
@@ -481,6 +544,21 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {ask && (
+        <div style={{ position: "absolute", inset: 0, zIndex: 8 }}>
+          <ConfirmDialog
+            title={ask.title}
+            message={ask.message}
+            confirmLabel={ask.label}
+            onCancel={() => setAsk(null)}
+            onConfirm={() => {
+              ask.go();
+              setAsk(null);
+            }}
+          />
         </div>
       )}
     </div>
@@ -543,7 +621,7 @@ function Once({ section, sys, stair, stairNo, test, setTest, onBack }: Props & {
       <div style={{ flexGrow: 1, overflowY: "auto", padding: `4px 14px ${pad ? 360 : 16}px`, display: "flex", flexDirection: "column", gap: 7 }}>
         {section === "noise" && (
           <>
-            <PhoneMeter saved={once.noiseRef} onSave={(v) => set({ noiseRef: v })} />
+            <PhoneMeter saved={once.noiseRef} onSave={(v) => set({ noiseRef: v || undefined })} />
             <Field label="Noisiest door" sub="Level" value={once.noiseLevel} onChange={(v) => set({ noiseLevel: v })} onFocus={() => setPad(null)} />
             {numField("noiseStair", "In the stair", `dB(A) · ≤ ${l.noiseStair}`, l.noiseStair)}
             {numField("noiseOcc", "Occupied space", l.noiseOcc === null ? "dB(A) · recorded" : `dB(A) · ≤ ${l.noiseOcc}`, l.noiseOcc)}
@@ -720,8 +798,9 @@ function PhoneMeter({ saved, onSave }: { saved?: string; onSave: (v: string) => 
           {listening ? "Stop" : "Listen"}
         </MeterButton>
         <MeterButton onClick={() => (setMax(null), setUsed(true))}>Reset max</MeterButton>
-        <MeterButton onClick={() => max !== null && onSave(String(max))} on={isRef}>
-          {isRef ? `Ref. ${saved} ✓` : "Save as ref."}
+        {/* the saved reference: tap it again to clear it */}
+        <MeterButton label={isRef ? "Clear the reference" : undefined} onClick={() => (isRef ? onSave("") : max !== null && onSave(String(max)))} on={isRef}>
+          {isRef ? `Ref. ${saved} ✕` : "Save as ref."}
         </MeterButton>
         <MeterButton small onClick={() => nudge(-1)}>
           −1
@@ -734,9 +813,10 @@ function PhoneMeter({ saved, onSave }: { saved?: string; onSave: (v: string) => 
   );
 }
 
-function MeterButton({ children, onClick, on, small }: { children: ReactNode; onClick: () => void; on?: boolean; small?: boolean }) {
+function MeterButton({ children, onClick, on, small, label }: { children: ReactNode; onClick: () => void; on?: boolean; small?: boolean; label?: string }) {
   return (
     <button
+      aria-label={label}
       onClick={onClick}
       style={{ flex: small ? "0 0 40px" : 1, padding: "8px 4px", borderRadius: 9, background: "#143452", border: on ? "1px solid var(--accent)" : "1px solid var(--border-strong)", color: on ? "#5ff0e0" : "#bfd0de", fontSize: 11.5, fontWeight: 800, lineHeight: 1.2 }}
     >

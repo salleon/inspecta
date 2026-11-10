@@ -18,11 +18,11 @@ Already on your list, so not repeated below: cutting hint text (specific ones ar
 - [ ] **A8. Stair pad: the < key looks like a back arrow.** *(seen)* It draws as a small "‹".
 - [ ] **A9. Stair readings: the Open column is a dash on every row for Zone systems.** *(seen)* Hide it when there's nothing to show.
 - [ ] **A10. General report: one extra door widens the whole table.** *(seen)* A stair with three doors on one level prints "SPF 1 A / B / C" columns that are blank everywhere else. Print the extra doors as extra rows.
-- [ ] **A11. General testing gaps.** *(code)* A run can't be deleted; noise, restoration and pressure aren't per run.
-- [ ] **A12. Stair testing: no way to delete a door on a level.** *(owner)* + Door adds one, but a door added by mistake can't be taken off that level. Today the only way is Remove on the stair's card in setup, which clears every added door on the stair.
-- [ ] **A13. Stair testing: a test added to a stair test can't be taken off.** *(code)* + Add (Door force, Noise…) on the test page and + Test on the readings screen add a section; there's no way to remove one added by mistake. It stays on the page and as blank columns on the report.
-- [ ] **A14. Stair testing: a Yes / No answer can't be cleared.** *(code)* Door closes & latches can be switched between Yes and No, but not set back to blank (not tested).
-- [ ] **A15. Stair testing: the phone meter's saved reference can't be cleared.** *(code)* Save as ref. can be replaced by a new reading but not removed, and it prints on the report.
+- [ ] **A11. General testing gaps.** *(code)* Noise, restoration and pressure aren't per run. (Deleting a run: done 10 Nov, Delete run in the run's sheet.)
+- [x] **A12. Stair testing: no way to delete a door on a level.** Done 10 Nov: Remove door in the pad's heading, for the last door added at a level. *(owner)* + Door adds one, but a door added by mistake can't be taken off that level. Today the only way is Remove on the stair's card in setup, which clears every added door on the stair.
+- [x] **A13. Stair testing: a test added to a stair test can't be taken off.** Done 10 Nov: ✕ beside each test on the test page. *(code)* + Add (Door force, Noise…) on the test page and + Test on the readings screen add a section; there's no way to remove one added by mistake. It stays on the page and as blank columns on the report.
+- [x] **A14. Stair testing: a Yes / No answer can't be cleared.** Done 10 Nov: ⌫ on the Yes / No pad. *(code)* Door closes & latches can be switched between Yes and No, but not set back to blank (not tested).
+- [x] **A15. Stair testing: the phone meter's saved reference can't be cleared.** Done 10 Nov: tap Ref. … ✕ to clear it (not yet tried with a real microphone). *(code)* Save as ref. can be replaced by a new reading but not removed, and it prints on the report.
 
 ## B. Speed and fewer steps
 
