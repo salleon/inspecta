@@ -11,6 +11,16 @@ const config: CapacitorConfig = {
   android: {
     backgroundColor: "#071b2c",
   },
+  // iPhone: the keyboard shrinks the screen (as on Android) rather than
+  // sliding the page about; lib/keepFocusedVisible then keeps the field in view
+  ios: {
+    scrollEnabled: false,
+  },
+  plugins: {
+    Keyboard: {
+      resize: "native",
+    },
+  },
 };
 
 export default config;
