@@ -70,13 +70,14 @@ export interface StairPage {
 
 export const STAIR_HEAD = ["Level", "Adjacent door open", "Average velocity m/s (min 1)", "Door closes and latches", "Door opening force N (max 110)"];
 
-// under the stair's max noise: the ambient (fan off) and the phone's reference
+// under the stair's max noise: the ambient (fan off) and the average and max
+// (the phone's, indicative only, or typed from a calibrated meter)
 const noiseRef = (once: StairOnce) => {
   const a = (once.ambient ?? "").trim();
   const avg = (once.noiseRefAvg ?? "").trim();
   const max = (once.noiseRef ?? "").trim();
   const phone = [avg && `avg ${avg}`, max && `max ${max}`].filter(Boolean).join(", ");
-  const parts = [a && `ambient ${a} dB(A)${once.ambientLevel ? ` at ${once.ambientLevel}` : ""}`, phone && `phone ref. ${phone} dB(A)`].filter(Boolean);
+  const parts = [a && `ambient ${a} dB(A)${once.ambientLevel ? ` at ${once.ambientLevel}` : ""}`, phone && `${once.noiseRefSource === "meter" ? "calibrated meter" : "indicative (phone)"} ${phone} dB(A)`].filter(Boolean);
   return parts.length ? parts : undefined;
 };
 
