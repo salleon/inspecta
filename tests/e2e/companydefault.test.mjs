@@ -61,8 +61,12 @@ test("the PDF cover has the name box and the square, not the label by the bar", 
   assert.deepEqual(errors, []);
 });
 
-test("Default is the first preset in Settings → Company → Colours", async () => {
-  await page.goto(app.url + "/#/settings/colours");
+test("Default is the first preset in Admin → Company → Colours", async () => {
+  await page.evaluate(() => localStorage.setItem("inspecta.adminPin", "1234"));
+  await page.goto(app.url + "/#/admin/colours");
+  await page.reload();
+  await page.getByText("Enter admin PIN").waitFor();
+  for (const d of "1234") await page.click(`button[aria-label="${d}"]`);
   await page.waitForTimeout(800);
   const first = page.getByRole("button", { pressed: true }).first();
   assert.match(await first.innerText(), /Default/);

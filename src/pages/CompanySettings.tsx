@@ -1,12 +1,13 @@
 import { useNavigate } from "react-router-dom";
 import { ColoursEditor, LogoEditor, StepScreen } from "../components/CompanySetup";
 
-// Settings → Company → Report logo / Colours: the setup's editors on their
-// own page. Changes save as they're made; Done goes back to Settings.
+// Admin → Company → Report logo / Colours: the setup's editors on their
+// own page (behind the admin PIN). Changes save as they're made; Done goes
+// back to Admin.
 
 function Page({ title, children }: { title: string; children: React.ReactNode }) {
   const navigate = useNavigate();
-  const done = () => navigate("/settings");
+  const done = () => navigate("/admin");
   return (
     <StepScreen
       title={title}

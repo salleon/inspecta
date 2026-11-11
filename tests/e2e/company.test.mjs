@@ -71,9 +71,26 @@ test("the setup isn't shown again, and the colours stay", async () => {
   assert.equal(await cssVar("--accent"), "#2ec4b6", "only the splash and covers take the company's colours");
 });
 
-test("Settings → Company edits the name, logo and colours", async () => {
+test("Admin → Company edits the name, logo and colours (not in Settings, behind the PIN)", async () => {
   await page.click('button[aria-label="Settings"]');
+  await page.getByRole("button", { name: /Company, keywords, PIN/ }).waitFor();
+  assert.equal(await page.getByRole("button", { name: /Colours/ }).count(), 0, "not in Settings");
+  await page.getByRole("button", { name: /Company, keywords, PIN/ }).click();
+  // the manager's first visit: choose the PIN
+  await page.getByText("Choose a new PIN").waitFor();
+  for (const pin of ["1234", "1234"]) {
+    for (const d of pin) await page.click(`button[aria-label="${d}"]`);
+    await page.waitForTimeout(250);
+  }
   await page.getByText("Coastline Fire Services").waitFor();
+  await page.getByRole("button", { name: /Company name/ }).click();
+  await page.fill('input[aria-label="Company name"]', "Coastline Fire");
+  await page.keyboard.press("Enter");
+  await page.getByText("Coastline Fire", { exact: true }).waitFor();
+  assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem("inspecta.company")).name), "Coastline Fire");
+  await page.getByRole("button", { name: /Company name/ }).click();
+  await page.fill('input[aria-label="Company name"]', "Coastline Fire Services");
+  await page.keyboard.press("Enter");
   await page.getByRole("button", { name: /Colours/ }).click();
   await page.getByRole("tab", { name: "Custom" }).click();
   await page.getByRole("button", { name: "#3d8bfd" }).first().click(); // picking Primary: Dark first, then Bright
@@ -84,6 +101,7 @@ test("Settings → Company edits the name, logo and colours", async () => {
   assert.equal(await cssVar("--accent"), "#2ec4b6");
   await page.getByRole("button", { name: "Done" }).click();
   await page.getByText("Custom").waitFor();
+  assert.ok(page.url().endsWith("#/admin"), "Done goes back to Admin");
 });
 
 test("no EnFact branding: home header and the PDF cover are the company's", async () => {

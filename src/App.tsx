@@ -15,7 +15,6 @@ import { hasInspectorName } from "./lib/profile";
 import CompanySetup from "./components/CompanySetup";
 import { applyTheme, needsCompanySetup, useCompany } from "./lib/company";
 import { useFlowMode } from "./lib/settings";
-import { ColoursPage, LogoPage } from "./pages/CompanySettings";
 import { useKeepFocusedFieldVisible } from "./lib/keepFocusedVisible";
 import { BACK_EVENT, parentRoute } from "./lib/backButton";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -50,7 +49,7 @@ function App() {
   // at startup; flips to false the moment Onboarding saves a name.
   const [needsOnboarding, setNeedsOnboarding] = useState(() => !hasInspectorName());
   // Contractor mode: the company setup comes first on a new phone (one
-  // switched to Contractor later sets it up in Settings → Company)
+  // switched to Contractor later sets it up in Admin → Company)
   const [needsCompany, setNeedsCompany] = useState(() => needsCompanySetup() && !hasInspectorName());
 
   // the company's colours in Contractor mode (lib/company), kept up to date
@@ -173,8 +172,6 @@ function AnimatedRoutes() {
           <Route path="/site/:siteId/spf/:testId/report" element={<StairReport />} />
           <Route path="/site/:siteId/spf/:testId/:section" element={<StairSectionPage />} />
           <Route path="/settings" element={<Settings />} />
-          <Route path="/settings/logo" element={<LogoPage />} />
-          <Route path="/settings/colours" element={<ColoursPage />} />
           <Route path="/admin/*" element={<Admin />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

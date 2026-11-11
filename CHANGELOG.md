@@ -7,6 +7,8 @@ the technical detail.
 
 ## 11 November 2026
 
+- **Company name, logo and colours are now in Admin.** They've moved from Settings to **Admin → Company**, behind the admin PIN, so only whoever looks after the company's phones can change what goes on the report covers. They come with the setup file, along with the company's ESR keyword changes, so a new starter's reports match their coworkers'. Learned keywords stay with each person's phone. Settings keeps your name, backups and updates.
+
 - **Joining a company no longer needs the admin PIN.** Staff tap **Join a company**, pick their company's setup file and tap **Join**: the phone takes the company's name, logo and colours, and its Admin is locked with the manager's PIN, which staff never see or type. So employees can't get into Admin, but the manager can, on every phone. EnFact's setup file still asks for the PIN.
 
 - **Admin on Contractor phones: their own PIN, no mode switch.** A Contractor phone no longer opens Admin with EnFact's PIN. The first time Admin is opened, the company chooses its own 4-digit PIN (or it comes with their setup file), and EnFact's PIN never works on it. Contractor companies get all of Admin (keywords, setup file, change PIN, recovery code) except the **EnFact / Contractor** switch, which they never see. EnFact phones work as before, switch included. To turn any phone into an EnFact phone: **Join a company** with EnFact's setup file, or Admin → **Forgot PIN?** → the owner's master code, which opens Admin with the switch and leaves the company's PIN alone. An EnFact phone switched to Contractor keeps the PIN it had.

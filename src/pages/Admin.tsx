@@ -32,6 +32,10 @@ import { writeBlobToCache } from "../lib/cacheFile";
 import { numberedExport } from "../lib/exportName";
 import { useBackHandler } from "../lib/backButton";
 import { BLUE, GREY, Group, ORANGE, RowIcon, groupHintStyle, groupRowStyle } from "../components/SettingsList";
+import { companyName, companyScheme, setCompany, useCompany } from "../lib/company";
+import { CompanyLogo } from "../components/CompanySetup";
+import FormActions from "../components/FormActions";
+import { ColoursPage, LogoPage } from "./CompanySettings";
 
 // Settings → Admin: PIN-protected tools for the person who looks after the
 // app: the mode (EnFact / Contractor; on EnFact phones, or a Contractor
@@ -70,6 +74,8 @@ export default function Admin() {
   if (pathname === "/admin/keywords/test") return <Tester />;
   if (pathname === "/admin/keywords/learned") return <Learned />;
   if (pathname === "/admin/keywords") return <KeywordMenu />;
+  if (pathname === "/admin/logo") return <LogoPage />;
+  if (pathname === "/admin/colours") return <ColoursPage />;
   return <AdminHome />;
 }
 
@@ -334,6 +340,7 @@ function AdminHome() {
           </div>
         </Group>
       )}
+      {flowMode === "contractor" && <CompanyGroup />}
       <Group heading="New phones" foot="The setup file brings the mode, company, keywords and PIN to another phone. Keep it safe; loading it asks for the PIN.">
         <GroupRow icon={<RowIcon name="share" />} title="Share setup file" hint="To set up a new phone like this one" onClick={shareSetup} />
         <GroupRow icon={<RowIcon name="down" />} title="Load setup file" hint="Set this phone up from a setup file" onClick={() => setupInput.current?.click()} />
@@ -383,6 +390,68 @@ function GroupRow({ icon, title, hint, onClick, chevron = true }: { icon: ReactN
       </span>
       {chevron && <IconChevronRight color="var(--muted)" />}
     </button>
+  );
+}
+
+// Contractor mode: the company's name, logo and colours, on every report
+// cover. Behind the PIN, so only whoever looks after the phones changes them.
+function CompanyGroup() {
+  const navigate = useNavigate();
+  const company = useCompany();
+  const scheme = companyScheme(company);
+  const [draft, setDraft] = useState<string | null>(null);
+  useBackHandler(() => {
+    if (draft === null) return false;
+    setDraft(null);
+    return true;
+  });
+  return (
+    <>
+      <Group heading="Company" foot="On every report cover. Comes with the setup file to new phones.">
+        <GroupRow icon={<RowIcon name="building" />} title="Company name" hint={companyName(company) || "Not set"} onClick={() => setDraft(company.name)} />
+        <button type="button" onClick={() => navigate("/admin/logo")} style={groupRowStyle}>
+          <RowIcon name="image" />
+          <span style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+            <span style={{ fontSize: 14.5, fontWeight: 700, color: "var(--text)" }}>Report logo</span>
+            <span style={groupHintStyle}>{company.logo ? "On the app and report covers" : "None"}</span>
+          </span>
+          {company.logo ? <CompanyLogo height={30} maxWidth={90} /> : <IconChevronRight color="var(--muted)" />}
+        </button>
+        <button type="button" onClick={() => navigate("/admin/colours")} style={groupRowStyle}>
+          <RowIcon name="palette" />
+          <span style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+            <span style={{ fontSize: 14.5, fontWeight: 700, color: "var(--text)" }}>Colours</span>
+            <span style={groupHintStyle}>{scheme.name}</span>
+          </span>
+          <span style={{ display: "flex" }} aria-hidden="true">
+            {[scheme.primary, scheme.secondary, scheme.light].map((hx, i) => (
+              <span key={i} style={{ width: 20, height: 20, borderRadius: "50%", marginLeft: i ? -6 : 0, background: hx, boxShadow: "0 0 0 1px rgba(255,255,255,.15)", display: "block" }} />
+            ))}
+          </span>
+        </button>
+      </Group>
+      {draft !== null && (
+        <div className="sheet-backdrop" style={{ position: "fixed", inset: 0, background: "rgba(10,11,13,0.6)", display: "flex", alignItems: "flex-end", zIndex: 20 }} onClick={() => setDraft(null)}>
+          <form
+            onClick={(e) => e.stopPropagation()}
+            onSubmit={(e) => {
+              e.preventDefault();
+              const name = draft.trim();
+              if (!name) return;
+              setCompany({ name });
+              setDraft(null);
+            }}
+            className="sheet-panel"
+            style={{ width: "100%", background: "var(--panel)", borderRadius: "20px 20px 0 0", padding: "22px 20px calc(28px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 14 }}
+          >
+            <div style={{ fontSize: 16, fontWeight: 800 }}>Company name</div>
+            <div style={{ fontSize: 13, fontWeight: 500, color: "var(--muted)", lineHeight: 1.5, marginTop: -8 }}>On every report cover.</div>
+            <input autoFocus aria-label="Company name" value={draft} onChange={(e) => setDraft(e.target.value)} style={fieldStyle} />
+            <FormActions onCancel={() => setDraft(null)} />
+          </form>
+        </div>
+      )}
+    </>
   );
 }
 
