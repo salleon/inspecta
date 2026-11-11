@@ -30,6 +30,12 @@ export function checkPin(pin: string): boolean {
   return pin === (get(PIN_KEY) ?? DEFAULT_PIN);
 }
 
+// the PIN as it stands, for the company setup file (which only keeps a
+// salted fingerprint of it)
+export function currentPin(): string {
+  return get(PIN_KEY) ?? DEFAULT_PIN;
+}
+
 export function setPin(pin: string) {
   set(PIN_KEY, pin);
 }

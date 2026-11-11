@@ -6,6 +6,8 @@ import { Capacitor } from "@capacitor/core";
 import RoundIconButton from "../components/RoundIconButton";
 import { describeTimings, lastExportTimings } from "../lib/exportTimings";
 import { setFlowMode, useFlowMode, type FlowMode } from "../lib/settings";
+import { makeSetupFile, setupFileName } from "../lib/setupFile";
+import SetupFileLoader from "../components/SetupFileLoader";
 import ConfirmDialog from "../components/ConfirmDialog";
 import { IconChevronLeft, IconChevronRight } from "../components/Icons";
 import { ESR_SECTIONS, esrItem, sectionItems } from "../lib/esrCategories";
@@ -235,6 +237,8 @@ function AdminHome() {
   const flowMode = useFlowMode();
   const [changingPin, setChangingPin] = useState(false);
   const [notice, setNotice] = useState("");
+  const setupInput = useRef<HTMLInputElement>(null);
+  const [setupFile, setSetupFile] = useState<File | null>(null);
   // Android back while choosing a new PIN cancels that, not the menu
   useBackHandler(() => {
     if (!changingPin) return false;
@@ -257,6 +261,14 @@ function AdminHome() {
 
   const edited = editedCount();
   const lastTimings = lastExportTimings();
+
+  async function shareSetup() {
+    try {
+      await shareBlob(await makeSetupFile(), setupFileName(), "Inspecta setup file");
+    } catch (err) {
+      if (!cancelled(err)) say("Couldn't share the setup file");
+    }
+  }
 
   async function emailRecovery() {
     const code = recoveryCode();
@@ -304,6 +316,30 @@ function AdminHome() {
           </span>
         </div>
       </Group>
+      <Group heading="New phones" foot="The setup file brings the mode, company, keywords and PIN to another phone. Keep it safe; loading it asks for the PIN.">
+        <GroupRow icon={<RowIcon name="share" />} title="Share setup file" hint="To set up a new phone like this one" onClick={shareSetup} />
+        <GroupRow icon={<RowIcon name="down" />} title="Load setup file" hint="Set this phone up from a setup file" onClick={() => setupInput.current?.click()} />
+        <input
+          ref={setupInput}
+          type="file"
+          aria-label="Setup file"
+          style={{ display: "none" }}
+          onChange={(e) => {
+            setSetupFile(e.target.files?.[0] ?? null);
+            e.target.value = "";
+          }}
+        />
+      </Group>
+      {setupFile && (
+        <SetupFileLoader
+          file={setupFile}
+          onCancel={() => setSetupFile(null)}
+          onDone={() => {
+            setSetupFile(null);
+            setNotice("Setup file loaded.");
+          }}
+        />
+      )}
       <Group heading="ESR categories">
         <GroupRow icon={<RowIcon name="tag" />} title="Keywords" hint={`${edited ? `${edited} edited on this phone` : "Built-in list, no changes"} · test a note, share, load`} onClick={() => navigate("/admin/keywords")} />
       </Group>

@@ -170,6 +170,11 @@ export function applyKeywordFile(next: Edits) {
   save(next);
 }
 
+// for the company setup file (lib/setupFile): this phone's changes, and
+// a file's changes checked the same way as a keyword file's
+export const currentKeywordEdits = (): Record<string, unknown> => edits;
+export const keywordEditsFrom = (raw: unknown): Edits => sanitise(raw);
+
 // ---- change notifications ----
 
 let version = 0;

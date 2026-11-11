@@ -7,9 +7,12 @@ import { createHash } from "node:crypto";
 import { chromium } from "playwright";
 
 // a different port per test file, since node --test runs files in parallel
+// (checked: no two of today's file names share one)
 // args: extra Chromium switches (e.g. a fake camera)
 export async function startApp(testFile, { args = [] } = {}) {
-  const port = 4300 + (parseInt(createHash("md5").update(testFile).digest("hex").slice(0, 4), 16) % 600);
+  // from the file's name alone, so it's the same on every machine (the
+  // full path differed, and two files could clash on one port)
+  const port = 4300 + (parseInt(createHash("md5").update(testFile.split("/").pop()).digest("hex").slice(0, 4), 16) % 600);
   const server = spawn("npx", ["vite", "preview", "--port", String(port), "--strictPort"], { stdio: "ignore", detached: true });
   const url = `http://localhost:${port}`;
   for (let i = 0; i < 60; i++) {

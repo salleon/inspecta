@@ -1,4 +1,5 @@
-import { useState, type ChangeEvent, type CSSProperties, type ReactNode } from "react";
+import { useRef, useState, type ChangeEvent, type CSSProperties, type ReactNode } from "react";
+import SetupFileLoader from "./SetupFileLoader";
 import { IconChevronLeft, IconCheck } from "./Icons";
 import RoundIconButton from "./RoundIconButton";
 import Switch from "./Switch";
@@ -342,6 +343,9 @@ type Step = "welcome" | "name" | "logo" | "colours";
 export default function CompanySetup({ onDone, animate }: { onDone: () => void; animate: boolean }) {
   const c = useCompany();
   const [step, setStep] = useState<Step>("welcome");
+  // Join a company: a setup file from whoever looks after the phones
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [file, setFile] = useState<File | null>(null);
   const back: Record<Step, Step | null> = { welcome: null, name: "welcome", logo: "name", colours: "logo" };
 
   useBackHandler(() => {
@@ -361,7 +365,21 @@ export default function CompanySetup({ onDone, animate }: { onDone: () => void; 
           <button type="button" style={bigButton} onClick={() => setStep("name")}>
             Set up your company
           </button>
+          <button type="button" onClick={() => fileInput.current?.click()} style={{ height: 48, border: "none", background: "none", color: "var(--text)", fontSize: 15, fontWeight: 700 }}>
+            Join a company
+          </button>
+          <input
+            ref={fileInput}
+            type="file"
+            aria-label="Setup file"
+            style={{ display: "none" }}
+            onChange={(e) => {
+              setFile(e.target.files?.[0] ?? null);
+              e.target.value = "";
+            }}
+          />
         </div>
+        {file && <SetupFileLoader file={file} onCancel={() => setFile(null)} onDone={onDone} />}
       </div>
     );
   }

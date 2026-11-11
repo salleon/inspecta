@@ -7,6 +7,8 @@ the technical detail.
 
 ## 11 November 2026
 
+- **Company setup file, for new phones.** Admin has a new **New phones** section. **Share setup file** saves one small file (e.g. "EnFact setup.inspecta") with this phone's mode, company name, logo and colours, ESR keyword changes and admin PIN. Whoever sets up phones keeps it. On a new phone, tap **Join a company** on the welcome screen (or Admin → **Load setup file**), pick the file and enter the admin PIN: the phone is set up to match, PIN included, and goes straight to the name prompt. The file doesn't hold the PIN itself, and won't load without it. Nothing about sites, findings or anyone's name is in it.
+
 - **Contractor mode: no EnFact branding.** In Contractor mode:
   - The opening animation is the new intro (a shield drawing itself, or the company's logo with a shine) instead of EnFact's logo.
   - The home screen shows the company's logo, without "by EnFact"; the name prompt shows it too.

@@ -14,7 +14,11 @@ after(async () => {
   await app?.close();
 });
 
-const mode = (page) => page.evaluate(() => localStorage.getItem("inspecta.flowMode"));
+// (waits for the app to have settled it, which a busy test machine can delay)
+async function mode(page) {
+  await page.waitForFunction(() => localStorage.getItem("inspecta.flowMode") !== null);
+  return page.evaluate(() => localStorage.getItem("inspecta.flowMode"));
+}
 
 test("a new phone starts in Contractor, and stays so once named", async () => {
   const context = await app.browser.newContext({ viewport: { width: 390, height: 844 } });

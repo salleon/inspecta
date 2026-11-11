@@ -20,7 +20,7 @@ A fast, offline-first app for on-site fire safety inspection capture — built t
 - **Location suggestions** — while typing a location, up to 3 buttons suggest locations already used on *this site* (most recent first, filtered as you type). Tap one to fill it in.
 - **Finding details** — every finding has optional **Defect type** (Critical / Non-critical / Non-compliance / Recommend / Note only / Rectified, colour-coded), **Level** (type `25` for "Level 25", quick buttons for Ground / Basement / Mezzanine / Roof, carried over to the next finding) and **ESR category** (below). (These used to sit behind an Advanced controls switch; it was removed, and the EnFact / Contractor mode in Admin is the switch now.)
 - **ESR categories** — each finding can be tagged with an item from the company's ESR list (`src/lib/esrCategories.ts`, e.g. "1.6 Fire Doors"). While the note is typed, the top 5 likely categories are suggested, grouped under their section; they come from built-in keywords plus the words of past picks on that phone (`src/lib/esrSuggest.ts`, offline, no AI service). "Browse all" has the full list with search. Before a PDF or Excel export, uncategorised findings can be categorised one at a time (skip, come back, or skip to export). Reports then group findings under a blue row per section and a grey row per item, similar notes together, with Refs like `1.6.1` (`src/lib/esrGrouping.ts`); Uncategorised goes last. The photos zip isn't grouped.
-- **Admin** (Settings → Admin, PIN protected, default `2021`) — tune the ESR keywords on a phone (`src/lib/esrKeywords.ts` stores the changes over the built-in list), test a note's suggestions, share/load keyword files, change the PIN, and email a recovery code for a forgotten PIN (`src/lib/adminPin.ts`). "Forgot PIN?" also takes the owner's master recovery code; only its SHA-256 fingerprint is in the code, so changing it means generating a new code and replacing `MASTER_HASH`.
+- **Admin** (Settings → Admin, PIN protected, default `2021`) — tune the ESR keywords on a phone (`src/lib/esrKeywords.ts` stores the changes over the built-in list), test a note's suggestions, share/load keyword files, share/load the company setup file (below), switch Mode, change the PIN, and email a recovery code for a forgotten PIN (`src/lib/adminPin.ts`). "Forgot PIN?" also takes the owner's master recovery code; only its SHA-256 fingerprint is in the code, so changing it means generating a new code and replacing `MASTER_HASH`.
 
 ## Getting the Android APK (recommended for your team)
 
@@ -77,19 +77,16 @@ Ideas agreed but not started yet:
 - **Standard corrective-action text** — a library of standard sentences per category (e.g. "Incumbent contractor to carry out annual inspection testing in accordance with AS1851…") to fill the Corrective action column with a tap.
 - **Merge last year's report** — load the previous report for a site and mark its old findings as still present or rectified, flowing into the new report (with their old numbers). How it should work is still to be decided.
 
-## Later: splitting into an EnFact app and a Contractor app
+## EnFact and Contractor modes
 
-Features that differ go behind **Admin → Mode** (EnFact / Contractor; a new phone starts in Contractor, phones already in use stay EnFact), and each canvas mock-up says what EnFact gets and what Contractor gets. Keep those differences in one place in the code so the split stays easy.
+One app serves EnFact's office and other contractors. **Admin → Mode** (EnFact / Contractor, `src/lib/settings.ts`) decides which: a newly installed phone starts in **Contractor**; the office switches its phones to EnFact (or loads EnFact's setup file) before handing them out. Phones already in use when modes came in stay EnFact. Features that differ go behind the mode; keep those differences in one place, and say on each canvas mock-up what EnFact gets and what Contractor gets.
 
-When it's time to make two apps, the plan is **one codebase with two editions**, not a copied branch (a copy means every fix has to be made twice and the two drift apart):
+- **Company setup** (Contractor only, `src/components/CompanySetup.tsx`, `src/lib/company.ts`) — a new Contractor phone opens on a welcome with **Set up your company**: name, logo (resized PNG, optional white background) and colours (14 presets, three schemes built from the logo's colours, or custom). Kept on the phone; Settings → Company changes it later. Canvas: "Inspecta for contractors".
+- **Theme** — in Contractor mode the scheme (dark primary, vivid secondary, near-white light) is put on `index.css`'s variables (`applyTheme`). Use `var(--accent)`, `rgba(var(--accent-rgb), a)`, `var(--bg)` etc. in screens, not EnFact's hex values, so new screens follow the company's colours.
+- **Branding** — Contractor mode never shows EnFact's: its own splash (the intro mark), the company logo on the home screen, the PDF cover (`src/lib/contractorCover.ts`: one flat JPEG background with a faint logo watermark, the logo top left, accent colours), the company logo on flow and stair reports (`src/lib/branding.ts`), and "EnFact recommend" wording swapped for the company name.
+- **Setup file** (Admin → New phones, `src/lib/setupFile.ts`) — **Share setup file** saves `<Company> setup.inspecta`: the mode, company name, logo and colours, ESR keyword changes and the admin PIN (only as a salted SHA-256 fingerprint). Whoever sets up phones (e.g. HR) keeps it. On a new phone, **Join a company** on the welcome (or Admin → Load setup file) loads it after asking for that PIN, which then becomes the phone's PIN. Nothing about sites, findings or the person is in it. Like the admin PIN, it keeps staff out rather than being a hard security boundary: EnFact's lists are inside the app either way.
 
-1. Tag the current app as the EnFact baseline.
-2. Add a build-time edition (EnFact / Contractor) and a feature list saying what each edition gets and at what level (e.g. graph lines: EnFact fixed, Contractor full picker). Today's Admin switch moves into it; the EnFact app should behave exactly the same.
-3. A second Android app from the same project (product flavour): its own app ID, name, icon and Play listing and test track, so both can be on one phone.
-4. CI builds and tests both editions on every push. Branches stay as they are (`test` for development, `main` for releases).
-5. New contractor features are mocked up on the canvas first, marked by edition. Contractor-only screens live in their own folder.
-
-To decide first: the contractor app's name, icon and branding; its Play listing (same developer account, public or private testing); and whether contractors need accounts, shared sites or cloud sync (everything is on the phone today — the biggest decision).
+Still to decide for a public release: the Play listing (production track, privacy policy, a neutral app name and icon, since one icon serves both modes) and whether contractors need accounts, shared sites or cloud sync (everything is on the phone today).
 
 ## The iPhone app
 
