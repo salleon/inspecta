@@ -7,6 +7,14 @@ the technical detail.
 
 ## 11 November 2026
 
+- **Launch sound.** A short three-note chime plays with the opening
+  animation, its last note landing as the name lights up (on the
+  Contractor splash, as the tick lands on the i). Only when the phone's
+  sound is on: nothing on silent or vibrate (on Android, not during Do
+  Not Disturb either). It follows the phone's volume and doesn't stop
+  music that's already playing. In the Android and iPhone apps, not the
+  browser version.
+
 - **Inspecta's data stays out of the phone's cloud backups.** Android was
   copying it into Google's backup (only until the app passed 25 MB, then
   silently stopping), and on iPhone it would have gone into iCloud backups

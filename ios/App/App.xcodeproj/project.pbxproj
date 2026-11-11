@@ -19,6 +19,8 @@
 		1A5BEC7A00000000000000B1 /* MainViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A5BEC7A00000000000000A1 /* MainViewController.swift */; };
 		1A5BEC7A00000000000000B2 /* NativeCameraPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A5BEC7A00000000000000A2 /* NativeCameraPlugin.swift */; };
 		1A5BEC7A00000000000000B3 /* GalleryPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A5BEC7A00000000000000A3 /* GalleryPlugin.swift */; };
+		1A5BEC7A00000000000000B4 /* LaunchSoundPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A5BEC7A00000000000000A4 /* LaunchSoundPlugin.swift */; };
+		1A5BEC7A00000000000000B5 /* splash_jingle.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 1A5BEC7A00000000000000A5 /* splash_jingle.mp3 */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -36,6 +38,8 @@
 		1A5BEC7A00000000000000A1 /* MainViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainViewController.swift; sourceTree = "<group>"; };
 		1A5BEC7A00000000000000A2 /* NativeCameraPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeCameraPlugin.swift; sourceTree = "<group>"; };
 		1A5BEC7A00000000000000A3 /* GalleryPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryPlugin.swift; sourceTree = "<group>"; };
+		1A5BEC7A00000000000000A4 /* LaunchSoundPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchSoundPlugin.swift; sourceTree = "<group>"; };
+		1A5BEC7A00000000000000A5 /* splash_jingle.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = splash_jingle.mp3; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -77,6 +81,7 @@
 				1A5BEC7A00000000000000C1 /* Plugins */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
 				504EC30E1FED79650016851F /* Assets.xcassets */,
+				1A5BEC7A00000000000000A5 /* splash_jingle.mp3 */,
 				504EC3101FED79650016851F /* LaunchScreen.storyboard */,
 				504EC3131FED79650016851F /* Info.plist */,
 				2FAD9762203C412B000D30F8 /* config.xml */,
@@ -90,6 +95,7 @@
 			children = (
 				1A5BEC7A00000000000000A2 /* NativeCameraPlugin.swift */,
 				1A5BEC7A00000000000000A3 /* GalleryPlugin.swift */,
+				1A5BEC7A00000000000000A4 /* LaunchSoundPlugin.swift */,
 			);
 			path = Plugins;
 			sourceTree = "<group>";
@@ -161,6 +167,7 @@
 			files = (
 				504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */,
 				50B271D11FEDC1A000F3C39B /* public in Resources */,
+				1A5BEC7A00000000000000B5 /* splash_jingle.mp3 in Resources */,
 				504EC30F1FED79650016851F /* Assets.xcassets in Resources */,
 				50379B232058CBB4000EE86E /* capacitor.config.json in Resources */,
 				504EC30D1FED79650016851F /* Main.storyboard in Resources */,
@@ -179,6 +186,7 @@
 				1A5BEC7A00000000000000B1 /* MainViewController.swift in Sources */,
 				1A5BEC7A00000000000000B2 /* NativeCameraPlugin.swift in Sources */,
 				1A5BEC7A00000000000000B3 /* GalleryPlugin.swift in Sources */,
+				1A5BEC7A00000000000000B4 /* LaunchSoundPlugin.swift in Sources */,
 				9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
