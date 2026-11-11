@@ -18,6 +18,10 @@ export interface Site {
   // the site's stair pressurisation system, set once (lib/stairTest);
   // absent until it's set up
   spf?: SpfSystem;
+  // set while a restore from backup is adding this site's photos, and
+  // cleared once they're all in (lib/backup). Still set means the restore
+  // stopped part way: restoring the same backup again finishes the site.
+  restoreIncomplete?: true;
 }
 
 // A customised report: a chosen group of the site's findings, exported on

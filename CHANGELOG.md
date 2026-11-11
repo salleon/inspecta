@@ -7,6 +7,13 @@ the technical detail.
 
 ## 11 November 2026
 
+- **A restore that stops part way is finished by restoring again.** Each
+  site is now restored with its photos as one unit and marked on the home
+  screen ("Restore didn't finish") until its photos are all in. Restoring
+  the same backup again adds the missing photos instead of skipping the
+  site as already here. A photo that can't be read from the backup is
+  left out and counted in the message instead of stopping the restore.
+
 - **Build 9.3, out to coworkers.** Stair pressurisation testing out of
   Beta, with General system testing (runs and doors per level); New site
   is now New job; a reminder dot on Settings when a backup is overdue;

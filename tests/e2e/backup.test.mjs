@@ -107,6 +107,39 @@ test("restoring the same backup again adds nothing and overwrites nothing", asyn
   assert.equal(await snapshot(), before);
 });
 
+test("a restore that stopped part way is finished by restoring again", async () => {
+  const before = await snapshot();
+  // as a restore leaves things when it stops during Harbour Tower's photos
+  // (phone full, app closed): the site's records are in, still marked, and
+  // one of its photos never made it
+  await page.evaluate(async () => {
+    const req = indexedDB.open("inspecta");
+    const idb = await new Promise((r) => (req.onsuccess = () => r(req.result)));
+    const tx = idb.transaction(["sites", "photos"], "readwrite");
+    const sites = tx.objectStore("sites");
+    const get = sites.get("s1");
+    get.onsuccess = () => sites.put({ ...get.result, restoreIncomplete: true });
+    tx.objectStore("photos").delete("p1");
+    await new Promise((r) => (tx.oncomplete = r));
+    idb.close();
+  });
+  await go(page, app, "/");
+  assert.equal(await page.locator("text=Restore didn't finish").count(), 1);
+
+  await page.click('button[aria-label="Settings"]');
+  await page.setInputFiles('input[type=file][accept*=".zip"]', backupPath);
+  await page.waitForTimeout(400);
+  assert.match(await page.locator("text=This finishes").innerText(), /This finishes 1 site .*: Harbour Tower\./);
+  await page.getByRole("button", { name: "Restore", exact: true }).click();
+  await page.waitForTimeout(1200);
+  assert.match(await page.locator("text=Added").innerText(), /Added 1 photo\. Finished restoring 1 site/);
+  await page.getByRole("button", { name: "OK", exact: true }).click();
+  assert.equal(await snapshot(), before);
+  await go(page, app, "/");
+  assert.equal(await page.locator("text=Restore didn't finish").count(), 0);
+  await page.click('button[aria-label="Settings"]');
+});
+
 test("a file that isn't a backup is refused", async () => {
   await page.setInputFiles('input[type=file][accept*=".zip"]', { name: "notes.zip", mimeType: "application/zip", buffer: Buffer.from("not a zip") });
   await page.waitForTimeout(300);

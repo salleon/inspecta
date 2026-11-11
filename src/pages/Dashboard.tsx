@@ -625,6 +625,9 @@ function SiteButton({
           >
             {site.address || "No address set"}
           </div>
+          {site.restoreIncomplete && (
+            <div style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)" }}>Restore didn't finish: restore the backup again</div>
+          )}
         </div>
         <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5 }}>
           <KindTag kind={site.kind} />

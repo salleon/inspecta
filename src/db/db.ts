@@ -556,21 +556,36 @@ export async function photoBlob(photoId: string): Promise<Blob | undefined> {
   return (await db.photos.get(photoId))?.blob;
 }
 
-export async function siteExists(siteId: string): Promise<boolean> {
-  return (await db.sites.get(siteId)) !== undefined;
+// "new" if the site isn't on this phone, "unfinished" if an earlier restore
+// added it but stopped before all its photos were in, otherwise "here".
+export async function siteRestoreState(siteId: string): Promise<"new" | "unfinished" | "here"> {
+  const site = await db.sites.get(siteId);
+  return !site ? "new" : site.restoreIncomplete ? "unfinished" : "here";
 }
 
-// A restored site and its findings (photos follow one at a time).
+// A restored site and its findings, marked restoreIncomplete until its
+// photos (added one at a time after this) are all in.
 export async function restoreSiteRecords(site: Site, findings: Finding[], flowTests: FlowTest[] = [], stairTests: StairTest[] = []) {
   await db.transaction("rw", [db.sites, db.findings, db.flowTests, db.stairTests], async () => {
-    await db.sites.add(site);
+    await db.sites.add({ ...site, restoreIncomplete: true });
     await db.findings.bulkAdd(findings);
     await db.flowTests.bulkAdd(flowTests);
     await db.stairTests.bulkAdd(stairTests);
   });
 }
 
+export async function photoExists(photoId: string): Promise<boolean> {
+  return (await db.photos.where("id").equals(photoId).count()) > 0;
+}
+
 export async function restorePhoto(photo: Photo) {
   delete photo.marked;
   await db.photos.add(photo);
+}
+
+// All of a restored site's photos are in: it's an ordinary site again.
+export async function finishSiteRestore(siteId: string) {
+  await db.sites.where("id").equals(siteId).modify((site) => {
+    delete site.restoreIncomplete;
+  });
 }

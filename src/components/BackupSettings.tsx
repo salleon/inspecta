@@ -25,6 +25,7 @@ function lastBackup(): string {
 }
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+const hasWork = (p: RestorePlan) => p.newSites.length + p.unfinishedSites.length > 0;
 
 export default function BackupSettings({ rowStyle, hintStyle, onRestored, icons }: { rowStyle: CSSProperties; hintStyle: CSSProperties; onRestored: () => void; icons?: [ReactNode, ReactNode] }) {
   const fileInput = useRef<HTMLInputElement>(null);
@@ -111,13 +112,15 @@ export default function BackupSettings({ rowStyle, hintStyle, onRestored, icons 
       setMessage({
         title: "Restore finished",
         text:
-          `Added ${plural(result.sites, "site")}, ${plural(result.findings, "finding")} and ${plural(result.photos, "photo")}.` +
+          (result.sites || !result.finished ? `Added ${plural(result.sites, "site")}, ${plural(result.findings, "finding")} and ${plural(result.photos, "photo")}.` : `Added ${plural(result.photos, "photo")}.`) +
+          (result.finished ? ` Finished restoring ${plural(result.finished, "site")} that ${result.finished === 1 ? "was" : "were"} left part way last time.` : "") +
+          (result.unreadable ? ` ${plural(result.unreadable, "photo")} couldn't be read from the backup and ${result.unreadable === 1 ? "was" : "were"} left out.` : "") +
           (result.skipped ? ` ${plural(result.skipped, "site")} already on this phone ${result.skipped === 1 ? "was" : "were"} left as ${result.skipped === 1 ? "it is" : "they are"}.` : ""),
       });
     } catch (err) {
       console.error("restore failed", err);
       onRestored();
-      setMessage({ title: "Restore stopped", text: "Something went wrong part way through. Sites added before that are kept; restoring again adds the rest." });
+      setMessage({ title: "Restore stopped", text: "Something went wrong part way through (the phone may be full). Sites restored before that are kept. A site that was only partly restored is marked on the home screen; restoring the same backup again finishes it and adds the rest." });
     } finally {
       setProgress(null);
     }
@@ -126,11 +129,17 @@ export default function BackupSettings({ rowStyle, hintStyle, onRestored, icons 
   const planText = (p: RestorePlan) => {
     const findings = p.json.findings.filter((f) => p.newSites.some((s) => s.id === f.siteId)).length;
     const photos = p.json.photos.filter((ph) => p.newSites.some((s) => s.id === ph.siteId)).length;
+    const names = (sites: RestorePlan["newSites"]) => sites.map((s) => s.name || "Untitled").join(", ");
     const adds = p.newSites.length
-      ? `This adds ${plural(p.newSites.length, "site")} (${plural(findings, "finding")}, ${plural(photos, "photo")}): ${p.newSites.map((s) => s.name || "Untitled").join(", ")}.`
-      : "Every site in this backup is already on this phone, so there's nothing to add.";
+      ? `This adds ${plural(p.newSites.length, "site")} (${plural(findings, "finding")}, ${plural(photos, "photo")}): ${names(p.newSites)}.`
+      : p.unfinishedSites.length
+        ? ""
+        : "Every site in this backup is already on this phone, so there's nothing to add.";
+    const finishes = p.unfinishedSites.length
+      ? `${adds ? " " : ""}This finishes ${plural(p.unfinishedSites.length, "site")} an earlier restore left part way, adding the photos still missing: ${names(p.unfinishedSites)}.`
+      : "";
     const skips = p.existingSites.length ? ` ${plural(p.existingSites.length, "site")} already here will be left as ${p.existingSites.length === 1 ? "it is" : "they are"}.` : "";
-    return `${adds}${skips} Nothing on this phone is overwritten.`;
+    return `${adds}${finishes}${skips} Nothing on this phone is overwritten.`;
   };
 
   return (
@@ -168,11 +177,11 @@ export default function BackupSettings({ rowStyle, hintStyle, onRestored, icons 
         <ConfirmDialog
           title="Restore from backup?"
           message={planText(plan)}
-          confirmLabel={plan.newSites.length ? "Restore" : "OK"}
+          confirmLabel={hasWork(plan) ? "Restore" : "OK"}
           tone="primary"
-          infoOnly={!plan.newSites.length}
+          infoOnly={!hasWork(plan)}
           onCancel={() => setPlan(null)}
-          onConfirm={() => (plan.newSites.length ? void restore(plan) : setPlan(null))}
+          onConfirm={() => (hasWork(plan) ? void restore(plan) : setPlan(null))}
         />
       )}
       {message && <ConfirmDialog title={message.title} message={message.text} confirmLabel="OK" tone="primary" infoOnly onCancel={() => setMessage(null)} onConfirm={() => setMessage(null)} />}

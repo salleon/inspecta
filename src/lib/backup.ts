@@ -1,5 +1,5 @@
 import type { Finding, FlowTest, Photo, Site, StairTest } from "../db/types";
-import { backupRecords, photoBlob, restorePhoto, restoreSiteRecords, siteExists } from "../db/db";
+import { backupRecords, finishSiteRestore, photoBlob, photoExists, restorePhoto, restoreSiteRecords, siteRestoreState } from "../db/db";
 import { ZipWriter } from "./zip";
 
 // Backup: every site, finding, flow test, stair test and photo on this phone in one .zip —
@@ -10,6 +10,11 @@ import { ZipWriter } from "./zip";
 // that's already here (same site, e.g. restoring the same backup twice)
 // is left exactly as it is. So it works for moving to a new phone, and for
 // handing a site to a coworker, without risk to what's already there.
+//
+// Each site goes in as a unit: its records, then its photos, and only then
+// is it an ordinary site. Until then it's marked restoreIncomplete, so if
+// the restore stops part way (phone full, app closed) restoring the same
+// backup again finishes that site instead of skipping it as "already here".
 //
 // Not included: settings, name, admin PIN and keyword changes — they
 // belong to the phone and person, not the inspections.
@@ -117,6 +122,9 @@ export interface RestorePlan {
   // the folder backup.json is in, if the zip was re-made with a folder
   prefix: string;
   newSites: Site[];
+  // added by an earlier restore that stopped before all their photos were
+  // in: this restore adds the photos still missing
+  unfinishedSites: Site[];
   existingSites: Site[];
 }
 
@@ -138,36 +146,60 @@ export async function readBackup(file: Blob): Promise<RestorePlan> {
   }
   if (json.version > VERSION) throw new Error("This backup is from a newer version of Inspecta. Update the app, then restore it.");
   const newSites: Site[] = [];
+  const unfinishedSites: Site[] = [];
   const existingSites: Site[] = [];
-  for (const site of json.sites) ((await siteExists(site.id)) ? existingSites : newSites).push(site);
-  return { json, entries, prefix, newSites, existingSites };
+  for (const site of json.sites) {
+    const state = await siteRestoreState(site.id);
+    (state === "new" ? newSites : state === "unfinished" ? unfinishedSites : existingSites).push(site);
+  }
+  return { json, entries, prefix, newSites, unfinishedSites, existingSites };
 }
 
+// One site at a time, records then photos, then the site is marked done.
+// A photo that can't be read from the backup (missing or damaged entry) is
+// counted and passed over, as restoring again wouldn't bring it back either;
+// anything else (phone full, say) stops the restore with the site still
+// marked unfinished.
 export async function applyRestore(plan: RestorePlan, onPhoto: (done: number, total: number) => void) {
-  const siteIds = new Set(plan.newSites.map((s) => s.id));
-  const photos = plan.json.photos.filter((ph) => siteIds.has(ph.siteId));
+  const sites = [...plan.newSites.map((site) => ({ site, isNew: true })), ...plan.unfinishedSites.map((site) => ({ site, isNew: false }))];
+  const siteIds = new Set(sites.map(({ site }) => site.id));
+  const total = plan.json.photos.filter((ph) => siteIds.has(ph.siteId)).length;
   let findings = 0;
-  for (const site of plan.newSites) {
-    const siteFindings = plan.json.findings.filter((f) => f.siteId === site.id);
-    await restoreSiteRecords(
-      site,
-      siteFindings,
-      (plan.json.flowTests ?? []).filter((t) => t.siteId === site.id),
-      (plan.json.stairTests ?? []).filter((t) => t.siteId === site.id),
-    );
-    findings += siteFindings.length;
-  }
-  onPhoto(0, photos.length);
   let restored = 0;
-  for (let i = 0; i < photos.length; i++) {
-    const { file, mime, ...meta } = photos[i];
-    const entry = plan.entries.get(plan.prefix + file);
-    if (entry) {
-      // copied into memory as its own Blob, independent of the backup file
-      await restorePhoto({ ...meta, blob: new Blob([await (await entry()).arrayBuffer()], { type: mime }) });
-      restored++;
+  let unreadable = 0;
+  let done = 0;
+  onPhoto(0, total);
+  for (const { site, isNew } of sites) {
+    if (isNew) {
+      const siteFindings = plan.json.findings.filter((f) => f.siteId === site.id);
+      await restoreSiteRecords(
+        site,
+        siteFindings,
+        (plan.json.flowTests ?? []).filter((t) => t.siteId === site.id),
+        (plan.json.stairTests ?? []).filter((t) => t.siteId === site.id),
+      );
+      findings += siteFindings.length;
     }
-    onPhoto(i + 1, photos.length);
+    for (const { file, mime, ...meta } of plan.json.photos.filter((ph) => ph.siteId === site.id)) {
+      if (isNew || !(await photoExists(meta.id))) {
+        let blob: Blob | undefined;
+        try {
+          const entry = plan.entries.get(plan.prefix + file);
+          // copied into memory as its own Blob, independent of the backup file
+          if (entry) blob = new Blob([await (await entry()).arrayBuffer()], { type: mime });
+        } catch (err) {
+          console.error("backup photo can't be read", file, err);
+        }
+        if (blob) {
+          await restorePhoto({ ...meta, blob });
+          restored++;
+        } else {
+          unreadable++;
+        }
+      }
+      onPhoto(++done, total);
+    }
+    await finishSiteRestore(site.id);
   }
-  return { sites: plan.newSites.length, findings, photos: restored, skipped: plan.existingSites.length };
+  return { sites: plan.newSites.length, finished: plan.unfinishedSites.length, findings, photos: restored, unreadable, skipped: plan.existingSites.length };
 }
