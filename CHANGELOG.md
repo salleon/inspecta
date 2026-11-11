@@ -7,6 +7,8 @@ the technical detail.
 
 ## 11 November 2026
 
+- **Contractor cover without a logo: a tidier square.** The square on the cover now has the word (AFSS or PROJECTS) in big carved lettering, a short line in the company's accent colour under it, and what the report is in small spaced capitals ("Annual fire safety statement", "Project report").
+
 - **Contractor setup: Use default.** On the Report logo step, **Use default** skips the logo and colours: the app keeps its usual navy and teal (still with no EnFact logos), and the company's name, in capitals in an outlined box, stands in for a logo on the home screen and the report cover. The PDF cover then has the familiar square in the middle with **AFSS** or **PROJECTS** in it, as on EnFact's cover but without EnFact's logo. **Default** is also the first choice in Colours (it replaces Harbour, which was the same colours), and any company without a logo gets the name box and the square.
 
 - **Company setup file, for new phones.** Admin has a new **New phones** section. **Share setup file** saves one small file (e.g. "EnFact setup.inspecta") with this phone's mode, company name, logo and colours, ESR keyword changes and admin PIN. Whoever sets up phones keeps it. On a new phone, tap **Join a company** on the welcome screen (or Admin → **Load setup file**), pick the file and enter the admin PIN: the phone is set up to match, PIN included, and goes straight to the name prompt. The file doesn't hold the PIN itself, and won't load without it. Nothing about sites, findings or anyone's name is in it.

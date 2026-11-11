@@ -22,8 +22,8 @@ export function coverColours() {
 }
 
 // a JPEG data URL for the whole page, wPt x hPt points. With no logo, the
-// middle has EnFact's cover square with AFSS or PROJECTS in it, minus
-// EnFact's logo.
+// middle has EnFact's cover square, minus EnFact's logo, with AFSS or
+// PROJECTS, an accent rule and what the report is.
 export async function coverBackground(wPt: number, hPt: number, kind: "afss" | "project"): Promise<string> {
   const c = getCompany();
   const s = companyScheme(c);
@@ -60,16 +60,42 @@ export async function coverBackground(wPt: number, hPt: number, kind: "afss" | "
     fill.addColorStop(1, mix(middle, "#ffffff", 0.15));
     ctx.fillStyle = fill;
     ctx.fillRect(sq.x, sq.y, sq.s, sq.s);
+    // canvas "Cover square labels", style A: the word in carved lettering,
+    // a short accent rule, then what the report is in small spaced capitals
     const word = kind === "project" ? "PROJECTS" : "AFSS";
+    const sub = kind === "project" ? "PROJECT REPORT" : "ANNUAL FIRE SAFETY STATEMENT";
     const face = '"Manrope Variable", Helvetica, Arial, sans-serif';
     await document.fonts?.load(`800 100px ${face}`).catch(() => {});
+    const spaced = ctx as CanvasRenderingContext2D & { letterSpacing?: string };
     ctx.font = `800 100px ${face}`;
-    const size = Math.min(150 * k, (100 * sq.s * 0.8) / ctx.measureText(word).width);
+    const size = Math.min(139 * k, (100 * sq.s * 0.82) / ctx.measureText(word).width);
+    // the line underneath: 17 pt, smaller if it would come near the edges
+    const subWidth = (pt: number) => {
+      ctx.font = `800 ${pt}px ${face}`;
+      if ("letterSpacing" in ctx) spaced.letterSpacing = `${(0.22 * pt).toFixed(1)}px`;
+      const w = ctx.measureText(sub).width;
+      if ("letterSpacing" in ctx) spaced.letterSpacing = "0px";
+      return w;
+    };
+    const subSize = Math.min(17 * k, (17 * k * sq.s * 0.72) / subWidth(17 * k));
+    const rule = { w: 66 * k, h: 5.5 * k };
+    const gap = 22 * k;
+    const cap = size * 0.72; // the word's capital height
+    const top = sq.y + (sq.s - (cap + gap + rule.h + gap + subSize)) / 2;
+    const cx = sq.x + sq.s / 2;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "alphabetic";
     ctx.font = `800 ${size}px ${face}`;
     ctx.fillStyle = mix(middle, "#ffffff", 0.02);
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(word, sq.x + sq.s / 2, sq.y + sq.s / 2);
+    ctx.fillText(word, cx, top + cap);
+    ctx.fillStyle = s.secondary;
+    ctx.fillRect(cx - rule.w / 2, top + cap + gap, rule.w, rule.h);
+    ctx.font = `800 ${subSize}px ${face}`;
+    if ("letterSpacing" in ctx) spaced.letterSpacing = `${(0.22 * subSize).toFixed(1)}px`;
+    ctx.fillStyle = mix(s.light, s.primary, 0.22);
+    // (letter spacing adds a space after the last letter too; nudged back)
+    ctx.fillText(sub, cx + ("letterSpacing" in ctx ? 0.11 * subSize : 0), top + cap + gap + rule.h + gap + subSize * 0.8);
+    if ("letterSpacing" in ctx) spaced.letterSpacing = "0px";
   }
   ctx.globalAlpha = 1;
   return canvas.toDataURL("image/jpeg", 0.9);
