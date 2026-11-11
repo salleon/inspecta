@@ -15,8 +15,8 @@ const chip = (on: boolean): CSSProperties => ({
   flexShrink: 0,
   padding: "7px 12px",
   borderRadius: 999,
-  border: `1px solid ${on ? "rgba(46,196,182,.6)" : "var(--border-strong)"}`,
-  background: on ? "rgba(46,196,182,.14)" : "none",
+  border: `1px solid ${on ? "rgba(var(--accent-rgb), .6)" : "var(--border-strong)"}`,
+  background: on ? "rgba(var(--accent-rgb), .14)" : "none",
   color: on ? "var(--accent)" : "var(--muted)",
   fontSize: 12,
   fontWeight: 800,
@@ -255,7 +255,7 @@ export default function CustomReport({
                 ["esr", "ESR category"],
               ] as const
             ).map(([v, l]) => (
-              <button key={v} role="radio" aria-checked={order === v} onClick={() => setOrder(v)} style={{ flex: 1, padding: "9px 0", borderRadius: 9, border: `1px solid ${order === v ? "rgba(46,196,182,.6)" : "transparent"}`, background: order === v ? "rgba(46,196,182,.14)" : "none", color: order === v ? "var(--accent)" : "var(--muted)", fontSize: 13, fontWeight: 800 }}>
+              <button key={v} role="radio" aria-checked={order === v} onClick={() => setOrder(v)} style={{ flex: 1, padding: "9px 0", borderRadius: 9, border: `1px solid ${order === v ? "rgba(var(--accent-rgb), .6)" : "transparent"}`, background: order === v ? "rgba(var(--accent-rgb), .14)" : "none", color: order === v ? "var(--accent)" : "var(--muted)", fontSize: 13, fontWeight: 800 }}>
                 {l}
               </button>
             ))}
@@ -301,7 +301,7 @@ export default function CustomReport({
                     style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderRadius: 10, border: "1px solid var(--border)", background: "var(--panel-2)", color: "var(--text)", fontSize: 13.5, fontWeight: 800, textAlign: "left" }}
                   >
                     <span style={{ flex: 1 }}>{g.heading}</span>
-                    {picked > 0 && <span style={{ padding: "2px 8px", borderRadius: 999, background: "rgba(46,196,182,.16)", color: "var(--accent)", fontSize: 11.5 }}>{picked} picked</span>}
+                    {picked > 0 && <span style={{ padding: "2px 8px", borderRadius: 999, background: "rgba(var(--accent-rgb), .16)", color: "var(--accent)", fontSize: 11.5 }}>{picked} picked</span>}
                     <span style={{ color: "var(--muted)", fontSize: 12, transform: shut ? "none" : "rotate(90deg)", transition: "transform 160ms" }}>›</span>
                   </button>
                 )}

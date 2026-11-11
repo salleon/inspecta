@@ -92,7 +92,7 @@ function Segmented<T extends string>({ label, value, options, onChange, grow = f
             role="radio"
             aria-checked={on}
             onClick={() => onChange(v)}
-            style={{ flex: 1, padding: "6px 12px", borderRadius: 8, border: `1px solid ${on ? "rgba(46,196,182,.6)" : "transparent"}`, background: on ? "rgba(46,196,182,.14)" : "none", color: on ? "var(--accent)" : "var(--muted)", fontSize: 12, fontWeight: 800, whiteSpace: "nowrap" }}
+            style={{ flex: 1, padding: "6px 12px", borderRadius: 8, border: `1px solid ${on ? "rgba(var(--accent-rgb), .6)" : "transparent"}`, background: on ? "rgba(var(--accent-rgb), .14)" : "none", color: on ? "var(--accent)" : "var(--muted)", fontSize: 12, fontWeight: 800, whiteSpace: "nowrap" }}
           >
             {text}
           </button>
@@ -454,8 +454,8 @@ export default function FlowTest() {
     const style: CSSProperties = hydrant
       ? cellStyle(f)
       : r.flowAuto
-        ? { ...cellStyle(f), color: over ? "#f7b977" : "#5ff0e0", background: over ? "rgba(245,165,92,.1)" : "rgba(46,196,182,.07)", borderColor: over ? "rgba(245,165,92,.6)" : "rgba(46,196,182,.35)" }
-        : { ...cellStyle(f), borderColor: "rgba(46,196,182,.35)" };
+        ? { ...cellStyle(f), color: over ? "#f7b977" : "#5ff0e0", background: over ? "rgba(245,165,92,.1)" : "rgba(var(--accent-rgb), .07)", borderColor: over ? "rgba(245,165,92,.6)" : "rgba(var(--accent-rgb), .35)" }
+        : { ...cellStyle(f), borderColor: "rgba(var(--accent-rgb), .35)" };
     return (
       <input
         {...props}
@@ -788,7 +788,7 @@ export default function FlowTest() {
           <button
             onClick={() => setWide(true)}
             aria-label="Full screen, sideways"
-            style={{ flexShrink: 0, height: 28, display: "flex", alignItems: "center", gap: 5, padding: "0 9px", borderRadius: 9, border: "1px solid rgba(46,196,182,.55)", background: "rgba(46,196,182,.14)", color: "var(--accent)", fontSize: 11.5, fontWeight: 800 }}
+            style={{ flexShrink: 0, height: 28, display: "flex", alignItems: "center", gap: 5, padding: "0 9px", borderRadius: 9, border: "1px solid rgba(var(--accent-rgb), .55)", background: "rgba(var(--accent-rgb), .14)", color: "var(--accent)", fontSize: 11.5, fontWeight: 800 }}
           >
             <TurnIcon />
             Full screen
@@ -957,7 +957,7 @@ function SectionTabs({
               <span style={{ color: sectionColour(i), flexShrink: 0, fontSize: 11, lineHeight: 1 }}>●</span>
               <span style={{ flexGrow: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", textAlign: "left" }}>{s.name || sectionName(test, i)}</span>
               {on && (
-                <span style={{ flexShrink: 0, width: 28, height: 28, borderRadius: 8, background: "rgba(46,196,182,.14)", border: "1px solid rgba(46,196,182,.4)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <span style={{ flexShrink: 0, width: 28, height: 28, borderRadius: 8, background: "rgba(var(--accent-rgb), .14)", border: "1px solid rgba(var(--accent-rgb), .4)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <PencilIcon size={15} />
                 </span>
               )}
@@ -1612,8 +1612,8 @@ function GraphLines({ test, lines, onChange }: { test: FlowTestRecord; lines: { 
     gap: 3,
     padding: "3px 6px 3px 4px",
     borderRadius: 999,
-    border: `1px solid ${on || part ? "rgba(46,196,182,.55)" : "var(--border-strong)"}`,
-    background: on || part ? "rgba(46,196,182,.12)" : "none",
+    border: `1px solid ${on || part ? "rgba(var(--accent-rgb), .55)" : "var(--border-strong)"}`,
+    background: on || part ? "rgba(var(--accent-rgb), .12)" : "none",
     color: on || part ? "var(--text)" : "var(--muted-2)",
     fontSize: 10,
     fontWeight: 800,
@@ -1770,7 +1770,7 @@ function EquipmentField({ value, flows, onChange }: { value: string; flows: bool
                   role="option"
                   aria-selected={i === 0}
                   onClick={() => pick(d)}
-                  style={{ display: "block", width: "100%", textAlign: "left", padding: "9px 11px", border: "none", borderTop: i ? "1px solid var(--border)" : "none", background: i === 0 ? "rgba(46,196,182,.12)" : "none", color: "var(--text)", font: "inherit", cursor: "pointer" }}
+                  style={{ display: "block", width: "100%", textAlign: "left", padding: "9px 11px", border: "none", borderTop: i ? "1px solid var(--border)" : "none", background: i === 0 ? "rgba(var(--accent-rgb), .12)" : "none", color: "var(--text)", font: "inherit", cursor: "pointer" }}
                 >
                   <span style={{ display: "block", fontSize: 13.5, fontWeight: 800 }}>
                     {d.make} <span style={{ color: "#5ff0e0" }}>{d.model} {d.size}</span>

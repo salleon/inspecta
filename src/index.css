@@ -17,6 +17,7 @@
   --muted-2: #6a8098;
   --accent: #2ec4b6;
   --accent-text: #04140f;
+  --accent-rgb: 46, 196, 182; /* --accent as r, g, b, for rgba() */
   --paper: #f7f3ea;
   --paper-border: #e2ddd0;
   --paper-text: #1c2530;
@@ -247,10 +248,10 @@ button:active:not(:disabled) {
 @keyframes fabPulse {
   0%,
   100% {
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35), 0 0 0 0 rgba(46, 196, 182, 0.45);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35), 0 0 0 0 rgba(var(--accent-rgb), 0.45);
   }
   50% {
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35), 0 0 0 10px rgba(46, 196, 182, 0);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35), 0 0 0 10px rgba(var(--accent-rgb), 0);
   }
 }
 
@@ -558,7 +559,7 @@ button:active:not(:disabled) {
   box-sizing: border-box;
   padding: 8px;
   border-radius: 16px;
-  background: #071b2c;
+  background: var(--bg);
   border: 1px solid rgba(90, 176, 255, 0.35);
   box-shadow: -10px 0 30px rgba(0, 0, 0, 0.45);
   display: grid;
@@ -707,8 +708,8 @@ button:active:not(:disabled) {
   height: 46px;
   box-sizing: border-box;
   border-radius: 10px;
-  border: 1.5px dashed rgba(46, 196, 182, 0.6);
-  background: rgba(46, 196, 182, 0.07);
+  border: 1.5px dashed rgba(var(--accent-rgb), 0.6);
+  background: rgba(var(--accent-rgb), 0.07);
   color: var(--accent);
   padding: 0;
   display: flex;
@@ -716,10 +717,10 @@ button:active:not(:disabled) {
   text-align: left;
 }
 .wide-ghost:active {
-  background: rgba(46, 196, 182, 0.18);
+  background: rgba(var(--accent-rgb), 0.18);
 }
 .wide-ghost .wide-num {
-  color: rgba(46, 196, 182, 0.7);
+  color: rgba(var(--accent-rgb), 0.7);
 }
 .wide-ghost-label {
   position: sticky;
@@ -746,7 +747,7 @@ button:active:not(:disabled) {
 }
 @keyframes wideAdded {
   0% {
-    background: rgba(46, 196, 182, 0.45);
+    background: rgba(var(--accent-rgb), 0.45);
   }
 }
 

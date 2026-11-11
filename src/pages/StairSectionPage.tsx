@@ -300,7 +300,7 @@ function EveryDoor({ section, sys, stair, test, setTest, setSpf, onBack, run, on
                     key={r}
                     aria-pressed={r === run}
                     onClick={() => onRun(r)}
-                    style={{ flex: "0 0 auto", padding: "8px 12px", borderRadius: 10, fontSize: 13, fontWeight: 800, background: r === run ? "rgba(46,196,182,.14)" : "#0a2135", border: r === run ? "1px solid var(--accent)" : "1px solid var(--border-strong)", color: r === run ? "var(--text)" : "var(--muted)" }}
+                    style={{ flex: "0 0 auto", padding: "8px 12px", borderRadius: 10, fontSize: 13, fontWeight: 800, background: r === run ? "rgba(var(--accent-rgb), .14)" : "#0a2135", border: r === run ? "1px solid var(--accent)" : "1px solid var(--border-strong)", color: r === run ? "var(--text)" : "var(--muted)" }}
                   >
                     Run {r + 1}
                   </button>
@@ -376,7 +376,7 @@ function EveryDoor({ section, sys, stair, test, setTest, setSpf, onBack, run, on
             {stats.marginal > 0 && <span style={{ color: WARN }}> · {stats.marginal} marginal</span>}
             {stats.done === stats.total && stats.total > 0 && <span style={{ color: PASS }}> · all done ✓</span>}
           </span>
-          <span style={{ flex: 1, height: 5, borderRadius: 3, background: "#143452", overflow: "hidden" }}>
+          <span style={{ flex: 1, height: 5, borderRadius: 3, background: "var(--panel-2)", overflow: "hidden" }}>
             <span style={{ display: "block", height: "100%", width: `${stats.total ? (100 * stats.done) / stats.total : 0}%`, background: "var(--accent)", transition: "width .3s" }} />
           </span>
         </div>
@@ -392,7 +392,7 @@ function EveryDoor({ section, sys, stair, test, setTest, setSpf, onBack, run, on
           const of = doorsAt(stair, level);
           return (
             <div key={level} data-i={li} style={{ display: "grid", gridTemplateColumns: `${lead} 1fr 54px`, gap: 6, alignItems: "center", flexShrink: 0 }}>
-              <span style={{ height: 40, borderRadius: 8, background: "#143452", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 14, overflow: "hidden", whiteSpace: "nowrap" }}>{levelChip(level)}</span>
+              <span style={{ height: 40, borderRadius: 8, background: "var(--panel-2)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 14, overflow: "hidden", whiteSpace: "nowrap" }}>{levelChip(level)}</span>
               {section === "vel" && <span style={{ fontSize: 12.5, color: "var(--muted)", fontWeight: 700, textAlign: "center" }}>{adjacentDoor(levels, li, sys) || "–"}</span>}
               <span style={{ display: "flex", gap: 6, minWidth: 0 }}>
                 {Array.from({ length: of }, (_, n) => {
@@ -632,7 +632,7 @@ function Once({ section, sys, stair, test, setTest, onBack }: Props & { section:
                   set({ ambient: "", ambientLevel: once.noiseLevel?.trim() || undefined });
                   setPad({ field: "ambient", label: "Ambient, fan off", sub: `dB(A)${once.noiseLevel?.trim() ? ` · at ${once.noiseLevel.trim()}` : ""}` });
                 }}
-                style={{ alignSelf: "flex-end", fontSize: 12, fontWeight: 800, padding: "7px 12px", borderRadius: 9, background: "#143452", border: `1px solid ${moved ? "#b18cff" : "var(--border-strong)"}`, color: moved ? "#d6c4ff" : "#bfd0de" }}
+                style={{ alignSelf: "flex-end", fontSize: 12, fontWeight: 800, padding: "7px 12px", borderRadius: 9, background: "var(--panel-2)", border: `1px solid ${moved ? "#b18cff" : "var(--border-strong)"}`, color: moved ? "#d6c4ff" : "#bfd0de" }}
               >
                 {moved ? `Re-record ambient at ${once.noiseLevel!.trim()}` : "Re-record ambient"}
               </button>
@@ -663,7 +663,7 @@ function Once({ section, sys, stair, test, setTest, onBack }: Props & { section:
                       role="radio"
                       aria-checked={t === v}
                       onClick={() => tick(section, k, v)}
-                      style={{ fontSize: 12, fontWeight: 800, padding: "7px 12px", borderRadius: 8, border: "none", background: t === v ? (v === "y" ? "rgba(43,212,122,.18)" : "rgba(255,90,74,.15)") : "#143452", color: t === v ? (v === "y" ? PASS : FAIL) : "var(--muted)" }}
+                      style={{ fontSize: 12, fontWeight: 800, padding: "7px 12px", borderRadius: 8, border: "none", background: t === v ? (v === "y" ? "rgba(43,212,122,.18)" : "rgba(255,90,74,.15)") : "var(--panel-2)", color: t === v ? (v === "y" ? PASS : FAIL) : "var(--muted)" }}
                     >
                       {v === "y" ? "Yes" : "No"}
                     </button>
@@ -818,7 +818,7 @@ function MeterButton({ children, onClick, on, small, label }: { children: ReactN
     <button
       aria-label={label}
       onClick={onClick}
-      style={{ flex: small ? "0 0 40px" : 1, padding: "8px 4px", borderRadius: 9, background: "#143452", border: on ? "1px solid var(--accent)" : "1px solid var(--border-strong)", color: on ? "#5ff0e0" : "#bfd0de", fontSize: 11.5, fontWeight: 800, lineHeight: 1.2 }}
+      style={{ flex: small ? "0 0 40px" : 1, padding: "8px 4px", borderRadius: 9, background: "var(--panel-2)", border: on ? "1px solid var(--accent)" : "1px solid var(--border-strong)", color: on ? "#5ff0e0" : "#bfd0de", fontSize: 11.5, fontWeight: 800, lineHeight: 1.2 }}
     >
       {children}
     </button>

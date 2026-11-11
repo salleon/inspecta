@@ -11,7 +11,7 @@ export type LoaderArt = "conveyor" | "sheet" | "zip" | "box";
 export type LoaderUpdate = (t: number, pct: number, count?: number) => void;
 
 const NS = "http://www.w3.org/2000/svg";
-const A = "#2ec4b6";
+const A = "var(--accent)";
 const PANEL2 = "#16324d";
 const PAPER = "#e8eef3";
 const INK = "#9fb0bf";
@@ -161,7 +161,7 @@ function zip(svg: SVGSVGElement): LoaderUpdate {
   const pull = el("g", {}, svg);
   el("rect", { x: -7, y: -6, width: 14, height: 12, rx: 3, fill: A }, pull);
   el("rect", { x: -4, y: 6, width: 8, height: 18, rx: 4, fill: A }, pull);
-  el("circle", { cx: 0, cy: 19, r: 2, fill: "#0e2740" }, pull);
+  el("circle", { cx: 0, cy: 19, r: 2, fill: "var(--panel)" }, pull);
   const label = el("text", { x: 120, y: 160, "text-anchor": "middle", "font-size": 20, "font-weight": 800, fill: "#e6f7f5", "letter-spacing": 2 }, svg);
   return (t, pct, count) => {
     drops.forEach((s, i) => {

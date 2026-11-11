@@ -4,9 +4,9 @@
    ⌫ is always third row, right, in red-pink. */
 .np {
   --pad: 46, 196, 182;
-  --pad-solid: #2ec4b6;
+  --pad-solid: var(--accent);
   --pad-text: #e9fffc;
-  --pad-ink: #04140f;
+  --pad-ink: var(--accent-text);
   position: absolute;
   left: 0;
   right: 0;
@@ -14,7 +14,7 @@
   z-index: 5;
   box-sizing: border-box;
   padding: 10px 14px calc(16px + var(--sa-bottom));
-  background: #071b2c;
+  background: var(--bg);
   border-top: 1px solid rgba(var(--pad), 0.35);
   box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.45);
   display: flex;

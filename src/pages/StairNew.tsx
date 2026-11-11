@@ -28,7 +28,7 @@ const stepNum = (on: boolean): CSSProperties => ({
   justifyContent: "center",
   fontSize: 13,
   fontWeight: 800,
-  background: on ? "var(--accent)" : "#143452",
+  background: on ? "var(--accent)" : "var(--panel-2)",
   color: on ? "var(--accent-text)" : "var(--muted)",
 });
 const stepCard = (on: boolean): CSSProperties => ({
@@ -37,8 +37,8 @@ const stepCard = (on: boolean): CSSProperties => ({
   alignItems: "flex-start",
   borderRadius: 14,
   padding: "11px 12px",
-  background: on ? "rgba(46,196,182,.07)" : "#0c2236",
-  border: on ? "1px solid rgba(46,196,182,.55)" : "1px solid #163a5a",
+  background: on ? "rgba(var(--accent-rgb), .07)" : "#0c2236",
+  border: on ? "1px solid rgba(var(--accent-rgb), .55)" : "1px solid #163a5a",
 });
 const stepSub: CSSProperties = { display: "block", fontSize: 11.5, color: "var(--muted)", fontWeight: 600, lineHeight: 1.4, marginTop: 3 };
 
@@ -138,7 +138,7 @@ export default function StairNew() {
                   if (k !== kind) setPicked([]);
                   setKind(k);
                 }}
-                style={{ background: on ? "rgba(46,196,182,.08)" : "var(--panel)", border: on ? "1px solid var(--accent)" : "1px solid var(--border)", boxShadow: on ? "0 0 0 3px rgba(46,196,182,.14)" : "none", borderRadius: 14, padding: "11px 12px", cursor: "pointer" }}
+                style={{ background: on ? "rgba(var(--accent-rgb), .08)" : "var(--panel)", border: on ? "1px solid var(--accent)" : "1px solid var(--border)", boxShadow: on ? "0 0 0 3px rgba(var(--accent-rgb), .14)" : "none", borderRadius: 14, padding: "11px 12px", cursor: "pointer" }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 15, fontWeight: 800 }}>
                   <span style={radio(on)} />
@@ -147,7 +147,7 @@ export default function StairNew() {
                 <div style={{ fontSize: 12, color: "var(--muted)", margin: "3px 0 0 24px", lineHeight: 1.4 }}>{KIND_HINT[k]}</div>
                 {(k === "custom" || k === "general") && on && (
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 5, margin: "8px 0 0 24px" }}>
-                    {k === "general" && <span style={{ fontSize: 11, fontWeight: 800, padding: "5px 9px", borderRadius: 999, background: "rgba(46,196,182,.16)", border: "1px solid var(--accent)", color: "#5ff0e0" }}>Velocity</span>}
+                    {k === "general" && <span style={{ fontSize: 11, fontWeight: 800, padding: "5px 9px", borderRadius: 999, background: "rgba(var(--accent-rgb), .16)", border: "1px solid var(--accent)", color: "#5ff0e0" }}>Velocity</span>}
                     {(k === "general" ? GENERAL_EXTRA : CUSTOM_SECTIONS).map((s) => {
                       const sel = picked.includes(s);
                       return (
@@ -158,7 +158,7 @@ export default function StairNew() {
                             e.stopPropagation();
                             setPicked((p) => (sel ? p.filter((x) => x !== s) : [...p.filter((x) => x !== s), s]));
                           }}
-                          style={{ fontSize: 11, fontWeight: 800, padding: "5px 9px", borderRadius: 999, background: sel ? "rgba(46,196,182,.16)" : "var(--panel-2)", border: sel ? "1px solid var(--accent)" : "1px solid var(--border-strong)", color: sel ? "#5ff0e0" : "var(--muted)" }}
+                          style={{ fontSize: 11, fontWeight: 800, padding: "5px 9px", borderRadius: 999, background: sel ? "rgba(var(--accent-rgb), .16)" : "var(--panel-2)", border: sel ? "1px solid var(--accent)" : "1px solid var(--border-strong)", color: sel ? "#5ff0e0" : "var(--muted)" }}
                         >
                           {k === "general" && !sel ? "+ " : ""}
                           {SECTION[s].name}
@@ -184,7 +184,7 @@ export default function StairNew() {
             padding: "16px 0",
             borderRadius: 14,
             border: "none",
-            background: steps ? "#143452" : "var(--accent)",
+            background: steps ? "var(--panel-2)" : "var(--accent)",
             color: steps ? "var(--muted)" : "var(--accent-text)",
             fontSize: 16,
             fontWeight: 800,

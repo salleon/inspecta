@@ -13,8 +13,8 @@ export type UpdateStep = "downloading" | "installing" | "restarting";
 export type GearsUpdate = (t: number, step: UpdateStep, stepT: number, pct: number) => void;
 
 const NS = "http://www.w3.org/2000/svg";
-const A = "#2ec4b6";
-const NAVY = "#071b2c";
+const A = "var(--accent)";
+const NAVY = "var(--bg)";
 
 type Attrs = Record<string, string | number>;
 function el<K extends keyof SVGElementTagNameMap>(tag: K, attrs: Attrs, parent: Element): SVGElementTagNameMap[K] {
@@ -56,7 +56,7 @@ const PLACE = { x: 182, y: 118 }; // where the small gear meshes with the big on
 const ON_TRACK = 0.6; // the new gear's size while it rides the track
 
 export function mountGears(svg: SVGSVGElement): GearsUpdate {
-  el("rect", { x: TRACK_X, y: TRACK_Y - 4, width: TRACK_W, height: 8, rx: 4, fill: "#143452" }, svg);
+  el("rect", { x: TRACK_X, y: TRACK_Y - 4, width: TRACK_W, height: 8, rx: 4, fill: "var(--panel-2)" }, svg);
   const trackFill = el("rect", { x: TRACK_X, y: TRACK_Y - 4, width: 0, height: 8, rx: 4, fill: A }, svg);
   const big = gear(svg, 52, 12, "#3a6286");
   const old = gear(svg, 30, 8, "#6a8098");

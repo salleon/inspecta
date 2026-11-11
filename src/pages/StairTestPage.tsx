@@ -79,12 +79,12 @@ export default function StairTestPage() {
         }}
         style={{ display: "flex", alignItems: "center", gap: 11, flex: 1, minWidth: 0, textAlign: "left", padding: "10px 12px", borderRadius: 13, background: "var(--panel)", border: "1px solid var(--border)", color: "var(--text)" }}
       >
-        <span style={{ width: 34, height: 34, borderRadius: 10, background: pct === 100 ? "rgba(43,212,122,.16)" : "#143452", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>{ICON[s]}</span>
+        <span style={{ width: 34, height: 34, borderRadius: 10, background: pct === 100 ? "rgba(43,212,122,.16)" : "var(--panel-2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>{ICON[s]}</span>
         <span style={{ flexGrow: 1, minWidth: 0 }}>
           <span style={{ display: "block", fontSize: 14, fontWeight: 800 }}>{info.name}</span>
           {sub && <span style={{ display: "block", fontSize: 11.5, color: "var(--muted)", fontWeight: 700 }}>{sub}</span>}
           {info.every && (
-            <span style={{ display: "block", height: 4, borderRadius: 2, background: "#143452", marginTop: 5, overflow: "hidden" }}>
+            <span style={{ display: "block", height: 4, borderRadius: 2, background: "var(--panel-2)", marginTop: 5, overflow: "hidden" }}>
               <span style={{ display: "block", height: "100%", width: `${pct}%`, background: "var(--accent)" }} />
             </span>
           )}
@@ -122,7 +122,7 @@ export default function StairTestPage() {
                 <button
                   key={s.id}
                   onClick={() => setParams({ stair: s.id }, { replace: true })}
-                  style={{ flex: "0 0 auto", textAlign: "left", fontSize: 12, fontWeight: 800, padding: "7px 11px", borderRadius: 9, lineHeight: 1.25, background: on ? "rgba(46,196,182,.14)" : "var(--panel-2)", border: on ? "1px solid var(--accent)" : "1px solid var(--border-strong)", color: on ? "#5ff0e0" : "var(--muted)" }}
+                  style={{ flex: "0 0 auto", textAlign: "left", fontSize: 12, fontWeight: 800, padding: "7px 11px", borderRadius: 9, lineHeight: 1.25, background: on ? "rgba(var(--accent-rgb), .14)" : "var(--panel-2)", border: on ? "1px solid var(--accent)" : "1px solid var(--border-strong)", color: on ? "#5ff0e0" : "var(--muted)" }}
                 >
                   {stairFan(s) || "No fan name"}
                   {s.name.trim() && <small style={{ display: "block", fontSize: 10.5, fontWeight: 600 }}>{s.name.trim()}</small>}
@@ -140,7 +140,7 @@ export default function StairTestPage() {
             {missing.length > 0 && <div style={{ fontSize: 13, fontWeight: 800, color: "#bfd0de", marginTop: 4 }}>Additional tests</div>}
             {missing.map((s) => (
               <div key={s} style={{ display: "flex", alignItems: "center", gap: 11, padding: "10px 12px", borderRadius: 13, border: "1px dashed var(--border-strong)" }}>
-                <span style={{ width: 34, height: 34, borderRadius: 10, background: "rgba(46,196,182,.1)", color: "#5ff0e0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>+</span>
+                <span style={{ width: 34, height: 34, borderRadius: 10, background: "rgba(var(--accent-rgb), .1)", color: "#5ff0e0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>+</span>
                 <span style={{ flexGrow: 1, fontSize: 14, fontWeight: 800, color: "#bfd0de" }}>{SECTION[s].name}</span>
                 <Pill onClick={() => setTest((t) => ({ ...t, sections: ALL_SECTIONS.filter((x) => t.sections.includes(x) || x === s) }))}>+ Add</Pill>
               </div>
@@ -149,7 +149,7 @@ export default function StairTestPage() {
               onClick={() => setNotesOpen(true)}
               style={{ display: "flex", alignItems: "center", gap: 11, width: "100%", textAlign: "left", padding: "10px 12px", borderRadius: 13, background: "var(--panel)", border: "1px solid var(--border)", color: "var(--text)", marginTop: 4 }}
             >
-              <span style={{ width: 34, height: 34, borderRadius: 10, background: "#143452", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>✎</span>
+              <span style={{ width: 34, height: 34, borderRadius: 10, background: "var(--panel-2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>✎</span>
               <span style={{ flexGrow: 1 }}>
                 <span style={{ display: "block", fontSize: 14, fontWeight: 800 }}>Notes</span>
                 {test.notes.length > 0 && (

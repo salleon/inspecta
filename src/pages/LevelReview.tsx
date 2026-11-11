@@ -382,7 +382,7 @@ export default function LevelReview({
                       <span style={{ color: "#b18cff", fontSize: 11 }}>▾</span>
                     </button>
                     {et.numbered ? (
-                      <span style={{ ...numBox, borderColor: "#2ec4b6", boxShadow: "0 0 0 2px rgba(46,196,182,.18)" }}>
+                      <span style={{ ...numBox, borderColor: "var(--accent)", boxShadow: "0 0 0 2px rgba(var(--accent-rgb), .18)" }}>
                         {edit.num}
                         <span style={{ display: "inline-block", width: 2, height: 18, background: "#5ff0e0", marginLeft: 1 }} />
                       </span>

@@ -32,7 +32,7 @@ export function Pill({ children, onClick }: { children: ReactNode; onClick?: () 
     <button
       onClick={onClick}
       disabled={!onClick}
-      style={{ flexShrink: 0, fontSize: 11.5, fontWeight: 800, padding: "6px 11px", borderRadius: 999, background: "rgba(46,196,182,.14)", color: "#5ff0e0", border: "1px solid rgba(46,196,182,.4)", whiteSpace: "nowrap" }}
+      style={{ flexShrink: 0, fontSize: 11.5, fontWeight: 800, padding: "6px 11px", borderRadius: 999, background: "rgba(var(--accent-rgb), .14)", color: "#5ff0e0", border: "1px solid rgba(var(--accent-rgb), .4)", whiteSpace: "nowrap" }}
     >
       {children}
     </button>

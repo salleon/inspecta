@@ -84,11 +84,11 @@ export function CameraIcon({ size, paused = false }: { size: number; paused?: bo
     <div className="cam-icon" style={{ position: "relative", width: size, height: size }}>
       <canvas ref={back} width={Math.round(c * dpr)} height={Math.round(c * dpr)} style={canvasStyle} />
       <svg width={size} height={size} viewBox="-8 -4 136 136" style={{ position: "absolute", inset: 0, overflow: "visible" }}>
-        <path d="M42 36l7-11h22l7 11" fill="#143452" stroke="#f4f7f9" strokeWidth="4.5" strokeLinejoin="round" />
-        <rect x="12" y="36" width="96" height="66" rx="16" fill="#143452" stroke="#f4f7f9" strokeWidth="4.5" />
+        <path d="M42 36l7-11h22l7 11" fill="var(--panel-2)" stroke="#f4f7f9" strokeWidth="4.5" strokeLinejoin="round" />
+        <rect x="12" y="36" width="96" height="66" rx="16" fill="var(--panel-2)" stroke="#f4f7f9" strokeWidth="4.5" />
         <circle cx="93" cy="50" r="4" fill="#f5d36b" />
         <circle cx="60" cy="66" r="23" fill="none" stroke="#f4f7f9" strokeWidth="4.5" />
-        <circle cx="60" cy="66" r="15" fill="#0e2740" />
+        <circle cx="60" cy="66" r="15" fill="var(--panel)" />
         <circle cx="54" cy="60" r="4.5" fill="rgba(255,255,255,.4)" />
       </svg>
       <canvas ref={front} width={Math.round(c * dpr)} height={Math.round(c * dpr)} style={canvasStyle} />
@@ -172,7 +172,7 @@ function traceSwoosh(back: HTMLCanvasElement, front: HTMLCanvasElement, now: num
     grad.addColorStop(0, "#2f9d90");
     grad.addColorStop(1, "#5ff0e0");
     g.fillStyle = grad;
-    g.shadowColor = "rgba(46,196,182,.7)";
+    g.shadowColor = "rgba(var(--accent-rgb), .7)";
     g.shadowBlur = 6 * k;
     band(g, tail, head, o);
     // the point itself, while it draws

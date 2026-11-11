@@ -1040,7 +1040,7 @@ const labelStyle: CSSProperties = {
 
 const fieldStyle: CSSProperties = {
   background: "var(--panel-2)",
-  border: "1px solid rgba(46,196,182,0.28)",
+  border: "1px solid rgba(var(--accent-rgb), 0.28)",
   borderRadius: 12,
   padding: "13px 14px",
   fontSize: 14,
@@ -1077,7 +1077,7 @@ function CategoryBoxButton({ label, open, onClick }: { label: string; open: bool
         (document.activeElement as HTMLElement | null)?.blur();
         onClick();
       }}
-      style={{ ...fieldStyle, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, textAlign: "left", borderColor: open ? "var(--accent)" : "rgba(46,196,182,0.28)" }}
+      style={{ ...fieldStyle, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, textAlign: "left", borderColor: open ? "var(--accent)" : "rgba(var(--accent-rgb), 0.28)" }}
     >
       <span style={{ color: open ? "var(--muted)" : "var(--muted-2)" }}>{label}</span>
       <IconChevronLeft size={16} color={open ? "var(--accent)" : "var(--muted-2)"} style={{ transform: open ? "rotate(90deg)" : "rotate(-90deg)", flexShrink: 0 }} />

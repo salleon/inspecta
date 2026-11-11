@@ -33,7 +33,7 @@ function CategoryButton({ item, best, active, onPick, children }: { item: EsrIte
         blurActive();
         onPick(item.code);
       }}
-      style={{ ...chipStyle, borderColor: best || active ? "var(--accent)" : "var(--border-strong)", background: active ? "rgba(46,196,182,0.14)" : "var(--panel-2)" }}
+      style={{ ...chipStyle, borderColor: best || active ? "var(--accent)" : "var(--border-strong)", background: active ? "rgba(var(--accent-rgb), 0.14)" : "var(--panel-2)" }}
     >
       <CodeBadge code={item.code} />
       <span style={wrapStyle}>{children ?? item.name}</span>
@@ -125,7 +125,7 @@ export function EsrSelectedCard({ code, onClear }: { code: string; onClear: () =
   const group = esrGroup(code);
   if (!item || !section) return null;
   return (
-    <div style={{ ...chipStyle, background: "rgba(46,196,182,0.14)", borderColor: "var(--accent)", padding: "10px 10px 10px 12px", cursor: "default" }}>
+    <div style={{ ...chipStyle, background: "rgba(var(--accent-rgb), 0.14)", borderColor: "var(--accent)", padding: "10px 10px 10px 12px", cursor: "default" }}>
       <CodeBadge code={code} />
       <span style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2, textAlign: "left" }}>
         <span style={{ fontSize: 13, fontWeight: 800, lineHeight: 1.3 }}>{item.name}</span>
@@ -227,7 +227,7 @@ export function EsrBrowseSheet({ current, onPick, onClose }: { current?: string;
           placeholder="Search categories"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          style={{ background: "var(--panel-2)", border: "1px solid rgba(46,196,182,0.28)", borderRadius: 12, padding: "12px 14px", fontSize: 14, fontWeight: 500, color: "var(--text)", outline: "none" }}
+          style={{ background: "var(--panel-2)", border: "1px solid rgba(var(--accent-rgb), 0.28)", borderRadius: 12, padding: "12px 14px", fontSize: 14, fontWeight: 500, color: "var(--text)", outline: "none" }}
         />
         <div style={{ overflowY: "auto", display: "flex", flexDirection: "column", gap: 6, paddingBottom: "calc(20px + env(safe-area-inset-bottom))" }}>
           {q ? (

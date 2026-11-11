@@ -32,7 +32,7 @@
   text-align: left;
   padding: 6px 8px;
   border-radius: 9px;
-  background: #143452;
+  background: var(--panel-2);
   border: 1px solid transparent;
   color: var(--text);
   font-size: 13px;
@@ -41,7 +41,7 @@
 .lr-lv .c {
   min-width: 34px;
   text-align: center;
-  background: #0e2740;
+  background: var(--panel);
   border-radius: 7px;
   padding: 3px 5px;
   font-size: 13.5px;
@@ -134,7 +134,7 @@
   margin-left: auto;
   display: flex;
   min-width: 0;
-  background: #143452;
+  background: var(--panel-2);
   border: 1px solid #1c4468;
   border-radius: 9px;
   padding: 2px;
@@ -347,8 +347,8 @@
   border-radius: 12px;
   font-weight: 800;
   font-size: 14px;
-  background: rgba(46, 196, 182, 0.1);
-  border: 1px solid rgba(46, 196, 182, 0.5);
+  background: rgba(var(--accent-rgb), 0.1);
+  border: 1px solid rgba(var(--accent-rgb), 0.5);
   color: #5ff0e0;
 }
 .lr-dlg .bb button.go {

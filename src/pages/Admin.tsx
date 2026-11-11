@@ -293,7 +293,7 @@ function AdminHome() {
                     role="radio"
                     aria-checked={on}
                     onClick={() => setFlowMode(mode)}
-                    style={{ flex: 1, padding: "7px 0", borderRadius: 8, border: `1px solid ${on ? "rgba(46,196,182,.6)" : "transparent"}`, background: on ? "rgba(46,196,182,.14)" : "none", color: on ? "var(--accent)" : "var(--muted)", fontSize: 13, fontWeight: 800 }}
+                    style={{ flex: 1, padding: "7px 0", borderRadius: 8, border: `1px solid ${on ? "rgba(var(--accent-rgb), .6)" : "transparent"}`, background: on ? "rgba(var(--accent-rgb), .14)" : "none", color: on ? "var(--accent)" : "var(--muted)", fontSize: 13, fontWeight: 800 }}
                   >
                     {label}
                   </button>
@@ -483,7 +483,7 @@ function KeywordDetail({ code }: { code: string }) {
               {chips.map((w) => (
                 <span
                   key={w.text}
-                  style={{ display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 999, padding: "5px 6px 5px 11px", fontSize: 12, fontWeight: 700, wordSpacing: "0.1em", background: w.builtIn ? "var(--panel-2)" : "rgba(46,196,182,0.16)", border: w.builtIn ? "1px solid var(--border-strong)" : "1px solid var(--accent)" }}
+                  style={{ display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 999, padding: "5px 6px 5px 11px", fontSize: 12, fontWeight: 700, wordSpacing: "0.1em", background: w.builtIn ? "var(--panel-2)" : "rgba(var(--accent-rgb), 0.16)", border: w.builtIn ? "1px solid var(--border-strong)" : "1px solid var(--accent)" }}
                 >
                   {w.text}
                   <button type="button" aria-label={`Remove ${w.text}`} onClick={() => removeKeyword(code, w)} style={{ width: 20, height: 20, borderRadius: "50%", border: "none", background: "rgba(0,0,0,0.25)", color: "var(--text)", fontSize: 10, fontWeight: 800, padding: 0 }}>
@@ -671,7 +671,7 @@ const sectionStyle: CSSProperties = { fontSize: 11, fontWeight: 800, letterSpaci
 
 const fieldStyle: CSSProperties = {
   background: "var(--panel-2)",
-  border: "1px solid rgba(46,196,182,0.28)",
+  border: "1px solid rgba(var(--accent-rgb), 0.28)",
   borderRadius: 12,
   padding: "12px 14px",
   fontSize: 14,
@@ -688,5 +688,5 @@ const linkButton: CSSProperties = { background: "none", border: "none", padding:
 
 const keyStyle: CSSProperties = { height: 54, borderRadius: 12, background: "var(--panel-2)", border: "1px solid var(--border)", color: "var(--text)", fontSize: 22, fontWeight: 700 };
 
-const editedTag: CSSProperties = { flexShrink: 0, fontSize: 10, fontWeight: 800, color: "var(--accent)", border: "1px solid rgba(46,196,182,0.5)", borderRadius: 6, padding: "2px 6px" };
+const editedTag: CSSProperties = { flexShrink: 0, fontSize: 10, fontWeight: 800, color: "var(--accent)", border: "1px solid rgba(var(--accent-rgb), 0.5)", borderRadius: 6, padding: "2px 6px" };
 

@@ -343,7 +343,7 @@ export default function StairSystem() {
             onClick={leave}
             disabled={!canSave}
             className={canSave ? "glow-sweep" : undefined}
-            style={{ position: "relative", overflow: "hidden", width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: canSave ? "var(--accent)" : "#143452", color: canSave ? "var(--accent-text)" : "var(--muted)", fontSize: 16, fontWeight: 800 }}
+            style={{ position: "relative", overflow: "hidden", width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: canSave ? "var(--accent)" : "var(--panel-2)", color: canSave ? "var(--accent-text)" : "var(--muted)", fontSize: 16, fontWeight: 800 }}
           >
             {!hasStairs ? "Add a stair to continue" : needsFan ? "Add a fan name to continue" : "Save and continue ›"}
           </button>
@@ -452,14 +452,14 @@ function StairCard({
   const count = ready(stair) ? stairDoors(stair).length : 0;
   const each = doorsEach(stair);
   const added = Object.entries(stair.more ?? {}).filter(([, v]) => v > 0);
-  const step: CSSProperties = { width: 44, height: 36, borderRadius: 8, background: "#143452", border: "none", fontSize: 18, fontWeight: 800 };
+  const step: CSSProperties = { width: 44, height: 36, borderRadius: 8, background: "var(--panel-2)", border: "none", fontSize: 18, fontWeight: 800 };
   const edited = levelsEdited(stair);
   return (
-    <div data-stair={stair.id} style={{ background: "var(--panel)", border: "1px solid var(--accent)", boxShadow: "0 0 0 3px rgba(46,196,182,.12)", borderRadius: 14, padding: "11px 12px", display: "flex", flexDirection: "column", gap: 9 }}>
+    <div data-stair={stair.id} style={{ background: "var(--panel)", border: "1px solid var(--accent)", boxShadow: "0 0 0 3px rgba(var(--accent-rgb), .12)", borderRadius: 14, padding: "11px 12px", display: "flex", flexDirection: "column", gap: 9 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
         <span style={numBadge}>{n}</span>
         <span style={{ fontSize: 15, fontWeight: 800, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0, color: stairFan(stair) ? undefined : "#f7b977" }}>{stairLabel(stair)}</span>
-        <span style={{ marginLeft: "auto", fontSize: 12, fontWeight: 800, borderRadius: 999, padding: "5px 10px", whiteSpace: "nowrap", color: count ? "#5ff0e0" : "#6a8098", background: count ? "rgba(46,196,182,.1)" : "#143452" }}>
+        <span style={{ marginLeft: "auto", fontSize: 12, fontWeight: 800, borderRadius: 999, padding: "5px 10px", whiteSpace: "nowrap", color: count ? "#5ff0e0" : "#6a8098", background: count ? "rgba(var(--accent-rgb), .1)" : "var(--panel-2)" }}>
           {count ? `${count} door${count === 1 ? "" : "s"}` : "— doors"}
         </span>
         <button onClick={onRemove} style={{ border: "none", background: "none", color: "#ff7a6a", fontSize: 12, fontWeight: 800, padding: "2px 0 2px 4px" }}>
@@ -530,7 +530,7 @@ function StairCard({
         {groups.length > 0 && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
             {groups.map((g) => (
-              <button key={g} onClick={() => onChange({ group: g })} style={{ fontSize: 11.5, fontWeight: 800, padding: "5px 10px", borderRadius: 8, background: "#143452", border: "none", color: "#bfd0de" }}>
+              <button key={g} onClick={() => onChange({ group: g })} style={{ fontSize: 11.5, fontWeight: 800, padding: "5px 10px", borderRadius: 8, background: "var(--panel-2)", border: "none", color: "#bfd0de" }}>
                 {g}
               </button>
             ))}
@@ -595,18 +595,18 @@ function Notes({ value, onChange }: { value: string; onChange: (v: string) => vo
 }
 
 const rowLabel: CSSProperties = { width: 78, flexShrink: 0, fontSize: 12, fontWeight: 700, color: "var(--muted)" };
-const numBadge: CSSProperties = { width: 26, height: 26, borderRadius: "50%", background: "rgba(46,196,182,.16)", color: "#5ff0e0", fontWeight: 800, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 };
-const addButton: CSSProperties = { border: "1.5px dashed rgba(46,196,182,.6)", borderRadius: 12, padding: 12, background: "rgba(46,196,182,.05)", color: "#5ff0e0", fontWeight: 800, fontSize: 14 };
-const addHot: CSSProperties = { ...addButton, background: "rgba(46,196,182,.14)", border: "1.5px solid rgba(46,196,182,.6)", fontSize: 15, padding: 15, boxShadow: "0 0 0 3px rgba(46,196,182,.12)" };
+const numBadge: CSSProperties = { width: 26, height: 26, borderRadius: "50%", background: "rgba(var(--accent-rgb), .16)", color: "#5ff0e0", fontWeight: 800, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 };
+const addButton: CSSProperties = { border: "1.5px dashed rgba(var(--accent-rgb), .6)", borderRadius: 12, padding: 12, background: "rgba(var(--accent-rgb), .05)", color: "#5ff0e0", fontWeight: 800, fontSize: 14 };
+const addHot: CSSProperties = { ...addButton, background: "rgba(var(--accent-rgb), .14)", border: "1.5px solid rgba(var(--accent-rgb), .6)", fontSize: 15, padding: 15, boxShadow: "0 0 0 3px rgba(var(--accent-rgb), .12)" };
 const summaryRow: CSSProperties = { display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", background: "var(--panel)", border: "1px solid var(--border)", borderRadius: 14, padding: "11px 12px", color: "var(--text)" };
-const editPill: CSSProperties = { flexShrink: 0, fontSize: 11.5, fontWeight: 800, padding: "6px 11px", borderRadius: 999, background: "rgba(46,196,182,.14)", color: "#5ff0e0", border: "1px solid rgba(46,196,182,.4)" };
+const editPill: CSSProperties = { flexShrink: 0, fontSize: 11.5, fontWeight: 800, padding: "6px 11px", borderRadius: 999, background: "rgba(var(--accent-rgb), .14)", color: "#5ff0e0", border: "1px solid rgba(var(--accent-rgb), .4)" };
 const inputStyle = (focus: boolean): CSSProperties => ({
   height: 40,
   boxSizing: "border-box",
   minWidth: 0,
   background: "#0a2135",
-  border: `1px solid ${focus ? "#2ec4b6" : "var(--border-strong)"}`,
-  boxShadow: focus ? "0 0 0 2px rgba(46,196,182,.18)" : "none",
+  border: `1px solid ${focus ? "var(--accent)" : "var(--border-strong)"}`,
+  boxShadow: focus ? "0 0 0 2px rgba(var(--accent-rgb), .18)" : "none",
   borderRadius: 10,
   padding: "0 12px",
   fontSize: 15,

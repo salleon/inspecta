@@ -265,7 +265,7 @@ function Welcome() {
           <button
             type="button"
             onClick={() => void startTour({ topics: true })}
-            style={{ padding: "13px 0", borderRadius: 14, border: "1px solid rgba(46,196,182,.55)", background: "rgba(46,196,182,.1)", color: "var(--accent)", fontSize: 14.5, fontWeight: 800 }}
+            style={{ padding: "13px 0", borderRadius: 14, border: "1px solid rgba(var(--accent-rgb), .55)", background: "rgba(var(--accent-rgb), .1)", color: "var(--accent)", fontSize: 14.5, fontWeight: 800 }}
           >
             ☰ Pick a topic
           </button>
@@ -301,7 +301,7 @@ function Topics() {
             onClick={() => setTourStep(firstOf(i), true)}
             style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 8px", borderRadius: 12, background: "var(--panel-2)", border: "1px solid var(--border)", color: "var(--text)", textAlign: "left" }}
           >
-            <span style={{ width: 26, height: 26, borderRadius: 8, background: "rgba(46,196,182,.14)", color: "var(--accent)", fontSize: 13, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{i + 1}</span>
+            <span style={{ width: 26, height: 26, borderRadius: 8, background: "rgba(var(--accent-rgb), .14)", color: "var(--accent)", fontSize: 13, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{i + 1}</span>
             <span style={{ display: "flex", flexDirection: "column", flexGrow: 1, minWidth: 0 }}>
               <span style={{ fontSize: 14, fontWeight: 800 }}>{topic.name}</span>
               <span style={{ fontSize: 11.5, fontWeight: 600, color: "var(--muted)" }}>{topic.hint}</span>
@@ -581,7 +581,7 @@ function Walkthrough({ ids, step, single }: { ids: TourIds; step: number; single
             <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
               <span aria-hidden="true" style={{ display: "flex", gap: 3 }}>
                 {TOPICS.map((_, i) => (
-                  <span key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: i === current.chapter ? "var(--accent)" : i < current.chapter ? "rgba(46,196,182,.45)" : "#24435f" }} />
+                  <span key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: i === current.chapter ? "var(--accent)" : i < current.chapter ? "rgba(var(--accent-rgb), .45)" : "#24435f" }} />
                 ))}
               </span>
               <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--accent)" }}>

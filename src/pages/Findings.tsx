@@ -560,7 +560,7 @@ export default function Findings() {
             borderRadius: 12,
             background: "var(--panel-2)",
             boxShadow: "0 14px 30px rgba(0,0,0,0.45)",
-            outline: "1px solid rgba(46,196,182,0.35)",
+            outline: "1px solid rgba(var(--accent-rgb), 0.35)",
             outlineOffset: -1,
             transform: "scale(1.02)",
             zIndex: 100,

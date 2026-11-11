@@ -157,7 +157,7 @@ export default function CategoriseFlow({
         </button>
 
         {revisit && (
-          <div style={{ flexShrink: 0, background: "rgba(46,196,182,0.12)", border: "1px solid rgba(46,196,182,0.45)", borderRadius: 12, padding: "9px 12px", fontSize: 12, fontWeight: 600, lineHeight: 1.45, color: "#bdebe6" }}>
+          <div style={{ flexShrink: 0, background: "rgba(var(--accent-rgb), 0.12)", border: "1px solid rgba(var(--accent-rgb), 0.45)", borderRadius: 12, padding: "9px 12px", fontSize: 12, fontWeight: 600, lineHeight: 1.45, color: "#bdebe6" }}>
             {revisit === "picked" && esrItem(finding.esrCategory) ? (
               <>
                 You picked{" "}
