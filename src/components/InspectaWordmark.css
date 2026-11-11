@@ -1,0 +1,41 @@
+/* The Inspecta logotype (components/InspectaWordmark.tsx). Sora is bundled
+   with the app (main.tsx), so it looks the same offline. */
+
+.iw-word {
+  display: flex;
+  font-family: "Sora", "Manrope Variable", system-ui, sans-serif;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.045em;
+  white-space: nowrap;
+  color: var(--text);
+}
+
+.iw-ltr {
+  display: inline-block;
+}
+
+.iw-i {
+  position: relative;
+}
+
+/* the tick sits where the i's dot would be */
+.iw-tick {
+  position: absolute;
+  left: 50%;
+  top: -0.015em;
+  width: 0.424em;
+  height: 0.348em;
+  margin-left: -0.09em;
+  overflow: visible;
+}
+
+.iw-tick path {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 5.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+}

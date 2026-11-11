@@ -1,0 +1,219 @@
+/* Contractor mode's launch splash (components/ContractorSplash.tsx), option B
+   "Under the lens" on the canvas "Inspecta Contractor Splash". Everything is
+   in the company's colours (lib/company → --bg, --text, --accent). Every
+   element's resting style is its final state, so with reduced motion it
+   simply shows. Timed to finish inside the 2.9s hold in App.tsx. */
+
+.cs {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  overflow: hidden;
+  background-color: var(--bg);
+  background-image:
+    linear-gradient(rgba(var(--accent-rgb, 46, 196, 182), 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(var(--accent-rgb, 46, 196, 182), 0.07) 1px, transparent 1px);
+  background-size: 26px 26px;
+  background-position: center;
+  color: var(--text);
+}
+
+.cs-center {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.cs-logo {
+  margin-bottom: 34px;
+  filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.25));
+}
+
+.cs-stage {
+  position: relative;
+}
+
+/* the magnifier: glass in the text colour, handle in the accent */
+.cs-lens {
+  position: absolute;
+  top: -4px;
+  left: 0;
+  width: 84px;
+  height: 84px;
+  margin-left: -42px;
+  opacity: 0;
+}
+
+.cs-glass {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 3.5px solid var(--text);
+  background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.04) 45%, rgba(255, 255, 255, 0) 70%);
+}
+
+.cs-handle {
+  position: absolute;
+  left: 68px;
+  top: 70px;
+  width: 34px;
+  height: 9px;
+  border-radius: 5px;
+  background: var(--accent);
+  transform: rotate(45deg);
+  transform-origin: 0 50%;
+}
+
+/* the pulse where the tick lands, over the i */
+.cs-ring {
+  position: absolute;
+  left: 24px;
+  top: 14px;
+  width: 30px;
+  height: 30px;
+  margin: -15px 0 0 -15px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  opacity: 0;
+}
+
+.cs-tag {
+  margin-top: 14px;
+  padding: 0 24px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 2.4px;
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--muted);
+}
+
+.cs-logo {
+  animation: csLogo 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) 0.1s both;
+}
+.cs-word {
+  animation: csShow 0.35s 0.35s both;
+}
+.cs-word .iw-ltr {
+  animation: csSharpen 0.42s cubic-bezier(0.3, 0.8, 0.4, 1) both;
+  animation-delay: calc(0.82s + var(--i) * 0.13s);
+}
+.cs-lens {
+  animation: csLens 1.2s cubic-bezier(0.45, 0, 0.55, 1) 0.7s both;
+}
+.cs-word .iw-tick path {
+  animation: csDraw 0.32s cubic-bezier(0.6, 0, 0.3, 1) 1.9s both;
+}
+.cs-ring {
+  animation: csRing 0.6s ease-out 2.15s both;
+}
+.cs-tag {
+  animation: csFade 0.5s 2.1s both;
+}
+
+@keyframes csLogo {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes csShow {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes csSharpen {
+  from {
+    filter: blur(8px);
+    opacity: 0.14;
+    transform: scale(0.94);
+  }
+  45% {
+    filter: blur(0);
+    opacity: 1;
+    transform: scale(1.2) translateY(-4px);
+  }
+  to {
+    filter: blur(0);
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes csLens {
+  0% {
+    left: -14%;
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  10% {
+    opacity: 1;
+    transform: none;
+  }
+  86% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    left: 108%;
+    opacity: 0;
+    transform: scale(0.7);
+  }
+}
+@keyframes csDraw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes csRing {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  1% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.6);
+  }
+}
+@keyframes csFade {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cs-logo,
+  .cs-word,
+  .cs-word .iw-ltr,
+  .cs-word .iw-tick path,
+  .cs-tag {
+    animation: none;
+  }
+  .cs-lens,
+  .cs-ring {
+    display: none;
+  }
+}
