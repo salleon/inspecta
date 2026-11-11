@@ -32,7 +32,7 @@ import {
   stairLevels,
   type Every,
 } from "../lib/stairTest";
-import { meterOffset, setMeterOffset, startMeter, type Meter } from "../lib/soundMeter";
+import { meterOffset, setMeterOffset, startMeter, type Meter, type MeterInfo } from "../lib/soundMeter";
 import { useBackHandler } from "../lib/backButton";
 import { AMBER, PageHeader, useStairTest } from "../components/StairUi";
 import NumPad, { BLANK, k, numberKeys, PadTag, readingKeys } from "../components/NumPad";
@@ -736,6 +736,8 @@ function Field({ label, sub, value, onChange, onFocus }: { label: string; sub: s
 // the phone's microphone as a sound meter: a reference check only
 function PhoneMeter({ saved, onSave }: { saved?: string; onSave: (v: string) => void }) {
   const [level, setLevel] = useState<number | null>(null);
+  const [raw, setRaw] = useState<number | null>(null);
+  const [info, setInfo] = useState<MeterInfo | null>(null);
   const [max, setMax] = useState<number | null>(null);
   const [error, setError] = useState("");
   const [offset, setOffset] = useState(meterOffset());
@@ -755,10 +757,12 @@ function PhoneMeter({ saved, onSave }: { saved?: string; onSave: (v: string) => 
     setError("");
     setUsed(true);
     try {
-      meter.current = await startMeter((v) => {
+      meter.current = await startMeter((v, r) => {
         setLevel(v);
+        setRaw(r);
         setMax((m) => (m === null || v > m ? Math.round(v * 10) / 10 : m));
       });
+      setInfo((meter.current as Meter & { info: MeterInfo }).info);
     } catch {
       setError("The microphone isn't available. Allow it for Inspecta in the phone's settings.");
     }
@@ -789,6 +793,15 @@ function PhoneMeter({ saved, onSave }: { saved?: string; onSave: (v: string) => 
         </div>
       </div>
       {error && <div style={{ fontSize: 11.5, color: FAIL }}>{error}</div>}
+      {/* diagnostics, for now: the level with no weighting, and whether the
+          phone really turned its noise suppression, automatic gain and echo
+          cancelling off (a quiet room reading near 0 unweighted too means
+          the phone is cleaning up the sound before the app gets it) */}
+      {info && (
+        <div data-testid="meter-diagnostics" style={{ fontSize: 10.5, color: "var(--muted)", fontWeight: 700, lineHeight: 1.4 }}>
+          Unweighted {listening && raw !== null ? `${raw.toFixed(1)} dB` : "–"} · Noise suppr. {onOff(info.noiseSuppression)} · Auto gain {onOff(info.autoGainControl)} · Echo cancel {onOff(info.echoCancellation)} · {Math.round(info.sampleRate / 100) / 10} kHz · Cal. {offset}
+        </div>
+      )}
       <div style={{ display: "flex", gap: 6 }}>
         <MeterButton onClick={() => void toggle()} on={listening}>
           {listening ? "Stop" : "Listen"}
@@ -808,6 +821,8 @@ function PhoneMeter({ saved, onSave }: { saved?: string; onSave: (v: string) => 
     </div>
   );
 }
+
+const onOff = (v: boolean | undefined) => (v === undefined ? "?" : v ? "ON" : "off");
 
 function MeterButton({ children, onClick, on, small, label }: { children: ReactNode; onClick: () => void; on?: boolean; small?: boolean; label?: string }) {
   return (
