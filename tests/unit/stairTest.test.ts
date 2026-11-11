@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { levelsRead, renameDoorLevels } from "../../src/lib/stairTest";
-import { doorFails, doorMarginal, kindsFor, latestDoor, newRun, stairDoors, stairGroups, stairLabel } from "../../src/lib/stairTest";
+import { doorFails, doorMarginal, kindsFor, latestDoor, newRun, stairDoors, stairLabel } from "../../src/lib/stairTest";
 import { adjacentDoor, doorsOpen, doorStats, isCustomLevel, joinLevel, levelChanges, levelChip, levelName, levelsEdited, limits, onceStatus, sectionsFor, splitLevel, stairLevels, stairTestHasData, stairTestSummary, typeFor } from "../../src/lib/stairTest";
 import { stairPages } from "../../src/lib/stairPrint";
 import type { SpfSystem, StairTest } from "../../src/db/types";
@@ -119,13 +119,11 @@ test("a level has one door unless more are set: on every level, or added at one"
   assert.deepEqual(two.slice(0, 2).map((d) => d.key), ["P1", "P1\tB"]);
 });
 
-test("stairs are named by their name, else their fan; and sit in their groups", () => {
-  const st = (id: string, fan: string, group?: string, name = "") => ({ id, name, from: "G", to: "1", extra: [], fan, group });
+test("stairs are named by their name, else their fan", () => {
+  const st = (id: string, fan: string, name = "") => ({ id, name, from: "G", to: "1", extra: [], fan });
   assert.equal(stairLabel(st("a", "SPF 2")), "SPF 2");
-  assert.equal(stairLabel(st("a", "SPF 2", undefined, "East stairwell")), "SPF 2 · East stairwell");
+  assert.equal(stairLabel(st("a", "SPF 2", "East stairwell")), "SPF 2 · East stairwell");
   assert.equal(stairLabel(st("a", "SPF-")), "No fan name");
-  const groups = stairGroups({ stairs: [st("a", "SPF 1", "Basement"), st("b", "SPF 3", "Tower"), st("c", "SPF 2", "basement ")] });
-  assert.deepEqual(groups.map((g) => [g.name, g.stairs.map((x) => x.id).join("")]), [["Basement", "ac"], ["Tower", "b"]]);
 });
 
 test("a pass within 0.1 m/s or 5 N of the limit is marginal; below the meter fails", () => {

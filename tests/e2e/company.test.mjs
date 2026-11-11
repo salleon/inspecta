@@ -31,6 +31,8 @@ after(async () => {
 });
 
 const cssVar = (name) => page.evaluate((n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim(), name);
+// the Colours editor's cover preview: its background, and its accent line
+const preview = () => page.getByTestId("colours-preview").evaluate((el) => [getComputedStyle(el).backgroundImage, getComputedStyle(el).borderBottomColor]);
 
 test("a new phone sets up its company before the name prompt", async () => {
   await page.getByRole("button", { name: "Set up your company" }).click();
@@ -47,8 +49,9 @@ test("a new phone sets up its company before the name prompt", async () => {
   assert.ok((await page.getByText("Found in your logo").count()) === 1);
   await page.getByRole("tab", { name: "Presets" }).click();
   await page.getByRole("button", { name: /Firetruck/ }).click();
-  assert.equal(await cssVar("--accent"), "#e0313a", "the app recolours live");
-  assert.equal(await cssVar("--bg"), "#16181d");
+  assert.deepEqual(await preview(), ["linear-gradient(172deg, rgb(22, 24, 29) 0%, rgb(22, 24, 29) 48%, rgb(0, 0, 0) 160%)", "rgb(224, 49, 58)"], "the preview shows the colours");
+  assert.equal(await cssVar("--accent"), "#2ec4b6", "the app keeps its own colours");
+  assert.equal(await cssVar("--bg"), "#071b2c");
   await page.getByRole("button", { name: "Finish" }).click();
   await page.waitForTimeout(300);
   await page.locator("input").first().fill("New Starter");
@@ -59,9 +62,13 @@ test("a new phone sets up its company before the name prompt", async () => {
 
 test("the setup isn't shown again, and the colours stay", async () => {
   await page.reload();
+  // the splash is in the company's colours
+  await page.locator(".cs").waitFor();
+  assert.equal(await page.locator(".cs").evaluate((el) => getComputedStyle(el).backgroundColor), "rgb(22, 24, 29)");
   await page.waitForTimeout(2300);
   assert.equal(await page.getByRole("button", { name: "Set up your company" }).count(), 0);
-  assert.equal(await cssVar("--accent"), "#e0313a");
+  assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem("inspecta.company")).schemeId), "firetruck");
+  assert.equal(await cssVar("--accent"), "#2ec4b6", "only the splash and covers take the company's colours");
 });
 
 test("Settings → Company edits the name, logo and colours", async () => {
@@ -70,10 +77,11 @@ test("Settings → Company edits the name, logo and colours", async () => {
   await page.getByRole("button", { name: /Colours/ }).click();
   await page.getByRole("tab", { name: "Custom" }).click();
   await page.getByRole("button", { name: "#3d8bfd" }).first().click(); // picking Primary: Dark first, then Bright
-  assert.equal(await cssVar("--bg"), "#3d8bfd");
+  assert.match((await preview())[0], /rgb\(61, 139, 253\) 0%/);
   await page.getByRole("button", { name: "Secondary" }).click();
   await page.getByRole("button", { name: "#ffc629" }).click();
-  assert.equal(await cssVar("--accent"), "#ffc629");
+  assert.equal((await preview())[1], "rgb(255, 198, 41)");
+  assert.equal(await cssVar("--accent"), "#2ec4b6");
   await page.getByRole("button", { name: "Done" }).click();
   await page.getByText("Custom").waitFor();
 });

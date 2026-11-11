@@ -165,19 +165,6 @@ export function stairDoors(stair: Pick<SpfStair, "from" | "to" | "extra" | "leve
 export const stairFan = (stair: SpfStair) => (/^SPF-?\s*$/i.test(stair.fan.trim()) ? "" : stair.fan.trim());
 export const stairLabel = (stair: SpfStair) => [stairFan(stair) || "No fan name", stair.name.trim()].filter(Boolean).join(" · ");
 
-// the stairs in their groups ("Basement", "Tower"), in the order the groups
-// first appear; one unnamed group when none are set
-export function stairGroups(sys: Pick<SpfSystem, "stairs">): { name: string; stairs: SpfStair[] }[] {
-  const out: { name: string; stairs: SpfStair[] }[] = [];
-  for (const st of sys.stairs) {
-    const name = (st.group ?? "").trim();
-    const g = out.find((x) => x.name.toLowerCase() === name.toLowerCase());
-    if (g) g.stairs.push(st);
-    else out.push({ name, stairs: [st] });
-  }
-  return out;
-}
-
 // "B2 to 26"
 export const stairRange = (stair: SpfStair) => (stair.from.trim() && stair.to.trim() ? `${stair.from.trim()} to ${stair.to.trim()}` : "No levels yet");
 

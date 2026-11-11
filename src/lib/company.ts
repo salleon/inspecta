@@ -260,20 +260,22 @@ export function themeVars(s: Scheme): Record<string, string> {
   };
 }
 
-// Puts the company's colours on the app in Contractor mode; EnFact mode
-// keeps index.css's own.
+// The app's pages keep index.css's own colours in both modes: the company's
+// colours are only for the Contractor splash (splashVars) and the report
+// covers (lib/contractorCover). Clears any colours an older build put on
+// the page.
 export function applyTheme() {
   const root = document.documentElement;
-  const scheme = companyScheme();
-  const vars = themeVars(scheme);
-  // Default keeps index.css's colours exactly, as EnFact mode does
-  const on = getFlowMode() === "contractor" && scheme.id !== "default";
-  for (const [k, v] of Object.entries(vars)) {
-    if (on) root.style.setProperty(k, v);
-    else root.style.removeProperty(k);
-  }
+  for (const k of Object.keys(themeVars(PRESETS[0]))) root.style.removeProperty(k);
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute("content", on ? vars["--bg"] : "#14161a");
+  if (meta) meta.setAttribute("content", "#14161a");
+}
+
+// The company's colours for the Contractor splash, set on its own element;
+// none for Default, which keeps the app's.
+export function splashVars(c: Company = getCompany()): Record<string, string> {
+  const scheme = companyScheme(c);
+  return scheme.id === "default" ? {} : themeVars(scheme);
 }
 
 // ---- the logo ----

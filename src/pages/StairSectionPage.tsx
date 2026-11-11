@@ -27,7 +27,6 @@ import {
   runCount,
   runDoors,
   SECTION,
-  stairGroups,
   stairFan,
   stairLabel,
   stairLevels,
@@ -264,31 +263,28 @@ function EveryDoor({ section, sys, stair, test, setTest, setSpf, onBack, run, on
     <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
       <PageHeader title={general ? KIND_LABEL.general : info.name} sub={general ? `${info.name} · ${stairLabel(stair)}` : stairLabel(stair)} onBack={onBack} />
       <div style={{ flexShrink: 0, padding: "0 14px", display: "flex", flexDirection: "column", gap: 7 }}>
-        {/* the stairs, group by group: the main thing to switch */}
+        {/* the stairs: the main thing to switch */}
         {sys.stairs.length > 1 && (
           <div data-testid="spf-stairs" style={{ display: "flex", gap: 6, overflowX: "auto", scrollbarWidth: "none", margin: "0 -14px", padding: "0 14px" }}>
-            {stairGroups(sys).flatMap((g) =>
-              g.stairs.map((st) => {
-                const x = doorStats(test, st, section, sys);
-                const on = st.id === stair.id;
-                return (
-                  <button
-                    key={st.id}
-                    onClick={() => onStair(st.id)}
-                    style={{ flex: "1 0 auto", minWidth: 84, textAlign: "left", padding: "7px 10px", borderRadius: 10, background: on ? "rgba(177,140,255,.18)" : "var(--panel)", border: on ? "1px solid #b18cff" : "1px solid var(--border-strong)", color: "var(--text)" }}
-                  >
-                    <b style={{ display: "block", fontSize: 12.5, whiteSpace: "nowrap" }}>
-                      {stairFan(st) || "No fan name"}
-                      {g.name && <span style={{ color: "var(--muted)", fontWeight: 700, fontSize: 10.5 }}> · {g.name}</span>}
-                    </b>
-                    <span style={{ fontSize: 11, fontWeight: 800, whiteSpace: "nowrap", color: x.fails ? FAIL : x.marginal ? WARN : x.done ? PASS : "var(--muted)" }}>
-                      {x.done} of {x.total}
-                      {x.fails ? ` · ${x.fails} fail${x.fails === 1 ? "" : "s"}` : x.done ? " · pass" : ""}
-                    </span>
-                  </button>
-                );
-              }),
-            )}
+            {sys.stairs.map((st) => {
+              const x = doorStats(test, st, section, sys);
+              const on = st.id === stair.id;
+              return (
+                <button
+                  key={st.id}
+                  onClick={() => onStair(st.id)}
+                  style={{ flex: "1 0 auto", minWidth: 84, textAlign: "left", padding: "7px 10px", borderRadius: 10, background: on ? "rgba(177,140,255,.18)" : "var(--panel)", border: on ? "1px solid #b18cff" : "1px solid var(--border-strong)", color: "var(--text)" }}
+                >
+                  <b style={{ display: "block", fontSize: 12.5, whiteSpace: "nowrap" }}>
+                    {stairFan(st) || "No fan name"}
+                  </b>
+                  <span style={{ fontSize: 11, fontWeight: 800, whiteSpace: "nowrap", color: x.fails ? FAIL : x.marginal ? WARN : x.done ? PASS : "var(--muted)" }}>
+                    {x.done} of {x.total}
+                    {x.fails ? ` · ${x.fails} fail${x.fails === 1 ? "" : "s"}` : x.done ? " · pass" : ""}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         )}
         {general && (

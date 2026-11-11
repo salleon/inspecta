@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import type { Site, SpfEdition, SpfStair, SpfSystem, SpfType, StairTest } from "../db/types";
 import { getSite, listStairTests, saveSiteSpf, saveStairTest } from "../db/db";
-import { defaultSystem, doorsEach, EDITIONS, joinLevel, LEVEL_TYPES, levelChanges, levelName, levelsEdited, levelsRead, levelType, newStair, renameDoorLevels, splitLevel, stairFan, stairLabel, stairDoors, stairGroups, stairRange, TYPES, typeFor, type LevelType } from "../lib/stairTest";
+import { defaultSystem, doorsEach, EDITIONS, joinLevel, LEVEL_TYPES, levelChanges, levelName, levelsEdited, levelsRead, levelType, newStair, renameDoorLevels, splitLevel, stairFan, stairLabel, stairDoors, stairRange, TYPES, typeFor, type LevelType } from "../lib/stairTest";
 import { useBackHandler } from "../lib/backButton";
 import { AMBER, card, cardLabel, fieldInput, PageHeader, RulesBox, Seg } from "../components/StairUi";
 import NumPad, { k, numberKeys, PadTag } from "../components/NumPad";
@@ -18,10 +18,8 @@ import "./LevelReview.css";
 // Ground…) and a number typed on the purple pad. Once the range is set,
 // Review level layout opens (LevelReview) to check and change the suggested
 // levels; Looks right ✓ folds the stair away. Save and continue at the
-// bottom. Kept as it's changed. A stair can be put in a group ("Basement",
-// "Tower"): the list is then headed by group, and so is a general system
-// testing report. Every level has one door unless Doors on each level says
-// more (the Stair general system testing canvas, board 2).
+// bottom. Kept as it's changed. Every level has one door unless Doors on
+// each level says more (the Stair general system testing canvas, board 2).
 
 type Which = "hi" | "lo";
 const label = (w: Which) => (w === "hi" ? "Highest level" : "Lowest level");
@@ -155,8 +153,6 @@ export default function StairSystem() {
     focusName.current = s.id;
   };
   const doors = sys.stairs.reduce((n, s) => n + (ready(s) ? stairDoors(s).length : 0), 0);
-  const groups = stairGroups(sys);
-  const grouped = groups.some((g) => g.name);
   const padStair = pad ? sys.stairs.find((s) => s.id === pad.id) : undefined;
 
   function padKey(key: string) {
@@ -260,22 +256,12 @@ export default function StairSystem() {
           </div>
         ) : (
           <>
-            {groups.flatMap((g) => [
-              grouped ? (
-                <div key={`g ${g.name}`} style={{ display: "flex", alignItems: "baseline", gap: 8, fontSize: 12, fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--muted)", padding: "4px 2px 0" }}>
-                  {g.name || "No group"}
-                  <small style={{ fontSize: 11.5, color: "#6a8098", fontWeight: 700, letterSpacing: 0, textTransform: "none" }}>
-                    {g.stairs.length} stair{g.stairs.length === 1 ? "" : "s"}
-                  </small>
-                </div>
-              ) : null,
-              ...g.stairs.map((st) => [st, sys.stairs.indexOf(st)] as const).map(([st, i]) =>
+            {sys.stairs.map((st, i) =>
               open === st.id ? (
                 <StairCard
                   key={st.id}
                   stair={st}
                   n={i + 1}
-                  groups={groups.map((x) => x.name).filter((x) => x && x.toLowerCase() !== (st.group ?? "").trim().toLowerCase())}
                   pad={pad?.id === st.id ? pad.which : null}
                   menu={menu?.id === st.id ? menu.which : null}
                   onChange={(patch) => setStair(st.id, patch)}
@@ -325,8 +311,7 @@ export default function StairSystem() {
                   <span style={editPill}>Edit</span>
                 </button>
               ),
-              ),
-            ])}
+            )}
             <button onClick={addStair} className={open === null ? "pulse-teal" : undefined} style={open === null ? addHot : addButton}>
               + Add another stair
             </button>
@@ -423,7 +408,6 @@ export default function StairSystem() {
 function StairCard({
   stair,
   n,
-  groups,
   pad,
   menu,
   onChange,
@@ -437,7 +421,6 @@ function StairCard({
 }: {
   stair: SpfStair;
   n: number;
-  groups: string[];
   pad: Which | null;
   menu: Which | null;
   onChange: (patch: Partial<SpfStair>) => void;
@@ -524,18 +507,6 @@ function StairCard({
           }}
           style={inputStyle(false)}
         />
-      </Field>
-      <Field label="Group">
-        <input aria-label="Group" value={stair.group ?? ""} onChange={(e) => onChange({ group: e.target.value })} onFocus={onText} style={inputStyle(false)} />
-        {groups.length > 0 && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-            {groups.map((g) => (
-              <button key={g} onClick={() => onChange({ group: g })} style={{ fontSize: 11.5, fontWeight: 800, padding: "5px 10px", borderRadius: 8, background: "var(--panel-2)", border: "none", color: "#bfd0de" }}>
-                {g}
-              </button>
-            ))}
-          </div>
-        )}
       </Field>
       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 6px 5px 11px", borderRadius: 10, background: "#0a2135", border: "1px solid var(--border-strong)" }}>
         <span style={{ flexGrow: 1, fontSize: 13, fontWeight: 800 }}>Doors on each level</span>

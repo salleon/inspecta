@@ -25,8 +25,9 @@ import "./CompanySetup.css";
 
 // Contractor mode's company setup (canvas "Inspecta for contractors"):
 // shown on a new phone before the name prompt. Welcome, then the company
-// name, its logo for the app and report covers, and its colours. Every
-// change is saved as it's made, so the app recolours live. The logo and
+// name, its logo for the app and report covers, and its colours (for the
+// splash screen and report covers only; the app keeps its own). Every
+// change is saved as it's made. The logo and
 // colours editors are reused by Settings → Company.
 
 export function CompanyLogo({ height, maxWidth, style }: { height: number; maxWidth: number; style?: CSSProperties }) {
@@ -252,6 +253,13 @@ export function ColoursEditor() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {/* the colours only show on the splash and the report covers, so show them there */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div style={label}>On the splash screen and report covers</div>
+        <div data-testid="colours-preview" style={{ height: 96, borderRadius: 12, background: coverGradient(current), display: "flex", alignItems: "center", gap: 14, padding: "0 18px", borderBottom: `4px solid ${current.secondary}` }}>
+          <CompanyLogo height={c.plate ? 66 : 46} maxWidth={170} />
+        </div>
+      </div>
       <div role="tablist" style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 4, padding: 4, borderRadius: 12, background: "var(--panel)" }}>
         {(
           [

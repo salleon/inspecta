@@ -1,4 +1,4 @@
-import type { Site, SpfSystem, StairOnce, StairTest } from "../db/types";
+import type { Site, SpfStair, SpfSystem, StairOnce, StairTest } from "../db/types";
 import {
   adjacentDoor,
   doorFails,
@@ -18,7 +18,6 @@ import {
   runDoors,
   SECTION,
   stairDoors,
-  stairGroups,
   stairFan,
   stairLabel,
   stairLevels,
@@ -31,8 +30,8 @@ import {
 // from this, so what's previewed is what's exported. A level with more than
 // one door has a row for each ("P2 A", "P2 B"). A pass that's only just one
 // is marked (warns) and shaded yellow. General system testing prints run by
-// run instead (the Stair general system testing canvas, board 5): a page per
-// group of stairs, and for each run a table with its stairs side by side.
+// run instead (the Stair general system testing canvas, board 5): for each
+// run a table with its stairs side by side.
 
 export interface StairBox {
   label: string;
@@ -104,60 +103,59 @@ function mergeLevels(lists: string[][]): string[] {
   return out;
 }
 
-// general system testing: a page per group, a table per run and reading
+// general system testing: a table per run and reading
 function generalPages(test: StairTest, sys: SpfSystem, site: Pick<Site, "name" | "address">): StairPage[] {
-  const groups = stairGroups(sys);
   const every = test.sections.filter((s): s is Every => SECTION[s].every);
   const cell = (section: Every, v: string) => (section === "latch" ? (v === "Yes" ? "Y" : v === "No" ? "N" : "") : v);
-  return groups.map((g) => {
-    const tables: StairTable[] = [];
-    for (let r = 0; r < runCount(test); r++) {
-      const doors = runDoors(test, r);
-      for (const section of every) {
-        const read = (st: (typeof g.stairs)[number]) => stairDoors(st).some((d) => doorValue(section, doors[st.id]?.[d.key]));
-        // the stairs read in this run (every stair, on a first run with nothing in it yet)
-        const stairs = g.stairs.filter(read);
-        const shown = stairs.length ? stairs : r === 0 && section === every[0] ? g.stairs : [];
-        const cols = shown.flatMap((st) => {
-          const of = Math.max(...stairLevels(st).map((l) => doorsAt(st, l)));
-          // the fan, then the stairwell's name on a second line
-          const fan = stairFan(st) || "No fan name";
-          const well = st.name.trim() ? `\n${st.name.trim()}` : "";
-          return Array.from({ length: of }, (_, n) => ({ st, n, label: `${of > 1 ? `${fan} ${doorLetter(n)}` : fan}${well}` }));
+  const tables: StairTable[] = [];
+  for (let r = 0; r < runCount(test); r++) {
+    const doors = runDoors(test, r);
+    for (const section of every) {
+      const read = (st: SpfStair) => stairDoors(st).some((d) => doorValue(section, doors[st.id]?.[d.key]));
+      // the stairs read in this run (every stair, on a first run with nothing in it yet)
+      const stairs = sys.stairs.filter(read);
+      const shown = stairs.length ? stairs : r === 0 && section === every[0] ? sys.stairs : [];
+      const cols = shown.flatMap((st) => {
+        const of = Math.max(...stairLevels(st).map((l) => doorsAt(st, l)));
+        // the fan, then the stairwell's name on a second line
+        const fan = stairFan(st) || "No fan name";
+        const well = st.name.trim() ? `\n${st.name.trim()}` : "";
+        return Array.from({ length: of }, (_, n) => ({ st, n, label: `${of > 1 ? `${fan} ${doorLetter(n)}` : fan}${well}` }));
+      });
+      const levels = mergeLevels(shown.map(stairLevels));
+      for (let c = 0; c < cols.length; c += COLS) {
+        const part = cols.slice(c, c + COLS);
+        tables.push({
+          title: `Run ${r + 1} · ${clock(runAt(test, r))} · ${runChange(test, r) || "No change noted"} · ${SECTION[section].column}`,
+          head: ["Level", ...part.map((x) => x.label)],
+          rows: levels.map((level) => {
+            const ds = part.map((x) => (stairLevels(x.st).includes(level) && x.n < doorsAt(x.st, level) ? doors[x.st.id]?.[doorKey(level, x.n)] : undefined));
+            return {
+              cells: [level, ...ds.map((d) => cell(section, doorValue(section, d)))],
+              fails: [false, ...ds.map((d) => !!doorFails(section, d, sys))],
+              warns: [false, ...ds.map((d) => doorMarginal(section, d, sys))],
+            };
+          }),
         });
-        const levels = mergeLevels(shown.map(stairLevels));
-        for (let c = 0; c < cols.length; c += COLS) {
-          const part = cols.slice(c, c + COLS);
-          tables.push({
-            title: `Run ${r + 1} · ${clock(runAt(test, r))} · ${runChange(test, r) || "No change noted"} · ${SECTION[section].column}`,
-            head: ["Level", ...part.map((x) => x.label)],
-            rows: levels.map((level) => {
-              const ds = part.map((x) => (stairLevels(x.st).includes(level) && x.n < doorsAt(x.st, level) ? doors[x.st.id]?.[doorKey(level, x.n)] : undefined));
-              return {
-                cells: [level, ...ds.map((d) => cell(section, doorValue(section, d)))],
-                fails: [false, ...ds.map((d) => !!doorFails(section, d, sys))],
-                warns: [false, ...ds.map((d) => doorMarginal(section, d, sys))],
-              };
-            }),
-          });
-        }
       }
     }
-    const once = g.stairs
-      .map((st) => {
-        const parts = (["noise", "rest", "pa"] as const).filter((s) => test.sections.includes(s)).map((s) => [s, onceStatus(s, test.once[st.id], sys).text] as const).filter(([, t]) => t);
-        return parts.length ? `${stairLabel(st)}: ${parts.map(([s, t]) => `${SECTION[s].name} ${t}`).join(" · ")}` : "";
-      })
-      .filter(Boolean);
-    return {
+  }
+  const once = sys.stairs
+    .map((st) => {
+      const parts = (["noise", "rest", "pa"] as const).filter((s) => test.sections.includes(s)).map((s) => [s, onceStatus(s, test.once[st.id], sys).text] as const).filter(([, t]) => t);
+      return parts.length ? `${stairLabel(st)}: ${parts.map(([s, t]) => `${SECTION[s].name} ${t}`).join(" · ")}` : "";
+    })
+    .filter(Boolean);
+  return [
+    {
       title: `Stair pressurisation · ${KIND_LABEL.general}`,
-      subtitle: g.name || (groups.length > 1 ? "Other stairs" : "All stairs"),
+      subtitle: "All stairs",
       details: [
         { label: "Site", value: [site.name, site.address].filter((s) => s?.trim()).join(", ") },
         { label: "Date", value: day(test.testedAt) },
         { label: "System", value: `${sys.type === "One test" ? "" : `${sys.type} · `}built to AS 1668.1-${sys.edition}` },
         { label: "Runs", value: String(runCount(test)) },
-        { label: "Stairs", value: g.stairs.map((st) => stairLabel(st)).join(", ") },
+        { label: "Stairs", value: sys.stairs.map((st) => stairLabel(st)).join(", ") },
         { label: "Tested by", value: test.testedBy?.trim() ?? "" },
       ],
       boxes: [],
@@ -170,8 +168,8 @@ function generalPages(test: StairTest, sys: SpfSystem, site: Pick<Site, "name" |
       quick: null,
       notes: test.notes.filter((x) => x.text.trim()).map((x, k) => `${k + 1} · ${x.location.trim() ? `${x.location.trim()} · ` : ""}${x.text.trim()}`),
       siteNotes: sys.notes.trim(),
-    };
-  });
+    },
+  ];
 }
 
 export function stairPages(test: StairTest, sys: SpfSystem, site: Pick<Site, "name" | "address">): StairPage[] {

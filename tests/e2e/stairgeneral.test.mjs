@@ -11,7 +11,7 @@ let app;
 let page;
 let errors;
 
-const stair = (id, fan, from, to, group) => ({ id, name: "", from, to, extra: [], fan, group, reviewed: true });
+const stair = (id, fan, from, to) => ({ id, name: "", from, to, extra: [], fan, reviewed: true });
 const onRun = (n) => page.locator(`[data-testid="spf-runs"] button[aria-pressed="true"]`, { hasText: `Run ${n}` }).waitFor();
 const tap = async (keys) => {
   for (const k of keys) await page.getByRole("button", { name: k, exact: true }).dispatchEvent("pointerdown");
@@ -27,7 +27,7 @@ before(async () => {
         id: "g1",
         name: "Northshore",
         kind: "spf",
-        spf: { edition: "2015", type: "Zone", notes: "", stairs: [stair("s1", "SPF 1", "P3", "P1", "Basement"), stair("s2", "SPF 2", "P3", "P1", "Basement"), stair("s3", "SPF 3", "G", "12", "Tower")] },
+        spf: { edition: "2015", type: "Zone", notes: "", stairs: [stair("s1", "SPF 1", "P3", "P1"), stair("s2", "SPF 2", "P3", "P1"), stair("s3", "SPF 3", "G", "12")] },
       },
     ],
   });
@@ -55,7 +55,7 @@ test("General system testing starts on its velocities, with other tests to add",
   await page.waitForURL(/\/spf\/[^/]+\/vel/);
   await page.getByTestId("spf-runs").waitFor();
   assert.match(await page.locator("body").innerText(), /General system testing\s*Velocity · SPF 1/);
-  assert.match(await page.getByTestId("spf-stairs").innerText(), /SPF 1 · Basement[\s\S]*SPF 2 · Basement[\s\S]*SPF 3 · Tower/);
+  assert.match(await page.getByTestId("spf-stairs").innerText(), /SPF 1[\s\S]*SPF 2[\s\S]*SPF 3/);
   assert.match(await page.getByTestId("spf-tests").innerText(), /Velocity\s*\+ Test/);
 });
 
@@ -99,16 +99,16 @@ test("+ Run: what changed, then the same doors again beside the last run's", asy
   assert.match(await page.locator("body").innerText(), /Velocity · SPF 2[\s\S]*0 of 3/);
 });
 
-test("the report: a page per group, a table per run with its stairs side by side", async () => {
+test("the report: one page, a table per run with its stairs side by side", async () => {
   await page.getByRole("button", { name: "Back" }).click();
   await page.getByRole("button", { name: "Preview the report" }).click();
   const sheet = await page.getByTestId("spf-page").first().innerText();
-  assert.match(sheet, /Stair pressurisation · General system testing\s*Basement/);
+  assert.match(sheet, /Stair pressurisation · General system testing\s*All stairs/);
   const tables = await page.getByTestId("spf-page").first().getByTestId("spf-run-table").allInnerTexts();
   assert.equal(tables.length, 2);
   assert.match(tables[0], /Run 1 · \d\d:\d\d · As found · Average velocity m\/s \(min 1\)\s*Level\s*SPF 1 A\s*SPF 1 B\s*P1\s*1\.05\s*P2\s*0\.2/);
   assert.match(tables[1], /Run 2 · \d\d:\d\d · P3 relief damper shut[\s\S]*P2\s*1\.3/);
-  assert.equal(await page.getByTestId("spf-page").count(), 2, "Basement and Tower");
+  assert.equal(await page.getByTestId("spf-page").count(), 1, "every stair on one page");
   assert.deepEqual(errors, []);
 });
 
@@ -152,7 +152,6 @@ test("what's added can be taken away: a Yes / No answer, a door, a run, a test",
 
 test("Review level layout: groups that open, and P to B offers to change the rest", async () => {
   await go(page, app, "/site/g1/spf-system", 1200);
-  assert.match(await page.locator("body").innerText(), /BASEMENT\s*2 stairs[\s\S]*TOWER\s*1 stair/i);
   // a big group starts closed, a small one open
   await page.locator('[data-stair="s3"]').click();
   await page.getByRole("button", { name: /Review level layout/ }).click();

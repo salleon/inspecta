@@ -93,7 +93,7 @@ test("a contractor file brings the company's name, logo and colours", async () =
   await enterPin(page, "1111");
   await page.waitForTimeout(500);
   assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem("inspecta.company")).name), "Coastline Fire Services");
-  assert.equal(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--accent").trim()), "#e0313a");
+  assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem("inspecta.company")).schemeId), "firetruck");
   assert.equal(await page.getByRole("button", { name: "Set up your company" }).count(), 0, "no setup screens needed");
   await page.context().close();
 });

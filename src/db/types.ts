@@ -193,7 +193,6 @@ export interface SpfStair {
   fan: string; // "SPF-1"
   levels?: string[]; // its doors top to bottom, when the reviewed layout isn't the suggestion
   reviewed?: boolean; // its level layout has been looked over (Looks right ✓)
-  group?: string; // "Basement", "Tower"… (stairs tested and reported together)
   doors?: number; // doors on each level (1 unless set)
   more?: Record<string, number>; // doors added at a level, on top of that
 }
