@@ -1,10 +1,14 @@
 name: Build iOS
 
-# Checks the iPhone app compiles (simulator build, no signing).
+# Checks the iPhone app compiles (simulator build, no signing). Only runs
+# when the iPhone project itself changes (the Swift code, Xcode project or
+# this file), not on everyday app changes in src/, so feature work on the
+# test branch doesn't start iOS builds. The real iPhone build, for
+# TestFlight, is Codemagic's, on pushes to main (codemagic.yaml).
 on:
   push:
     branches: [main, test, ios]
-    paths: ["ios/**", "src/**", "package*.json", "capacitor.config.ts", ".github/workflows/build-ios.yml"]
+    paths: ["ios/**", ".github/workflows/build-ios.yml"]
   workflow_dispatch:
 
 jobs:

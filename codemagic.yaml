@@ -1,5 +1,8 @@
-# Builds the iPhone app and sends it to TestFlight: on every push to main
-# (test builds are started by hand in Codemagic).
+# Builds the iPhone app and sends it to TestFlight on every push to main,
+# the same pushes that build the Android app (build-apk.yml). Pushes to
+# test or any other branch never start a Codemagic build, so trying out
+# features costs no Codemagic minutes; a one-off build of another branch
+# can still be started by hand in Codemagic.
 workflows:
   ios-testflight:
     name: Inspecta iOS to TestFlight
@@ -30,6 +33,18 @@ workflows:
         script: xcode-project use-profiles
       - name: Set the build number
         script: cd ios/App && agvtool new-version -all $BUILD_NUMBER
+      # the version people see (Settings, App Store) is BUILD_LABEL, the
+      # same as the Android app's versionName; Apple only takes numbers and
+      # dots (like 9.2), so anything else stops the build here
+      - name: Set the version from BUILD_LABEL
+        script: |
+          VERSION=$(tr -d '[:space:]' < BUILD_LABEL)
+          if ! printf '%s' "$VERSION" | grep -Eq '^[0-9]+(\.[0-9]+){0,2}$'; then
+            echo "BUILD_LABEL is '$VERSION': the App Store needs numbers and dots, like 9.2 or 1.0.1"
+            exit 1
+          fi
+          sed -i '' "s/MARKETING_VERSION = [^;]*;/MARKETING_VERSION = $VERSION;/" ios/App/App.xcodeproj/project.pbxproj
+          grep -c "MARKETING_VERSION = $VERSION;" ios/App/App.xcodeproj/project.pbxproj
       - name: Build the app
         script: xcode-project build-ipa --project ios/App/App.xcodeproj --scheme App
     artifacts:
