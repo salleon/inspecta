@@ -1,6 +1,6 @@
 /* Contractor mode's intro mark (components/CompanySetup.tsx), as on the
-   canvas "Inspecta for contractors": a shield draws itself in the accent
-   colour and a tick drops in (or the company's logo pops in with a shine),
+   canvas "Inspecta for contractors": the app's mark pops in (or the
+   company's logo pops in with a shine),
    a ring pulses out, "Inspecta" rises letter by letter and glows, then the
    line underneath fades in. With .co-animate off (or reduced motion) every
    piece just shows at rest. */
@@ -20,12 +20,6 @@
   border-radius: 50%;
   border: 2px solid var(--accent);
   opacity: 0;
-}
-
-.co-shield,
-.co-check {
-  stroke-dasharray: 100;
-  stroke-dashoffset: 0;
 }
 
 .co-logo {
@@ -69,13 +63,8 @@
 .co-animate .co-ring {
   animation: coRing 1.8s 1.5s ease-out infinite;
 }
-.co-animate .co-shield {
-  stroke-dashoffset: 100;
-  animation: coDraw 1.3s 0.25s cubic-bezier(0.65, 0, 0.25, 1) forwards;
-}
-.co-animate .co-check {
-  stroke-dashoffset: 100;
-  animation: coDraw 0.45s 1.35s ease-out forwards;
+.co-animate .co-applogo {
+  animation: coPop 0.9s 0.3s cubic-bezier(0.3, 1.4, 0.5, 1) both;
 }
 .co-animate .co-logo {
   animation: coPop 0.9s 0.3s cubic-bezier(0.3, 1.4, 0.5, 1) both;
@@ -93,11 +82,6 @@
   animation: coFade 0.8s 2.3s both;
 }
 
-@keyframes coDraw {
-  to {
-    stroke-dashoffset: 0;
-  }
-}
 @keyframes coRise {
   from {
     opacity: 0;
@@ -164,10 +148,8 @@
     animation: none;
     opacity: 0;
   }
-  .co-animate .co-shield,
-  .co-animate .co-check {
+  .co-animate .co-applogo {
     animation: none;
-    stroke-dashoffset: 0;
   }
   .co-animate .co-logo,
   .co-animate .co-word,

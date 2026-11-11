@@ -18,6 +18,7 @@ import {
 } from "../lib/company";
 import { useBackHandler } from "../lib/backButton";
 import { say } from "./Message";
+import appMark from "../assets/app-mark.png";
 import "./CompanySetup.css";
 
 // Contractor mode's company setup (canvas "Inspecta for contractors"):
@@ -59,10 +60,11 @@ export function CompanyMark({ animate }: { animate: boolean }) {
             <div className="co-shine" />
           </div>
         ) : (
-          <svg width="112" height="112" viewBox="0 0 120 120" aria-hidden="true" style={{ overflow: "visible", filter: "drop-shadow(0 0 10px rgba(var(--accent-rgb, 46, 196, 182), 0.55))" }}>
-            <path className="co-shield" pathLength={100} d="M60 10 L100 24 V58 C100 84 82 102 60 110 C38 102 20 84 20 58 V24 Z" fill="none" stroke="var(--accent)" strokeWidth="6" strokeLinejoin="round" />
-            <path className="co-check" pathLength={100} d="M41 60 L54 73 L81 45" fill="none" stroke="var(--text)" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+          // no logo yet: the app's own mark (the buildings and tick from the
+          // app icon, without its words) until the company adds theirs. The
+          // building's tip is 45% across, so it's nudged 6px right to sit on
+          // the centre line like the app icon, not the mark's full width.
+          <img className="co-applogo" src={appMark} alt="" style={{ width: 120, height: "auto", display: "block", position: "relative", left: 6 }} />
         )}
       </div>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
