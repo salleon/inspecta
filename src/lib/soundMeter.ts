@@ -1,29 +1,10 @@
 // The phone as a sound level meter, for a reference check only (design
-// canvas StairTestSimple, Noise): the microphone's level, roughly A-weighted,
-// in dB(A). Never a result: the result is typed from a calibrated meter.
-// Phone microphones read within a few dB once lined up against a calibrated
-// meter, so the offset can be nudged and is kept on the phone.
+// canvas StairTestSimple, Noise): the microphone's level, A-weighted, in
+// dB(A). Never a result: the result is typed from a calibrated meter.
 
-const OFFSET_KEY = "inspecta.meterOffset";
-// dB(A) for a full-scale signal; a typical phone microphone, before lining up
-const DEFAULT_OFFSET = 100;
-
-export function meterOffset(): number {
-  try {
-    const v = Number(localStorage.getItem(OFFSET_KEY));
-    return Number.isFinite(v) && v !== 0 ? v : DEFAULT_OFFSET;
-  } catch {
-    return DEFAULT_OFFSET;
-  }
-}
-
-export function setMeterOffset(v: number) {
-  try {
-    localStorage.setItem(OFFSET_KEY, String(v));
-  } catch {
-    // not kept: the default is used next time
-  }
-}
+// dB(A) for a full-scale signal: a typical phone microphone. (It could once
+// be nudged ±1 on the phone; any nudge saved then is ignored.)
+const OFFSET = 100;
 
 // ---- A-weighting (IEC 61672) ----
 // The analog curve is four real high-pass poles (20.6 Hz twice, 107.7 Hz,
@@ -124,7 +105,7 @@ export async function startMeter(onLevel: (dba: number, raw: number) => void): P
     let sum = 0;
     for (const v of buf) sum += v * v;
     const rms = Math.sqrt(sum / buf.length);
-    return Math.max(0, 20 * Math.log10(Math.max(rms, 1e-9)) + meterOffset());
+    return Math.max(0, 20 * Math.log10(Math.max(rms, 1e-9)) + OFFSET);
   };
   const timer = window.setInterval(() => onLevel(level(analyser), level(rawAnalyser)), 125);
   const settings = (stream.getAudioTracks()[0]?.getSettings?.() ?? {}) as MediaTrackSettings;

@@ -243,6 +243,7 @@ export interface StairOnce {
   noiseStair?: string; // dB(A)
   noiseOcc?: string; // dB(A), occupied space
   noiseRef?: string; // the phone meter's max, reference only
+  noiseRefAvg?: string; // the phone meter's average (Leq) over the same listen
   ambient?: string; // dB(A), the fan off; taken again at a noisier door
   ambientLevel?: string; // the door it was taken at
   restLevel?: string; // the test door (the slowest)

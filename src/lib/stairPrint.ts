@@ -73,8 +73,10 @@ export const STAIR_HEAD = ["Level", "Adjacent door open", "Average velocity m/s 
 // under the stair's max noise: the ambient (fan off) and the phone's reference
 const noiseRef = (once: StairOnce) => {
   const a = (once.ambient ?? "").trim();
-  const r = (once.noiseRef ?? "").trim();
-  const parts = [a && `ambient ${a} dB(A)${once.ambientLevel ? ` at ${once.ambientLevel}` : ""}`, r && `phone ref. ${r} dB(A)`].filter(Boolean);
+  const avg = (once.noiseRefAvg ?? "").trim();
+  const max = (once.noiseRef ?? "").trim();
+  const phone = [avg && `avg ${avg}`, max && `max ${max}`].filter(Boolean).join(", ");
+  const parts = [a && `ambient ${a} dB(A)${once.ambientLevel ? ` at ${once.ambientLevel}` : ""}`, phone && `phone ref. ${phone} dB(A)`].filter(Boolean);
   return parts.length ? parts : undefined;
 };
 

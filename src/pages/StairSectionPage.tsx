@@ -32,7 +32,7 @@ import {
   stairLevels,
   type Every,
 } from "../lib/stairTest";
-import { meterOffset, setMeterOffset, startMeter, type Meter, type MeterInfo } from "../lib/soundMeter";
+import { startMeter, type Meter, type MeterInfo } from "../lib/soundMeter";
 import { useBackHandler } from "../lib/backButton";
 import { AMBER, PageHeader, useStairTest } from "../components/StairUi";
 import NumPad, { BLANK, k, numberKeys, PadTag, readingKeys } from "../components/NumPad";
@@ -617,7 +617,7 @@ function Once({ section, sys, stair, test, setTest, onBack }: Props & { section:
       <div style={{ flexGrow: 1, overflowY: "auto", padding: `4px 14px ${pad ? 360 : 16}px`, display: "flex", flexDirection: "column", gap: 7 }}>
         {section === "noise" && (
           <>
-            <PhoneMeter saved={once.noiseRef} onSave={(v) => set({ noiseRef: v || undefined })} />
+            <PhoneMeter saved={{ avg: once.noiseRefAvg, max: once.noiseRef }} onSave={(avg, max) => set({ noiseRefAvg: avg, noiseRef: max })} />
             <Field label="Noisiest door" sub="Level" value={once.noiseLevel} onChange={(v) => set({ noiseLevel: v })} onFocus={() => setPad(null)} />
             {numField("noiseStair", "In the stair", `dB(A) · ≤ ${l.noiseStair}`, l.noiseStair)}
             {numField("noiseOcc", "Occupied space", l.noiseOcc === null ? "dB(A) · recorded" : `dB(A) · ≤ ${l.noiseOcc}`, l.noiseOcc)}
@@ -733,48 +733,61 @@ function Field({ label, sub, value, onChange, onFocus }: { label: string; sub: s
   );
 }
 
-// the phone's microphone as a sound meter: a reference check only
-function PhoneMeter({ saved, onSave }: { saved?: string; onSave: (v: string) => void }) {
+// the phone's microphone as a sound meter: a reference check only. Listen,
+// then Stop: the average (the energy average, as a sound level meter's Leq)
+// and the max of that listen are saved to the stair, and print on the
+// report under its max noise. Listening again replaces them.
+function PhoneMeter({ saved, onSave }: { saved: { avg?: string; max?: string }; onSave: (avg: string | undefined, max: string | undefined) => void }) {
   const [level, setLevel] = useState<number | null>(null);
   const [raw, setRaw] = useState<number | null>(null);
   const [info, setInfo] = useState<MeterInfo | null>(null);
+  // this listen: its max, and the running energy sum for the average
   const [max, setMax] = useState<number | null>(null);
+  const [avg, setAvg] = useState<number | null>(null);
+  const energy = useRef({ sum: 0, n: 0, max: -Infinity });
   const [error, setError] = useState("");
-  const [offset, setOffset] = useState(meterOffset());
-  // the saved reference shows as saved until the meter is used again
-  const [used, setUsed] = useState(false);
   const meter = useRef<Meter | null>(null);
+  const onSaveRef = useRef(onSave);
+  onSaveRef.current = onSave;
 
+  const stop = () => {
+    if (!meter.current) return;
+    meter.current.stop();
+    meter.current = null;
+    setLevel(null);
+    const e = energy.current;
+    if (e.n) onSaveRef.current(round(10 * Math.log10(e.sum / e.n)), round(e.max));
+  };
+  // leaving the page while listening just lets go of the microphone
   useEffect(() => () => meter.current?.stop(), []);
 
   async function toggle() {
-    if (meter.current) {
-      meter.current.stop();
-      meter.current = null;
-      setLevel(null);
-      return;
-    }
+    if (meter.current) return stop();
     setError("");
-    setUsed(true);
+    energy.current = { sum: 0, n: 0, max: -Infinity };
+    setMax(null);
+    setAvg(null);
     try {
       meter.current = await startMeter((v, r) => {
+        const e = energy.current;
+        e.sum += 10 ** (v / 10);
+        e.n++;
+        e.max = Math.max(e.max, v);
         setLevel(v);
         setRaw(r);
-        setMax((m) => (m === null || v > m ? Math.round(v * 10) / 10 : m));
+        setMax(e.max);
+        setAvg(10 * Math.log10(e.sum / e.n));
       });
       setInfo((meter.current as Meter & { info: MeterInfo }).info);
     } catch {
       setError("The microphone isn't available. Allow it for Inspecta in the phone's settings.");
     }
   }
-  const nudge = (d: number) => {
-    const next = offset + d;
-    setOffset(next);
-    setMeterOffset(next);
-  };
   const listening = level !== null;
-  // ticked only while the max on screen is the one saved
-  const isRef = !!saved && (max === null ? !used : String(max) === saved);
+  // while listening: this listen; otherwise what's saved for the stair
+  const shownAvg = listening ? (avg === null ? "–" : avg.toFixed(1)) : saved.avg || "–";
+  const shownMax = listening ? (max === null ? "–" : max.toFixed(1)) : saved.max || "–";
+  const hasSaved = !!(saved.avg || saved.max);
 
   return (
     <div style={{ background: "#0a2135", border: "1px dashed #2a5a82", borderRadius: 12, padding: "10px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
@@ -782,15 +795,16 @@ function PhoneMeter({ saved, onSave }: { saved?: string; onSave: (v: string) => 
         <b>Phone meter</b>
         <span style={{ marginLeft: "auto", fontSize: 10.5, fontWeight: 800, padding: "3px 8px", borderRadius: 999, background: "rgba(139,160,181,.15)", color: "var(--muted)" }}>Reference only</span>
       </div>
-      <div style={{ display: "flex", alignItems: "flex-end", gap: 10 }}>
-        <div style={{ fontSize: 32, fontWeight: 800, color: "#bfd0de", fontVariantNumeric: "tabular-nums" }}>
+      <div style={{ display: "flex", alignItems: "flex-end", gap: 14 }}>
+        <div style={{ fontSize: 32, fontWeight: 800, color: "#bfd0de", fontVariantNumeric: "tabular-nums", marginRight: "auto" }}>
           {listening ? level.toFixed(1) : "–"}
           <span style={{ fontSize: 12, color: "var(--muted)", marginLeft: 4 }}>dB(A)</span>
         </div>
-        <div style={{ marginLeft: "auto", textAlign: "right", fontSize: 11, color: "var(--muted)", fontWeight: 700 }}>
-          Max
-          <b style={{ display: "block", fontSize: 19, color: "var(--text)" }}>{max ?? "–"}</b>
-        </div>
+        <MeterStat label="Average" value={shownAvg} />
+        <MeterStat label="Max" value={shownMax} />
+      </div>
+      <div data-testid="meter-status" style={{ fontSize: 11.5, color: "var(--muted)", fontWeight: 700, minHeight: 15 }}>
+        {listening ? "Listening… Stop saves the average and max to this stair." : hasSaved ? "Saved to this stair. Listen again to replace it." : "Listen, then Stop to save the average and max to this stair."}
       </div>
       {error && <div style={{ fontSize: 11.5, color: FAIL }}>{error}</div>}
       {/* diagnostics, for now: the level with no weighting, and whether the
@@ -799,25 +813,30 @@ function PhoneMeter({ saved, onSave }: { saved?: string; onSave: (v: string) => 
           the phone is cleaning up the sound before the app gets it) */}
       {info && (
         <div data-testid="meter-diagnostics" style={{ fontSize: 10.5, color: "var(--muted)", fontWeight: 700, lineHeight: 1.4 }}>
-          Unweighted {listening && raw !== null ? `${raw.toFixed(1)} dB` : "–"} · Noise suppr. {onOff(info.noiseSuppression)} · Auto gain {onOff(info.autoGainControl)} · Echo cancel {onOff(info.echoCancellation)} · {Math.round(info.sampleRate / 100) / 10} kHz · Cal. {offset}
+          Unweighted {listening && raw !== null ? `${raw.toFixed(1)} dB` : "–"} · Noise suppr. {onOff(info.noiseSuppression)} · Auto gain {onOff(info.autoGainControl)} · Echo cancel {onOff(info.echoCancellation)} · {Math.round(info.sampleRate / 100) / 10} kHz
         </div>
       )}
       <div style={{ display: "flex", gap: 6 }}>
         <MeterButton onClick={() => void toggle()} on={listening}>
           {listening ? "Stop" : "Listen"}
         </MeterButton>
-        <MeterButton onClick={() => (setMax(null), setUsed(true))}>Reset max</MeterButton>
-        {/* the saved reference: tap it again to clear it */}
-        <MeterButton label={isRef ? "Clear the reference" : undefined} onClick={() => (isRef ? onSave("") : max !== null && onSave(String(max)))} on={isRef}>
-          {isRef ? `Ref. ${saved} ✕` : "Save as ref."}
-        </MeterButton>
-        <MeterButton small onClick={() => nudge(-1)}>
-          −1
-        </MeterButton>
-        <MeterButton small onClick={() => nudge(1)}>
-          +1
-        </MeterButton>
+        {!listening && hasSaved && (
+          <MeterButton small label="Clear the saved reading" onClick={() => onSave(undefined, undefined)}>
+            Clear
+          </MeterButton>
+        )}
       </div>
+    </div>
+  );
+}
+
+const round = (v: number) => (Math.round(v * 10) / 10).toFixed(1);
+
+function MeterStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ textAlign: "right", fontSize: 11, color: "var(--muted)", fontWeight: 700 }}>
+      {label}
+      <b style={{ display: "block", fontSize: 19, color: "var(--text)", fontVariantNumeric: "tabular-nums" }}>{value}</b>
     </div>
   );
 }
@@ -829,7 +848,7 @@ function MeterButton({ children, onClick, on, small, label }: { children: ReactN
     <button
       aria-label={label}
       onClick={onClick}
-      style={{ flex: small ? "0 0 40px" : 1, padding: "8px 4px", borderRadius: 9, background: "var(--panel-2)", border: on ? "1px solid var(--accent)" : "1px solid var(--border-strong)", color: on ? "#5ff0e0" : "#bfd0de", fontSize: 11.5, fontWeight: 800, lineHeight: 1.2 }}
+      style={{ flex: small ? "0 0 64px" : 1, padding: "8px 4px", borderRadius: 9, background: "var(--panel-2)", border: on ? "1px solid var(--accent)" : "1px solid var(--border-strong)", color: on ? "#5ff0e0" : "#bfd0de", fontSize: 11.5, fontWeight: 800, lineHeight: 1.2 }}
     >
       {children}
     </button>

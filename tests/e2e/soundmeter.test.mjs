@@ -32,24 +32,56 @@ after(async () => {
   await app?.close();
 });
 
-test("Listen shows an A-weighted level and the diagnostics line", async () => {
+const stat = (label) =>
+  page.evaluate((l) => {
+    const b = [...document.querySelectorAll("b")].find((x) => x.parentElement?.firstChild?.textContent === l);
+    return b?.textContent ?? "";
+  }, label);
+const savedOnce = () =>
+  page.evaluate(async () => {
+    const req = indexedDB.open("inspecta");
+    const idb = await new Promise((r) => (req.onsuccess = () => r(req.result)));
+    const t = await new Promise((r) => {
+      const q = idb.transaction("stairTests").objectStore("stairTests").get("t1");
+      q.onsuccess = () => r(q.result);
+    });
+    idb.close();
+    return t.once.st1 ?? {};
+  });
+
+test("Listen shows the level, average and max, with the diagnostics line", async () => {
   await go(page, app, "/site/s1/spf/t1/noise?stair=st1", 1200);
+  assert.equal(await page.getByRole("button", { name: /^[−+]1$/ }).count(), 0, "no calibration nudges");
   await page.getByRole("button", { name: "Listen" }).click();
-  const diag = page.getByTestId("meter-diagnostics");
-  await diag.waitFor();
-  await page.waitForFunction(() => /Unweighted \d/.test(document.querySelector('[data-testid="meter-diagnostics"]')?.textContent ?? ""));
-  const text = await diag.innerText();
+  await page.getByTestId("meter-diagnostics").waitFor();
+  const text = await page.getByTestId("meter-diagnostics").innerText();
   assert.match(text, /Noise suppr\. (off|ON|\?)/);
   assert.match(text, /\d+(\.\d)? kHz/);
-  assert.match(text, /Cal\. 100/);
   // the fake microphone beeps now and then: wait for the max to catch one
-  const maxOf = () => page.getByText("Max", { exact: false }).locator("b").innerText();
   await page.waitForFunction(() => {
-    const b = [...document.querySelectorAll("b")].find((x) => x.parentElement?.textContent?.startsWith("Max"));
+    const b = [...document.querySelectorAll("b")].find((x) => x.parentElement?.firstChild?.textContent === "Max");
     return b && parseFloat(b.textContent) > 20;
   }, null, { timeout: 15000 });
-  assert.ok(parseFloat(await maxOf()) > 20);
+  assert.match(await page.getByTestId("meter-status").innerText(), /Listening/);
+});
+
+test("Stop saves the average and max to the stair; Clear takes them off", async () => {
   await page.getByRole("button", { name: "Stop" }).click();
+  await page.getByText("Saved to this stair").waitFor();
+  await page.waitForTimeout(800);
+  const once = await savedOnce();
+  assert.ok(parseFloat(once.noiseRef) > 20, `max ${once.noiseRef}`);
+  assert.ok(parseFloat(once.noiseRefAvg) <= parseFloat(once.noiseRef), `avg ${once.noiseRefAvg} ≤ max ${once.noiseRef}`);
+  // still there when the page is opened again
+  await go(page, app, "/site/s1/spf/t1/noise?stair=st1", 1200);
+  assert.equal(await stat("Max"), once.noiseRef);
+  assert.equal(await stat("Average"), once.noiseRefAvg);
+  await page.getByRole("button", { name: "Clear the saved reading" }).click();
+  await page.waitForTimeout(800);
+  const cleared = await savedOnce();
+  assert.equal(cleared.noiseRef, undefined);
+  assert.equal(cleared.noiseRefAvg, undefined);
+  assert.equal(await stat("Max"), "–");
 });
 
 test("no page errors", () => {
