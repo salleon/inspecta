@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import type { Site, SpfSystem, StairTest } from "../db/types";
+import type { Site, SpfStair, SpfSystem, StairTest } from "../db/types";
 import { getSite, getStairTest, saveSiteSpf, saveStairTest } from "../db/db";
-import { doorsOpen, limitTiles } from "../lib/stairTest";
+import { doorsOpen, fanIsDefault, fanName, limitTiles, wellIsDefault, wellName } from "../lib/stairTest";
 import { IconChevronLeft } from "./Icons";
 import RoundIconButton from "./RoundIconButton";
 
@@ -24,6 +24,25 @@ export function PageHeader({ title, sub, onBack, right }: { title: ReactNode; su
       </div>
       {right}
     </div>
+  );
+}
+
+// a placeholder name (SPF-1, Stair 1): amber and italic, so it reads as
+// filled in for now, to be replaced once the fans are identified
+export const DEFAULT_NAME: CSSProperties = { color: "#f7b977", fontStyle: "italic" };
+
+// a stair's fan and stairwell names, placeholders marked
+export function StairName({ stair, i, part = "both", sep = " · " }: { stair: SpfStair; i: number; part?: "both" | "fan" | "well"; sep?: string }) {
+  const fan = fanIsDefault(stair) ? <span className="default-name" style={DEFAULT_NAME}>{fanName(stair, i)}</span> : <span>{fanName(stair, i)}</span>;
+  const well = wellIsDefault(stair) ? <span className="default-name" style={DEFAULT_NAME}>{wellName(stair, i)}</span> : <span>{wellName(stair, i)}</span>;
+  if (part === "fan") return fan;
+  if (part === "well") return well;
+  return (
+    <>
+      {fan}
+      {sep}
+      {well}
+    </>
   );
 }
 

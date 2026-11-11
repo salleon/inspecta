@@ -1,9 +1,9 @@
 import { useState, type CSSProperties } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import type { StairSection } from "../db/types";
-import { ALL_SECTIONS, doorStats, KIND_LABEL, onceStatus, runCount, SECTION, stairDoors, stairFan } from "../lib/stairTest";
+import { ALL_SECTIONS, doorStats, KIND_LABEL, onceStatus, runCount, SECTION, stairDoors } from "../lib/stairTest";
 import { useBackHandler } from "../lib/backButton";
-import { card, cardLabel, fieldInput, PageHeader, Pill, useStairTest } from "../components/StairUi";
+import { card, cardLabel, fieldInput, PageHeader, Pill, StairName, useStairTest } from "../components/StairUi";
 import ConfirmDialog from "../components/ConfirmDialog";
 
 // A stair test (design canvas StairTestSimple, "2 · The sections"; tidied on
@@ -124,8 +124,10 @@ export default function StairTestPage() {
                   onClick={() => setParams({ stair: s.id }, { replace: true })}
                   style={{ flex: "0 0 auto", textAlign: "left", fontSize: 12, fontWeight: 800, padding: "7px 11px", borderRadius: 9, lineHeight: 1.25, background: on ? "rgba(var(--accent-rgb), .14)" : "var(--panel-2)", border: on ? "1px solid var(--accent)" : "1px solid var(--border-strong)", color: on ? "#5ff0e0" : "var(--muted)" }}
                 >
-                  {stairFan(s) || "No fan name"}
-                  {s.name.trim() && <small style={{ display: "block", fontSize: 10.5, fontWeight: 600 }}>{s.name.trim()}</small>}
+                  <StairName stair={s} i={stairs.indexOf(s)} part="fan" />
+                  <small style={{ display: "block", fontSize: 10.5, fontWeight: 600 }}>
+                    <StairName stair={s} i={stairs.indexOf(s)} part="well" />
+                  </small>
                   <small style={{ display: "block", fontSize: 10.5, fontWeight: 700 }}>{every ? `${done} of ${stairDoors(s).length}` : `${stairDoors(s).length} doors`}</small>
                 </button>
               );

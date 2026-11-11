@@ -22,8 +22,8 @@ const WORD: Record<SpfEdition, string> = { "1979": "storey", "1991": "floor", "1
 
 export const defaultSystem = (): SpfSystem => ({ edition: "1998", type: "Purge", stairs: [], notes: "" });
 
-// the fan name starts as "SPF-", for its number
-export const newStair = (): SpfStair => ({ id: crypto.randomUUID(), name: "", from: "", to: "", extra: [], fan: "SPF-" });
+// a new stair: no names yet (it shows the placeholders, below, until they're typed)
+export const newStair = (): SpfStair => ({ id: crypto.randomUUID(), name: "", from: "", to: "", extra: [], fan: "" });
 
 // a type the edition has (the first, if it's changed to one that hasn't)
 export const typeFor = (edition: SpfEdition, type: SpfType): SpfType => (TYPES[edition].includes(type) ? type : TYPES[edition][0]);
@@ -163,7 +163,15 @@ export function stairDoors(stair: Pick<SpfStair, "from" | "to" | "extra" | "leve
 // A stair goes by its fan ("SPF 1"), with its stairwell's name when one was
 // entered ("SPF 1 · East stairwell"). Never a made-up "Stair 3".
 export const stairFan = (stair: SpfStair) => (/^SPF-?\s*$/i.test(stair.fan.trim()) ? "" : stair.fan.trim());
-export const stairLabel = (stair: SpfStair) => [stairFan(stair) || "No fan name", stair.name.trim()].filter(Boolean).join(" · ");
+// Until the fans are identified, a stair goes by placeholders from its place
+// in the list (shown in amber on screen, printed as they are): SPF-1 and
+// Stair 1, SPF-2 and Stair 2… Never stored, so they follow the stairs as
+// they're added, removed or reordered; a typed name replaces them.
+export const fanName = (stair: SpfStair, i: number) => stairFan(stair) || `SPF-${i + 1}`;
+export const wellName = (stair: SpfStair, i: number) => stair.name.trim() || `Stair ${i + 1}`;
+export const fanIsDefault = (stair: SpfStair) => !stairFan(stair);
+export const wellIsDefault = (stair: SpfStair) => !stair.name.trim();
+export const stairLabel = (stair: SpfStair, i: number) => `${fanName(stair, i)} · ${wellName(stair, i)}`;
 
 // "B2 to 26"
 export const stairRange = (stair: SpfStair) => (stair.from.trim() && stair.to.trim() ? `${stair.from.trim()} to ${stair.to.trim()}` : "No levels yet");

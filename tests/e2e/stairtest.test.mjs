@@ -55,11 +55,15 @@ test("the system is set once: edition, type, stairs; the rules follow the editio
   await page.getByText("No stairs yet").waitFor();
   assert.ok(await page.getByRole("button", { name: "Add a stair to continue" }).isDisabled());
   await page.getByRole("button", { name: "+ Add a stair" }).click();
-  // the new stair starts blank: no example text, no extra doors
-  assert.equal(await page.locator("input[placeholder]:visible, textarea[placeholder]:visible").count(), 0);
+  // the new stair starts blank, its names as placeholders from its place: Stair 1, SPF-1
+  assert.equal(await page.getByLabel("Stair name").getAttribute("placeholder"), "Stair 1");
+  assert.equal(await page.getByLabel("Fan name").getAttribute("placeholder"), "SPF-1");
   assert.equal(await page.getByText("Extra doors").count(), 0);
+  // names can come later: nothing blocks saving without a fan name
+  assert.equal(await page.getByText("Add a fan name to continue").count(), 0);
   await page.getByLabel("Stair name").fill("Front");
-  // the fan name starts as SPF-, for its number
+  // tapping the fan name starts it at SPF-, for its number
+  await page.getByLabel("Fan name").focus();
   assert.equal(await page.getByLabel("Fan name").inputValue(), "SPF-");
   await page.getByLabel("Fan name").fill("SPF-1");
   // highest level first, typed on the purple pad; Next › goes down to the lowest

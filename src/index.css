@@ -793,3 +793,10 @@ button:active:not(:disabled) {
     background-color: rgba(247, 185, 119, 0.05);
   }
 }
+
+/* a placeholder stair or fan name (SPF-1, Stair 1) in an empty name box */
+.default-ph::placeholder {
+  color: #f7b977;
+  font-style: italic;
+  opacity: 1;
+}

@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { levelsRead, renameDoorLevels } from "../../src/lib/stairTest";
-import { doorFails, doorMarginal, kindsFor, latestDoor, newRun, stairDoors, stairLabel } from "../../src/lib/stairTest";
+import { doorFails, doorMarginal, fanIsDefault, kindsFor, latestDoor, newRun, stairDoors, stairLabel, wellIsDefault } from "../../src/lib/stairTest";
 import { adjacentDoor, doorsOpen, doorStats, isCustomLevel, joinLevel, levelChanges, levelChip, levelName, levelsEdited, limits, onceStatus, sectionsFor, splitLevel, stairLevels, stairTestHasData, stairTestSummary, typeFor } from "../../src/lib/stairTest";
 import { stairPages } from "../../src/lib/stairPrint";
 import type { SpfSystem, StairTest } from "../../src/db/types";
@@ -119,11 +119,14 @@ test("a level has one door unless more are set: on every level, or added at one"
   assert.deepEqual(two.slice(0, 2).map((d) => d.key), ["P1", "P1\tB"]);
 });
 
-test("stairs are named by their name, else their fan", () => {
+test("an unnamed stair goes by placeholders from its place in the list", () => {
   const st = (id: string, fan: string, name = "") => ({ id, name, from: "G", to: "1", extra: [], fan });
-  assert.equal(stairLabel(st("a", "SPF 2")), "SPF 2");
-  assert.equal(stairLabel(st("a", "SPF 2", "East stairwell")), "SPF 2 · East stairwell");
-  assert.equal(stairLabel(st("a", "SPF-")), "No fan name");
+  assert.equal(stairLabel(st("a", "SPF 2", "East stairwell"), 0), "SPF 2 · East stairwell");
+  assert.equal(stairLabel(st("a", "SPF 2"), 0), "SPF 2 · Stair 1");
+  assert.equal(stairLabel(st("a", "SPF-", "East"), 2), "SPF-3 · East");
+  assert.equal(stairLabel(st("a", ""), 1), "SPF-2 · Stair 2");
+  assert.ok(fanIsDefault(st("a", "SPF-")) && fanIsDefault(st("a", "")) && !fanIsDefault(st("a", "SPF-4")));
+  assert.ok(wellIsDefault(st("a", "SPF-1")) && !wellIsDefault(st("a", "SPF-1", "North")));
 });
 
 test("a pass within 0.1 m/s or 5 N of the limit is marginal; below the meter fails", () => {

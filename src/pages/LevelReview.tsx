@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { SpfStair } from "../db/types";
-import { isCustomLevel, joinLevel, LEVEL_TYPES, levelChip, levelName, levelType, splitLevel, stairLabel, stairLevels, suggestLevels, type LevelType } from "../lib/stairTest";
+import { isCustomLevel, joinLevel, LEVEL_TYPES, levelChip, levelName, levelType, splitLevel, stairLevels, suggestLevels, type LevelType } from "../lib/stairTest";
 import { useBackHandler } from "../lib/backButton";
-import { PageHeader } from "../components/StairUi";
+import { PageHeader, StairName } from "../components/StairUi";
 import NumPad, { BLANK, numberKeys, PadTag } from "../components/NumPad";
 import "./LevelReview.css";
 
@@ -51,6 +51,7 @@ const list3 = (a: string[]) => (a.length <= 3 ? a.join(", ").replace(/, ([^,]*)$
 
 export default function LevelReview({
   stair,
+  n,
   read,
   onChange,
   onRename,
@@ -192,7 +193,11 @@ export default function LevelReview({
   const ecode = edit && et ? (et.numbered ? (edit.num ? joinLevel(edit.type, edit.num) : "") : edit.type) : "";
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
-      <PageHeader title="Review level layout" sub={`${stairLabel(stair)} · ${L.length} doors`} onBack={onBack} />
+      <PageHeader title="Review level layout" sub={
+          <>
+            <StairName stair={stair} i={n - 1} /> · {L.length} doors
+          </>
+        } onBack={onBack} />
       <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: 9, padding: "4px 14px 0" }}>
         <div ref={list} className="lr-list" data-testid="level-list">
           {rows}
