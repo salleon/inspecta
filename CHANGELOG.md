@@ -142,6 +142,27 @@ the technical detail.
   control, AHUs in fire mode, duct probes, covered or mis-zoned
   detectors, clipping tones, and alarms not reaching the ASE.
 
+## 11 November 2026
+
+- **Stair pressurisation out of Beta (test app).** The amber BETA tag on
+  the home screen and the BETA ribbon on its New job button are gone.
+- **Contractor mode for new phones.** A phone setting up Inspecta for the
+  first time starts in Contractor mode; phones already in use stay in
+  EnFact mode.
+- **Company setup.** Contractor mode asks for the company's name, logo and
+  colours, and Settings → Company changes them later. Use default skips
+  it with EnFact's colours, a name box and the AFSS/Projects square.
+- **The company's look throughout.** The company's colours replace the
+  fixed teal and navy everywhere, and its name and logo show where
+  EnFact's used to.
+- **New splash and welcome.** The splash is the Inspecta logotype animated
+  in the company's colours; the setup welcome shows the logotype and plays
+  the lens reveal as the splash fades.
+- **New app icon.** The icon drops the words; the app mark replaces the
+  shield on the setup screen.
+- **Share a company setup.** Admin can share the company setup as a file;
+  on a new phone, Join a company reads it, so every phone matches.
+
 ## 29 October 2026
 
 - **Build 9.1, out to coworkers.** Camera zoom dial with smooth lens

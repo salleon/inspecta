@@ -30,7 +30,6 @@ after(async () => {
 test("a Stair pressurisation site from + New job", async () => {
   await page.getByRole("button", { name: /new job/i }).first().click();
   await page.getByRole("button", { name: "Stair pressurisation" }).click();
-  assert.match(await page.getByRole("button", { name: /Stair pressurisation/ }).innerText(), /BETA/, "the beta ribbon");
   assert.match(await page.locator("form").innerText(), /Just stair pressurisation tests/);
   await page.getByPlaceholder("Site name").fill("Harbour Tower");
   await page.getByRole("button", { name: "Start stair testing" }).click();
@@ -209,7 +208,7 @@ test("Custom starts with nothing picked; the chips only light up under Custom", 
 
 test("the system can be changed any time from the site's list", async () => {
   await go(page, app, "/", 1200);
-  assert.match(await page.locator("body").innerText(), /Stair pressurisation\s*BETA/i, "the home heading's beta tag");
+  assert.doesNotMatch(await page.locator("body").innerText(), /BETA/, "no beta tag any more");
   await page.getByText("Harbour Tower").click();
   const box = page.getByTestId("spf-system");
   await box.waitFor();

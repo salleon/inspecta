@@ -137,7 +137,6 @@ export default function Dashboard() {
         <div style={{ ...sectionHeaderStyle, display: "flex", alignItems: "center", gap: 7 }}>
           <SiteKindIcon kind={kind} />
           {label}
-          {kind === "spf" && <BetaTag />}
         </div>
         {group.map((site, i) => (
           <div key={site.id} data-site-id={site.id}>
@@ -342,11 +341,10 @@ export default function Dashboard() {
               <button
                 type="button"
                 onClick={() => setKind("spf")}
-                style={{ ...kindToggleStyle(kind === "spf", "spf"), position: "relative", overflow: "hidden", paddingRight: 18 }}
+                style={kindToggleStyle(kind === "spf", "spf")}
               >
                 <SiteKindIcon kind="spf" size={13} color="currentColor" />
                 Stair pressurisation
-                <BetaRibbon />
               </button>
             </div>
             {kind === "flow" && (
@@ -428,20 +426,6 @@ const sectionHeaderStyle: CSSProperties = {
   color: "var(--muted-2)",
   padding: "0 2px",
 };
-
-// stair pressurisation is still being built: a BETA tag on its home heading
-// and a ribbon on its New job button (take both out when it's finished)
-const BETA = "#f7b977";
-function BetaTag() {
-  return <span style={{ padding: "2px 7px", borderRadius: 4, background: BETA, color: "#2e1a04", fontSize: 10, fontWeight: 800, letterSpacing: "0.06em" }}>BETA</span>;
-}
-function BetaRibbon() {
-  return (
-    <span style={{ position: "absolute", right: -20, top: 5, width: 64, transform: "rotate(40deg)", background: BETA, color: "#2e1a04", fontSize: 7.5, fontWeight: 800, letterSpacing: "0.08em", textAlign: "center", padding: "1px 0", pointerEvents: "none" }}>
-      BETA
-    </span>
-  );
-}
 
 function kindToggleStyle(active: boolean, kind: SiteKind): CSSProperties {
   const c = KIND_COLOUR[kind];
