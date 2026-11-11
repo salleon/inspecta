@@ -73,7 +73,7 @@ export function applySetupFile(file: SetupFile, pin: string) {
     logo: typeof c.logo === "string" && c.logo.startsWith("data:image/") ? c.logo : null,
     plate: !!c.plate,
     logoColours: Array.isArray(c.logoColours) ? c.logoColours.filter((x) => /^#[0-9a-f]{6}$/i.test(x)) : [],
-    schemeId: typeof c.schemeId === "string" ? c.schemeId : "harbour",
+    schemeId: typeof c.schemeId === "string" ? c.schemeId : "default",
     custom: c.custom && [c.custom.primary, c.custom.secondary, c.custom.light].every((x) => /^#[0-9a-f]{6}$/i.test(x ?? "")) ? c.custom : getCompany().custom,
     setUp: true,
   });

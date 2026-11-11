@@ -21,8 +21,10 @@ export function coverColours() {
   };
 }
 
-// a JPEG data URL for the whole page, wPt x hPt points
-export async function coverBackground(wPt: number, hPt: number): Promise<string> {
+// a JPEG data URL for the whole page, wPt x hPt points. With no logo, the
+// middle has EnFact's cover square with AFSS or PROJECTS in it, minus
+// EnFact's logo.
+export async function coverBackground(wPt: number, hPt: number, kind: "afss" | "project"): Promise<string> {
   const c = getCompany();
   const s = companyScheme(c);
   const k = 2; // 144 dpi
@@ -50,19 +52,30 @@ export async function coverBackground(wPt: number, hPt: number): Promise<string>
     const h = shape.height * fit;
     ctx.globalAlpha = 0.09;
     ctx.drawImage(shape, box.x + (box.w - w) / 2, box.y + (box.h - h) / 2, w, h);
-  } else if (companyInitials(c)) {
-    ctx.globalAlpha = 0.06;
-    ctx.fillStyle = "#ffffff";
-    ctx.font = `900 ${285 * k}px Helvetica, Arial, sans-serif`;
+  } else {
+    // the square (as on EnFact's cover artwork: 87.5, 130, 419.5 pt)
+    const sq = { x: 87.5 * k, y: 130 * k, s: 419.5 * k };
+    const fill = ctx.createLinearGradient(0, sq.y, sq.s * 0.14, sq.y + sq.s);
+    fill.addColorStop(0, mix(middle, "#ffffff", 0.2));
+    fill.addColorStop(1, mix(middle, "#ffffff", 0.15));
+    ctx.fillStyle = fill;
+    ctx.fillRect(sq.x, sq.y, sq.s, sq.s);
+    const word = kind === "project" ? "PROJECTS" : "AFSS";
+    const face = '"Manrope Variable", Helvetica, Arial, sans-serif';
+    await document.fonts?.load(`800 100px ${face}`).catch(() => {});
+    ctx.font = `800 100px ${face}`;
+    const size = Math.min(150 * k, (100 * sq.s * 0.8) / ctx.measureText(word).width);
+    ctx.font = `800 ${size}px ${face}`;
+    ctx.fillStyle = mix(middle, "#ffffff", 0.02);
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(companyInitials(c), box.x + box.w / 2, box.y + box.h / 2);
+    ctx.fillText(word, sq.x + sq.s / 2, sq.y + sq.s / 2);
   }
   ctx.globalAlpha = 1;
   return canvas.toDataURL("image/jpeg", 0.9);
 }
 
-function size(src: string): Promise<{ w: number; h: number }> {
+function imageSize(src: string): Promise<{ w: number; h: number }> {
   return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => resolve({ w: img.naturalWidth || 400, h: img.naturalHeight || 200 });
@@ -72,12 +85,12 @@ function size(src: string): Promise<{ w: number; h: number }> {
 }
 
 // the company's logo at the top left (on a white plate when that's
-// switched on), or its initials and name when there's no logo
+// switched on), or its name set in an outlined box when there's no logo
 export async function drawCoverLogo(doc: jsPDF, x: number, y: number) {
   const c = getCompany();
   const s = companyScheme(c);
   if (c.logo) {
-    const { w, h } = await size(c.logo);
+    const { w, h } = await imageSize(c.logo);
     const fit = Math.min(60 / h, 220 / w);
     const lw = w * fit;
     const lh = h * fit;
@@ -90,13 +103,18 @@ export async function drawCoverLogo(doc: jsPDF, x: number, y: number) {
     }
     return;
   }
-  doc.setFillColor(...(rgb(s.secondary) as RGB));
-  doc.roundedRect(x, y, 50, 50, 11, 11, "F");
+  const name = (companyName(c) || companyInitials(c)).toUpperCase();
+  if (!name) return;
+  const space = 1.6;
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(20);
-  doc.setTextColor(...(rgb(onColour(s.secondary, s.primary)) as RGB));
-  doc.text(companyInitials(c), x + 25, y + 32, { align: "center" });
-  doc.setFontSize(19);
+  let size = 15;
+  const width = () => doc.getTextWidth(name) + space * (name.length - 1);
+  doc.setFontSize(size);
+  while (width() > 300 && size > 9) doc.setFontSize(--size);
+  const h = 40;
+  doc.setDrawColor(...(rgb(s.secondary) as RGB));
+  doc.setLineWidth(1.5);
+  doc.roundedRect(x, y, width() + 32, h, 8, 8, "S");
   doc.setTextColor(...(rgb(s.light) as RGB));
-  doc.text(companyName(c), x + 62, y + 31);
+  doc.text(name, x + 16, y + h / 2 + size * 0.35, { charSpace: space });
 }

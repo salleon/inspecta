@@ -32,6 +32,7 @@ import coverBgAfss from "../assets/cover-bg-afss.jpg";
 import coverBgProjects from "../assets/cover-bg-projects.jpg";
 import { isContractor } from "../lib/settings";
 import { coverBackground, coverColours, drawCoverLogo } from "../lib/contractorCover";
+import { getCompany } from "../lib/company";
 import { useTourScene } from "../lib/tour";
 
 // the export loading screen shows for at least this long: a quick export
@@ -261,7 +262,7 @@ export default function ExportPreview() {
     const contractor = isContractor();
     const colours = contractor ? coverColours() : { accent: [46, 196, 182] as [number, number, number], onAccent: [4, 20, 15] as [number, number, number], address: [195, 211, 224] as [number, number, number], pill: [35, 50, 60] as [number, number, number] };
     if (contractor) {
-      doc.addImage(await coverBackground(pageW, pageH), "JPEG", 0, 0, pageW, pageH);
+      doc.addImage(await coverBackground(pageW, pageH, site?.kind === "project" ? "project" : "afss"), "JPEG", 0, 0, pageW, pageH);
       await drawCoverLogo(doc, margin, 44);
     } else {
       const bg = await loadAssetAsDataUrl(site?.kind === "project" ? coverBgProjects : coverBgAfss);
@@ -291,8 +292,8 @@ export default function ExportPreview() {
     let dy = pageH - detailsH;
     doc.setFillColor(...colours.accent);
     doc.rect(margin, dy, 56, accentH, "F");
-    if (contractor) {
-      // the report kind beside the accent bar, where EnFact's cover has it in the artwork
+    if (contractor && getCompany().logo) {
+      // the report kind beside the accent bar (with no logo it's in the square), where EnFact's cover has it in the artwork
       doc.setFont("helvetica", "bold");
       doc.setFontSize(12);
       doc.setTextColor(...colours.accent);

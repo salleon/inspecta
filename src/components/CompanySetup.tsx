@@ -32,10 +32,10 @@ import "./CompanySetup.css";
 export function CompanyLogo({ height, maxWidth, style }: { height: number; maxWidth: number; style?: CSSProperties }) {
   const c = useCompany();
   if (!c.logo) {
-    const initials = companyInitials(c);
+    // no logo: the company's name, set in a box
     return (
-      <div style={{ width: height, height, borderRadius: Math.round(height / 4), background: "var(--accent)", color: "var(--accent-text)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: Math.round(height * 0.4), flexShrink: 0, ...style }}>
-        {initials}
+      <div style={{ height, maxWidth, boxSizing: "border-box", padding: `0 ${Math.round(height * 0.3)}px`, borderRadius: Math.round(height / 5), border: "1.5px solid var(--accent)", color: "var(--text)", display: "flex", alignItems: "center", flexShrink: 0, ...style }}>
+        <span style={{ fontSize: Math.max(9, Math.round(height * 0.3)), fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", lineHeight: 1.15, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{companyName(c) || companyInitials(c)}</span>
       </div>
     );
   }
@@ -185,7 +185,7 @@ export function LogoEditor() {
             <span style={{ flexGrow: 1 }}>White background behind logo</span>
             <Switch on={c.plate} />
           </button>
-          <button type="button" onClick={() => setCompany({ logo: null, logoColours: [], plate: false, schemeId: c.schemeId.startsWith("logo") ? "harbour" : c.schemeId })} style={{ alignSelf: "flex-start", height: 44, border: "none", background: "none", color: "var(--muted)", fontSize: 14, fontWeight: 700, padding: 0 }}>
+          <button type="button" onClick={() => setCompany({ logo: null, logoColours: [], plate: false, schemeId: c.schemeId.startsWith("logo") ? "default" : c.schemeId })} style={{ alignSelf: "flex-start", height: 44, border: "none", background: "none", color: "var(--muted)", fontSize: 14, fontWeight: 700, padding: 0 }}>
             Remove logo
           </button>
         </div>
@@ -392,7 +392,29 @@ export default function CompanySetup({ onDone, animate }: { onDone: () => void; 
   }
   if (step === "logo") {
     return (
-      <StepScreen title="Report logo" step={1} onBack={() => setStep("name")} button={<button type="button" style={bigButton} onClick={() => setStep("colours")}>Next</button>}>
+      <StepScreen
+        title="Report logo"
+        step={1}
+        onBack={() => setStep("name")}
+        button={
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <button type="button" style={bigButton} onClick={() => setStep("colours")}>
+              Next
+            </button>
+            {/* skip the styling: the app's own colours, the name in a box for a logo */}
+            <button
+              type="button"
+              onClick={() => {
+                setCompany({ logo: null, logoColours: [], plate: false, schemeId: "default", setUp: true });
+                onDone();
+              }}
+              style={{ height: 46, border: "none", background: "none", color: "var(--text)", fontSize: 15, fontWeight: 700 }}
+            >
+              Use default
+            </button>
+          </div>
+        }
+      >
         <LogoEditor />
       </StepScreen>
     );

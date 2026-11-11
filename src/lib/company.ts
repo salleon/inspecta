@@ -23,7 +23,8 @@ export type Company = {
 };
 
 export const PRESETS: Preset[] = [
-  { id: "harbour", name: "Harbour", desc: "Navy · teal", primary: "#071b2c", secondary: "#2ec4b6", light: "#f4f7f9" },
+  // the app's own colours (index.css), used as they are: no logo needed
+  { id: "default", name: "Default", desc: "Navy · teal", primary: "#071b2c", secondary: "#2ec4b6", light: "#f4f7f9" },
   { id: "firetruck", name: "Firetruck", desc: "Charcoal · red", primary: "#16181d", secondary: "#e0313a", light: "#faf5f5" },
   { id: "signal", name: "Signal", desc: "Navy · red", primary: "#081a2b", secondary: "#e8423f", light: "#f6f8fa" },
   { id: "oxblood", name: "Oxblood", desc: "Deep red · red", primary: "#220c0f", secondary: "#f0524f", light: "#fbf4f4" },
@@ -50,7 +51,7 @@ const EMPTY: Company = {
   logo: null,
   plate: false,
   logoColours: [],
-  schemeId: "harbour",
+  schemeId: "default",
   custom: { primary: PRESETS[0].primary, secondary: PRESETS[0].secondary, light: PRESETS[0].light },
   setUp: false,
 };
@@ -228,6 +229,7 @@ export function logoSchemes(cols: string[]): Preset[] {
 }
 
 export function companyScheme(c: Company = getCompany()): Preset {
+  if (c.schemeId === "harbour") return PRESETS[0]; // Harbour became Default
   if (c.schemeId === "custom") return { id: "custom", name: "Custom", desc: "", ...c.custom };
   const all = [...PRESETS, ...(c.logo ? logoSchemes(c.logoColours) : [])];
   return all.find((p) => p.id === c.schemeId) ?? PRESETS[0];
@@ -262,8 +264,10 @@ export function themeVars(s: Scheme): Record<string, string> {
 // keeps index.css's own.
 export function applyTheme() {
   const root = document.documentElement;
-  const vars = themeVars(companyScheme());
-  const on = getFlowMode() === "contractor";
+  const scheme = companyScheme();
+  const vars = themeVars(scheme);
+  // Default keeps index.css's colours exactly, as EnFact mode does
+  const on = getFlowMode() === "contractor" && scheme.id !== "default";
   for (const [k, v] of Object.entries(vars)) {
     if (on) root.style.setProperty(k, v);
     else root.style.removeProperty(k);
