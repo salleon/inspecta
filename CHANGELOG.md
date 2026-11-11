@@ -7,6 +7,13 @@ the technical detail.
 
 ## 11 November 2026
 
+- **Inspecta's data stays out of the phone's cloud backups.** Android was
+  copying it into Google's backup (only until the app passed 25 MB, then
+  silently stopping), and on iPhone it would have gone into iCloud backups
+  and filled people's iCloud storage. It's now left out of both; use
+  **Back up** in the app. Moving to a new Android phone by copying the old
+  one across still brings it. The privacy policy says so.
+
 - **Any logo picture works, and a small one gets a warning.** A company
   logo can be any picture the phone opens (PNG, JPG, an iPhone photo, SVG
   and so on), uploaded or in a setup file. Big ones are shrunk, an SVG is
