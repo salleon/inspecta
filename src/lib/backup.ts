@@ -1,6 +1,6 @@
 import type { Finding, FlowTest, Photo, Site, StairTest } from "../db/types";
 import { backupRecords, finishSiteRestore, photoBlob, photoExists, restorePhoto, restoreSiteRecords, siteRestoreState } from "../db/db";
-import { ZipWriter } from "./zip";
+import { readZip, ZipWriter, type ZipEntry } from "./zip";
 
 // Backup: every site, finding, flow test, stair test and photo on this phone in one .zip —
 // backup.json (the records) plus photos/<id>.jpg (the original photos, as
@@ -70,55 +70,9 @@ export async function writeBackup(write: (bytes: Uint8Array) => Promise<void>, o
 
 // ---- reading ----
 
-// A file in the zip, read only when it's used.
-type Entry = () => Promise<Blob>;
-
-// Reads the entries of a zip straight from the file, only the part being
-// used. Ours are stored (uncompressed), but a backup that went through a
-// computer or a cloud drive may come back compressed (deflate), so both
-// are read.
-async function zipEntries(file: Blob): Promise<Map<string, Entry>> {
-  const tailSize = Math.min(file.size, 65557);
-  const tail = new DataView(await file.slice(file.size - tailSize).arrayBuffer());
-  let eocd = -1;
-  for (let i = tail.byteLength - 22; i >= 0; i--) {
-    if (tail.getUint32(i, true) === 0x06054b50) {
-      eocd = i;
-      break;
-    }
-  }
-  if (eocd < 0) throw new Error("This file isn't a zip file.");
-  const count = tail.getUint16(eocd + 10, true);
-  const dirSize = tail.getUint32(eocd + 12, true);
-  const dirOffset = tail.getUint32(eocd + 16, true);
-  const dir = new DataView(await file.slice(dirOffset, dirOffset + dirSize).arrayBuffer());
-  const entries = new Map<string, Entry>();
-  let p = 0;
-  for (let n = 0; n < count; n++) {
-    if (dir.getUint32(p, true) !== 0x02014b50) throw new Error("This zip file is damaged.");
-    const method = dir.getUint16(p + 10, true);
-    const compressed = dir.getUint32(p + 20, true);
-    const nameLen = dir.getUint16(p + 28, true);
-    const extraLen = dir.getUint16(p + 30, true);
-    const commentLen = dir.getUint16(p + 32, true);
-    const localOffset = dir.getUint32(p + 42, true);
-    const name = new TextDecoder().decode(new Uint8Array(dir.buffer, dir.byteOffset + p + 46, nameLen));
-    p += 46 + nameLen + extraLen + commentLen;
-    if (method !== 0 && method !== 8) continue;
-    entries.set(name, async () => {
-      const local = new DataView(await file.slice(localOffset, localOffset + 30).arrayBuffer());
-      const dataStart = localOffset + 30 + local.getUint16(26, true) + local.getUint16(28, true);
-      const data = file.slice(dataStart, dataStart + compressed);
-      if (method === 0) return data;
-      return new Response(data.stream().pipeThrough(new DecompressionStream("deflate-raw"))).blob();
-    });
-  }
-  return entries;
-}
-
 export interface RestorePlan {
   json: BackupJson;
-  entries: Map<string, Entry>;
+  entries: Map<string, ZipEntry>;
   // the folder backup.json is in, if the zip was re-made with a folder
   prefix: string;
   newSites: Site[];
@@ -131,7 +85,7 @@ export interface RestorePlan {
 // Checks the file and works out what it would add, without changing
 // anything yet.
 export async function readBackup(file: Blob): Promise<RestorePlan> {
-  const entries = await zipEntries(file);
+  const entries = await readZip(file);
   const jsonName = [...entries.keys()].find((n) => (n === "backup.json" || n.endsWith("/backup.json")) && !n.startsWith("__MACOSX/"));
   if (!jsonName) throw new Error("There's no backup.json in this zip, so it isn't an Inspecta backup.");
   const prefix = jsonName.slice(0, -"backup.json".length);

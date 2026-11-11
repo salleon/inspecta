@@ -7,6 +7,14 @@ the technical detail.
 
 ## 11 November 2026
 
+- **Backups past 4 GB.** "Back up all data" used to fail every time
+  once the photos added up to about 4 GB (roughly 4,000 photos). Backups
+  (and the photo zip and Excel exports) now switch to the Zip64 form of
+  .zip when they get that big, which Windows, macOS and Android open
+  normally, and Restore reads it. Smaller backups are unchanged. (The web
+  version still builds a backup in memory, so a very big one can still
+  fail there; the Android app writes it to a file as it goes.)
+
 - **A restore that stops part way is finished by restoring again.** Each
   site is now restored with its photos as one unit and marked on the home
   screen ("Restore didn't finish") until its photos are all in. Restoring
