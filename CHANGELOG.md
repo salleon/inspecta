@@ -7,6 +7,20 @@ the technical detail.
 
 ## 11 November 2026
 
+- **Restore merges instead of replacing.** When a site in a backup is
+  also on the phone and differs (say a site handed to a coworker and
+  worked on by both), Restore now offers **Merge**, **Keep both** or
+  **Leave as it is**, and says what differs ("the backup has 1 finding and
+  1 photo this phone doesn't. This phone has 1 finding the backup
+  doesn't; it's kept."). Merge never deletes anything on the phone: what's
+  only in the backup is added, a finding changed on both keeps the later
+  edit, and a flow or stair test changed on both keeps both copies, the
+  backup's marked *From backup*, so no readings are lost. Keep both brings
+  the backup's copy in as its own site, "Name (from backup)". Replace,
+  which deleted the phone's copy, is gone. A merged site still counts as
+  needing a backup. Like a restore, a merge or Keep both that stops part
+  way is finished by restoring the same backup again.
+
 - **Launch sound.** A short three-note chime plays with the opening
   animation, its last note landing as the name lights up (on the
   Contractor splash, as the tick lands on the i). Only when the phone's

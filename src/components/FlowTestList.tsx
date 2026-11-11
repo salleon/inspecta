@@ -209,6 +209,7 @@ function FlowRow({
     test.kind === "blank"
       ? `${test.cells?.length ?? 0} rows · ${test.columns?.length ?? 0} columns · ${formatDay(test.testedAt)}`
       : `${readingCount(test)} readings · ${formatDay(test.testedAt)}`;
+  const tag = test.fromBackup ? " · From backup" : "";
   const thumb = test.kind === "blank" ? blankThumbSvg(72, 52) : chartSvg(test, 72, 52, { small: true });
 
   return (
@@ -252,7 +253,7 @@ function FlowRow({
         <div style={{ width: 72, height: 52, flexShrink: 0, borderRadius: 8, background: "var(--bg)", overflow: "hidden" }} dangerouslySetInnerHTML={{ __html: thumb }} />
         <div style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
           <div style={{ fontSize: 14, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{test.name || "Untitled"}</div>
-          <div style={{ fontSize: 12, color: "var(--muted)" }}>{sub}</div>
+          <div style={{ fontSize: 12, color: "var(--muted)" }}>{sub}{tag}</div>
           <div style={{ fontSize: 11, fontWeight: 800, color: v.colour }}>{v.text}</div>
         </div>
         <span style={{ color: "var(--muted-2)", fontSize: 18 }}>›</span>

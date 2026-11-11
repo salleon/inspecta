@@ -292,7 +292,7 @@ export default function TestsList({ site, mode, onCount }: { site: Site; mode: "
                   <span>
                     <b style={{ display: "block", fontSize: 14.5 }}>{i.kind === "flow" ? i.test.name || "Untitled" : STAIR_KIND[i.test.kind]}</b>
                     <span style={{ fontSize: 11.5, color: "var(--muted)", fontWeight: 600 }}>
-                      {i.kind === "flow" ? "Flow test" : "Stair pressurisation"} · {formatDay(i.test.testedAt)}
+                      {i.kind === "flow" ? "Flow test" : "Stair pressurisation"} · {formatDay(i.test.testedAt)}{i.test.fromBackup ? " · From backup" : ""}
                     </span>
                   </span>
                 </span>
@@ -371,6 +371,7 @@ function FlowCard({ test }: { test: FlowTest }) {
     test.kind === "blank"
       ? `${test.cells?.length ?? 0} rows · ${test.columns?.length ?? 0} columns · ${formatDay(test.testedAt)}`
       : `Flow test · ${readingCount(test)} readings · ${formatDay(test.testedAt)}`;
+  const tag = test.fromBackup ? " · From backup" : "";
   const thumb = test.kind === "blank" ? blankThumbSvg(72, 52) : chartSvg(test, 72, 52, { small: true });
   return (
     <>
@@ -380,7 +381,7 @@ function FlowCard({ test }: { test: FlowTest }) {
           <SiteKindIcon kind="flow" size={13} />
           <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{test.name || "Untitled"}</span>
         </div>
-        <div style={{ fontSize: 12, color: "var(--muted)" }}>{sub}</div>
+        <div style={{ fontSize: 12, color: "var(--muted)" }}>{sub}{tag}</div>
         <div style={{ fontSize: 11, fontWeight: 800, color: v.colour }}>{v.text}</div>
       </div>
     </>
@@ -401,7 +402,7 @@ function StairCard({ test, site }: { test: StairTest; site: Site }) {
           <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{site.kind === "spf" ? STAIR_KIND[test.kind] : "Stair pressurisation"}</span>
         </div>
         <div style={{ fontSize: 12, color: "var(--muted)" }}>
-          {site.kind === "spf" ? `${stairs} stair${stairs === 1 ? "" : "s"}` : STAIR_KIND[test.kind]} · {formatDay(test.testedAt)}
+          {site.kind === "spf" ? `${stairs} stair${stairs === 1 ? "" : "s"}` : STAIR_KIND[test.kind]} · {formatDay(test.testedAt)}{test.fromBackup ? " · From backup" : ""}
         </div>
         <div style={{ fontSize: 11, fontWeight: 800, color: v.fail ? "#ff7a6a" : "var(--muted)" }}>{v.text}</div>
       </div>
