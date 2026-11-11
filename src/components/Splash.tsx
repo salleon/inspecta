@@ -5,7 +5,8 @@ import letterA from "../assets/splash/letter-a.png";
 import letterC from "../assets/splash/letter-c.png";
 import letterT from "../assets/splash/letter-t.png";
 import { IS_TEST_BUILD } from "../lib/buildInfo";
-import { isContractor } from "../lib/settings";
+import { useRef } from "react";
+import { isContractor, setFlowMode } from "../lib/settings";
 import ContractorSplash from "./ContractorSplash";
 import "./Splash.css";
 
@@ -16,9 +17,42 @@ import "./Splash.css";
 // is all CSS: see Splash.css.
 const LETTERS = [letterE, letterN, letterF, letterA, letterC, letterT];
 
+// The owner's way to make a phone an EnFact phone, once: five quick taps
+// in the top left corner of the Contractor splash switch it to EnFact
+// mode and restart the app. Nothing shows, before or after a tap.
+const SECRET_TAPS = 5;
+const SECRET_GAP_MS = 800; // a longer pause starts the count again
+
+function SecretCorner() {
+  const taps = useRef({ count: 0, last: 0 });
+  return (
+    <div
+      aria-hidden="true"
+      data-testid="splash-corner"
+      onPointerDown={() => {
+        const now = Date.now();
+        const t = taps.current;
+        t.count = now - t.last > SECRET_GAP_MS ? 1 : t.count + 1;
+        t.last = now;
+        if (t.count < SECRET_TAPS) return;
+        setFlowMode("enfact");
+        window.location.reload();
+      }}
+      style={{ position: "fixed", top: 0, left: 0, width: 96, height: "calc(96px + env(safe-area-inset-top, 0px))", zIndex: 1001 }}
+    />
+  );
+}
+
 export default function Splash({ leaving }: { leaving: boolean }) {
   // Contractor mode has its own splash in the company's colours
-  if (isContractor()) return <ContractorSplash leaving={leaving} />;
+  if (isContractor()) {
+    return (
+      <>
+        <ContractorSplash leaving={leaving} />
+        <SecretCorner />
+      </>
+    );
+  }
   return (
     <div className={leaving ? "splash splash-leaving" : "splash"} role="img" aria-label={IS_TEST_BUILD ? "EnFact Inspecta, site inspection tool, test version" : "EnFact Inspecta, site inspection tool"}>
       <div className="splash-center" aria-hidden="true">
