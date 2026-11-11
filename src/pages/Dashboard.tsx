@@ -24,6 +24,8 @@ export default function Dashboard() {
   const contractor = useFlowMode() === "contractor";
   const [sites, setSites] = useState<SiteRow[]>([]);
   const [query, setQuery] = useState("");
+  // the kinds picked in the chip row; none picked shows every kind
+  const [kinds, setKinds] = useState<SiteKind[]>([]);
   const [adding, setAdding] = useState(false);
   // the tour opens the New job sheet to show the kinds of site
   useTourScene("new-site", () => setAdding(true), () => setAdding(false));
@@ -99,10 +101,9 @@ export default function Dashboard() {
       s.name.toLowerCase().includes(query.toLowerCase()) ||
       s.address.toLowerCase().includes(query.toLowerCase()),
   );
-  const afssSites = filtered.filter((s) => s.kind === "afss");
-  const projectSites = filtered.filter((s) => s.kind === "project");
-  const flowSites = filtered.filter((s) => s.kind === "flow");
-  const spfSites = filtered.filter((s) => s.kind === "spf");
+  // one list, most recent first (listSites' order), narrowed by the chips
+  const shown = kinds.length ? filtered.filter((s) => kinds.includes(s.kind)) : filtered;
+  const toggleKind = (k: SiteKind) => setKinds((ks) => (ks.includes(k) ? ks.filter((x) => x !== k) : [...ks, k]));
 
   async function handleDeleteSite() {
     if (!confirmDeleteSite || deleting) return;
@@ -126,34 +127,6 @@ export default function Dashboard() {
     setAddress("");
     setKind("afss");
     navigate(`/site/${site.id}/findings`);
-  }
-
-  // AFSS and Projects sections render identically — only the label and the
-  // filtered list differ.
-  function renderSiteGroup(label: string, kind: SiteKind, group: SiteRow[]) {
-    if (group.length === 0) return null;
-    return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <div style={{ ...sectionHeaderStyle, display: "flex", alignItems: "center", gap: 7 }}>
-          <SiteKindIcon kind={kind} />
-          {label}
-        </div>
-        {group.map((site, i) => (
-          <div key={site.id} data-site-id={site.id}>
-          <SiteButton
-            site={site}
-            thumb={thumbs[site.id]}
-            index={i}
-            onClick={() => navigate(`/site/${site.id}/findings`)}
-            isOpen={openSwipeId === site.id}
-            onOpen={() => setOpenSwipeId(site.id)}
-            onClose={() => setOpenSwipeId((id) => (id === site.id ? null : id))}
-            onDelete={() => setConfirmDeleteSite(site)}
-          />
-          </div>
-        ))}
-      </div>
-    );
   }
 
   return (
@@ -205,7 +178,7 @@ export default function Dashboard() {
       </div>
 
       {/* search */}
-      <div style={{ flexShrink: 0, padding: "4px 20px 16px" }}>
+      <div style={{ flexShrink: 0, padding: "4px 20px 10px" }}>
         <div
           style={{
             display: "flex",
@@ -236,18 +209,51 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* chips: tap to show only those kinds, tap again to drop one */}
+      <div role="group" aria-label="Show job types" style={{ flexShrink: 0, display: "flex", gap: 6, padding: "0 20px 14px" }}>
+        {KIND_CHIPS.map(([k, label]) => {
+          const on = kinds.includes(k);
+          return (
+            <button key={k} type="button" aria-pressed={on} onClick={() => toggleKind(k)} style={kindChipStyle(on, k)}>
+              <SiteKindIcon kind={k} size={13} color="currentColor" />
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
       {/* site list */}
       {/* the bottom padding keeps the last site clear of the + button */}
-      <div ref={listRef} style={{ flexGrow: 1, overflowY: "auto", padding: "0 20px calc(100px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 22 }}>
+      <div ref={listRef} style={{ flexGrow: 1, overflowY: "auto", padding: "0 20px calc(100px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 10 }}>
         {filtered.length === 0 && (
           <div style={{ padding: "40px 8px", textAlign: "center", color: "var(--muted-2)", fontSize: 14, fontWeight: 500 }}>
             {sites.length === 0 ? "No sites yet — tap New job to start your first inspection." : "No sites match your search."}
           </div>
         )}
-        {renderSiteGroup("AFSS", "afss", afssSites)}
-        {renderSiteGroup("Projects", "project", projectSites)}
-        {renderSiteGroup("Flow testing", "flow", flowSites)}
-        {renderSiteGroup("Stair pressurisation", "spf", spfSites)}
+        {filtered.length > 0 && shown.length === 0 && (
+          <div style={{ padding: "40px 8px", textAlign: "center", color: "var(--muted-2)", fontSize: 14, fontWeight: 500 }}>
+            No jobs of {kinds.length === 1 ? "that type" : "those types"}{query ? " match your search" : " yet"}.
+            <div style={{ marginTop: 12 }}>
+              <button type="button" onClick={() => setKinds([])} style={{ background: "none", border: "none", color: "var(--accent)", fontSize: 14, fontWeight: 800 }}>
+                Show all
+              </button>
+            </div>
+          </div>
+        )}
+        {shown.map((site, i) => (
+          <div key={site.id} data-site-id={site.id}>
+            <SiteButton
+              site={site}
+              thumb={thumbs[site.id]}
+              index={i}
+              onClick={() => navigate(`/site/${site.id}/findings`)}
+              isOpen={openSwipeId === site.id}
+              onOpen={() => setOpenSwipeId(site.id)}
+              onClose={() => setOpenSwipeId((id) => (id === site.id ? null : id))}
+              onDelete={() => setConfirmDeleteSite(site)}
+            />
+          </div>
+        ))}
       </div>
 
       {/* the list fades out under the New job pill, so it reads as scrolling on */}
@@ -418,14 +424,33 @@ const inputStyle: CSSProperties = {
   outline: "none",
 };
 
-const sectionHeaderStyle: CSSProperties = {
-  fontSize: 12,
-  fontWeight: 800,
-  letterSpacing: 0.6,
-  textTransform: "uppercase",
-  color: "var(--muted-2)",
-  padding: "0 2px",
-};
+const KIND_CHIPS: [SiteKind, string][] = [
+  ["afss", "AFSS"],
+  ["project", "Projects"],
+  ["flow", "Flow"],
+  ["spf", "Stair"],
+];
+
+// a chip in the row under the search: its kind's colour when picked
+function kindChipStyle(on: boolean, kind: SiteKind): CSSProperties {
+  const c = KIND_COLOUR[kind];
+  return {
+    flex: "1 1 0",
+    minWidth: 0,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 5,
+    padding: "7px 4px",
+    borderRadius: 999,
+    border: on ? `1px solid ${c}` : "1px solid var(--border-strong)",
+    background: on ? `${c}29` : "var(--panel)",
+    color: on ? c : "var(--muted)",
+    fontSize: 12.5,
+    fontWeight: 800,
+    whiteSpace: "nowrap",
+  };
+}
 
 function kindToggleStyle(active: boolean, kind: SiteKind): CSSProperties {
   const c = KIND_COLOUR[kind];

@@ -43,11 +43,11 @@ after(async () => {
   await app?.close();
 });
 
-test("New job offers Flow testing; the home page groups flow testing sites", async () => {
+test("New job offers Flow testing; the home page tags flow testing sites", async () => {
   await go(page, app, "/");
   await page.reload();
   await page.waitForTimeout(1200);
-  assert.equal(await page.getByText("Flow testing", { exact: true }).count(), 1, "the group heading");
+  assert.equal(await page.locator('[data-site-id="w1"]').getByText("Flow", { exact: true }).count(), 1, "the row's tag");
   assert.equal(await page.getByText("2 flow tests").count(), 1);
   await page.click('[aria-label="New job"]');
   await page.waitForTimeout(300);
@@ -56,8 +56,8 @@ test("New job offers Flow testing; the home page groups flow testing sites", asy
   await page.click('button:not([type=submit]):has-text("Flow testing")');
   // the picked kind in its own colour: flow testing blue (AFSS teal, Projects orange)
   assert.equal(await page.locator('button:not([type=submit]):has-text("Flow testing")').evaluate((e) => getComputedStyle(e).color), "rgb(90, 176, 255)");
-  await page.click('button:has-text("Projects")');
-  assert.equal(await page.locator('button:has-text("Projects")').evaluate((e) => getComputedStyle(e).color), "rgb(245, 165, 92)");
+  await page.click('form button:has-text("Projects")');
+  assert.equal(await page.locator('form button:has-text("Projects")').evaluate((e) => getComputedStyle(e).color), "rgb(245, 165, 92)");
   await page.click('button:not([type=submit]):has-text("Flow testing")');
   assert.equal(await page.getByText("Just flow tests: no findings or photos.", { exact: false }).count(), 1);
   await page.fill('input[placeholder="Site name"]', "Aldi Gordon");
