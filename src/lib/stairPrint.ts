@@ -70,14 +70,13 @@ export interface StairPage {
 
 export const STAIR_HEAD = ["Level", "Adjacent door open", "Average velocity m/s (min 1)", "Door closes and latches", "Door opening force N (max 110)"];
 
-// under the stair's max noise: the ambient (fan off) and the average and max
-// (the phone's, indicative only, or typed from a calibrated meter)
+// under the stair's average noise: the max, where they came from (the
+// phone's are indicative only), and the ambient (fan off)
 const noiseRef = (once: StairOnce) => {
   const a = (once.ambient ?? "").trim();
-  const avg = (once.noiseRefAvg ?? "").trim();
   const max = (once.noiseRef ?? "").trim();
-  const phone = [avg && `avg ${avg}`, max && `max ${max}`].filter(Boolean).join(", ");
-  const parts = [a && `ambient ${a} dB(A)${once.ambientLevel ? ` at ${once.ambientLevel}` : ""}`, phone && `${once.noiseRefSource === "meter" ? "calibrated meter" : "indicative (phone)"} ${phone} dB(A)`].filter(Boolean);
+  const from = once.noiseRefSource === "phone" ? "indicative (phone)" : once.noiseRefSource === "meter" ? "calibrated meter" : "";
+  const parts = [max && `max ${max} dB(A)`, (once.noiseStair ?? "").trim() && from, a && `ambient ${a} dB(A)${once.ambientLevel ? ` at ${once.ambientLevel}` : ""}`].filter(Boolean);
   return parts.length ? parts : undefined;
 };
 
@@ -188,7 +187,7 @@ export function stairPages(test: StairTest, sys: SpfSystem, site: Pick<Site, "na
     const pa = onceStatus("pa", once, sys);
     const n = (v?: string) => (v ?? "").trim();
     const boxes: StairBox[] = [
-      { label: "Max noise, stair", value: has("noise") && n(once.noiseStair) ? `${n(once.noiseStair)} dB(A) ${Number(once.noiseStair) > l.noiseStair ? "✗" : "✓"}` : "", fail: noise.fail && Number(once.noiseStair) > l.noiseStair, ref: has("noise") ? noiseRef(once) : undefined },
+      { label: "Noise, stair (average)", value: has("noise") && n(once.noiseStair) ? `${n(once.noiseStair)} dB(A) ${Number(once.noiseStair) > l.noiseStair ? "✗" : "✓"}` : "", fail: noise.fail && Number(once.noiseStair) > l.noiseStair, ref: has("noise") ? noiseRef(once) : undefined },
       { label: "Max noise, occupied space", value: has("noise") && n(once.noiseOcc) ? `${n(once.noiseOcc)} dB(A)${l.noiseOcc === null ? "" : Number(once.noiseOcc) > l.noiseOcc ? " ✗" : " ✓"}` : "", fail: l.noiseOcc !== null && Number(once.noiseOcc) > l.noiseOcc },
       { label: "Pressure restoration", value: has("rest") ? rest.text : "", fail: rest.fail },
       { label: "Stair, all doors closed", value: has("pa") ? pa.text : "", fail: pa.fail },

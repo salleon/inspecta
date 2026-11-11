@@ -170,7 +170,7 @@ test("the report: every column, blanks where not tested", async () => {
   assert.match(sheet, /SPF-1 · Front/);
   assert.match(sheet, /Door opening force N \(max 110\)/);
   assert.match(sheet, /2\s+3\s+0\.8/);
-  assert.match(sheet, /Max noise, stair[\s\S]*ambient 64 dB\(A\) at 3/);
+  assert.match(sheet, /Noise, stair \(average\)[\s\S]*ambient 64 dB\(A\) at 3/);
 });
 
 test("an AFSS site: Other tests, + Add a test, and the export chooser", async () => {

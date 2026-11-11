@@ -71,21 +71,22 @@ test("Stop saves the average and max to the stair; Clear takes them off", async 
   await page.waitForTimeout(800);
   const once = await savedOnce();
   assert.ok(parseFloat(once.noiseRef) > 20, `max ${once.noiseRef}`);
-  assert.ok(parseFloat(once.noiseRefAvg) <= parseFloat(once.noiseRef), `avg ${once.noiseRefAvg} ≤ max ${once.noiseRef}`);
+  assert.ok(parseFloat(once.noiseStair) <= parseFloat(once.noiseRef), `avg ${once.noiseStair} ≤ max ${once.noiseRef}`);
   // still there when the page is opened again
   await go(page, app, "/site/s1/spf/t1/noise?stair=st1", 1200);
   assert.equal(await stat("Max"), once.noiseRef);
-  assert.equal(await stat("Average"), once.noiseRefAvg);
+  assert.equal(await stat("Average · ≤ 80"), once.noiseStair);
   await page.getByRole("button", { name: "Clear the saved reading" }).click();
   await page.waitForTimeout(800);
   const cleared = await savedOnce();
   assert.equal(cleared.noiseRef, undefined);
-  assert.equal(cleared.noiseRefAvg, undefined);
+  assert.equal(cleared.noiseStair, undefined);
   assert.equal(await stat("Max"), "–");
 });
 
 test("with a calibrated meter on hand: tap Average or Max and type them", async () => {
   assert.equal(await page.getByTestId("meter-source").innerText(), "Indicative");
+  assert.equal(await page.getByRole("button", { name: "In the stair" }).count(), 0, "the average is the stair's reading now");
   await page.getByRole("button", { name: "Average, dB(A)" }).click();
   for (const k of ["5", "8", ".", "2"]) await page.getByRole("button", { name: k, exact: true }).dispatchEvent("pointerdown");
   await page.getByRole("button", { name: "Max, dB(A)" }).click();
@@ -94,13 +95,14 @@ test("with a calibrated meter on hand: tap Average or Max and type them", async 
   await page.waitForTimeout(800);
   assert.equal(await page.getByTestId("meter-source").innerText(), "Calibrated meter");
   const once = await savedOnce();
-  assert.deepEqual([once.noiseRefAvg, once.noiseRef, once.noiseRefSource], ["58.2", "67", "meter"]);
+  assert.deepEqual([once.noiseStair, once.noiseRef, once.noiseRefSource], ["58.2", "67", "meter"]);
 });
 
 test("the report says which it was", async () => {
   await go(page, app, "/site/s1/spf/t1", 1200);
   await page.getByRole("button", { name: "Preview the report" }).click();
-  assert.match(await page.getByTestId("spf-page").innerText(), /calibrated meter avg 58\.2, max 67 dB\(A\)/);
+  const sheet = await page.getByTestId("spf-page").innerText();
+  assert.match(sheet, /Noise, stair \(average\)\s+58\.2 dB\(A\) ✓[\s\S]*max 67 dB\(A\)[\s\S]*calibrated meter/);
   // listening with the phone again replaces them, as indicative
   await go(page, app, "/site/s1/spf/t1/noise?stair=st1", 1200);
   await page.getByRole("button", { name: "Listen" }).click();
@@ -111,7 +113,7 @@ test("the report says which it was", async () => {
   assert.equal(await page.getByTestId("meter-source").innerText(), "Indicative");
   await go(page, app, "/site/s1/spf/t1", 1200);
   await page.getByRole("button", { name: "Preview the report" }).click();
-  assert.match(await page.getByTestId("spf-page").innerText(), /indicative \(phone\) avg [\d.]+, max [\d.]+ dB\(A\)/);
+  assert.match(await page.getByTestId("spf-page").innerText(), /Noise, stair \(average\)\s+[\d.]+ dB\(A\) [✓✗][\s\S]*max [\d.]+ dB\(A\)[\s\S]*indicative \(phone\)/);
 });
 
 test("no page errors", () => {
