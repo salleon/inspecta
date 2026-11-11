@@ -2,6 +2,7 @@
    with the app (main.tsx), so it looks the same offline. */
 
 .iw-word {
+  position: relative;
   display: flex;
   font-family: "Sora", "Manrope Variable", system-ui, sans-serif;
   font-weight: 700;
@@ -38,4 +39,150 @@
   stroke-linejoin: round;
   stroke-dasharray: 1;
   stroke-dashoffset: 0;
+}
+
+/* ---- reveal: option B "Under the lens" (all sizes in em of the word) ---- */
+
+/* the magnifier: glass in the text colour, handle in the accent */
+.iw-lens {
+  position: absolute;
+  top: -0.06em;
+  left: 0;
+  width: 1.27em;
+  height: 1.27em;
+  margin-left: -0.635em;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.iw-glass {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 0.053em solid var(--text);
+  background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.04) 45%, rgba(255, 255, 255, 0) 70%);
+}
+
+.iw-handle {
+  position: absolute;
+  left: 1.03em;
+  top: 1.06em;
+  width: 0.515em;
+  height: 0.136em;
+  border-radius: 0.07em;
+  background: var(--accent);
+  transform: rotate(45deg);
+  transform-origin: 0 50%;
+}
+
+/* the pulse where the tick lands, over the i */
+.iw-ring {
+  position: absolute;
+  left: 0.364em;
+  top: 0.212em;
+  width: 0.455em;
+  height: 0.455em;
+  margin: -0.227em 0 0 -0.227em;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.iw-reveal {
+  animation: iwShow 0.35s 0.35s both;
+}
+.iw-reveal .iw-ltr {
+  animation: iwSharpen 0.42s cubic-bezier(0.3, 0.8, 0.4, 1) both;
+  animation-delay: calc(0.82s + var(--i) * 0.13s);
+}
+.iw-reveal .iw-lens {
+  animation: iwLens 1.2s cubic-bezier(0.45, 0, 0.55, 1) 0.7s both;
+}
+.iw-reveal .iw-tick path {
+  animation: iwDraw 0.32s cubic-bezier(0.6, 0, 0.3, 1) 1.9s both;
+}
+.iw-reveal .iw-ring {
+  animation: iwRing 0.6s ease-out 2.15s both;
+}
+
+@keyframes iwShow {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes iwSharpen {
+  from {
+    filter: blur(0.12em);
+    opacity: 0.14;
+    transform: scale(0.94);
+  }
+  45% {
+    filter: blur(0);
+    opacity: 1;
+    transform: scale(1.2) translateY(-0.06em);
+  }
+  to {
+    filter: blur(0);
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes iwLens {
+  0% {
+    left: -14%;
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  10% {
+    opacity: 1;
+    transform: none;
+  }
+  86% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    left: 108%;
+    opacity: 0;
+    transform: scale(0.7);
+  }
+}
+@keyframes iwDraw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes iwRing {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  1% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.6);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .iw-reveal,
+  .iw-reveal .iw-ltr,
+  .iw-reveal .iw-tick path {
+    animation: none;
+  }
+  .iw-lens,
+  .iw-ring {
+    display: none;
+  }
 }

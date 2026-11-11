@@ -70,7 +70,7 @@ export function CompanyMark({ animate }: { animate: boolean }) {
         )}
       </div>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
-        <InspectaWordmark size={56} />
+        <InspectaWordmark size={56} reveal={animate} />
         <div className="co-tag">{name && c.setUp ? `for ${name}` : "Site inspection tool"}</div>
       </div>
     </div>

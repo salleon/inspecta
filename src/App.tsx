@@ -82,7 +82,8 @@ function App() {
   return (
     <div className="app-shell">
       {needsCompany ? (
-        <CompanySetup animate={false} onDone={() => setNeedsCompany(false)} />
+        // animates as the splash fades, so it isn't spent hidden under it
+        <CompanySetup animate={splashLeaving} onDone={() => setNeedsCompany(false)} />
       ) : needsOnboarding ? (
         <Onboarding onDone={() => setNeedsOnboarding(false)} />
       ) : (
