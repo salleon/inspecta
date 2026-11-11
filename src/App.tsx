@@ -12,6 +12,10 @@ import { startCopyBackfill } from "./lib/copyBackfill";
 import Tour from "./components/Tour";
 import PhotoToolsHost from "./components/PhotoToolsHost";
 import { hasInspectorName } from "./lib/profile";
+import CompanySetup from "./components/CompanySetup";
+import { applyTheme, needsCompanySetup, useCompany } from "./lib/company";
+import { useFlowMode } from "./lib/settings";
+import { ColoursPage, LogoPage } from "./pages/CompanySettings";
 import { useKeepFocusedFieldVisible } from "./lib/keepFocusedVisible";
 import { BACK_EVENT, parentRoute } from "./lib/backButton";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -45,6 +49,14 @@ function App() {
   // so this is the only way we know who's using this install. Checked once
   // at startup; flips to false the moment Onboarding saves a name.
   const [needsOnboarding, setNeedsOnboarding] = useState(() => !hasInspectorName());
+  // Contractor mode: the company setup comes first on a new phone (one
+  // switched to Contractor later sets it up in Settings → Company)
+  const [needsCompany, setNeedsCompany] = useState(() => needsCompanySetup() && !hasInspectorName());
+
+  // the company's colours in Contractor mode (lib/company), kept up to date
+  const mode = useFlowMode();
+  const company = useCompany();
+  useEffect(() => applyTheme(), [mode, company]);
 
   // whatever field you're typing in stays visible above the keyboard
   useKeepFocusedFieldVisible();
@@ -69,7 +81,9 @@ function App() {
 
   return (
     <div className="app-shell">
-      {needsOnboarding ? (
+      {needsCompany ? (
+        <CompanySetup animate={false} onDone={() => setNeedsCompany(false)} />
+      ) : needsOnboarding ? (
         <Onboarding onDone={() => setNeedsOnboarding(false)} />
       ) : (
         <HashRouter>
@@ -80,7 +94,7 @@ function App() {
         </HashRouter>
       )}
       {splashVisible && <Splash leaving={splashLeaving} />}
-      <UpdatePrompt ready={!splashVisible && !needsOnboarding} />
+      <UpdatePrompt ready={!splashVisible && !needsOnboarding && !needsCompany} />
       <StorageFull />
       <Message />
     </div>
@@ -93,6 +107,7 @@ function App() {
 function routeDepth(pathname: string): number {
   if (pathname === "/") return 0;
   if (pathname === "/settings") return 1;
+  if (pathname.startsWith("/settings/")) return 2;
   if (pathname.startsWith("/admin")) return pathname.split("/").length;
   if (pathname.endsWith("/findings")) return 1;
   // Note and Export are both one level below Findings
@@ -157,6 +172,8 @@ function AnimatedRoutes() {
           <Route path="/site/:siteId/spf/:testId/report" element={<StairReport />} />
           <Route path="/site/:siteId/spf/:testId/:section" element={<StairSectionPage />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/settings/logo" element={<LogoPage />} />
+          <Route path="/settings/colours" element={<ColoursPage />} />
           <Route path="/admin/*" element={<Admin />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

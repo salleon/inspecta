@@ -11,6 +11,9 @@ import { lastNativeError } from "../lib/nativeCamera";
 import { startTour } from "../lib/tour";
 import { useBackHandler } from "../lib/backButton";
 import { IS_TEST_BUILD } from "../lib/buildInfo";
+import { useFlowMode } from "../lib/settings";
+import { companyName, companyScheme, setCompany, useCompany } from "../lib/company";
+import { CompanyLogo } from "../components/CompanySetup";
 import buildLabel from "../../BUILD_LABEL?raw";
 
 // Settings (canvas SettingsTidy): its own page, the gear on the home page
@@ -35,6 +38,11 @@ export default function Settings() {
   const navigate = useNavigate();
   const [name, setName] = useState(() => getInspectorName());
   const [draft, setDraft] = useState<string | null>(null);
+  // which name the sheet edits: yours, or (Contractor mode) the company's
+  const [editing, setEditing] = useState<"you" | "company">("you");
+  const contractor = useFlowMode() === "contractor";
+  const company = useCompany();
+  const scheme = companyScheme(company);
 
   useBackHandler(() => {
     if (draft === null) return false;
@@ -46,8 +54,12 @@ export default function Settings() {
     e.preventDefault();
     const trimmed = (draft ?? "").trim();
     if (!trimmed) return;
-    setInspectorName(trimmed);
-    setName(trimmed);
+    if (editing === "company") {
+      setCompany({ name: trimmed });
+    } else {
+      setInspectorName(trimmed);
+      setName(trimmed);
+    }
     setDraft(null);
   }
 
@@ -61,8 +73,43 @@ export default function Settings() {
       </div>
       <div style={{ flexGrow: 1, overflowY: "auto", padding: "0 16px calc(24px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 4 }}>
         <Group heading="You">
-          <Item icon={<RowIcon name="user" />} title="Your name" hint={`${name || "Not set"} · on your reports`} onClick={() => setDraft(name)} />
+          <Item
+            icon={<RowIcon name="user" />}
+            title="Your name"
+            hint={`${name || "Not set"} · on your reports`}
+            onClick={() => {
+              setEditing("you");
+              setDraft(name);
+            }}
+          />
         </Group>
+        {contractor && (
+          <Group heading="Company">
+            <Item
+              icon={<RowIcon name="building" />}
+              title="Company name"
+              hint={companyName(company) || "Not set"}
+              onClick={() => {
+                setEditing("company");
+                setDraft(company.name);
+              }}
+            />
+            <Item icon={<RowIcon name="image" />} title="Report logo" hint={company.logo ? "On the app and report covers" : "None"} right={company.logo ? <CompanyLogo height={30} maxWidth={90} /> : undefined} onClick={() => navigate("/settings/logo")} />
+            <Item
+              icon={<RowIcon name="palette" />}
+              title="Colours"
+              hint={scheme.name}
+              right={
+                <span style={{ display: "flex" }} aria-hidden="true">
+                  {[scheme.primary, scheme.secondary, scheme.light].map((hx, i) => (
+                    <span key={i} style={{ width: 20, height: 20, borderRadius: "50%", marginLeft: i ? -6 : 0, background: hx, boxShadow: "0 0 0 1px rgba(255,255,255,.15)", display: "block" }} />
+                  ))}
+                </span>
+              }
+              onClick={() => navigate("/settings/colours")}
+            />
+          </Group>
+        )}
         {lastNativeError() && (
           <Group heading="Photos">
             <div data-testid="native-camera-error" style={{ padding: "12px 14px", fontSize: 11.5, lineHeight: 1.45, color: "#f7b977", wordBreak: "break-word" }}>
@@ -101,8 +148,8 @@ export default function Settings() {
             className="sheet-panel"
             style={{ width: "100%", background: "var(--panel)", borderRadius: "20px 20px 0 0", padding: "22px 20px calc(28px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 14 }}
           >
-            <div style={{ fontSize: 16, fontWeight: 800 }}>Your name</div>
-            <div style={{ fontSize: 13, fontWeight: 500, color: "var(--muted)", lineHeight: 1.5, marginTop: -8 }}>Used to label your reports.</div>
+            <div style={{ fontSize: 16, fontWeight: 800 }}>{editing === "company" ? "Company name" : "Your name"}</div>
+            <div style={{ fontSize: 13, fontWeight: 500, color: "var(--muted)", lineHeight: 1.5, marginTop: -8 }}>{editing === "company" ? "On every report cover." : "Used to label your reports."}</div>
             <input
               autoFocus
               value={draft}

@@ -1,0 +1,188 @@
+/* Contractor mode's intro mark (components/CompanySetup.tsx), as on the
+   canvas "Inspecta for contractors": a shield draws itself in the accent
+   colour and a tick drops in (or the company's logo pops in with a shine),
+   a ring pulses out, "Inspecta" rises letter by letter and glows, then the
+   line underneath fades in. With .co-animate off (or reduced motion) every
+   piece just shows at rest. */
+
+.co-mark {
+  position: relative;
+  width: 132px;
+  height: 132px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.co-ring {
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  opacity: 0;
+}
+
+.co-shield,
+.co-check {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 0;
+}
+
+.co-logo {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  border-radius: 14px;
+}
+
+.co-shine {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  transform: translateX(-120%);
+}
+
+.co-word {
+  display: flex;
+  gap: 1px;
+  font-size: 44px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+.co-ltr {
+  display: inline-block;
+}
+
+.co-tag {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-align: center;
+  padding: 0 24px;
+}
+
+.co-animate .co-ring {
+  animation: coRing 1.8s 1.5s ease-out infinite;
+}
+.co-animate .co-shield {
+  stroke-dashoffset: 100;
+  animation: coDraw 1.3s 0.25s cubic-bezier(0.65, 0, 0.25, 1) forwards;
+}
+.co-animate .co-check {
+  stroke-dashoffset: 100;
+  animation: coDraw 0.45s 1.35s ease-out forwards;
+}
+.co-animate .co-logo {
+  animation: coPop 0.9s 0.3s cubic-bezier(0.3, 1.4, 0.5, 1) both;
+}
+.co-animate .co-shine {
+  animation: coSweep 1s 1.4s ease-in-out both;
+}
+.co-animate .co-word {
+  animation: coGlow 1.2s 2.05s ease-in-out both;
+}
+.co-animate .co-ltr {
+  animation: coRise 0.55s cubic-bezier(0.2, 1.2, 0.4, 1) both;
+}
+.co-animate .co-tag {
+  animation: coFade 0.8s 2.3s both;
+}
+
+@keyframes coDraw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes coRise {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes coRing {
+  0% {
+    opacity: 0.75;
+    transform: scale(0.55);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2);
+  }
+}
+@keyframes coGlow {
+  0%,
+  100% {
+    text-shadow: none;
+  }
+  45% {
+    text-shadow: 0 0 6px var(--accent), 0 0 22px var(--accent);
+  }
+}
+@keyframes coPop {
+  0% {
+    opacity: 0;
+    transform: scale(0.55);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes coFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes coSweep {
+  from {
+    transform: translateX(-120%);
+  }
+  to {
+    transform: translateX(320%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .co-animate .co-ring,
+  .co-animate .co-shine {
+    animation: none;
+    opacity: 0;
+  }
+  .co-animate .co-shield,
+  .co-animate .co-check {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+  .co-animate .co-logo,
+  .co-animate .co-word,
+  .co-animate .co-ltr,
+  .co-animate .co-tag {
+    animation: none;
+  }
+}
+
+/* the grid behind the intro, in the accent colour */
+.co-grid {
+  background-color: var(--bg);
+  background-image:
+    linear-gradient(rgba(var(--accent-rgb, 46, 196, 182), 0.09) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(var(--accent-rgb, 46, 196, 182), 0.09) 1px, transparent 1px);
+  background-size: 26px 26px;
+  background-position: center;
+}

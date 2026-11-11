@@ -32,6 +32,36 @@ export function Group({ heading, foot, children, tour }: { heading: string; foot
 }
 
 const PATHS: Record<string, ReactNode> = {
+  building: (
+    <>
+      <path d="M4 21V5l8-2v18" />
+      <path d="M12 9h8v12" />
+      <path d="M3 21h18M8 8v.01M8 12v.01M8 16v.01M16 13v.01M16 17v.01" />
+    </>
+  ),
+  image: (
+    <>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <circle cx="9" cy="10" r="2" />
+      <path d="m21 16-5-5-9 9" />
+    </>
+  ),
+  palette: (
+    <>
+      <path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.6-.8 1.6-1.6 0-.9-.6-1.3-.6-2.1 0-.8.7-1.5 1.5-1.5H17a4 4 0 0 0 4-4c0-4.9-4-8.8-9-8.8z" />
+      <circle cx="7.5" cy="11" r="1" />
+      <circle cx="10" cy="7" r="1" />
+      <circle cx="15" cy="7.5" r="1" />
+    </>
+  ),
+  share: (
+    <>
+      <circle cx="18" cy="5" r="3" />
+      <circle cx="6" cy="12" r="3" />
+      <circle cx="18" cy="19" r="3" />
+      <path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4" />
+    </>
+  ),
   camera: (
     <>
       <path d="M4 8h3l2-3h6l2 3h3v11H4z" />

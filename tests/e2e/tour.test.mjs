@@ -50,6 +50,8 @@ after(async () => {
 
 test("a new user gets the welcome once, right after entering their name", async () => {
   const context = await app.browser.newContext({ viewport: { width: 390, height: 844 } });
+  // an office phone, switched to EnFact (a new contractor phone sets up its company first)
+  await context.addInitScript(() => localStorage.setItem("inspecta.flowMode", "enfact"));
   const fresh = await context.newPage();
   await fresh.goto(app.url + "/");
   await fresh.waitForTimeout(2600);

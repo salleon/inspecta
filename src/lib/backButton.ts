@@ -22,6 +22,7 @@ export function parentRoute(pathname: string): string | null {
   // admin: keyword → list → admin menu → settings → dashboard
   if (pathname.startsWith("/admin/")) return pathname.replace(/\/[^/]+$/, "");
   if (pathname === "/admin") return "/settings";
+  if (pathname.startsWith("/settings/")) return "/settings";
   return pathname === "/" || pathname === "" ? null : "/";
 }
 
