@@ -19,6 +19,7 @@ import {
 import { useBackHandler } from "../lib/backButton";
 import { say } from "./Message";
 import appMark from "../assets/app-mark.png";
+import InspectaWordmark from "./InspectaWordmark";
 import "./CompanySetup.css";
 
 // Contractor mode's company setup (canvas "Inspecta for contractors"):
@@ -68,13 +69,7 @@ export function CompanyMark({ animate }: { animate: boolean }) {
         )}
       </div>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
-        <div className="co-word" aria-label="Inspecta">
-          {"Inspecta".split("").map((ch, i) => (
-            <span key={i} className="co-ltr" aria-hidden="true" style={{ animationDelay: `${(1.45 + i * 0.065).toFixed(3)}s` }}>
-              {ch}
-            </span>
-          ))}
-        </div>
+        <InspectaWordmark size={56} />
         <div className="co-tag">{name && c.setUp ? `for ${name}` : "Site inspection tool"}</div>
       </div>
     </div>

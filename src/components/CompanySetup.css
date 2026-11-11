@@ -1,7 +1,7 @@
 /* Contractor mode's intro mark (components/CompanySetup.tsx), as on the
    canvas "Inspecta for contractors": the app's mark pops in (or the
    company's logo pops in with a shine),
-   a ring pulses out, "Inspecta" rises letter by letter and glows, then the
+   a ring pulses out, the Inspecta logotype rises letter by letter, then the
    line underneath fades in. With .co-animate off (or reduced motion) every
    piece just shows at rest. */
 
@@ -38,18 +38,6 @@
   transform: translateX(-120%);
 }
 
-.co-word {
-  display: flex;
-  gap: 1px;
-  font-size: 44px;
-  font-weight: 800;
-  letter-spacing: -0.5px;
-}
-
-.co-ltr {
-  display: inline-block;
-}
-
 .co-tag {
   font-size: 13px;
   font-weight: 700;
@@ -72,11 +60,9 @@
 .co-animate .co-shine {
   animation: coSweep 1s 1.4s ease-in-out both;
 }
-.co-animate .co-word {
-  animation: coGlow 1.2s 2.05s ease-in-out both;
-}
-.co-animate .co-ltr {
+.co-animate .iw-ltr {
   animation: coRise 0.55s cubic-bezier(0.2, 1.2, 0.4, 1) both;
+  animation-delay: calc(1.45s + var(--i) * 0.065s);
 }
 .co-animate .co-tag {
   animation: coFade 0.8s 2.3s both;
@@ -100,15 +86,6 @@
   100% {
     opacity: 0;
     transform: scale(2);
-  }
-}
-@keyframes coGlow {
-  0%,
-  100% {
-    text-shadow: none;
-  }
-  45% {
-    text-shadow: 0 0 6px var(--accent), 0 0 22px var(--accent);
   }
 }
 @keyframes coPop {
@@ -152,8 +129,7 @@
     animation: none;
   }
   .co-animate .co-logo,
-  .co-animate .co-word,
-  .co-animate .co-ltr,
+  .co-animate .iw-ltr,
   .co-animate .co-tag {
     animation: none;
   }
