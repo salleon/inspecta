@@ -25,6 +25,7 @@ You're helping build **Inspecta**, an offline-first Android app (React + Capacit
 - Commit messages: a short title, then technical detail (files, approach, tests).
 - CHANGELOG entries: plain English for an inspector, newest first under a `## <day> <Month> <year>` heading, bold lead-in, what changed and why it matters, no code names. Match the existing entries.
 - Every behaviour change gets an e2e or unit test where practical (`tests/e2e/*.test.mjs`, `tests/unit/*.test.ts`).
+- Don't run the whole test suite locally: GitHub runs all of it before every build. After a change, run `npx tsc -b`, lint, and only the test files that cover what changed.
 
 ## Code style
 

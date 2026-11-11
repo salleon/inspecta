@@ -7,6 +7,13 @@ the technical detail.
 
 ## 11 November 2026
 
+- **Build 9.3, out to coworkers.** Stair pressurisation testing out of
+  Beta, with General system testing (runs and doors per level); New site
+  is now New job; a reminder dot on Settings when a backup is overdue;
+  gallery copies in an album per job; clearer error messages and safer
+  saving; the Converter tool removed. Contractor mode is in this build
+  but EnFact phones don't see it. Also the first iPhone build from `main`.
+
 - **Company name, logo and colours are now in Admin.** They've moved from Settings to **Admin → Company**, behind the admin PIN, so only whoever looks after the company's phones can change what goes on the report covers. They come with the setup file, along with the company's ESR keyword changes, so a new starter's reports match their coworkers'. Learned keywords stay with each person's phone. Settings keeps your name, backups and updates.
 
 - **Joining a company no longer needs the admin PIN.** Staff tap **Join a company**, pick their company's setup file and tap **Join**: the phone takes the company's name, logo and colours, and its Admin is locked with the manager's PIN, which staff never see or type. So employees can't get into Admin, but the manager can, on every phone. EnFact's setup file still asks for the PIN.
