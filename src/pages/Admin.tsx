@@ -31,7 +31,8 @@ import { checkPin, checkRecoveryCode, hasPin, isAdminUnlocked, isOwnerUnlocked, 
 import { writeBlobToCache } from "../lib/cacheFile";
 import { numberedExport } from "../lib/exportName";
 import { useBackHandler } from "../lib/backButton";
-import { BLUE, GREY, Group, ORANGE, RowIcon, groupHintStyle, groupRowStyle } from "../components/SettingsList";
+import { wipeApp } from "../lib/factoryReset";
+import { BLUE, GREY, Group, ORANGE, RED, RowIcon, groupHintStyle, groupRowStyle } from "../components/SettingsList";
 import { companyName, companyScheme, setCompany, useCompany } from "../lib/company";
 import { CompanyLogo } from "../components/CompanySetup";
 import FormActions from "../components/FormActions";
@@ -258,8 +259,14 @@ function AdminHome() {
   const [notice, setNotice] = useState("");
   const setupInput = useRef<HTMLInputElement>(null);
   const [setupFile, setSetupFile] = useState<File | null>(null);
+  const [confirmWipe, setConfirmWipe] = useState(false);
+  const [wiping, setWiping] = useState(false);
   // Android back while choosing a new PIN cancels that, not the menu
   useBackHandler(() => {
+    if (confirmWipe && !wiping) {
+      setConfirmWipe(false);
+      return true;
+    }
     if (!changingPin) return false;
     setChangingPin(false);
     return true;
@@ -375,17 +382,43 @@ function AdminHome() {
       <Group heading="Diagnostics">
         <GroupRow icon={<RowIcon name="clock" colour={GREY} />} title="Last export timings" hint={lastTimings ? describeTimings(lastTimings) : "No export on this phone yet"} onClick={() => {}} chevron={false} />
       </Group>
+      <Group heading="Testing">
+        <GroupRow icon={<RowIcon name="trash" colour={RED} />} title="Wipe app" hint="Back to brand new, to test the first-run experience" onClick={() => setConfirmWipe(true)} danger />
+      </Group>
       <div style={{ ...hintStyle, textAlign: "center", padding: "16px 2px 0" }}>Changes here apply to this phone only.</div>
+      {confirmWipe && (
+        <ConfirmDialog
+          redTint
+          title="Wipe the whole app?"
+          message="Everything on this phone will be permanently deleted: all jobs, findings, photos, flow and stair tests, your name, mode, company, settings, keyword changes and the admin PIN. The app restarts as if just installed. This can't be undone — back up first if you need anything."
+          confirmLabel="Wipe everything"
+          confirmingLabel="Wiping…"
+          busy={wiping}
+          onCancel={() => {
+            if (!wiping) setConfirmWipe(false);
+          }}
+          onConfirm={async () => {
+            setWiping(true);
+            try {
+              await wipeApp();
+            } catch {
+              setWiping(false);
+              setConfirmWipe(false);
+              say("Couldn't wipe the app", "Close the app fully and try again.");
+            }
+          }}
+        />
+      )}
     </Screen>
   );
 }
 
-function GroupRow({ icon, title, hint, onClick, chevron = true }: { icon: ReactNode; title: string; hint: string; onClick: () => void; chevron?: boolean }) {
+function GroupRow({ icon, title, hint, onClick, chevron = true, danger }: { icon: ReactNode; title: string; hint: string; onClick: () => void; chevron?: boolean; danger?: boolean }) {
   return (
     <button type="button" onClick={onClick} style={groupRowStyle}>
       {icon}
       <span style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
-        <span style={{ fontSize: 14.5, fontWeight: 700, color: "var(--text)" }}>{title}</span>
+        <span style={{ fontSize: 14.5, fontWeight: 700, color: danger ? RED : "var(--text)" }}>{title}</span>
         <span style={groupHintStyle}>{hint}</span>
       </span>
       {chevron && <IconChevronRight color="var(--muted)" />}

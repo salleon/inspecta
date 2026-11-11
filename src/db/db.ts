@@ -708,3 +708,12 @@ export async function finishSiteRestore(siteId: string) {
     delete site.restoreIncomplete;
   });
 }
+
+// ---- factory reset (Admin → Wipe app) ----
+
+/** Deletes the whole database: every site, finding, photo, test and the
+ *  cached thumbnails / export copies. The app must reload afterwards. */
+export async function deleteAllData() {
+  db.close({ disableAutoOpen: true });
+  await Dexie.delete("inspecta");
+}

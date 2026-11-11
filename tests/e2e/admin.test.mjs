@@ -154,6 +154,37 @@ test("change the PIN, then reset a forgotten one with this phone's recovery code
   assert.equal(await page.locator('button:has-text("Keywords")').count(), 1);
 });
 
+test("Wipe app: red are-you-sure, Cancel keeps everything, Wipe everything empties the phone", async () => {
+  // the PIN is 7777 by now (changed above)
+  await go(page, app, "/admin", 300);
+  await page.waitForFunction(() => document.body.innerText.includes("Enter admin PIN") || document.body.innerText.includes("Wipe app"));
+  if (await page.locator("text=Enter admin PIN").count()) await enterPin("7777");
+  await page.click('button:has-text("Wipe app")');
+  assert.equal(await page.locator("text=Wipe the whole app?").count(), 1);
+  await page.click('button:has-text("Cancel")');
+  assert.equal(await page.locator("text=Wipe the whole app?").count(), 0);
+  assert.equal(await page.evaluate(() => localStorage.getItem("inspecta.adminPin")), "7777", "cancel changes nothing");
+
+  await page.click('button:has-text("Wipe app")');
+  await page.click('button:has-text("Wipe everything")');
+  await page.waitForFunction(() => !location.hash || location.hash === "#/");
+  await page.waitForTimeout(2300);
+  const left = await page.evaluate(async () => {
+    const req = indexedDB.open("inspecta");
+    const idb = await new Promise((r) => (req.onsuccess = () => r(req.result)));
+    const sites = idb.objectStoreNames.contains("sites")
+      ? await new Promise((r) => {
+          const q = idb.transaction("sites").objectStore("sites").count();
+          q.onsuccess = () => r(q.result);
+        })
+      : 0;
+    idb.close();
+    return { sites, pin: localStorage.getItem("inspecta.adminPin"), recovery: localStorage.getItem("inspecta.adminRecovery") };
+  });
+  assert.deepEqual(left, { sites: 0, pin: null, recovery: null });
+  assert.equal(await page.locator("text=Harbour Tower").count(), 0);
+});
+
 test("no page errors", () => {
   assert.deepEqual(errors, []);
 });

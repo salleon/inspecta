@@ -142,6 +142,13 @@ const PATHS: Record<string, ReactNode> = {
       <path d="m3 7 9 6 9-6" />
     </>
   ),
+  trash: (
+    <>
+      <path d="M4 7h16" />
+      <path d="M9 7V4h6v3" />
+      <path d="M6 7l1 13h10l1-13" />
+    </>
+  ),
   clock: (
     <>
       <circle cx="12" cy="12" r="9" />
@@ -154,6 +161,7 @@ export const TEAL = "#2ec4b6"; // shown as the theme accent (the company's in Co
 export const BLUE = "#5ab0ff";
 export const ORANGE = "#f5a55c";
 export const GREY = "#8ba0b5";
+export const RED = "#ff6b6b";
 
 export function RowIcon({ name, colour = TEAL }: { name: keyof typeof PATHS; colour?: string }) {
   return (

@@ -16,6 +16,7 @@ export default function ConfirmDialog({
   onDismiss,
   extraLabel,
   onExtra,
+  redTint = false,
 }: {
   title: string;
   message: string;
@@ -37,6 +38,8 @@ export default function ConfirmDialog({
   // second button
   extraLabel?: string;
   onExtra?: () => void;
+  // red-tinted backdrop and panel, for the most drastic actions (wiping the app)
+  redTint?: boolean;
 }) {
   const stacked = !!extraLabel && !!onExtra;
   const second = {
@@ -52,14 +55,24 @@ export default function ConfirmDialog({
   };
   return (
     <div
-      style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 32px" }}
+      style={{ position: "absolute", inset: 0, background: redTint ? "rgba(70,0,0,0.78)" : "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 32px" }}
       onClick={onDismiss ?? onCancel}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{ width: "100%", background: "var(--panel)", borderRadius: 18, padding: "24px 22px", display: "flex", flexDirection: "column", gap: 8, boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }}
+        style={{
+          width: "100%",
+          background: redTint ? "linear-gradient(rgba(255,107,107,0.16), rgba(255,107,107,0.16)), var(--panel)" : "var(--panel)",
+          border: redTint ? "1px solid rgba(255,107,107,0.6)" : "none",
+          borderRadius: 18,
+          padding: "24px 22px",
+          display: "flex",
+          flexDirection: "column",
+          gap: 8,
+          boxShadow: redTint ? "0 20px 60px rgba(255,40,40,0.25)" : "0 20px 60px rgba(0,0,0,0.5)",
+        }}
       >
-        <div style={{ fontSize: 16, fontWeight: 800 }}>{title}</div>
+        <div style={{ fontSize: 16, fontWeight: 800, color: redTint ? "#ff6b6b" : undefined }}>{title}</div>
         <div style={{ fontSize: 13, fontWeight: 500, color: "var(--muted)", lineHeight: 1.45, marginBottom: 10, whiteSpace: "pre-line" }}>
           {message}
         </div>
