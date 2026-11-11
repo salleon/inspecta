@@ -5,7 +5,7 @@ import { Share } from "@capacitor/share";
 import { Capacitor } from "@capacitor/core";
 import RoundIconButton from "../components/RoundIconButton";
 import { describeTimings, lastExportTimings } from "../lib/exportTimings";
-import { setFlowMode, useFlowMode, type FlowMode } from "../lib/settings";
+import { useFlowMode, type FlowMode } from "../lib/settings";
 import { makeSetupFile, setupFileName } from "../lib/setupFile";
 import SetupFileLoader from "../components/SetupFileLoader";
 import ConfirmDialog from "../components/ConfirmDialog";
@@ -27,7 +27,7 @@ import {
   type KeywordKind,
 } from "../lib/esrKeywords";
 import { explainCategories, forgetAllLearned, forgetLearned, learnedKeywords } from "../lib/esrSuggest";
-import { checkPin, checkRecoveryCode, hasPin, isAdminUnlocked, isOwnerUnlocked, keepPin, recoveryCode, setPin, unlockAdmin } from "../lib/adminPin";
+import { checkPin, checkRecoveryCode, hasPin, isAdminUnlocked, isOwnerUnlocked, recoveryCode, setPin, switchMode, unlockAdmin } from "../lib/adminPin";
 import { writeBlobToCache } from "../lib/cacheFile";
 import { numberedExport } from "../lib/exportName";
 import { useBackHandler } from "../lib/backButton";
@@ -332,8 +332,7 @@ function AdminHome() {
                       role="radio"
                       aria-checked={on}
                       onClick={() => {
-                        keepPin();
-                        setFlowMode(mode);
+                        switchMode(mode);
                       }}
                       style={{ flex: 1, padding: "7px 0", borderRadius: 8, border: `1px solid ${on ? "rgba(var(--accent-rgb), .6)" : "transparent"}`, background: on ? "rgba(var(--accent-rgb), .14)" : "none", color: on ? "var(--accent)" : "var(--muted)", fontSize: 13, fontWeight: 800 }}
                     >
@@ -342,7 +341,7 @@ function AdminHome() {
                   );
                 })}
               </div>
-              <span style={groupHintStyle}>Contractor: your company's name, logo and colours, and every flow test option. Contractor phones don't show this switch.</span>
+              <span style={groupHintStyle}>Contractor: your company's name, logo and colours, and every flow test option. Contractor phones don't show this switch. Switching to EnFact puts the admin PIN back to 2021.</span>
             </span>
           </div>
         </Group>

@@ -42,6 +42,36 @@ test("five quick taps in the corner of the splash make it an EnFact phone", asyn
   await page.context().close();
 });
 
+test("into EnFact, a PIN chosen as a new Contractor phone goes: back to 2021", async () => {
+  const context = await app.browser.newContext({ viewport: { width: 390, height: 844 } });
+  await context.addInitScript(() => {
+    localStorage.setItem("inspecta.tourOffered", "1");
+    localStorage.setItem("inspecta.inspectorName", "New Starter");
+  });
+  const page = await context.newPage();
+  await page.goto(app.url + "/");
+  await page.evaluate(() => {
+    localStorage.setItem("inspecta.flowMode", "contractor");
+    localStorage.setItem("inspecta.adminPin", "4826");
+    localStorage.setItem("inspecta.adminPinPrint", JSON.stringify({ salt: "aa", hash: "bb" }));
+  });
+  await page.reload();
+  await page.getByTestId("splash-corner").waitFor();
+  await Promise.all([page.waitForEvent("load"), tap(page, 5)]);
+  assert.equal(await mode(page), "enfact");
+  const left = await page.evaluate(() => [localStorage.getItem("inspecta.adminPin"), localStorage.getItem("inspecta.adminPinPrint")]);
+  assert.deepEqual(left, [null, null]);
+  await page.waitForTimeout(2300);
+  await page.goto(app.url + "/#/admin");
+  await page.getByText("Enter admin PIN").waitFor();
+  for (const d of "4826") await page.click(`button[aria-label="${d}"]`);
+  await page.waitForTimeout(300);
+  assert.equal(await page.getByText("Wrong PIN").count(), 1, "the chosen PIN no longer opens it");
+  for (const d of "2021") await page.click(`button[aria-label="${d}"]`);
+  await page.locator('[role="radiogroup"][aria-label="Mode"]').waitFor();
+  await context.close();
+});
+
 test("five quick taps on EnFact's splash switch back to Contractor, keeping the PIN", async () => {
   const context = await app.browser.newContext({ viewport: { width: 390, height: 844 } });
   await context.addInitScript(() => {

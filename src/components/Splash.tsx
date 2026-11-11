@@ -6,8 +6,8 @@ import letterC from "../assets/splash/letter-c.png";
 import letterT from "../assets/splash/letter-t.png";
 import { IS_TEST_BUILD } from "../lib/buildInfo";
 import { useRef } from "react";
-import { getFlowMode, isContractor, setFlowMode } from "../lib/settings";
-import { keepPin } from "../lib/adminPin";
+import { getFlowMode, isContractor } from "../lib/settings";
+import { switchMode } from "../lib/adminPin";
 import ContractorSplash from "./ContractorSplash";
 import "./Splash.css";
 
@@ -21,7 +21,8 @@ const LETTERS = [letterE, letterN, letterF, letterA, letterC, letterT];
 // The owner's switch between the modes: five quick taps in the top left
 // corner of the splash switch a Contractor phone to EnFact, or an EnFact
 // phone to Contractor, and restart the app. Nothing shows, before or after
-// a tap. The phone keeps the admin PIN it opens with.
+// a tap. Into EnFact the admin PIN goes back to 2021; into Contractor the
+// phone keeps the PIN it opens with.
 const SECRET_TAPS = 5;
 const SECRET_GAP_MS = 800; // a longer pause starts the count again
 
@@ -37,8 +38,7 @@ function SecretCorner() {
         t.count = now - t.last > SECRET_GAP_MS ? 1 : t.count + 1;
         t.last = now;
         if (t.count < SECRET_TAPS) return;
-        keepPin();
-        setFlowMode(getFlowMode() === "enfact" ? "contractor" : "enfact");
+        switchMode(getFlowMode() === "enfact" ? "contractor" : "enfact");
         window.location.reload();
       }}
       style={{ position: "fixed", top: 0, left: 0, width: 96, height: "calc(96px + env(safe-area-inset-top, 0px))", zIndex: 1001 }}

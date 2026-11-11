@@ -1,11 +1,15 @@
-import { getFlowMode } from "./settings";
+import { getFlowMode, setFlowMode, type FlowMode } from "./settings";
 
 // Admin PIN for Settings → Admin (keywords, setup file, the PIN). It keeps
 // staff out of the admin tools, not a real security boundary — everything
 // stays on the phone.
 //
 // Who sets it:
-// - EnFact phones start with EnFact's PIN (2021) until the office changes it.
+// - EnFact phones start with EnFact's PIN (2021) until the office changes it
+//   in Admin (Change PIN, or Forgot PIN with a recovery code). A phone that
+//   moves into EnFact drops whatever PIN it had and is back on 2021, so a
+//   PIN someone chose while it was still a new Contractor phone never
+//   follows it in (see switchMode).
 // - Contractor phones have no PIN at first: the first time Admin is opened,
 //   the company's manager chooses one. EnFact's PIN never works on them.
 // - A phone that joins a company with its setup file gets the manager's PIN
@@ -105,6 +109,21 @@ export async function currentPinPrint(): Promise<PinPrint> {
 export function keepPin() {
   const current = storedOrDefault();
   if (current !== null && get(PIN_KEY) === null) set(PIN_KEY, current);
+}
+
+// Moves the phone to a mode (Admin's switch, the splash corner). Into
+// EnFact from Contractor: whatever PIN the phone had goes, so it opens
+// with EnFact's 2021. Into Contractor: it keeps the PIN it opens with.
+export function switchMode(mode: FlowMode) {
+  if (mode === "enfact") {
+    if (getFlowMode() !== "enfact") {
+      remove(PIN_KEY);
+      remove(PRINT_KEY);
+    }
+  } else {
+    keepPin();
+  }
+  setFlowMode(mode);
 }
 
 // a PIN typed on this phone (chosen, changed, or entered to load a file)
