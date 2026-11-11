@@ -7,6 +7,17 @@ the technical detail.
 
 ## 11 November 2026
 
+- **Typing is saved as you go.** A finding's defect, rectification and
+  location are now saved a moment after you stop typing, not only when you
+  leave the screen or the phone locks. A crash, or the restart after an app
+  update, no longer loses what was typed.
+- **Backing out fast no longer deletes a finding.** Pressing back (or Save
+  & close) the instant a finding opened, before it had loaded, could delete
+  it with its photo, as it looked empty. The app now waits for the finding
+  to load, and checks for photos in what's saved, before deciding a
+  finding is empty. Opening a finding and leaving it unchanged also no
+  longer counts as a change (for New since last backup).
+
 - **Back up: full, chosen sites, or new since last backup.** Settings →
   **Back up** opens a page with three choices: every site, only the sites
   added or changed since their last backup (marked NEW or CHANGED), or the

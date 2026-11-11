@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { useNavigate, useParams, useLocation as useRouterLocation } from "react-router-dom";
-import type { DefectType, Photo } from "../db/types";
+import type { DefectType, Finding, Photo } from "../db/types";
 import {
   addPhoto,
   createFinding,
@@ -12,6 +12,7 @@ import {
   getThumbnail,
   listFindings,
   listPhotos,
+  photoCount,
   savedScreenCopy,
   withMarked,
   updateFinding,
@@ -38,6 +39,14 @@ interface PhotoRect {
   width: number;
   height: number;
 }
+
+type FindingFields = Pick<Finding, "note" | "rectification" | "location" | "defectType" | "level" | "esrCategory">;
+
+const sameFields = (a: FindingFields, b: FindingFields | null) =>
+  !!b && a.note === b.note && a.rectification === b.rectification && a.location === b.location && a.defectType === b.defectType && a.level === b.level && a.esrCategory === b.esrCategory;
+
+// how long after the last keystroke typed text is saved
+const TYPING_SAVE_MS = 700;
 
 export default function Note() {
   const { siteId, findingId } = useParams<{ siteId: string; findingId: string }>();
@@ -118,9 +127,20 @@ export default function Note() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // the finding whose fields are on screen (null until it's loaded), and
+  // those fields as last loaded or saved: nothing is saved or deleted
+  // before the finding has loaded, as the screen's fields are blank until
+  // then, and nothing unchanged is written again
+  const loadedFor = useRef<string | null>(null);
+  const savedFields = useRef<FindingFields | null>(null);
+
   async function refresh(selectIndex?: number) {
     if (!findingId) return;
     const f = await getFinding(findingId);
+    if (f) {
+      savedFields.current = { note: f.note ?? "", rectification: f.rectification ?? "", location: f.location ?? "", defectType: f.defectType, level: f.level, esrCategory: f.esrCategory };
+      loadedFor.current = findingId;
+    }
     setNote(f?.note ?? "");
     setRectification(f?.rectification ?? "");
     setLocation(f?.location ?? "");
@@ -276,14 +296,19 @@ export default function Note() {
 
   // leaving: going off this finding (back, Save & close, Save & next)
   async function persist(leaving = false) {
-    if (!findingId) return;
+    if (!findingId || loadedFor.current !== findingId) return;
+    const fields: FindingFields = { note, rectification, location, defectType, level, esrCategory };
     // a finding left with nothing in it (e.g. the pen button tapped by
-    // mistake) isn't kept; the level alone doesn't count, it's carried over
-    if (leaving && !photos.length && !note.trim() && !rectification.trim() && !location.trim() && !defectType && !esrCategory) {
+    // mistake) isn't kept; the level alone doesn't count, it's carried over.
+    // Photos are counted in the database, not on screen: one just taken
+    // may not be showing yet.
+    if (leaving && !note.trim() && !rectification.trim() && !location.trim() && !defectType && !esrCategory && !(await photoCount(findingId))) {
       await deleteFinding(findingId);
       return;
     }
-    await updateFinding(findingId, { note, rectification, location, defectType, level, esrCategory });
+    if (sameFields(fields, savedFields.current)) return;
+    await updateFinding(findingId, fields);
+    if (loadedFor.current === findingId) savedFields.current = fields;
   }
 
   // the phone locks, or another app comes up: what's typed so far is saved,
@@ -301,6 +326,14 @@ export default function Note() {
       window.removeEventListener("pagehide", away);
     };
   }, []);
+
+  // typing is saved after a short pause too, so a crash or a restart
+  // (e.g. after an app update) doesn't lose it
+  useEffect(() => {
+    if (loadedFor.current !== findingId) return;
+    const t = setTimeout(() => void persistNow.current(), TYPING_SAVE_MS);
+    return () => clearTimeout(t);
+  }, [note, rectification, location, findingId]);
 
   // Used by both the back button and "Save & close" — they're the same
   // action (persist the note/location, then return to the list).

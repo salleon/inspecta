@@ -372,6 +372,11 @@ export async function tidyPhotoStorage() {
   }
 }
 
+// how many photos a finding has, without reading them
+export async function photoCount(findingId: string) {
+  return db.photos.where("findingId").equals(findingId).count();
+}
+
 export async function listPhotos(findingId: string) {
   const photos = await db.photos.where("findingId").equals(findingId).toArray();
   return photos.sort((a, b) => a.order - b.order);
