@@ -3,8 +3,8 @@ import type { FlowTest, Site } from "../db/types";
 import { num } from "./flowTest";
 import { ZipWriter } from "./zip";
 import { chartAxes, chartSeries, printDemand, printDetails, printSubtitle, printTables, printTitle, printUnit, PRINT_DEMAND, type PrintSeries } from "./flowPrint";
-// the EnFact logo, as on the preview
-import logoUrl from "../assets/flow-logo.png?inline";
+// the logo (EnFact's, or the company's in Contractor mode), as on the preview
+import { reportLogoUrl } from "./branding";
 
 // Flow tests in Excel, laid out like the export preview and the PDF (design
 // canvas FlowExports): the title and logo, the details and demand, a table
@@ -67,9 +67,17 @@ const cellValue = (v: string) => {
 // workbook) rather than SPRINKLER / HYDRANT (a tab in the site's report)
 export async function addFlowSheets(wb: Workbook, tests: FlowTest[], site: Pick<Site, "name" | "address">, byTest = false): Promise<FlowChart[]> {
   const charts: FlowChart[] = [];
-  let logo: number | null = null;
+  const url = reportLogoUrl();
+  let logo: Logo | null = null;
+  if (url) {
+    const id = wb.addImage({ buffer: new Uint8Array(await (await fetch(url)).arrayBuffer()) as never, extension: "png" });
+    const img = new Image();
+    img.src = url;
+    await img.decode().catch(() => {});
+    const aspect = img.naturalWidth && img.naturalHeight ? img.naturalWidth / img.naturalHeight : 110 / 52;
+    logo = { id, w: Math.round(Math.min(160, 52 * aspect)), h: Math.round(Math.min(52, 160 / aspect)) };
+  }
   for (const test of tests) {
-    logo ??= wb.addImage({ buffer: new Uint8Array(await (await fetch(logoUrl)).arrayBuffer()) as never, extension: "png" });
     const kindName = SHEET[test.kind];
     const name = sheetName(wb, byTest || test.kind === "blank" ? test.name.trim() || kindName : kindName);
     const chart = fillSheet(wb.addWorksheet(name), name, test, site, logo);
@@ -78,7 +86,9 @@ export async function addFlowSheets(wb: Workbook, tests: FlowTest[], site: Pick<
   return charts;
 }
 
-function fillSheet(ws: Worksheet, name: string, test: FlowTest, site: Pick<Site, "name" | "address">, logo: number): FlowChart | null {
+type Logo = { id: number; w: number; h: number };
+
+function fillSheet(ws: Worksheet, name: string, test: FlowTest, site: Pick<Site, "name" | "address">, logo: Logo | null): FlowChart | null {
   const tables = printTables(test);
   const cols = Math.max(1, ...tables.map((t) => t.head.length));
   const first = 2; // column B (A is a narrow margin)
@@ -192,14 +202,14 @@ function fillSheet(ws: Worksheet, name: string, test: FlowTest, site: Pick<Site,
   // the logo, its right edge on the page's (848 × 401). A column is about
   // 7 px a character plus 5, 9525 EMU a pixel.
   const px = widths.map((w) => w * 7 + 5);
-  let edge = px.reduce((a, b) => a + b, 0) - 110;
+  let edge = px.reduce((a, b) => a + b, 0) - (logo?.w ?? 0);
   let at = first - 1;
   for (const w of px) {
     if (edge <= w) break;
     edge -= w;
     at++;
   }
-  ws.addImage(logo, { tl: { nativeCol: at, nativeColOff: Math.round(edge * 9525), nativeRow: 0, nativeRowOff: 0 } as never, ext: { width: 110, height: 52 }, editAs: "oneCell" });
+  if (logo) ws.addImage(logo.id, { tl: { nativeCol: at, nativeColOff: Math.round(edge * 9525), nativeRow: 0, nativeRowOff: 0 } as never, ext: { width: logo.w, height: logo.h }, editAs: "oneCell" });
   ws.pageSetup = { fitToPage: true, fitToWidth: 1, fitToHeight: 0, orientation: "portrait", paperSize: 9, horizontalCentered: true, printArea: `A1:${colLetter(last + 1)}${r}`, margins: { left: 0.5, right: 0.5, top: 0.6, bottom: 0.6, header: 0.3, footer: 0.3 } };
   ws.views = [{ showGridLines: false }];
   return chart;

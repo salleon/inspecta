@@ -1,4 +1,5 @@
 import type { Finding, FlowTest, Photo, Site, SpfSystem, StairTest } from "../db/types";
+import { brandWording } from "./branding";
 import { fitPhotos } from "./excelPhotoFit";
 import { defectTypeStyle } from "./defectTypes";
 import { reportRows } from "./esrGrouping";
@@ -191,7 +192,7 @@ export async function buildFindingsWorkbook(
     const confidenceLine = suggestion ? `Confidence: ${suggestion.confidence}` : "";
     const options = suggestion ? [suggestion.defect, suggestion.alternative].filter((d) => d !== undefined) : [];
     const optionText = (i: number) => (options.length > 1 ? `Option ${i + 1}:\n` : "");
-    const actionText = options.map((d, i) => optionText(i) + d.wording).join("\n\n");
+    const actionText = options.map((d, i) => optionText(i) + brandWording(d.wording)).join("\n\n");
     // the inspector's own rectification notes, first, over the suggestion
     const rectification = finding.rectification?.trim() ?? "";
     const actionH = estimateTextPx(
@@ -327,7 +328,7 @@ export async function buildFindingsWorkbook(
           ...options.flatMap((d, i) => [
             ...(i ? [{ text: "\n\n", font: plain }] : []),
             ...(optionText(i) ? [{ text: optionText(i), font: bold }] : []),
-            { text: d.wording, font: plain },
+            { text: brandWording(d.wording), font: plain },
           ]),
         ],
       };

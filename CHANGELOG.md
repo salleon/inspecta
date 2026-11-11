@@ -7,6 +7,15 @@ the technical detail.
 
 ## 11 November 2026
 
+- **Contractor mode: no EnFact branding.** In Contractor mode:
+  - The opening animation is the new intro (a shield drawing itself, or the company's logo with a shine) instead of EnFact's logo.
+  - The home screen shows the company's logo, without "by EnFact"; the name prompt shows it too.
+  - The PDF report cover is the company's: its dark colour, its logo top left, the logo very faint in the middle, the AFSS or Project Report label, accent bar and date badge in its colour.
+  - Flow test and stair reports (PDF, Excel and their previews) carry the company's logo, or none until one is uploaded.
+  - Standard corrective action wording that says "EnFact recommend…" says the company's name instead.
+
+  EnFact mode keeps EnFact's splash, logo and cover.
+
 - **Contractor mode: the company's colours everywhere.** Buttons, highlights, the camera, number pads, photo tools, the tour, flow and stair screens and Settings now all follow the company's colours, where some spots stayed EnFact teal and navy before. EnFact mode looks the same as ever.
 
 - **Contractor mode: set up your company.** A new phone in Contractor mode opens on a welcome screen with **Set up your company**: the company name (on every report cover), its logo (upload a PNG or JPG; a preview shows it on a report cover, with a **White background behind logo** switch for dark logos) and its colours. Colours come three ways: 14 **Presets** (Harbour, Firetruck, Signal, Oxblood and more), **From logo** (three schemes built from the logo's own colours, best match first) or **Custom** (pick each of the three colours from the logo's colours, dark and bright swatches, or any colour). The app takes the company's colours straight away. Then the usual name prompt. Settings gets a **Company** section (Contractor mode only) to change the name, logo and colours later. EnFact mode looks exactly as before.

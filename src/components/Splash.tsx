@@ -5,6 +5,8 @@ import letterA from "../assets/splash/letter-a.png";
 import letterC from "../assets/splash/letter-c.png";
 import letterT from "../assets/splash/letter-t.png";
 import { IS_TEST_BUILD } from "../lib/buildInfo";
+import { isContractor } from "../lib/settings";
+import { CompanyMark } from "./CompanySetup";
 import "./Splash.css";
 
 // Shown once while the app boots — purely cosmetic, fades itself out and
@@ -15,6 +17,16 @@ import "./Splash.css";
 const LETTERS = [letterE, letterN, letterF, letterA, letterC, letterT];
 
 export default function Splash({ leaving }: { leaving: boolean }) {
+  // Contractor mode: the company's intro (shield, or its logo) instead of
+  // EnFact's logo
+  if (isContractor()) {
+    return (
+      <div className={leaving ? "co-grid splash-leaving" : "co-grid"} role="img" aria-label="Inspecta, site inspection tool" style={{ position: "fixed", inset: 0, zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", paddingTop: 40, color: "var(--text)" }}>
+        <CompanyMark animate />
+        {IS_TEST_BUILD && <div className="splash-test">Test version</div>}
+      </div>
+    );
+  }
   return (
     <div className={leaving ? "splash splash-leaving" : "splash"} role="img" aria-label={IS_TEST_BUILD ? "EnFact Inspecta, site inspection tool, test version" : "EnFact Inspecta, site inspection tool"}>
       <div className="splash-center" aria-hidden="true">

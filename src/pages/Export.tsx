@@ -30,6 +30,8 @@ import { learnCategory, unlearnCategory } from "../lib/esrSuggest";
 import { useBackHandler } from "../lib/backButton";
 import coverBgAfss from "../assets/cover-bg-afss.jpg";
 import coverBgProjects from "../assets/cover-bg-projects.jpg";
+import { isContractor } from "../lib/settings";
+import { coverBackground, coverColours, drawCoverLogo } from "../lib/contractorCover";
 import { useTourScene } from "../lib/tour";
 
 // the export loading screen shows for at least this long: a quick export
@@ -255,8 +257,16 @@ export default function ExportPreview() {
     const margin = 40;
     const contentW = pageW - margin * 2;
 
-    const bg = await loadAssetAsDataUrl(site?.kind === "project" ? coverBgProjects : coverBgAfss);
-    doc.addImage(bg.dataUrl, "JPEG", 0, 0, pageW, pageH);
+    // Contractor mode: the company's own cover (lib/contractorCover)
+    const contractor = isContractor();
+    const colours = contractor ? coverColours() : { accent: [46, 196, 182] as [number, number, number], onAccent: [4, 20, 15] as [number, number, number], address: [195, 211, 224] as [number, number, number], pill: [35, 50, 60] as [number, number, number] };
+    if (contractor) {
+      doc.addImage(await coverBackground(pageW, pageH), "JPEG", 0, 0, pageW, pageH);
+      await drawCoverLogo(doc, margin, 44);
+    } else {
+      const bg = await loadAssetAsDataUrl(site?.kind === "project" ? coverBgProjects : coverBgAfss);
+      doc.addImage(bg.dataUrl, "JPEG", 0, 0, pageW, pageH);
+    }
 
     // report title + address, built bottom-up so we know exactly how tall
     // the details block is
@@ -279,8 +289,15 @@ export default function ExportPreview() {
 
     // details block, anchored to the bottom of the page
     let dy = pageH - detailsH;
-    doc.setFillColor(46, 196, 182);
+    doc.setFillColor(...colours.accent);
     doc.rect(margin, dy, 56, accentH, "F");
+    if (contractor) {
+      // the report kind beside the accent bar, where EnFact's cover has it in the artwork
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.setTextColor(...colours.accent);
+      doc.text(site?.kind === "project" ? "PROJECT REPORT" : "AFSS", margin + 70, dy + 4.5, { charSpace: 2.5 });
+    }
     dy += accentH + 16;
 
     doc.setFont("helvetica", "bold");
@@ -293,7 +310,7 @@ export default function ExportPreview() {
       dy += 4;
       doc.setFont("helvetica", "normal");
       doc.setFontSize(32);
-      doc.setTextColor(195, 211, 224);
+      doc.setTextColor(...colours.address);
       doc.text(site.address, margin, dy + 26);
       dy += addressH;
     }
@@ -303,7 +320,7 @@ export default function ExportPreview() {
     // inspector name as translucent white pills
     type Badge = { text: string; solid: [number, number, number] | null };
     const badges: Badge[] = [
-      { text: formatFullDate(inspectionMs), solid: [46, 196, 182] },
+      { text: formatFullDate(inspectionMs), solid: colours.accent },
       { text: `${findingsCount} finding${findingsCount === 1 ? "" : "s"}`, solid: null },
     ];
     const inspectorName = getInspectorName();
@@ -319,7 +336,7 @@ export default function ExportPreview() {
       if (badge.solid) {
         doc.setFillColor(...badge.solid);
         doc.roundedRect(bx, dy, pillW, badgePillH, 14, 14, "F");
-        doc.setTextColor(4, 20, 15);
+        doc.setTextColor(...colours.onAccent);
       } else {
         // A plain solid fill standing in for "white at 12% opacity over
         // the cover's dark background" — precomputed rather than drawn
@@ -328,7 +345,7 @@ export default function ExportPreview() {
         // compositing (along with the multi-image watermark it also
         // gated) is the whole point of this rework: fewer moving parts
         // that can fail on-device.
-        doc.setFillColor(35, 50, 60);
+        doc.setFillColor(...colours.pill);
         doc.roundedRect(bx, dy, pillW, badgePillH, 14, 14, "F");
         doc.setTextColor(244, 247, 249);
       }

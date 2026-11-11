@@ -50,7 +50,7 @@ function drawPage(doc: JsPDF, page: StairPage, logo: Logo) {
   doc.setFontSize(15);
   doc.text(page.title, M, y + 8);
   if (logo) {
-    const lh = 26;
+    const lh = Math.min(26, (120 * logo.h) / logo.w); // a wide company logo: 120 pt across at most
     doc.addImage(logo.data, "PNG", W - M - (logo.w / logo.h) * lh, y - 8, (logo.w / logo.h) * lh, lh);
   }
   doc.setFillColor("#1f6fb2");

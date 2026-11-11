@@ -6,7 +6,7 @@ import { KIND_LABEL, stairFileName } from "../lib/stairTest";
 import { exportTests, type TestsFormat } from "../lib/testsExport";
 import ProgressOverlay from "../components/ProgressOverlay";
 import { PageHeader, useStairTest } from "../components/StairUi";
-import logo from "../assets/flow-logo.png";
+import { reportLogoUrl } from "../lib/branding";
 
 // A stair test's report, previewed as it prints (lib/stairPrint): a page
 // per stair, swiped sideways, then Export PDF or Excel.
@@ -94,7 +94,7 @@ function Paper({ page }: { page: StairPage }) {
           <div style={{ width: 40, height: 2.5, background: "#1f6fb2", marginTop: 4 }} />
           <div style={{ fontSize: 11, fontWeight: 700, marginTop: 4 }}>{page.subtitle}</div>
         </div>
-        <img src={logo} alt="" style={{ height: 22, flexShrink: 0 }} />
+        {reportLogoUrl() && <img src={reportLogoUrl()!} alt="" style={{ height: 22, maxWidth: 90, objectFit: "contain", flexShrink: 0 }} />}
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "auto 1fr auto 1fr", gap: "1px 6px", fontSize: 9 }}>
         {page.details.map((d) => (

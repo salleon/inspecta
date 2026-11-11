@@ -3,7 +3,8 @@
 // app takes the company's colours, and Settings → Company edits them.
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { startApp } from "./helpers.mjs";
+import { readFile } from "node:fs/promises";
+import { startApp, seed, download } from "./helpers.mjs";
 
 let app;
 let context;
@@ -75,6 +76,24 @@ test("Settings → Company edits the name, logo and colours", async () => {
   assert.equal(await cssVar("--accent"), "#ffc629");
   await page.getByRole("button", { name: "Done" }).click();
   await page.getByText("Custom").waitFor();
+});
+
+test("no EnFact branding: home header and the PDF cover are the company's", async () => {
+  await page.goto(app.url + "/#/");
+  await page.waitForTimeout(800);
+  assert.equal(await page.getByText("BY ENFACT").count(), 0);
+  assert.equal(await page.locator('img[alt="Coastline Fire Services"]').count() >= 1, true, "the company logo in the header");
+  await seed(page, { sites: [{ id: "c1", name: "Harbour Tower", address: "1 Harbour St" }], findings: [{ id: "cf1", siteId: "c1", note: "Exit sign not lit", location: "Lobby" }] });
+  await page.goto(app.url + "/#/site/c1/export");
+  await page.waitForTimeout(2500);
+  const pdf = await download(page, async () => {
+    await page.click("text=Share PDF");
+    await page.waitForTimeout(400);
+    if (await page.locator("text=Export anyway").count()) await page.click("text=Export anyway");
+  });
+  const text = (await readFile(pdf.path)).toString("latin1");
+  assert.ok(text.includes("Harbour Tower"));
+  assert.ok(text.includes("(AFSS)"), "the report kind is drawn as text by the accent bar");
 });
 
 test("EnFact mode keeps EnFact's own colours", async () => {

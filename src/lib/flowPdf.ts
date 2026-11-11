@@ -1,6 +1,6 @@
 import type { jsPDF as JsPDF } from "jspdf";
 import type { FlowTest, Site } from "../db/types";
-import logoUrl from "../assets/flow-logo.png?inline";
+import { reportLogoUrl } from "./branding";
 import { chartModel, flowFileName, PRINT_DEMAND, printDemand, printDetails, printSubtitle, printTables, printTitle } from "./flowPrint";
 
 // The flow tests as a PDF (design canvas FlowExports): a full A4 page per
@@ -27,7 +27,9 @@ export function logoImage(): Promise<{ data: string; w: number; h: number }> {
       resolve({ data: c.toDataURL("image/png"), w, h });
     };
     img.onerror = reject;
-    img.src = logoUrl;
+    const url = reportLogoUrl();
+    if (!url) return reject(new Error("no logo"));
+    img.src = url;
   });
 }
 
@@ -64,7 +66,8 @@ function drawPage(doc: JsPDF, test: FlowTest, site: Pick<Site, "name" | "address
   doc.setFontSize(15);
   doc.text(printTitle(test), M, y + 8);
   if (logo) {
-    const lh = 26;
+    // a wide company logo is capped at 120 pt across
+    const lh = Math.min(26, (120 * logo.h) / logo.w);
     const lw = (logo.w / logo.h) * lh;
     doc.addImage(logo.data, "PNG", W - M - lw, y - 8, lw, lh);
   }

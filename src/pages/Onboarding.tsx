@@ -1,12 +1,15 @@
 import { useState, type FormEvent } from "react";
 import enfactWordmark from "../assets/enfact-wordmark.png";
 import { setInspectorName } from "../lib/profile";
+import { useFlowMode } from "../lib/settings";
+import { CompanyLogo } from "../components/CompanySetup";
 
 // Shown once, on first launch only (App.tsx gates on hasInspectorName()) —
 // captures the inspector's name locally, since this app has no login. Used
 // afterwards to label reports.
 export default function Onboarding({ onDone }: { onDone: () => void }) {
   const [name, setName] = useState("");
+  const contractor = useFlowMode() === "contractor";
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -19,11 +22,15 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
   return (
     <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <div style={{ flexGrow: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: "32px 28px", gap: 28 }}>
-        <img
-          src={enfactWordmark}
-          alt="EnFact"
-          style={{ width: 150, height: "auto", display: "block", margin: "0 auto 4px" }}
-        />
+        {contractor ? (
+          <CompanyLogo height={64} maxWidth={220} style={{ alignSelf: "center", marginBottom: 4 }} />
+        ) : (
+          <img
+            src={enfactWordmark}
+            alt="EnFact"
+            style={{ width: 150, height: "auto", display: "block", margin: "0 auto 4px" }}
+          />
+        )}
 
         <div style={{ display: "flex", flexDirection: "column", gap: 8, textAlign: "center" }}>
           <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: -0.2 }}>Welcome to Inspecta</div>

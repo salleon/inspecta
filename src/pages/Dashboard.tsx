@@ -9,6 +9,8 @@ import ConfirmDialog from "../components/ConfirmDialog";
 import { SITES_CHANGED, useTourScene } from "../lib/tour";
 import { useEdgeBump } from "../lib/edgeBump";
 import logo from "../assets/logo.png";
+import { useFlowMode } from "../lib/settings";
+import { CompanyLogo } from "../components/CompanySetup";
 import SiteKindIcon, { KIND_COLOUR, KindTag } from "../components/SiteKindIcon";
 
 interface SiteRow extends Site {
@@ -19,6 +21,7 @@ interface SiteRow extends Site {
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const contractor = useFlowMode() === "contractor";
   const [sites, setSites] = useState<SiteRow[]>([]);
   const [query, setQuery] = useState("");
   const [adding, setAdding] = useState(false);
@@ -159,7 +162,7 @@ export default function Dashboard() {
       {/* top bar */}
       <div style={{ flexShrink: 0, padding: "20px 20px 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <img src={logo} alt="Inspecta by EnFact" style={{ width: 34, height: 34, borderRadius: 9, display: "block" }} />
+          {contractor ? <CompanyLogo height={34} maxWidth={110} /> : <img src={logo} alt="Inspecta by EnFact" style={{ width: 34, height: 34, borderRadius: 9, display: "block" }} />}
           {/* "Inspecta" sized so its letters (top of the I to the bottom of
               the p: 0.96em in the bundled Manrope) are as tall as the 34 px
               icon. Positioned so the main body of the word (the capital-
@@ -169,7 +172,7 @@ export default function Dashboard() {
               "BY ENFACT" follows on the same baseline. */}
           <div style={{ display: "flex", alignItems: "baseline", gap: 6, fontSize: 34 / 0.96, lineHeight: 1, transform: "translateY(-0.025em)", whiteSpace: "nowrap" }}>
             <span style={{ fontWeight: 800, letterSpacing: -0.6 }}>Inspecta</span>
-            <span style={{ fontSize: 10, fontWeight: 700, color: "var(--accent)", letterSpacing: 0.4 }}>BY ENFACT</span>
+            {!contractor && <span style={{ fontSize: 10, fontWeight: 700, color: "var(--accent)", letterSpacing: 0.4 }}>BY ENFACT</span>}
           </div>
         </div>
         <button

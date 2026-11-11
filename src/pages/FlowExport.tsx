@@ -11,7 +11,7 @@ import { numberedExport } from "../lib/exportName";
 import { IconChevronLeft } from "../components/Icons";
 import RoundIconButton from "../components/RoundIconButton";
 import ProgressOverlay from "../components/ProgressOverlay";
-import logo from "../assets/flow-logo.png";
+import { reportLogoUrl } from "../lib/branding";
 
 // A flow testing site's export (design canvas FlowSiteType / FlowExports): a
 // preview of the results, a page per flow test laid out as they print, then
@@ -174,7 +174,7 @@ function PreviewPage({ test, site }: { test: FlowTest; site: Site }) {
           <div style={{ width: 40, height: 2.5, background: "#1f6fb2", marginTop: 4 }} />
           {sub && <div style={{ fontSize: 10.5, fontWeight: 700, marginTop: 4 }}>{sub}</div>}
         </div>
-        <img src={logo} alt="" style={{ height: 22, flexShrink: 0 }} />
+        {reportLogoUrl() && <img src={reportLogoUrl()!} alt="" style={{ height: 22, maxWidth: 90, objectFit: "contain", flexShrink: 0 }} />}
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "1px 8px", fontSize: 9.5 }}>
         {printDetails(test, site).map((d) => (
