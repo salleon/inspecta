@@ -7,6 +7,26 @@ the technical detail.
 
 ## 11 November 2026
 
+- **Back up: full, chosen sites, or new since last backup.** Settings →
+  **Back up** opens a page with three choices: every site, the sites you
+  tick, or only the sites added or changed since their last backup (marked
+  NEW or CHANGED). Each shows how many sites and photos it holds and about
+  how big the file is.
+- **A folder per site inside the backup.** Each site is its own folder,
+  named after the site and its address, with its photos named after their
+  finding ("F01 Level 2 - Exit sign out (1).jpg"), so a backup makes sense
+  on OneDrive or a computer. Folders can be copied between backups or
+  deleted, and Restore reads whichever are there. Older backups still
+  restore.
+- **Restore asks before replacing.** If a backup has a newer copy of a
+  site that's already on the phone, Restore asks: **Replace** puts the
+  backup's copy in its place, **Keep this phone's** leaves it. Nothing
+  else on the phone is overwritten.
+- **Backup reminder once a month.** The amber dot on the Settings cog now
+  comes on when a site has gone a month with changes that aren't in any
+  backup (it was two weeks since the last full backup). Backing up just
+  the changed sites counts.
+
 - **Backups past 4 GB.** "Back up all data" used to fail every time
   once the photos added up to about 4 GB (roughly 4,000 photos). Backups
   (and the photo zip and Excel exports) now switch to the Zip64 form of

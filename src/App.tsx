@@ -26,6 +26,7 @@ import Message from "./components/Message";
 // launch. It's bundled locally, so this works offline.
 const ExportPreview = lazy(() => import("./pages/Export"));
 const Admin = lazy(() => import("./pages/Admin"));
+const Backup = lazy(() => import("./pages/Backup"));
 const FlowTest = lazy(() => import("./pages/FlowTest"));
 const FlowExport = lazy(() => import("./pages/FlowExport"));
 const StairSystem = lazy(() => import("./pages/StairSystem"));
@@ -172,6 +173,7 @@ function AnimatedRoutes() {
           <Route path="/site/:siteId/spf/:testId/report" element={<StairReport />} />
           <Route path="/site/:siteId/spf/:testId/:section" element={<StairSectionPage />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/settings/backup" element={<Backup />} />
           <Route path="/admin/*" element={<Admin />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

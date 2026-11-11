@@ -12,6 +12,8 @@ export default function ConfirmDialog({
   onConfirm,
   tone = "danger",
   infoOnly = false,
+  cancelLabel = "Cancel",
+  onDismiss,
 }: {
   title: string;
   message: string;
@@ -24,11 +26,16 @@ export default function ConfirmDialog({
   tone?: "danger" | "primary";
   // just a message with one button (no Cancel)
   infoOnly?: boolean;
+  // the second button's label, when it's a choice rather than Cancel
+  cancelLabel?: string;
+  // tapping outside the dialog, when that shouldn't count as the second
+  // button (defaults to onCancel)
+  onDismiss?: () => void;
 }) {
   return (
     <div
       style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 32px" }}
-      onClick={onCancel}
+      onClick={onDismiss ?? onCancel}
     >
       <div
         onClick={(e) => e.stopPropagation()}
@@ -45,7 +52,7 @@ export default function ConfirmDialog({
               onClick={onCancel}
               style={{ flex: 1, textAlign: "center", padding: "13px 0", borderRadius: 12, background: "var(--panel-2)", border: "1px solid var(--border)", fontSize: 14, fontWeight: 700, color: "var(--text)" }}
             >
-              Cancel
+              {cancelLabel}
             </button>
           )}
           <button

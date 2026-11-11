@@ -22,6 +22,14 @@ export interface Site {
   // cleared once they're all in (lib/backup). Still set means the restore
   // stopped part way: restoring the same backup again finishes the site.
   restoreIncomplete?: true;
+  // when anything in the site last changed: its details, findings, photos,
+  // mark-up, tests or reports (updatedAt only moves for some of those, as
+  // it orders the home page). Absent on sites from before it was added:
+  // updatedAt stands in.
+  changedAt?: number;
+  // when this site last went into a backup (any kind: full, chosen sites
+  // or new since last backup), or was restored from one. Absent = never.
+  backedUpAt?: number;
 }
 
 // A customised report: a chosen group of the site's findings, exported on

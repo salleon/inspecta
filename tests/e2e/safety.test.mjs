@@ -63,8 +63,9 @@ test("a save the phone refuses says Couldn't save", async () => {
 test("Settings says when the last backup was made", async () => {
   await go(page, app, "/settings", 1200);
   assert.equal(await page.getByTestId("last-backup").innerText(), "Not backed up yet");
+  await page.getByTestId("backup-row").click();
   const download = page.waitForEvent("download");
-  await page.getByRole("button", { name: /Back up all data/ }).click();
+  await page.getByRole("button", { name: /^Back up \d+ sites?$/ }).click();
   await download;
   await page.getByText(/^Last backup made \d+ \w+ \d{4}$/).waitFor();
 });

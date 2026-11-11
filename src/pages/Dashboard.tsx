@@ -1,4 +1,4 @@
-import { backupDue, lastBackupAt } from "../lib/backupDue";
+import { backupDue } from "../lib/backupDue";
 import { useEffect, useRef, useState, type FormEvent, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Site, SiteKind } from "../db/types";
@@ -194,8 +194,8 @@ export default function Dashboard() {
           >
             <IconSettings size={19} strokeWidth={2} color="var(--text)" />
           </div>
-          {/* amber dot: nothing backed up for two weeks */}
-          {backupDue(lastBackupAt(), sites.length ? Math.min(...sites.map((s) => s.createdAt)) : 0, Date.now()) && (
+          {/* amber dot: a site has gone a month with changes not in any backup */}
+          {backupDue(sites, Date.now()) && (
             <span
               data-testid="backup-due"
               style={{ position: "absolute", top: 0, right: 0, width: 11, height: 11, borderRadius: "50%", background: "#f7b977", border: "2px solid var(--bg)" }}

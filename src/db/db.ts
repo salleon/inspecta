@@ -94,6 +94,37 @@ class InspectaDB extends Dexie {
       flowTests: "id, siteId",
       stairTests: "id, siteId",
     });
+    // v9: each site's changedAt and backedUpAt (see lib/backup). Worked out
+    // once for the sites already here: changedAt from the latest change
+    // recorded on the site, its findings and tests; backedUpAt from the
+    // last "Back up all data", for the sites that existed by then.
+    this.version(9)
+      .stores({
+        sites: "id, updatedAt, kind",
+        findings: "id, siteId, createdAt, order",
+        photos: "id, findingId, siteId, order",
+        thumbnails: "photoId, siteId",
+        exportCopies: "photoId, siteId",
+        flowTests: "id, siteId",
+        stairTests: "id, siteId",
+      })
+      .upgrade(async (tx) => {
+        let lastBackup = 0;
+        try {
+          lastBackup = Number(localStorage.getItem("inspecta.lastBackup")) || 0;
+        } catch {
+          // no storage: every site counts as not backed up
+        }
+        const latest = new Map<string, number>();
+        const note = (r: { siteId: string; updatedAt?: number }) => latest.set(r.siteId, Math.max(latest.get(r.siteId) ?? 0, r.updatedAt ?? 0));
+        await tx.table("findings").each(note);
+        await tx.table("flowTests").each(note);
+        await tx.table("stairTests").each(note);
+        await tx.table("sites").toCollection().modify((site: Site) => {
+          site.changedAt = Math.max(site.updatedAt ?? 0, latest.get(site.id) ?? 0);
+          if (lastBackup && site.createdAt <= lastBackup && site.backedUpAt === undefined) site.backedUpAt = lastBackup;
+        });
+      });
   }
 }
 
@@ -112,6 +143,7 @@ export async function createSite(name: string, address: string, kind: SiteKind) 
     kind,
     createdAt: now,
     updatedAt: now,
+    changedAt: now,
   };
   await db.sites.add(site);
   return site;
@@ -130,22 +162,33 @@ export async function updateSite(
   siteId: string,
   changes: Partial<Pick<Site, "name" | "address">>,
 ) {
-  await db.sites.update(siteId, changes);
+  await db.sites.update(siteId, { ...changes, changedAt: Date.now() });
 }
 
 // the site's stair pressurisation system (set once; lib/stairTest)
 export async function saveSiteSpf(siteId: string, spf: SpfSystem) {
-  await db.sites.update(siteId, { spf });
+  await db.sites.update(siteId, { spf, changedAt: Date.now() });
 }
 
 // the site's customised reports, all at once (not a change to the site
 // itself, so its place on the home page stays put)
 export async function saveSiteReports(siteId: string, reports: SiteReport[]) {
-  await db.sites.update(siteId, { reports });
+  await db.sites.update(siteId, { reports, changedAt: Date.now() });
 }
 
 async function touchSite(siteId: string) {
-  await db.sites.update(siteId, { updatedAt: Date.now() });
+  const now = Date.now();
+  await db.sites.update(siteId, { updatedAt: now, changedAt: now });
+}
+
+// something in the site changed (for "new since last backup"), without
+// moving it on the home page
+async function siteChanged(siteId: string | undefined) {
+  if (siteId) await db.sites.update(siteId, { changedAt: Date.now() });
+}
+
+async function findingSite(findingId: string) {
+  return (await db.findings.get(findingId))?.siteId;
 }
 
 export async function deleteSite(siteId: string) {
@@ -183,6 +226,7 @@ export async function updateFinding(
   changes: Partial<Pick<Finding, "note" | "rectification" | "location" | "defectType" | "level" | "esrCategory">>,
 ) {
   await db.findings.update(findingId, { ...changes, updatedAt: Date.now() });
+  await siteChanged(await findingSite(findingId));
 }
 
 // Moves a finding to a new manual sort position. `order` is typically the
@@ -190,6 +234,7 @@ export async function updateFinding(
 // indexing), so a reorder only ever writes the one row that moved.
 export async function reorderFinding(findingId: string, order: number) {
   await db.findings.update(findingId, { order });
+  await siteChanged(await findingSite(findingId));
 }
 
 // A finding with its photos and their thumbnails / export copies.
@@ -260,6 +305,7 @@ export async function addPhoto(findingId: string, siteId: string, blob: Blob, ta
   if (marks?.length) photo.marks = marks;
   await db.photos.add(photo);
   await db.findings.update(findingId, { updatedAt: Date.now() });
+  await siteChanged(siteId);
   // In the background (see lib/photoWork), so the next finding's camera
   // doesn't wait: the photo saved smaller, then its thumbnail, then the
   // copy the exports use, so lists and exports never wait on them.
@@ -347,6 +393,7 @@ export async function setPhotoMarks(photoId: string, marks: Mark[], turned?: Blo
     await db.exportCopies.delete(photoId);
   });
   await db.findings.update(photo.findingId, { updatedAt: Date.now() });
+  await siteChanged(photo.siteId);
   const updated = await db.photos.get(photoId);
   if (updated)
     void getThumbnail(updated)
@@ -357,7 +404,9 @@ export async function setPhotoMarks(photoId: string, marks: Mark[], turned?: Blo
 }
 
 export async function deletePhoto(photoId: string) {
+  const siteId = (await db.photos.get(photoId))?.siteId;
   await db.photos.delete(photoId);
+  await siteChanged(siteId);
   await db.thumbnails.delete(photoId);
   await db.exportCopies.delete(photoId);
 }
@@ -538,36 +587,66 @@ export async function deleteStairTest(testId: string) {
 
 // ---- backup / restore (see lib/backup.ts) ----
 
-// Everything except the photo files themselves, which are read one at a
-// time with photoBlob() so a backup never holds them all in memory.
-export async function backupRecords() {
-  const sites = await db.sites.toArray();
-  const findings = await db.findings.toArray();
-  const flowTests = await db.flowTests.toArray();
-  const stairTests = await db.stairTests.toArray();
+// The records of the given sites (all of them if none are given), without
+// the photo files themselves, which are read one at a time with
+// photoBlob() so a backup never holds them all in memory.
+export async function backupRecords(siteIds?: string[]) {
+  const only = siteIds ? new Set(siteIds) : null;
+  const keep = <T extends { siteId: string }>(rows: T[]) => (only ? rows.filter((r) => only.has(r.siteId)) : rows);
+  const sites = (await db.sites.toArray()).filter((s) => !only || only.has(s.id));
+  const findings = keep(await db.findings.toArray());
+  const flowTests = keep(await db.flowTests.toArray());
+  const stairTests = keep(await db.stairTests.toArray());
   const photos: Omit<Photo, "blob" | "marked">[] = [];
   await db.photos.each(({ blob: _blob, marked: _marked, ...meta }) => {
-    photos.push(meta);
+    if (!only || only.has(meta.siteId)) photos.push(meta);
   });
   return { sites, findings, flowTests, stairTests, photos };
+}
+
+// How many photos each site has, and their size in bytes (the originals,
+// which are what a backup holds). Reading a stored Blob's size doesn't
+// read the photo itself.
+export async function sitePhotoStats(): Promise<Map<string, { photos: number; bytes: number }>> {
+  const stats = new Map<string, { photos: number; bytes: number }>();
+  await db.photos.each((p) => {
+    const s = stats.get(p.siteId) ?? { photos: 0, bytes: 0 };
+    s.photos++;
+    s.bytes += p.blob?.size ?? 0;
+    stats.set(p.siteId, s);
+  });
+  return stats;
 }
 
 export async function photoBlob(photoId: string): Promise<Blob | undefined> {
   return (await db.photos.get(photoId))?.blob;
 }
 
-// "new" if the site isn't on this phone, "unfinished" if an earlier restore
-// added it but stopped before all its photos were in, otherwise "here".
-export async function siteRestoreState(siteId: string): Promise<"new" | "unfinished" | "here"> {
-  const site = await db.sites.get(siteId);
-  return !site ? "new" : site.restoreIncomplete ? "unfinished" : "here";
+// These sites went into a backup started at `at` (anything changed after
+// that still counts as not backed up).
+export async function markBackedUp(siteIds: string[], at: number) {
+  await db.sites.where("id").anyOf(siteIds).modify((site) => {
+    site.backedUpAt = at;
+  });
 }
 
 // A restored site and its findings, marked restoreIncomplete until its
-// photos (added one at a time after this) are all in.
-export async function restoreSiteRecords(site: Site, findings: Finding[], flowTests: FlowTest[] = [], stairTests: StairTest[] = []) {
-  await db.transaction("rw", [db.sites, db.findings, db.flowTests, db.stairTests], async () => {
-    await db.sites.add({ ...site, restoreIncomplete: true });
+// photos (added one at a time after this) are all in. With replace, the
+// copy of the site already on the phone goes first, all its findings,
+// photos and tests with it, in the same step.
+export async function restoreSiteRecords(site: Site, findings: Finding[], flowTests: FlowTest[] = [], stairTests: StairTest[] = [], replace = false) {
+  await db.transaction("rw", [db.sites, db.findings, db.flowTests, db.stairTests, db.photos, db.thumbnails, db.exportCopies], async () => {
+    if (replace) {
+      await db.thumbnails.where("siteId").equals(site.id).delete();
+      await db.exportCopies.where("siteId").equals(site.id).delete();
+      await db.photos.where("siteId").equals(site.id).delete();
+      await db.findings.where("siteId").equals(site.id).delete();
+      await db.flowTests.where("siteId").equals(site.id).delete();
+      await db.stairTests.where("siteId").equals(site.id).delete();
+      await db.sites.delete(site.id);
+    }
+    const { backedUpAt: _backedUpAt, ...rest } = site;
+    await db.sites.add({ ...rest, restoreIncomplete: true });
     await db.findings.bulkAdd(findings);
     await db.flowTests.bulkAdd(flowTests);
     await db.stairTests.bulkAdd(stairTests);
@@ -583,9 +662,11 @@ export async function restorePhoto(photo: Photo) {
   await db.photos.add(photo);
 }
 
-// All of a restored site's photos are in: it's an ordinary site again.
+// All of a restored site's photos are in: it's an ordinary site again, and
+// counts as backed up (it's in the backup it came from).
 export async function finishSiteRestore(siteId: string) {
   await db.sites.where("id").equals(siteId).modify((site) => {
     delete site.restoreIncomplete;
+    site.backedUpAt = Date.now();
   });
 }
