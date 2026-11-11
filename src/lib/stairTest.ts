@@ -259,7 +259,7 @@ export const SECTION: Record<StairSection, SectionInfo> = {
   vel: { name: "Velocity", every: true, unit: "m/s", column: "Average velocity m/s (min 1)" },
   force: { name: "Door force", every: true, unit: "N", column: "Door opening force N (max 110)" },
   latch: { name: "Door closes & latches", every: true, column: "Door closes and latches" },
-  noise: { name: "Noise", every: false, once: "the noisiest doors" },
+  noise: { name: "Noise", every: false, once: "average and max" },
   rest: { name: "Pressure restoration", every: false, once: "the slowest door" },
   pa: { name: "Stair pressure, doors closed", every: false, once: "once" },
   fan: { name: "Fan checks", every: false, once: "per fan" },

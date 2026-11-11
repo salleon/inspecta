@@ -76,7 +76,7 @@ const noiseRef = (once: StairOnce) => {
   const a = (once.ambient ?? "").trim();
   const max = (once.noiseRef ?? "").trim();
   const from = once.noiseRefSource === "phone" ? "indicative (phone)" : once.noiseRefSource === "meter" ? "calibrated meter" : "";
-  const parts = [max && `max ${max} dB(A)`, (once.noiseStair ?? "").trim() && from, a && `ambient ${a} dB(A)${once.ambientLevel ? ` at ${once.ambientLevel}` : ""}`].filter(Boolean);
+  const parts = [max && `max ${max} dB(A)`, (once.noiseStair ?? "").trim() && from, a && `ambient ${a} dB(A)`].filter(Boolean);
   return parts.length ? parts : undefined;
 };
 
