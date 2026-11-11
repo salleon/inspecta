@@ -1,10 +1,20 @@
-// Admin PIN for Settings → Admin (keyword tuning). It keeps staff out of
-// the admin tools, not a real security boundary — everything stays on the
-// phone. Starts as 2021; change it from the admin menu.
+import { getFlowMode } from "./settings";
+
+// Admin PIN for Settings → Admin (keywords, setup file, the PIN). It keeps
+// staff out of the admin tools, not a real security boundary — everything
+// stays on the phone.
 //
-// Forgotten PIN: "Forgot PIN?" on the PIN screen takes a recovery code and
-// sets a new PIN. Either the master code (works on any phone, below) or
-// this phone's own code, which the admin menu can email.
+// Who sets it:
+// - EnFact phones start with EnFact's PIN (2021) until the office changes it.
+// - Contractor phones have no PIN at first: the first time Admin is opened,
+//   the company chooses its own (or it comes with their setup file). The
+//   EnFact PIN never works on them.
+//
+// Forgotten PIN: "Forgot PIN?" on the PIN screen takes this phone's own
+// recovery code (the admin menu can email it), then a new PIN is chosen.
+// The owner's master code (below) also goes there: it opens Admin as the
+// owner, which is the only way to see the EnFact / Contractor switch on a
+// Contractor phone, and leaves the company's PIN as it is.
 
 const PIN_KEY = "inspecta.adminPin";
 const RECOVERY_KEY = "inspecta.adminRecovery";
@@ -26,14 +36,34 @@ function set(key: string, value: string) {
   }
 }
 
+// EnFact phones fall back to EnFact's PIN; Contractor phones have none
+// until the company chooses one
+function storedOrDefault(): string | null {
+  return get(PIN_KEY) ?? (getFlowMode() === "enfact" ? DEFAULT_PIN : null);
+}
+
+// false on a Contractor phone whose company hasn't chosen a PIN yet
+export function hasPin(): boolean {
+  return storedOrDefault() !== null;
+}
+
 export function checkPin(pin: string): boolean {
-  return pin === (get(PIN_KEY) ?? DEFAULT_PIN);
+  const current = storedOrDefault();
+  return current !== null && pin === current;
 }
 
 // the PIN as it stands, for the company setup file (which only keeps a
-// salted fingerprint of it)
+// salted fingerprint of it). Admin is unlocked by then, so there is one.
 export function currentPin(): string {
-  return get(PIN_KEY) ?? DEFAULT_PIN;
+  return storedOrDefault() ?? DEFAULT_PIN;
+}
+
+// writes down the PIN this phone opens with, so it carries on as it is
+// when the mode changes (an EnFact phone on EnFact's PIN moved to
+// Contractor keeps that PIN, rather than being left with none)
+export function keepPin() {
+  const current = storedOrDefault();
+  if (current !== null && get(PIN_KEY) === null) set(PIN_KEY, current);
 }
 
 export function setPin(pin: string) {
@@ -63,19 +93,20 @@ async function sha256Hex(text: string): Promise<string> {
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-// the code as typed (any case, dashes optional): this phone's emailed code
-// or the master code
-export async function checkRecoveryCode(typed: string): Promise<boolean> {
+// the code as typed (any case, dashes optional): "phone" for this phone's
+// emailed code, "owner" for the master code, null for neither
+export async function checkRecoveryCode(typed: string): Promise<"phone" | "owner" | null> {
   const norm = (s: string) => s.toUpperCase().replace(/[^A-Z0-9]/g, "");
   const stored = get(RECOVERY_KEY);
-  if (stored && norm(typed) === norm(stored)) return true;
-  return (await sha256Hex(`inspecta-admin:${norm(typed)}`)) === MASTER_HASH;
+  if (stored && norm(typed) === norm(stored)) return "phone";
+  return (await sha256Hex(`inspecta-admin:${norm(typed)}`)) === MASTER_HASH ? "owner" : null;
 }
 
 // Unlocked until the app is closed, so moving around the admin screens
-// doesn't ask again.
-let unlocked = false;
-export const isAdminUnlocked = () => unlocked;
-export const unlockAdmin = () => {
-  unlocked = true;
+// doesn't ask again. "owner" (the master code) also shows the mode switch.
+let unlocked: false | "pin" | "owner" = false;
+export const isAdminUnlocked = () => unlocked !== false;
+export const isOwnerUnlocked = () => unlocked === "owner";
+export const unlockAdmin = (as: "pin" | "owner" = "pin") => {
+  if (unlocked !== "owner") unlocked = as;
 };

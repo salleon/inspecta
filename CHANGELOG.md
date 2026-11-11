@@ -7,6 +7,8 @@ the technical detail.
 
 ## 11 November 2026
 
+- **Admin on Contractor phones: their own PIN, no mode switch.** A Contractor phone no longer opens Admin with EnFact's PIN. The first time Admin is opened, the company chooses its own 4-digit PIN (or it comes with their setup file), and EnFact's PIN never works on it. Contractor companies get all of Admin (keywords, setup file, change PIN, recovery code) except the **EnFact / Contractor** switch, which they never see. EnFact phones work as before, switch included. To turn any phone into an EnFact phone: **Join a company** with EnFact's setup file, or Admin → **Forgot PIN?** → the owner's master code, which opens Admin with the switch and leaves the company's PIN alone. An EnFact phone switched to Contractor keeps the PIN it had.
+
 - **Contractor colours: splash and report covers only.** The company's colours no longer recolour the app's pages and testing screens, which keep the app's original navy and teal in both modes. The colours now show only on the Contractor splash screen and the report covers. Settings → Company → Colours (and the setup's Colours step) has a cover preview at the top, so you can still see what you're picking.
 
 - **Stair setup: the stair Group field is gone.** A stair could be given a Group (Basement, Tower) that headed the stair list, the readings tabs and the general report. That was a mix-up with the Roof / Levels / Basement drop-downs in Review level layout, which stay as they were (just for finding your way around that page). The stair list and readings tabs are back to one plain list, and the general system testing report is one page with every stair.
