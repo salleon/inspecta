@@ -106,6 +106,42 @@ test("an AFSS export with stair tests asks too, then exports", async () => {
   assert.deepEqual(await stairsOf("s2"), [["SPF-1", "North"], ["SPF-2", "Stair 2"]]);
 });
 
+test("setting up a new stair: after Looks right on its levels, on to its fan name", async () => {
+  await go(page, app, "/site/s2/spf-system", 1200);
+  await page.getByRole("button", { name: "+ Add another stair" }).click();
+  // the names come first in the stair's card, then its levels
+  const order = await page.locator("[data-stair] input[aria-label], [data-stair] button[aria-label$='level type']").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label")));
+  assert.deepEqual(order.slice(0, 3), ["Stair name", "Fan name", "Highest level type"]);
+  await page.getByRole("button", { name: "Highest level", exact: true }).click();
+  const pad = page.getByTestId("level-pad");
+  for (const k of ["1", "7"]) await pad.getByRole("button", { name: k, exact: true }).dispatchEvent("pointerdown");
+  await pad.getByRole("button", { name: "Next", exact: true }).dispatchEvent("pointerdown");
+  await page.getByRole("button", { name: "Lowest level type" }).click();
+  await page.getByRole("option", { name: /^Ground/ }).click();
+  await page.getByTestId("level-list").waitFor();
+  await page.getByRole("button", { name: /Looks right/ }).click();
+  // the stair stays open, the cursor in its fan name (started at SPF-)
+  const fan = page.getByLabel("Fan name");
+  await fan.waitFor();
+  await page.waitForTimeout(300);
+  assert.equal(await fan.evaluate((e) => e === document.activeElement), true);
+  assert.equal(await fan.inputValue(), "SPF-");
+  await fan.fill("SPF-3");
+  await page.getByRole("button", { name: "Save and continue ›" }).click();
+  await page.waitForTimeout(800);
+  assert.deepEqual((await stairsOf("s2"))[2], ["SPF-3", ""]);
+});
+
+test("a stair whose fan is named folds away after Looks right, as before", async () => {
+  await go(page, app, "/site/s2/spf-system", 1200);
+  await page.locator('[data-stair="a"]').click();
+  await page.getByRole("button", { name: /Review level layout|Review/ }).first().click();
+  await page.getByTestId("level-list").waitFor();
+  await page.getByRole("button", { name: /Looks right/ }).click();
+  await page.waitForTimeout(300);
+  assert.equal(await page.getByLabel("Fan name").count(), 0);
+});
+
 test("no page errors", () => {
   assert.deepEqual(errors, []);
 });

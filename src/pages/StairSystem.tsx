@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import type { Site, SpfEdition, SpfStair, SpfSystem, SpfType, StairTest } from "../db/types";
 import { getSite, listStairTests, saveSiteSpf, saveStairTest } from "../db/db";
-import { defaultSystem, doorsEach, EDITIONS, joinLevel, LEVEL_TYPES, levelChanges, levelName, levelsEdited, levelsRead, levelType, newStair, renameDoorLevels, splitLevel, stairLabel, stairDoors, stairRange, TYPES, typeFor, type LevelType } from "../lib/stairTest";
+import { defaultSystem, doorsEach, EDITIONS, joinLevel, LEVEL_TYPES, levelChanges, levelName, levelsEdited, levelsRead, levelType, newStair, fanIsDefault, renameDoorLevels, splitLevel, stairLabel, stairDoors, stairRange, TYPES, typeFor, type LevelType } from "../lib/stairTest";
 import { useBackHandler } from "../lib/backButton";
 import { AMBER, card, cardLabel, fieldInput, PageHeader, RulesBox, Seg, StairName } from "../components/StairUi";
 import NumPad, { k, numberKeys, PadTag } from "../components/NumPad";
@@ -53,6 +53,8 @@ export default function StairSystem() {
   const latest = useRef<SpfSystem | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
   const focusName = useRef<string | null>(null);
+  // back from reviewing a stair's levels: on to its fan name, if it has none
+  const focusFan = useRef<string | null>(null);
 
   useEffect(() => {
     if (!siteId) return;
@@ -114,6 +116,14 @@ export default function StairSystem() {
     if (!focusName.current) return;
     document.querySelector<HTMLInputElement>(`[data-stair="${focusName.current}"] input[aria-label="Stair name"]`)?.focus();
     focusName.current = null;
+  });
+
+  useEffect(() => {
+    if (!focusFan.current) return;
+    const input = document.querySelector<HTMLInputElement>(`[data-stair="${focusFan.current}"] input[aria-label="Fan name"]`);
+    input?.scrollIntoView({ block: "center" });
+    input?.focus();
+    focusFan.current = null;
   });
 
   function change(next: SpfSystem) {
@@ -205,7 +215,10 @@ export default function StairSystem() {
         onDone={() => {
           setStair(reviewing.id, { reviewed: true });
           setReview(null);
-          setOpen(null);
+          // the levels were the last step only if the fan's named already;
+          // otherwise the stair stays open, on its fan name
+          if (fanIsDefault(reviewing)) focusFan.current = reviewing.id;
+          else setOpen(null);
         }}
       />
     );
@@ -452,8 +465,32 @@ function StairCard({
           ▴
         </button>
       </div>
+      {/* the names first: they're what the stair goes by, and what's
+          filled in later, once the fans are identified */}
       <Field label="Name">
         <input aria-label="Stair name" className="default-ph" placeholder={`Stair ${n}`} value={stair.name} onChange={(e) => onChange({ name: e.target.value })} onFocus={onText} style={inputStyle(false)} />
+      </Field>
+      <Field label="Fan name">
+        <input
+          aria-label="Fan name"
+          className="default-ph"
+          placeholder={`SPF-${n}`}
+          value={stair.fan}
+          onChange={(e) => onChange({ fan: e.target.value })}
+          onBlur={() => {
+            // just "SPF-": back to the placeholder
+            if (/^SPF-?\s*$/i.test(stair.fan.trim())) onChange({ fan: "" });
+          }}
+          onFocus={(e) => {
+            onText();
+            // typing starts after "SPF-", for the fan's number
+            if (!stair.fan.trim()) onChange({ fan: "SPF-" });
+            // straight on to the number after "SPF-" (not if the text was selected)
+            const el = e.currentTarget;
+            window.setTimeout(() => el.selectionStart === el.selectionEnd && el.setSelectionRange(el.value.length, el.value.length), 0);
+          }}
+          style={inputStyle(false)}
+        />
       </Field>
       {(["hi", "lo"] as Which[]).map((w) => {
         const { type, num } = splitLevel(stair[field(w)]);
@@ -494,28 +531,6 @@ function StairCard({
           </Field>
         );
       })}
-      <Field label="Fan name">
-        <input
-          aria-label="Fan name"
-          className="default-ph"
-          placeholder={`SPF-${n}`}
-          value={stair.fan}
-          onChange={(e) => onChange({ fan: e.target.value })}
-          onBlur={() => {
-            // just "SPF-": back to the placeholder
-            if (/^SPF-?\s*$/i.test(stair.fan.trim())) onChange({ fan: "" });
-          }}
-          onFocus={(e) => {
-            onText();
-            // typing starts after "SPF-", for the fan's number
-            if (!stair.fan.trim()) onChange({ fan: "SPF-" });
-            // straight on to the number after "SPF-" (not if the text was selected)
-            const el = e.currentTarget;
-            window.setTimeout(() => el.selectionStart === el.selectionEnd && el.setSelectionRange(el.value.length, el.value.length), 0);
-          }}
-          style={inputStyle(false)}
-        />
-      </Field>
       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 6px 5px 11px", borderRadius: 10, background: "#0a2135", border: "1px solid var(--border-strong)" }}>
         <span style={{ flexGrow: 1, fontSize: 13, fontWeight: 800 }}>Doors on each level</span>
         <button aria-label="One door fewer" disabled={each <= 1} onClick={() => onChange({ doors: each - 1 })} style={{ ...step, color: each <= 1 ? "#3f5a74" : "var(--text)" }}>
