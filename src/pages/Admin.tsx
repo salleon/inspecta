@@ -147,7 +147,7 @@ function PinScreen({ onUnlock, start = { kind: "enter" }, onDone, back = "/setti
   const [message, setMessage] = useState("");
   const [recovery, setRecovery] = useState("");
 
-  function press(d: string) {
+  async function press(d: string) {
     setMessage("");
     const next = d === "del" ? pin.slice(0, -1) : pin + d;
     if (next.length < 4) {
@@ -156,7 +156,7 @@ function PinScreen({ onUnlock, start = { kind: "enter" }, onDone, back = "/setti
     }
     setPinDigits("");
     if (step.kind === "enter") {
-      if (checkPin(next)) onUnlock?.("pin");
+      if (await checkPin(next)) onUnlock?.("pin");
       else setMessage("Wrong PIN");
     } else if (step.kind === "new") {
       if (!step.first) {
@@ -227,7 +227,7 @@ function PinScreen({ onUnlock, start = { kind: "enter" }, onDone, back = "/setti
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
           {["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"].map((k, i) =>
             k ? (
-              <button key={i} type="button" aria-label={k === "del" ? "Delete" : k} onClick={() => press(k)} style={keyStyle}>
+              <button key={i} type="button" aria-label={k === "del" ? "Delete" : k} onClick={() => void press(k)} style={keyStyle}>
                 {k === "del" ? "⌫" : k}
               </button>
             ) : (

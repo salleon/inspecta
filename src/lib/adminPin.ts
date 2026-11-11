@@ -7,8 +7,11 @@ import { getFlowMode } from "./settings";
 // Who sets it:
 // - EnFact phones start with EnFact's PIN (2021) until the office changes it.
 // - Contractor phones have no PIN at first: the first time Admin is opened,
-//   the company chooses its own (or it comes with their setup file). The
-//   EnFact PIN never works on them.
+//   the company's manager chooses one. EnFact's PIN never works on them.
+// - A phone that joins a company with its setup file gets the manager's PIN
+//   from the file, without anyone typing it: staff join, but Admin stays
+//   locked to them. The file only has a salted fingerprint of the PIN, so
+//   the phone keeps that fingerprint (PRINT_KEY) instead of the PIN itself.
 //
 // Forgotten PIN: "Forgot PIN?" on the PIN screen takes this phone's own
 // recovery code (the admin menu can email it), then a new PIN is chosen.
@@ -17,6 +20,7 @@ import { getFlowMode } from "./settings";
 // Contractor phone, and leaves the company's PIN as it is.
 
 const PIN_KEY = "inspecta.adminPin";
+const PRINT_KEY = "inspecta.adminPinPrint";
 const RECOVERY_KEY = "inspecta.adminRecovery";
 const DEFAULT_PIN = "2021";
 
@@ -36,26 +40,63 @@ function set(key: string, value: string) {
   }
 }
 
-// EnFact phones fall back to EnFact's PIN; Contractor phones have none
-// until the company chooses one
+function remove(key: string) {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    // best effort
+  }
+}
+
+// a salted SHA-256 fingerprint of a PIN, as kept in setup files
+export type PinPrint = { salt: string; hash: string };
+
+async function sha256Hex(text: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+export async function makePinPrint(pin: string): Promise<PinPrint> {
+  const salt = [...crypto.getRandomValues(new Uint8Array(16))].map((b) => b.toString(16).padStart(2, "0")).join("");
+  return { salt, hash: await sha256Hex(salt + pin) };
+}
+
+export async function pinMatchesPrint(print: PinPrint, pin: string): Promise<boolean> {
+  return (await sha256Hex(print.salt + pin)) === print.hash;
+}
+
+function storedPrint(): PinPrint | null {
+  try {
+    const p = JSON.parse(get(PRINT_KEY) ?? "null") as Partial<PinPrint> | null;
+    return p && typeof p.salt === "string" && typeof p.hash === "string" ? { salt: p.salt, hash: p.hash } : null;
+  } catch {
+    return null;
+  }
+}
+
+// the PIN typed on this phone; EnFact phones fall back to EnFact's PIN.
+// (null on a phone that has only a fingerprint, or no PIN yet)
 function storedOrDefault(): string | null {
+  if (get(PIN_KEY) === null && storedPrint()) return null;
   return get(PIN_KEY) ?? (getFlowMode() === "enfact" ? DEFAULT_PIN : null);
 }
 
 // false on a Contractor phone whose company hasn't chosen a PIN yet
 export function hasPin(): boolean {
-  return storedOrDefault() !== null;
+  return storedOrDefault() !== null || storedPrint() !== null;
 }
 
-export function checkPin(pin: string): boolean {
+export async function checkPin(pin: string): Promise<boolean> {
   const current = storedOrDefault();
-  return current !== null && pin === current;
+  if (current !== null) return pin === current;
+  const print = storedPrint();
+  return print !== null && (await pinMatchesPrint(print, pin));
 }
 
-// the PIN as it stands, for the company setup file (which only keeps a
-// salted fingerprint of it). Admin is unlocked by then, so there is one.
-export function currentPin(): string {
-  return storedOrDefault() ?? DEFAULT_PIN;
+// this phone's PIN as a fingerprint, for the company setup file (Admin is
+// unlocked by then, so there is one)
+export async function currentPinPrint(): Promise<PinPrint> {
+  return storedPrint() ?? makePinPrint(storedOrDefault() ?? DEFAULT_PIN);
 }
 
 // writes down the PIN this phone opens with, so it carries on as it is
@@ -66,8 +107,16 @@ export function keepPin() {
   if (current !== null && get(PIN_KEY) === null) set(PIN_KEY, current);
 }
 
+// a PIN typed on this phone (chosen, changed, or entered to load a file)
 export function setPin(pin: string) {
   set(PIN_KEY, pin);
+  remove(PRINT_KEY);
+}
+
+// the manager's PIN from a setup file, as its fingerprint (nobody typed it)
+export function setPinPrint(print: PinPrint) {
+  set(PRINT_KEY, JSON.stringify({ salt: print.salt, hash: print.hash }));
+  remove(PIN_KEY);
 }
 
 // e.g. "K7QM-2XPA": no 0/O or 1/I, so it's easy to type from an email
@@ -87,11 +136,6 @@ export function recoveryCode(): string {
 // the app's owner, not in the app. Only its SHA-256 fingerprint is here,
 // so it can't be read out of the code or the APK.
 const MASTER_HASH = "3cd2eb2f3e73140e9377237863e07de548458c5057d3d528b403c2ba746f7a5d";
-
-async function sha256Hex(text: string): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
-  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
-}
 
 // the code as typed (any case, dashes optional): "phone" for this phone's
 // emailed code, "owner" for the master code, null for neither

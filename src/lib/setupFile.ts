@@ -1,5 +1,5 @@
 import { companyName, getCompany, setCompany, type Company } from "./company";
-import { currentPin, setPin } from "./adminPin";
+import { currentPinPrint, pinMatchesPrint, setPin, setPinPrint } from "./adminPin";
 import { applyKeywordFile, currentKeywordEdits, keywordEditsFrom } from "./esrKeywords";
 import { getFlowMode, setFlowMode, type FlowMode } from "./settings";
 
@@ -9,10 +9,12 @@ import { getFlowMode, setFlowMode, type FlowMode } from "./settings";
 // colours, the ESR keyword changes and the admin PIN, which comes across
 // too. Nothing about sites, findings or the person.
 //
-// The PIN is kept only as a salted SHA-256 fingerprint, and loading a file
-// asks for it, so a file on its own doesn't switch a phone to EnFact or
-// change its PIN. (Like the admin PIN itself, this keeps staff out rather
-// than being a hard security boundary: everything is on the phone.)
+// The PIN is kept only as a salted SHA-256 fingerprint. A company's file
+// loads without it: staff join with the file, and their Admin is locked
+// with the manager's PIN, which they never see. An EnFact file asks for the
+// PIN, so a file on its own doesn't make a phone EnFact. (Like the admin
+// PIN itself, this keeps staff out rather than being a hard security
+// boundary: everything is on the phone.)
 
 const FILE_TYPE = "inspecta-setup";
 
@@ -26,13 +28,7 @@ export type SetupFile = {
   pin: { salt: string; hash: string };
 };
 
-async function sha256Hex(text: string): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
-  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
 export async function makeSetupFile(): Promise<Blob> {
-  const salt = [...crypto.getRandomValues(new Uint8Array(16))].map((b) => b.toString(16).padStart(2, "0")).join("");
   const { setUp: _setUp, ...company } = getCompany();
   const body: SetupFile = {
     type: FILE_TYPE,
@@ -41,7 +37,7 @@ export async function makeSetupFile(): Promise<Blob> {
     mode: getFlowMode(),
     company,
     keywords: currentKeywordEdits(),
-    pin: { salt, hash: await sha256Hex(salt + currentPin()) },
+    pin: await currentPinPrint(),
   };
   return new Blob([JSON.stringify(body)], { type: "application/json" });
 }
@@ -61,12 +57,16 @@ export function readSetupFile(text: string): SetupFile {
 }
 
 export async function filePinMatches(file: SetupFile, pin: string): Promise<boolean> {
-  return (await sha256Hex(file.pin.salt + pin)) === file.pin.hash;
+  return pinMatchesPrint(file.pin, pin);
 }
 
-// Sets this phone up from the file; pin is the PIN that unlocked it,
-// which becomes this phone's admin PIN.
-export function applySetupFile(file: SetupFile, pin: string) {
+// an EnFact file asks for its PIN before loading; a company's doesn't
+export const fileNeedsPin = (file: SetupFile) => file.mode === "enfact";
+
+// Sets this phone up from the file. pin is the PIN typed to load it (an
+// EnFact file); without one, the file's fingerprint becomes this phone's
+// admin PIN, so whoever made the file can open Admin and nobody else.
+export function applySetupFile(file: SetupFile, pin?: string) {
   const c = file.company;
   setCompany({
     name: typeof c.name === "string" ? c.name : "",
@@ -78,6 +78,7 @@ export function applySetupFile(file: SetupFile, pin: string) {
     setUp: true,
   });
   applyKeywordFile(keywordEditsFrom(file.keywords));
-  setPin(pin);
+  if (pin !== undefined) setPin(pin);
+  else setPinPrint(file.pin);
   setFlowMode(file.mode);
 }

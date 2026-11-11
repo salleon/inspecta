@@ -83,15 +83,20 @@ test("a new phone joins with the file: wrong PIN refused, right PIN sets it up a
   await page.context().close();
 });
 
-test("a contractor file brings the company's name, logo and colours", async () => {
+test("a contractor file brings the company's name, logo and colours, and the manager's PIN without anyone typing it", async () => {
   const company = { name: "Coastline Fire Services", logo: null, plate: false, logoColours: [], schemeId: "firetruck", custom: { primary: "#071b2c", secondary: "#2ec4b6", light: "#f4f7f9" }, setUp: true };
   const file = await shareFrom({ "inspecta.flowMode": "contractor", "inspecta.adminPin": "1111", "inspecta.company": JSON.stringify(company) });
   assert.match(file.name, /^Coastline Fire Services setup\.inspecta$/);
+  assert.ok(!(await readFile(file.path)).toString().includes("1111"), "the PIN itself isn't in the file");
   const page = await freshPhone();
   await page.setInputFiles('input[aria-label="Setup file"]', file.path);
-  await page.getByText("Coastline Fire Services setup").waitFor();
-  await enterPin(page, "1111");
+  await page.getByText("Join Coastline Fire Services?").waitFor();
+  assert.equal(await page.getByText("Enter the admin PIN").count(), 0, "staff don't need the PIN to join");
+  await page.getByRole("button", { name: "Join Coastline Fire Services" }).click();
   await page.waitForTimeout(500);
+  const stored = await page.evaluate(() => ({ pin: localStorage.getItem("inspecta.adminPin"), print: localStorage.getItem("inspecta.adminPinPrint") }));
+  assert.equal(stored.pin, null, "the PIN isn't on the phone");
+  assert.ok(stored.print, "only its fingerprint");
   assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem("inspecta.company")).name), "Coastline Fire Services");
   assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem("inspecta.company")).schemeId), "firetruck");
   assert.equal(await page.getByRole("button", { name: "Set up your company" }).count(), 0, "no setup screens needed");
@@ -103,5 +108,31 @@ test("any other file is turned away", async () => {
   await page.setInputFiles('input[aria-label="Setup file"]', { name: "notes.txt", mimeType: "text/plain", buffer: Buffer.from("hello") });
   await page.getByText("That isn't an Inspecta setup file.").waitFor();
   assert.equal(await page.evaluate(() => localStorage.getItem("inspecta.flowMode")), "contractor");
+  await page.context().close();
+});
+
+test("a phone that joined a company: Admin is locked with the manager's PIN, and its own setup file keeps it", async () => {
+  const company = { name: "Coastline Fire Services", logo: null, plate: false, logoColours: [], schemeId: "firetruck", custom: { primary: "#071b2c", secondary: "#2ec4b6", light: "#f4f7f9" }, setUp: true };
+  const file = await shareFrom({ "inspecta.flowMode": "contractor", "inspecta.adminPin": "1111", "inspecta.company": JSON.stringify(company) });
+  const page = await freshPhone();
+  await page.setInputFiles('input[aria-label="Setup file"]', file.path);
+  await page.getByRole("button", { name: "Join Coastline Fire Services" }).click();
+  await page.waitForTimeout(500);
+  await page.evaluate(() => localStorage.setItem("inspecta.inspectorName", "New Starter"));
+  await page.goto(page.url().split("#")[0] + "#/admin");
+  await page.reload();
+  await page.getByText("Enter admin PIN").waitFor();
+  await enterPin(page, "2021");
+  assert.equal(await page.getByText("Wrong PIN").count(), 1, "EnFact's PIN doesn't open it");
+  await enterPin(page, "4321");
+  assert.equal(await page.getByText("Wrong PIN").count(), 1);
+  await enterPin(page, "1111");
+  await page.getByRole("button", { name: /Share setup file/ }).waitFor();
+  assert.equal(await page.locator('[role="radiogroup"][aria-label="Mode"]').count(), 0, "no mode switch");
+  // a file shared from this phone still opens with the manager's PIN
+  const again = await download(page, () => page.getByRole("button", { name: /Share setup file/ }).click());
+  const body = JSON.parse((await readFile(again.path)).toString());
+  const sha = async (t) => [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t)))].map((b) => b.toString(16).padStart(2, "0")).join("");
+  assert.equal(await sha(body.pin.salt + "1111"), body.pin.hash);
   await page.context().close();
 });
