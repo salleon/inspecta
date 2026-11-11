@@ -7,6 +7,10 @@ the technical detail.
 
 ## 11 November 2026
 
+- **Contractor colours: splash and report covers only.** The company's colours no longer recolour the app's pages and testing screens, which keep the app's original navy and teal in both modes. The colours now show only on the Contractor splash screen and the report covers. Settings → Company → Colours (and the setup's Colours step) has a cover preview at the top, so you can still see what you're picking.
+
+- **Stair setup: the stair Group field is gone.** A stair could be given a Group (Basement, Tower) that headed the stair list, the readings tabs and the general report. That was a mix-up with the Roof / Levels / Basement drop-downs in Review level layout, which stay as they were (just for finding your way around that page). The stair list and readings tabs are back to one plain list, and the general system testing report is one page with every stair.
+
 - **Contractor cover without a logo: a tidier square.** The square on the cover now has the word (AFSS or PROJECTS) in big carved lettering, a short line in the company's accent colour under it, and what the report is in small spaced capitals ("Annual fire safety statement", "Project report").
 
 - **Contractor setup: Use default.** On the Report logo step, **Use default** skips the logo and colours: the app keeps its usual navy and teal (still with no EnFact logos), and the company's name, in capitals in an outlined box, stands in for a logo on the home screen and the report cover. The PDF cover then has the familiar square in the middle with **AFSS** or **PROJECTS** in it, as on EnFact's cover but without EnFact's logo. **Default** is also the first choice in Colours (it replaces Harbour, which was the same colours), and any company without a logo gets the name box and the square.
