@@ -87,6 +87,10 @@ Limits come from `limits()` in `src/lib/stairTest.ts`. The report is a page per 
 - The phone has the first stair build of 10 Nov (general system testing). Everything after it (the remove/clear controls, A1 to A3) is on `test` but not on a phone.
 - Browser tests need `CHROMIUM_PATH=/opt/pw-browsers/chromium` in a cloud session. One tour test ("Pick a topic runs just that topic") fails there on untouched code and passes on GitHub.
 
+## Later: not yet, come back to it
+
+- **Accounts and a web login (owner, 11 Nov).** Once accounts exist: a website where a company signs in and manages its sites, dates and inspection data, uploaded from the apps of all its contractors and gathered under one company. Too early to build; don't start it until the owner says. Ground already laid: every site, finding, photo and test has a stable id; each site records `changedAt` and `backedUpAt`; and a backup holds each site as a self-contained folder (`site.json` + photos). Those are the starting point for uploading per site and syncing only what changed.
+
 ## Owner's preferences (learned)
 
 - Wants things brief, in chat and in the app. Called out a too-wordy note in a mock-up.
@@ -98,4 +102,5 @@ Limits come from `limits()` in `src/lib/stairTest.ts`. The report is a page per 
 
 - Mock-up canvas for the Beta marking: https://claude.ai/artifact/BBAmhXo4u3mvATQsxEYLUa
 - Mock-up canvas for general system testing, doors, groups and the level review: https://claude.ai/artifact/WWJ6jKYhTJA7AjVGJayQ9M
+- Mock-up canvas for the backup options and the folder per site: https://claude.ai/artifact/VJz9KTwP39Uohvp6jUrbfh
 - Repo: https://github.com/salleon/inspecta
