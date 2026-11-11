@@ -7,6 +7,20 @@ the technical detail.
 
 ## 11 November 2026
 
+- **Any logo picture works, and a small one gets a warning.** A company
+  logo can be any picture the phone opens (PNG, JPG, an iPhone photo, SVG
+  and so on), uploaded or in a setup file. Big ones are shrunk, an SVG is
+  drawn at full size, and every logo is kept the same way the report
+  covers need it. A logo too small to print sharp on the cover (under 440
+  pixels wide) is still taken, with a warning that it may look blurry. A
+  file that isn't a picture, can't be read or is over 25 MB is turned
+  away with the reason, and a setup file with such a logo sets nothing up.
+  Before, a setup file could carry a logo that made every PDF export fail
+  on the phones that loaded it.
+- **A setup that can't be saved says so.** If the phone has no room to
+  keep the company setup or a new logo, it now says so, instead of seeming
+  to work and asking for the setup again next time the app opens.
+
 - **Typing is saved as you go.** A finding's defect, rectification and
   location are now saved a moment after you stop typing, not only when you
   leave the screen or the phone locks. A crash, or the restart after an app

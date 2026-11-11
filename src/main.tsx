@@ -13,13 +13,15 @@ import { Capacitor } from '@capacitor/core'
 import { clearOldExports } from './lib/cacheFile'
 import { tidyPhotoStorage } from './db/db'
 import { settleMode } from './lib/settings'
-import { applyTheme } from './lib/company'
+import { applyTheme, repairLogo } from './lib/company'
 
 // a new phone starts in Contractor mode, one already in use stays EnFact
 // (lib/settings); before anything reads the mode or the name prompt shows
 settleMode()
 // the company's colours in Contractor mode, before the first paint
 applyTheme()
+// a logo saved before logos were checked is made a PNG (or dropped)
+void repairLogo()
 
 // Ask the browser to keep this app's storage (sites, findings, photos) even
 // when the phone runs low on space, instead of treating it as a clearable

@@ -70,14 +70,18 @@ export function getCompany(): Company {
   return cache;
 }
 
-export function setCompany(change: Partial<Company>) {
+// false if it couldn't be saved (no room): it still applies until the app
+// closes, but won't be there next time
+export function setCompany(change: Partial<Company>): boolean {
   cache = { ...getCompany(), ...change };
+  let saved = true;
   try {
     localStorage.setItem(KEY, JSON.stringify(cache));
   } catch {
-    // best-effort (a huge logo could overflow storage; it's resized first)
+    saved = false;
   }
   listeners.forEach((l) => l());
+  return saved;
 }
 
 function subscribe(listener: () => void) {
@@ -289,23 +293,77 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-// An uploaded logo, shrunk to at most 800 x 400 as a PNG (keeps
-// transparency), and its main colours.
-export async function prepareLogo(file: Blob): Promise<{ logo: string; colours: string[] }> {
+// Every stored logo is a PNG of at most 800 x 400 (keeps transparency), as
+// the report covers add it as a PNG. Any picture the phone can open is
+// taken: bigger ones are shrunk, and a drawing (SVG) is drawn at full size,
+// as it stays sharp at any size.
+export type PreparedLogo = { logo: string; colours: string[]; width: number; height: number };
+
+function shrinkLogo(img: HTMLImageElement, vector = false): PreparedLogo {
+  const w0 = img.naturalWidth || 400;
+  const h0 = img.naturalHeight || 200;
+  const k = vector ? Math.min(800 / w0, 400 / h0) : Math.min(1, 800 / w0, 400 / h0);
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(w0 * k));
+  canvas.height = Math.max(1, Math.round(h0 * k));
+  canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+  return { logo: canvas.toDataURL("image/png"), colours: logoColours(canvas), width: canvas.width, height: canvas.height };
+}
+
+// The cover prints the logo up to 220 x 60 pt. Under 2 pixels per point
+// (less than 440 wide and 120 tall) it starts to look soft.
+export const logoLooksSmall = (logo: { width: number; height: number }) => logo.width < 440 && logo.height < 120;
+
+// the largest picture taken as a logo
+export const MAX_LOGO_BYTES = 25 * 1024 * 1024;
+const MAX_LOGO_MB = MAX_LOGO_BYTES / 1024 / 1024;
+
+// An uploaded logo. Throws an Error saying why it can't be used.
+export async function prepareLogo(file: Blob): Promise<PreparedLogo> {
+  if (file.type && !file.type.startsWith("image/")) throw new Error("That file isn't a picture.");
+  if (file.size > MAX_LOGO_BYTES) throw new Error(`That picture is too big (over ${MAX_LOGO_MB} MB).`);
   const url = URL.createObjectURL(file);
   try {
-    const img = await loadImage(url);
-    const w0 = img.naturalWidth || 400;
-    const h0 = img.naturalHeight || 200;
-    const k = Math.min(1, 800 / w0, 400 / h0);
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.max(1, Math.round(w0 * k));
-    canvas.height = Math.max(1, Math.round(h0 * k));
-    canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
-    const logo = canvas.toDataURL("image/png");
-    return { logo, colours: logoColours(canvas) };
+    let img: HTMLImageElement;
+    try {
+      img = await loadImage(url);
+    } catch {
+      throw new Error("That picture can't be read. It may be damaged, or in a format this phone can't open: try a PNG or JPG.");
+    }
+    return shrinkLogo(img, file.type === "image/svg+xml");
   } finally {
     URL.revokeObjectURL(url);
+  }
+}
+
+const PNG_LOGO = "data:image/png;base64,";
+
+// A logo from a setup file, taken as an upload is. Throws an Error saying
+// why it can't be used.
+export async function logoFromFile(dataUrl: unknown): Promise<PreparedLogo> {
+  const head = typeof dataUrl === "string" ? /^data:(image\/[a-z0-9.+-]+)(;base64)?,/i.exec(dataUrl) : null;
+  if (typeof dataUrl !== "string" || !head) throw new Error("The logo in this setup file isn't a picture.");
+  const chars = dataUrl.length - head[0].length;
+  if ((head[2] ? chars * 0.75 : chars) > MAX_LOGO_BYTES) throw new Error(`The logo in this setup file is too big (over ${MAX_LOGO_MB} MB).`);
+  let img: HTMLImageElement;
+  try {
+    img = await loadImage(dataUrl);
+  } catch {
+    throw new Error("The logo in this setup file can't be read. It may be damaged, or in a format this phone can't open.");
+  }
+  return shrinkLogo(img, head[1].toLowerCase() === "image/svg+xml");
+}
+
+// A logo saved before logos were checked (e.g. from an early setup file)
+// that isn't a PNG is made into one, or dropped if it can't be read, so the
+// report covers can always use it. Run once at start.
+export async function repairLogo() {
+  const logo = getCompany().logo;
+  if (!logo || logo.startsWith(PNG_LOGO)) return;
+  try {
+    setCompany({ logo: shrinkLogo(await loadImage(logo), logo.startsWith("data:image/svg")).logo });
+  } catch {
+    setCompany({ logo: null });
   }
 }
 

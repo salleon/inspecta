@@ -1,4 +1,4 @@
-import { companyName, getCompany, setCompany, type Company } from "./company";
+import { companyName, getCompany, logoFromFile, setCompany, type Company } from "./company";
 import { currentPinPrint, pinMatchesPrint, setPin, setPinPrint } from "./adminPin";
 import { applyKeywordFile, currentKeywordEdits, keywordEditsFrom } from "./esrKeywords";
 import { getFlowMode, setFlowMode, type FlowMode } from "./settings";
@@ -56,6 +56,16 @@ export function readSetupFile(text: string): SetupFile {
   return f as SetupFile;
 }
 
+// Checks the file's logo and makes it the PNG the app keeps (see
+// logoFromFile), before anything is set up. Throws an Error saying why if
+// the logo can't be used.
+export async function checkSetupFile(file: SetupFile): Promise<SetupFile> {
+  if (!file.company.logo) return file;
+  const { logo, colours } = await logoFromFile(file.company.logo);
+  const given = Array.isArray(file.company.logoColours) ? file.company.logoColours : [];
+  return { ...file, company: { ...file.company, logo, logoColours: given.length ? given : colours } };
+}
+
 export async function filePinMatches(file: SetupFile, pin: string): Promise<boolean> {
   return pinMatchesPrint(file.pin, pin);
 }
@@ -63,20 +73,26 @@ export async function filePinMatches(file: SetupFile, pin: string): Promise<bool
 // an EnFact file asks for its PIN before loading; a company's doesn't
 export const fileNeedsPin = (file: SetupFile) => file.mode === "enfact";
 
-// Sets this phone up from the file. pin is the PIN typed to load it (an
-// EnFact file); without one, the file's fingerprint becomes this phone's
-// admin PIN, so whoever made the file can open Admin and nobody else.
+// Sets this phone up from the file (after checkSetupFile). pin is the PIN
+// typed to load it (an EnFact file); without one, the file's fingerprint
+// becomes this phone's admin PIN, so whoever made the file can open Admin
+// and nobody else. Throws if the phone has no room to keep it.
 export function applySetupFile(file: SetupFile, pin?: string) {
   const c = file.company;
-  setCompany({
+  const saved = setCompany({
     name: typeof c.name === "string" ? c.name : "",
-    logo: typeof c.logo === "string" && c.logo.startsWith("data:image/") ? c.logo : null,
+    logo: typeof c.logo === "string" && c.logo.startsWith("data:image/png;base64,") ? c.logo : null,
     plate: !!c.plate,
     logoColours: Array.isArray(c.logoColours) ? c.logoColours.filter((x) => /^#[0-9a-f]{6}$/i.test(x)) : [],
     schemeId: typeof c.schemeId === "string" ? c.schemeId : "default",
     custom: c.custom && [c.custom.primary, c.custom.secondary, c.custom.light].every((x) => /^#[0-9a-f]{6}$/i.test(x ?? "")) ? c.custom : getCompany().custom,
     setUp: true,
   });
+  if (!saved) {
+    // not kept: back to how it was, so the phone isn't half set up
+    setCompany({ setUp: false });
+    throw new Error("There isn't enough room on this phone to save the company setup. Free up some space, then try again.");
+  }
   applyKeywordFile(keywordEditsFrom(file.keywords));
   if (pin !== undefined) setPin(pin);
   else setPinPrint(file.pin);

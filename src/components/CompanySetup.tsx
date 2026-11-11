@@ -12,6 +12,7 @@ import {
   companyScheme,
   logoSchemes,
   prepareLogo,
+  logoLooksSmall,
   setCompany,
   useCompany,
   type Preset,
@@ -147,10 +148,14 @@ export function LogoEditor() {
     if (!file) return;
     setBusy(true);
     try {
-      const { logo, colours } = await prepareLogo(file);
-      setCompany({ logo, logoColours: colours });
-    } catch {
-      say("Couldn't read that image", "Try a PNG or JPG.");
+      const prepared = await prepareLogo(file);
+      if (!setCompany({ logo: prepared.logo, logoColours: prepared.colours })) {
+        say("Couldn't save the logo", "There isn't enough room on this phone. Free up some space, then try again.");
+      } else if (logoLooksSmall(prepared)) {
+        say("This logo is small", `It's ${prepared.width} × ${prepared.height} pixels, so it may look blurry on report covers. A bigger one, at least 440 pixels wide, prints sharp.`);
+      }
+    } catch (err) {
+      say("Couldn't use that picture", err instanceof Error ? err.message : "Try a PNG or JPG.");
     } finally {
       setBusy(false);
     }

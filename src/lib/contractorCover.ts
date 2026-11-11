@@ -45,8 +45,9 @@ export async function coverBackground(wPt: number, hPt: number, kind: "afss" | "
 
   // the watermark's box, centred between the logo and the title
   const box = { x: 65 * k, y: 142 * k, w: 466 * k, h: 388 * k };
-  if (c.logo) {
-    const shape = await logoShape(c.logo, "#ffffff");
+  // (a logo that can't be read gets the square instead)
+  const shape = c.logo ? await logoShape(c.logo, "#ffffff").catch(() => null) : null;
+  if (shape) {
     const fit = Math.min(box.w / shape.width, box.h / shape.height);
     const w = shape.width * fit;
     const h = shape.height * fit;
@@ -115,19 +116,26 @@ function imageSize(src: string): Promise<{ w: number; h: number }> {
 export async function drawCoverLogo(doc: jsPDF, x: number, y: number) {
   const c = getCompany();
   const s = companyScheme(c);
-  if (c.logo) {
+  // the logo is always a PNG (lib/company: logos are made one when saved,
+  // and repairLogo fixes older ones); one that still can't be drawn falls
+  // back to the name box rather than failing the PDF
+  if (c.logo?.startsWith("data:image/png;base64,")) {
     const { w, h } = await imageSize(c.logo);
     const fit = Math.min(60 / h, 220 / w);
     const lw = w * fit;
     const lh = h * fit;
-    if (c.plate) {
-      doc.setFillColor(255, 255, 255);
-      doc.roundedRect(x, y, lw + 24, lh + 16, 6, 6, "F");
-      doc.addImage(c.logo, "PNG", x + 12, y + 8, lw, lh);
-    } else {
-      doc.addImage(c.logo, "PNG", x, y, lw, lh);
+    try {
+      if (c.plate) {
+        doc.setFillColor(255, 255, 255);
+        doc.roundedRect(x, y, lw + 24, lh + 16, 6, 6, "F");
+        doc.addImage(c.logo, "PNG", x + 12, y + 8, lw, lh);
+      } else {
+        doc.addImage(c.logo, "PNG", x, y, lw, lh);
+      }
+      return;
+    } catch (err) {
+      console.error("logo can't go on the cover", err);
     }
-    return;
   }
   const name = (companyName(c) || companyInitials(c)).toUpperCase();
   if (!name) return;

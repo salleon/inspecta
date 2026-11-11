@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { applySetupFile, fileNeedsPin, filePinMatches, readSetupFile, type SetupFile } from "../lib/setupFile";
+import { applySetupFile, checkSetupFile, fileNeedsPin, filePinMatches, readSetupFile, type SetupFile } from "../lib/setupFile";
 import { useBackHandler } from "../lib/backButton";
 import { say } from "./Message";
 
@@ -21,16 +21,26 @@ export default function SetupFileLoader({ file, onDone, onCancel }: { file: File
 
   useEffect(() => {
     let live = true;
-    file
-      .text()
-      .then((text) => {
-        if (live) setSetup(readSetupFile(text));
-      })
-      .catch(() => {
+    void (async () => {
+      let read: SetupFile;
+      try {
+        read = readSetupFile(await file.text());
+      } catch {
         if (!live) return;
         say("Couldn't read the file", "That isn't an Inspecta setup file.");
         cancel.current();
-      });
+        return;
+      }
+      try {
+        // the logo is checked (and made a PNG) before anything is set up
+        const checked = await checkSetupFile(read);
+        if (live) setSetup(checked);
+      } catch (err) {
+        if (!live) return;
+        say("Can't use this setup file", err instanceof Error ? err.message : "Its logo can't be used.");
+        cancel.current();
+      }
+    })();
     return () => {
       live = false;
     };
@@ -45,10 +55,20 @@ export default function SetupFileLoader({ file, onDone, onCancel }: { file: File
       return;
     }
     setPinDigits("");
-    if (await filePinMatches(setup, next)) {
-      applySetupFile(setup, next);
-      onDone();
-    } else setMessage("Wrong PIN");
+    if (await filePinMatches(setup, next)) join(next);
+    else setMessage("Wrong PIN");
+  }
+
+  function join(typedPin?: string) {
+    if (!setup) return;
+    try {
+      applySetupFile(setup, typedPin);
+    } catch (err) {
+      say("Couldn't set up this phone", err instanceof Error ? err.message : "Please try again.");
+      onCancel();
+      return;
+    }
+    onDone();
   }
 
   if (!setup) return null;
@@ -68,10 +88,7 @@ export default function SetupFileLoader({ file, onDone, onCancel }: { file: File
         </div>
         <button
           type="button"
-          onClick={() => {
-            applySetupFile(setup);
-            onDone();
-          }}
+          onClick={() => join()}
           style={{ height: 54, borderRadius: 14, border: "none", background: "var(--accent)", color: "var(--accent-text)", fontSize: 16, fontWeight: 800 }}
         >
           Join {who}
