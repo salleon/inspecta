@@ -5,7 +5,8 @@ import { jsPDF } from "jspdf";
 import { Share } from "@capacitor/share";
 import { Capacitor } from "@capacitor/core";
 import type { Finding, Photo, Site, SiteReport } from "../db/types";
-import { countExportCopies, getExportCopy, getStamped, getSite, listFindings, listFlowTests, listPhotos, listStairTests, saveSiteReports, updateFinding } from "../db/db";
+import { countExportCopies, getExportCopy, getStamped, getSite, listFindings, listFlowTests, listPhotos, listStairTests, saveSiteReports, saveSiteSpf, updateFinding } from "../db/db";
+import StairNameCheck, { stairsToName } from "../components/StairNameCheck";
 import { stairTestHasData } from "../lib/stairTest";
 import { IconChevronLeft, IconShare } from "../components/Icons";
 import RoundIconButton from "../components/RoundIconButton";
@@ -180,6 +181,18 @@ export default function ExportPreview() {
   const [categoriseAsked, setCategoriseAsked] = useState(false);
   // an export to start once the categories just picked are in `items`
   const [pendingShare, setPendingShare] = useState<ShareKind | null>(null);
+  // the stair name check before an export with stair tests in it, and the
+  // export to carry on with once the names are in `site`
+  const [nameCheck, setNameCheck] = useState<ShareKind | null>(null);
+  const [afterNames, setAfterNames] = useState<ShareKind | null>(null);
+
+  useEffect(() => {
+    if (!afterNames) return;
+    setAfterNames(null);
+    void requestShare(afterNames, true);
+    // runs once, with the render that has the names just saved
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [afterNames]);
 
   // Back with the popup open closes it and goes back as usual (to the
   // findings list) — no extra press.
@@ -557,7 +570,9 @@ export default function ExportPreview() {
 
   // Share button: first offers to categorise any Uncategorised findings
   // (PDF and Excel only — the photos zip isn't grouped).
-  function requestShare(kind: ShareKind) {
+  async function requestShare(kind: ShareKind, namesChecked = false) {
+    // stair tests go in the PDF and Excel: first, any stairs still on placeholder names
+    if (kind !== "photos" && !namesChecked && site?.spf && stairsToName(site.spf.stairs).length && (await listStairTests(site.id)).some(stairTestHasData)) return setNameCheck(kind);
     const uncategorised = items.some((i) => !esrItem(i.finding.esrCategory));
     if (kind !== "photos" && site?.kind !== "project" && !categoriseAsked && uncategorised) setAskCategorise(kind);
     else void handleShare(kind);
@@ -776,7 +791,7 @@ export default function ExportPreview() {
         {/* every photo at full resolution, stamped, zipped in a folder
             named after the site (see lib/photosZip) */}
         <button
-          onClick={() => requestShare("photos")}
+          onClick={() => void requestShare("photos")}
           disabled={loading || sharing !== null || countPhotos(items) === 0}
           style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "12px 0", borderRadius: 12, background: "none", border: "1px dashed var(--border-strong)", fontSize: 14, fontWeight: 700, color: "var(--text)" }}
         >
@@ -785,7 +800,7 @@ export default function ExportPreview() {
         </button>
         <div style={{ display: "flex", gap: 10 }}>
           <button
-            onClick={() => requestShare("pdf")}
+            onClick={() => void requestShare("pdf")}
             disabled={loading || sharing !== null || items.length === 0}
             style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, textAlign: "center", padding: "15px 0", borderRadius: 12, background: "var(--panel)", border: "1px solid var(--border)", fontSize: 14, fontWeight: 700, color: "var(--text)" }}
           >
@@ -794,7 +809,7 @@ export default function ExportPreview() {
           </button>
           {/* the main one: the Excel register is what gets worked on */}
           <button
-            onClick={() => requestShare("excel")}
+            onClick={() => void requestShare("excel")}
             disabled={loading || sharing !== null || items.length === 0 || !site}
             className="glow-sweep"
             style={{ position: "relative", flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, textAlign: "center", padding: "15px 0", borderRadius: 12, background: "var(--accent)", border: "none", fontSize: 14, fontWeight: 800, color: "var(--accent-text)", overflow: "hidden" }}
@@ -804,6 +819,25 @@ export default function ExportPreview() {
           </button>
         </div>
       </div>
+
+      {nameCheck && site?.spf && (
+        <StairNameCheck
+          go="export"
+          stairs={site.spf.stairs}
+          onCancel={() => setNameCheck(null)}
+          onSkip={() => {
+            setAfterNames(nameCheck);
+            setNameCheck(null);
+          }}
+          onSave={async (named) => {
+            const spf = { ...site.spf!, stairs: named };
+            await saveSiteSpf(site.id, spf);
+            setSite({ ...site, spf });
+            setAfterNames(nameCheck);
+            setNameCheck(null);
+          }}
+        />
+      )}
 
       {askCategorise && (
         <div

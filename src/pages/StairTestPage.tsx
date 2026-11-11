@@ -5,6 +5,8 @@ import { ALL_SECTIONS, doorStats, KIND_LABEL, onceStatus, runCount, SECTION, sta
 import { useBackHandler } from "../lib/backButton";
 import { card, cardLabel, fieldInput, PageHeader, Pill, StairName, useStairTest } from "../components/StairUi";
 import ConfirmDialog from "../components/ConfirmDialog";
+import { saveSiteSpf } from "../db/db";
+import StairNameCheck, { stairsToName } from "../components/StairNameCheck";
 
 // A stair test (design canvas StairTestSimple, "2 · The sections"; tidied on
 // SpfTidy): a tab per stair (scrolls sideways for any number), then only the
@@ -21,6 +23,8 @@ export default function StairTestPage() {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const { site, test, setTest, flush } = useStairTest(siteId, testId);
+  // the check before the report, while any stair still has placeholder names
+  const [checkingNames, setCheckingNames] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
   const [dropping, setDropping] = useState<StairSection | null>(null);
 
@@ -167,7 +171,8 @@ export default function StairTestPage() {
             <button
               onClick={() => {
                 flush();
-                navigate(`/site/${siteId}/spf/${testId}/report`);
+                if (stairsToName(stairs).length) setCheckingNames(true);
+                else navigate(`/site/${siteId}/spf/${testId}/report`);
               }}
               style={{ width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: "var(--accent)", color: "var(--accent-text)", fontSize: 16, fontWeight: 800 }}
             >
@@ -175,6 +180,19 @@ export default function StairTestPage() {
             </button>
           </div>
         </>
+      )}
+
+      {checkingNames && (
+        <StairNameCheck
+          stairs={stairs}
+          onCancel={() => setCheckingNames(false)}
+          onSkip={() => navigate(`/site/${siteId}/spf/${testId}/report`)}
+          onSave={async (named) => {
+            // saved before the report reads them
+            if (site.spf) await saveSiteSpf(site.id, { ...site.spf, stairs: named });
+            navigate(`/site/${siteId}/spf/${testId}/report`);
+          }}
+        />
       )}
 
       {dropping && (
