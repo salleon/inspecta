@@ -7,6 +7,12 @@ the technical detail.
 
 ## 11 November 2026
 
+- **Build 9.3 update, out to coworkers.** Restore can merge a site
+  that's on both the phone and the backup; the launch sound; backups of
+  chosen sites or what's new; big backups past 4 GB; app data kept out of
+  Google and iCloud phone backups; any picture as a logo; finding screen
+  save fixes. BUILD_LABEL stays 9.3.
+
 - **Restore merges instead of replacing.** When a site in a backup is
   also on the phone and differs (say a site handed to a coworker and
   worked on by both), Restore now offers **Merge**, **Keep both** or
