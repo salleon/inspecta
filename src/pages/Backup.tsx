@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Capacitor } from "@capacitor/core";
 import { Share } from "@capacitor/share";
@@ -41,8 +41,8 @@ const day = (ms: number) => new Date(ms).toLocaleDateString("en-AU", { day: "num
 
 const OPTIONS: { kind: BackupKind; title: string; hint: string }[] = [
   { kind: "full", title: "Full backup", hint: "Every site on this phone." },
-  { kind: "chosen", title: "Choose sites", hint: "Pick the sites to back up." },
   { kind: "since", title: "New since last backup", hint: "Sites added or changed since their last backup." },
+  { kind: "chosen", title: "Choose sites", hint: "Pick the sites to back up." },
 ];
 
 export default function Backup() {
@@ -144,81 +144,49 @@ export default function Backup() {
   const listStyle = { display: "flex", flexDirection: "column", borderRadius: 16, background: "var(--panel)", border: "1px solid var(--border)", overflow: "hidden", flexShrink: 0 } as const;
   const rowStyle = { display: "flex", alignItems: "center", gap: 12, padding: "11px 14px", borderTop: "1px solid var(--border)", minHeight: 44, boxSizing: "border-box" } as const;
 
-  return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
-      <div style={{ flexShrink: 0, padding: "18px 18px 8px", display: "flex", alignItems: "center", gap: 12 }}>
-        <RoundIconButton size={32} ariaLabel="Back" onClick={() => navigate("/settings")}>
-          <IconChevronLeft size={20} strokeWidth={2.2} />
-        </RoundIconButton>
-        <div style={{ fontSize: 20, fontWeight: 800 }}>Back up</div>
-      </div>
-      <div style={{ flexGrow: 1, overflowY: "auto", padding: "4px 16px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
-        <div role="radiogroup" aria-label="What to back up" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {OPTIONS.map((o) => {
-            const on = kind === o.kind;
-            return (
-              <button
-                key={o.kind}
-                type="button"
-                role="radio"
-                aria-checked={on}
-                onClick={() => setKind(o.kind)}
-                style={{ textAlign: "left", display: "flex", gap: 12, alignItems: "flex-start", padding: 14, borderRadius: 16, background: "var(--panel)", border: `2px solid ${on ? "var(--accent)" : "var(--border)"}`, color: "var(--text)" }}
-              >
-                <span style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
-                  <span style={{ fontSize: 15, fontWeight: 700 }}>{o.title}</span>
-                  <span style={{ fontSize: 12, lineHeight: 1.45, color: "var(--muted)" }}>{o.hint}</span>
-                  {stat(o.kind) && <span style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)" }}>{stat(o.kind)}</span>}
-                </span>
-                <span
-                  aria-hidden="true"
-                  style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 11, boxSizing: "border-box", marginTop: 2, display: "flex", alignItems: "center", justifyContent: "center", background: on ? "var(--accent)" : "transparent", border: on ? "none" : "2px solid var(--border-strong)" }}
-                >
-                  {on && <IconCheck size={14} strokeWidth={3.4} color="var(--accent-text)" />}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-
-        {kind === "chosen" && rows && (
-          <>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <input
-                type="search"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search sites"
-                aria-label="Search sites"
-                style={{ flexGrow: 1, minWidth: 0, height: 44, padding: "0 14px", borderRadius: 14, background: "var(--panel)", border: "1px solid var(--border-strong)", color: "var(--text)", fontSize: 14 }}
-              />
-              <button
-                type="button"
-                onClick={() => setChosen((was) => (shown.every((r) => was.has(r.site.id)) ? new Set([...was].filter((id) => !shown.some((r) => r.site.id === id))) : new Set([...was, ...shown.map((r) => r.site.id)])))}
-                style={{ height: 44, padding: "0 6px", border: "none", background: "transparent", color: "var(--accent)", fontSize: 14, fontWeight: 700 }}
-              >
-                {shown.length && shown.every((r) => chosen.has(r.site.id)) ? "Clear" : "Select all"}
-              </button>
-            </div>
-            <div style={listStyle}>
-              {shown.map((r, i) => (
-                <label key={r.site.id} style={{ ...rowStyle, borderTop: i ? rowStyle.borderTop : "none" }}>
-                  <input type="checkbox" checked={chosen.has(r.site.id)} onChange={() => toggle(r.site.id)} style={{ width: 20, height: 20, margin: 0, flexShrink: 0, accentColor: "var(--accent)" }} />
-                  <span style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
-                    <span style={{ fontSize: 14, fontWeight: 700 }}>{r.site.name || "Untitled"}</span>
-                    <span style={{ fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {[r.site.address, r.site.backedUpAt ? `Backed up ${day(r.site.backedUpAt)}` : "Never backed up"].filter(Boolean).join(" · ")}
-                    </span>
+  // what opens under the chosen option: the site list to tick, or the
+  // sites new or changed since their last backup
+  const details = (k: BackupKind) => {
+    if (k === "chosen" && rows)
+      return (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search sites"
+              aria-label="Search sites"
+              style={{ flexGrow: 1, minWidth: 0, height: 44, padding: "0 14px", borderRadius: 14, background: "var(--panel)", border: "1px solid var(--border-strong)", color: "var(--text)", fontSize: 14 }}
+            />
+            <button
+              type="button"
+              onClick={() => setChosen((was) => (shown.every((r) => was.has(r.site.id)) ? new Set([...was].filter((id) => !shown.some((r) => r.site.id === id))) : new Set([...was, ...shown.map((r) => r.site.id)])))}
+              style={{ height: 44, padding: "0 6px", border: "none", background: "transparent", color: "var(--accent)", fontSize: 14, fontWeight: 700 }}
+            >
+              {shown.length && shown.every((r) => chosen.has(r.site.id)) ? "Clear" : "Select all"}
+            </button>
+          </div>
+          <div style={listStyle}>
+            {shown.map((r, i) => (
+              <label key={r.site.id} style={{ ...rowStyle, borderTop: i ? rowStyle.borderTop : "none" }}>
+                <input type="checkbox" checked={chosen.has(r.site.id)} onChange={() => toggle(r.site.id)} style={{ width: 20, height: 20, margin: 0, flexShrink: 0, accentColor: "var(--accent)" }} />
+                <span style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+                  <span style={{ fontSize: 14, fontWeight: 700 }}>{r.site.name || "Untitled"}</span>
+                  <span style={{ fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {[r.site.address, r.site.backedUpAt ? `Backed up ${day(r.site.backedUpAt)}` : "Never backed up"].filter(Boolean).join(" · ")}
                   </span>
-                  <span style={{ flexShrink: 0, fontSize: 12, fontWeight: 600, color: "var(--muted)" }}>{size(r.bytes).replace("about ", "")}</span>
-                </label>
-              ))}
-              {!shown.length && <div style={{ padding: 14, fontSize: 13, color: "var(--muted)" }}>No sites match.</div>}
-            </div>
-          </>
-        )}
-
-        {kind === "since" && pending.length > 0 && (
+                </span>
+                <span style={{ flexShrink: 0, fontSize: 12, fontWeight: 600, color: "var(--muted)" }}>{size(r.bytes).replace("about ", "")}</span>
+              </label>
+            ))}
+            {!shown.length && <div style={{ padding: 14, fontSize: 13, color: "var(--muted)" }}>No sites match.</div>}
+          </div>
+        </div>
+      );
+    if (k === "since" && pending.length)
+      return (
+        <div>
           <div style={listStyle}>
             {pending.map((r, i) => (
               <div key={r.site.id} style={{ ...rowStyle, borderTop: i ? rowStyle.borderTop : "none" }}>
@@ -234,7 +202,50 @@ export default function Backup() {
               </div>
             ))}
           </div>
-        )}
+        </div>
+      );
+    return null;
+  };
+
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
+      <div style={{ flexShrink: 0, padding: "18px 18px 8px", display: "flex", alignItems: "center", gap: 12 }}>
+        <RoundIconButton size={32} ariaLabel="Back" onClick={() => navigate("/settings")}>
+          <IconChevronLeft size={20} strokeWidth={2.2} />
+        </RoundIconButton>
+        <div style={{ fontSize: 20, fontWeight: 800 }}>Back up</div>
+      </div>
+      <div style={{ flexGrow: 1, overflowY: "auto", padding: "4px 16px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
+        <div role="radiogroup" aria-label="What to back up" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {OPTIONS.map((o) => {
+            const on = kind === o.kind;
+            return (
+              <Fragment key={o.kind}>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  onClick={() => setKind(o.kind)}
+                  style={{ textAlign: "left", display: "flex", gap: 12, alignItems: "flex-start", padding: 14, borderRadius: 16, background: "var(--panel)", border: `2px solid ${on ? "var(--accent)" : "var(--border)"}`, color: "var(--text)" }}
+                >
+                  <span style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
+                    <span style={{ fontSize: 15, fontWeight: 700 }}>{o.title}</span>
+                    <span style={{ fontSize: 12, lineHeight: 1.45, color: "var(--muted)" }}>{o.hint}</span>
+                    {stat(o.kind) && <span style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)" }}>{stat(o.kind)}</span>}
+                  </span>
+                  <span
+                    aria-hidden="true"
+                    style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 11, boxSizing: "border-box", marginTop: 2, display: "flex", alignItems: "center", justifyContent: "center", background: on ? "var(--accent)" : "transparent", border: on ? "none" : "2px solid var(--border-strong)" }}
+                  >
+                    {on && <IconCheck size={14} strokeWidth={3.4} color="var(--accent-text)" />}
+                  </span>
+                </button>
+                {on && details(o.kind)}
+              </Fragment>
+            );
+          })}
+        </div>
       </div>
 
       <div style={{ flexShrink: 0, padding: "10px 16px calc(16px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 10, borderTop: "1px solid var(--border)" }}>

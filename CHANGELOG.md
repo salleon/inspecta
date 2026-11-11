@@ -8,10 +8,10 @@ the technical detail.
 ## 11 November 2026
 
 - **Back up: full, chosen sites, or new since last backup.** Settings →
-  **Back up** opens a page with three choices: every site, the sites you
-  tick, or only the sites added or changed since their last backup (marked
-  NEW or CHANGED). Each shows how many sites and photos it holds and about
-  how big the file is.
+  **Back up** opens a page with three choices: every site, only the sites
+  added or changed since their last backup (marked NEW or CHANGED), or the
+  sites you tick. Each shows how many sites and photos it holds and about
+  how big the file is, and its list opens right under it.
 - **A folder per site inside the backup.** Each site is its own folder,
   named after the site and its address, with its photos named after their
   finding ("F01 Level 2 - Exit sign out (1).jpg"), so a backup makes sense
