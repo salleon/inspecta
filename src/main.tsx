@@ -9,6 +9,11 @@ import { setUpOfflineCache } from './lib/offlineCache'
 import { Capacitor } from '@capacitor/core'
 import { clearOldExports } from './lib/cacheFile'
 import { tidyPhotoStorage } from './db/db'
+import { settleMode } from './lib/settings'
+
+// a new phone starts in Contractor mode, one already in use stays EnFact
+// (lib/settings); before anything reads the mode or the name prompt shows
+settleMode()
 
 // Ask the browser to keep this app's storage (sites, findings, photos) even
 // when the phone runs low on space, instead of treating it as a clearable

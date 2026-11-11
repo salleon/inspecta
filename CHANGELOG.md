@@ -5,6 +5,10 @@ matches a commit on the `test` branch (called `advanced_controls` until
 29 September 2026) or `main`; the commit itself has
 the technical detail.
 
+## 11 November 2026
+
+- **Two modes: EnFact and Contractor.** Admin's "Flow testing mode" switch is now just **Mode**, and it will soon decide more than flow tests: in Contractor mode the app will carry the company's own name, logo and colours instead of EnFact's. A newly installed phone now starts in **Contractor**; the office switches its phones to EnFact in Admin before handing them out. Phones already in use stay on EnFact, so nothing changes for the team.
+
 ## 10 November 2026
 
 - **Flow test readings: no hint underneath.** The line under the readings ("Type the flow in L/min. RPM shows for a diesel pump…") is gone.

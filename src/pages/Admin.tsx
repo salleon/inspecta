@@ -32,7 +32,7 @@ import { useBackHandler } from "../lib/backButton";
 import { BLUE, GREY, Group, ORANGE, RowIcon, groupHintStyle, groupRowStyle } from "../components/SettingsList";
 
 // Settings → Admin: PIN-protected tools for the person who looks after the
-// app: Flow testing mode, the ESR keywords that drive the category
+// app: the mode (EnFact / Contractor), the ESR keywords that drive the category
 // suggestions (see lib/esrKeywords), export timings and the PIN. Routes:
 //   /admin                     PIN, then the admin menu
 //   /admin/keywords            the keyword menu
@@ -277,8 +277,8 @@ function AdminHome() {
         <div className="settings-row" style={{ ...groupRowStyle, alignItems: "flex-start" }}>
           <RowIcon name="drop" colour={BLUE} />
           <span style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 8 }}>
-            <span style={{ fontSize: 14.5, fontWeight: 700 }}>Flow testing mode</span>
-            <div role="radiogroup" aria-label="Flow testing mode" style={{ display: "flex", gap: 4, padding: 3, borderRadius: 10, background: "var(--bg)", border: "1px solid var(--border)" }}>
+            <span style={{ fontSize: 14.5, fontWeight: 700 }}>Mode</span>
+            <div role="radiogroup" aria-label="Mode" style={{ display: "flex", gap: 4, padding: 3, borderRadius: 10, background: "var(--bg)", border: "1px solid var(--border)" }}>
               {(
                 [
                   ["enfact", "EnFact"],
@@ -300,7 +300,7 @@ function AdminHome() {
                 );
               })}
             </div>
-            <span style={groupHintStyle}>Contractor adds the graph line picker, suction lines and booster / jockey pumps.</span>
+            <span style={groupHintStyle}>Contractor: your company's name, logo and colours, and every flow test option.</span>
           </span>
         </div>
       </Group>

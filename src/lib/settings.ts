@@ -5,7 +5,7 @@ import { useSyncExternalStore } from "react";
 // gear button.
 //
 // (Advanced controls used to be a switch here; every phone now always has
-// them. Flow testing mode, EnFact or Contractor, is the switch instead.)
+// them. The mode, EnFact or Contractor, is the switch instead.)
 
 const listeners = new Set<() => void>();
 
@@ -16,12 +16,28 @@ function subscribe(listener: () => void) {
   };
 }
 
-// Flow testing mode (Admin): "enfact", the stripped-down version for
-// EnFact's consultants (graph always discharge + town main, no line
-// options; supplies Town main / Electric / Diesel or a custom name), or
-// "contractor", every option. EnFact unless switched in Admin.
+// The app's mode (Admin → Mode): "enfact", EnFact's own app (its
+// branding, and the stripped-down flow tests for its consultants: graph
+// always discharge + town main, no line options; supplies Town main /
+// Electric / Diesel or a custom name), or "contractor", for other
+// companies (their own name, logo and colours, every flow option).
+//
+// A new phone starts in Contractor; the office switches its phones to
+// EnFact in Admin. A phone already in use when modes came in (it has an
+// inspector's name) stays EnFact. Settled once at start-up (settleMode),
+// before the name prompt, so naming a new phone doesn't change it.
 export type FlowMode = "enfact" | "contractor";
 const FLOW_MODE_KEY = "inspecta.flowMode";
+
+export function settleMode() {
+  try {
+    if (localStorage.getItem(FLOW_MODE_KEY)) return;
+    const inUse = (localStorage.getItem("inspecta.inspectorName") ?? "").trim().length > 0;
+    localStorage.setItem(FLOW_MODE_KEY, inUse ? "enfact" : "contractor");
+  } catch {
+    // best-effort: without storage the phone stays EnFact
+  }
+}
 
 export function getFlowMode(): FlowMode {
   try {
@@ -30,6 +46,8 @@ export function getFlowMode(): FlowMode {
     return "enfact";
   }
 }
+
+export const isContractor = () => getFlowMode() === "contractor";
 
 export function setFlowMode(mode: FlowMode) {
   try {

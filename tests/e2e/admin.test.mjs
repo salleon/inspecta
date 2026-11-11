@@ -41,10 +41,10 @@ test("Settings → Admin needs the PIN (2021)", async () => {
   assert.equal(await page.locator("text=Wrong PIN").count(), 1);
   await enterPin("2021");
   assert.equal(await page.locator('button:has-text("Keywords")').count(), 1);
-  assert.equal(await page.locator('[role="radiogroup"][aria-label="Flow testing mode"]').count(), 1);
+  assert.equal(await page.locator('[role="radiogroup"][aria-label="Mode"]').count(), 1);
 });
 
-test("no Advanced controls switch any more (always on); Admin's switch is Flow testing mode", async () => {
+test("no Advanced controls switch any more (always on); Admin's switch is Mode", async () => {
   assert.equal(await page.getByText("Advanced controls", { exact: true }).count(), 0);
   await go(page, app, "/");
   await page.click('button[aria-label="Settings"]');
@@ -52,8 +52,8 @@ test("no Advanced controls switch any more (always on); Admin's switch is Flow t
   await openAdmin("/admin", "Keywords");
 });
 
-test("Flow testing mode: EnFact to start, switched to Contractor in Admin", async () => {
-  const mode = (name) => page.getAttribute(`[role="radiogroup"][aria-label="Flow testing mode"] [role="radio"]:has-text("${name}")`, "aria-checked");
+test("Mode: EnFact on a phone already in use, switched to Contractor in Admin", async () => {
+  const mode = (name) => page.getAttribute(`[role="radiogroup"][aria-label="Mode"] [role="radio"]:has-text("${name}")`, "aria-checked");
   assert.equal(await mode("EnFact"), "true");
   assert.equal(await mode("Contractor"), "false");
   await page.click('[role="radio"]:has-text("Contractor")');
