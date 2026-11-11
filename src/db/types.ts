@@ -21,7 +21,11 @@ export interface Site {
   // set while a restore from backup is adding this site's photos, and
   // cleared once they're all in (lib/backup). Still set means the restore
   // stopped part way: restoring the same backup again finishes the site.
-  restoreIncomplete?: true;
+  // "merge": a merge with the phone's own copy (lib/siteMerge), finished
+  // by merging again.
+  restoreIncomplete?: true | "merge";
+  // Keep both: the id of the site this is the backup's copy of
+  copyOf?: string;
   // when anything in the site last changed: its details, findings, photos,
   // mark-up, tests or reports (updatedAt only moves for some of those, as
   // it orders the home page). Absent on sites from before it was added:
@@ -184,6 +188,9 @@ export interface FlowTest {
   // blank sheet only
   columns?: string[];
   cells?: string[][];
+  // the backup's copy of a test changed on both phones, kept beside this
+  // phone's by a restore's Merge (lib/siteMerge): when it came in
+  fromBackup?: number;
   order: number;
   createdAt: number;
   updatedAt: number;
@@ -272,6 +279,8 @@ export interface StairTest {
   runs?: StairRun[]; // general system testing: the runs after the first
   once: Record<string, StairOnce>;
   notes: StairNote[];
+  // as FlowTest.fromBackup
+  fromBackup?: number;
   order: number;
   createdAt: number;
   updatedAt: number;

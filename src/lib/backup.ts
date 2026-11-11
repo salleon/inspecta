@@ -1,5 +1,6 @@
 import type { Finding, FlowTest, Photo, Site, StairTest } from "../db/types";
-import { backupRecords, finishSiteRestore, getSite, photoBlob, photoExists, restorePhoto, restoreSiteRecords } from "../db/db";
+import { backupRecords, finishSiteRestore, listSites, mergeSiteRecords, photoBlob, photoExists, replaceRestoredPhoto, restorePhoto, restoreSiteRecords, siteRecords } from "../db/db";
+import { copyRecords, mergeChangesAnything, planMerge, type MergePlan, type SiteRecords } from "./siteMerge";
 import { photoExtension, photoFiles, siteChangedAt, siteFolders } from "./backupNames";
 import { readZip, ZipWriter, type ZipEntry } from "./zip";
 
@@ -18,9 +19,10 @@ import { readZip, ZipWriter, type ZipEntry } from "./zip";
 // a computer. Version 1 backups (one backup.json with every site, photos
 // by id) still restore.
 //
-// Restore adds what isn't on the phone yet. A site that's already here is
-// left as it is, unless the backup's copy is newer (changed later) and the
-// person says to replace it.
+// Restore adds what isn't on the phone yet. A site that's already here and
+// differs from the backup's copy is, as the person chooses, merged with it
+// (nothing on the phone deleted, see lib/siteMerge), brought in beside it
+// as a separate site (Keep both), or left as it is.
 //
 // Each site goes in as a unit: its records, then its photos, and only then
 // is it an ordinary site. Until then it's marked restoreIncomplete, so if
@@ -165,22 +167,36 @@ interface SiteUnit {
   photos: (PhotoMeta & { entry: string; mime: string })[];
 }
 
+// what restoring does with a site that's on the phone and differs
+export type SharedChoice = "merge" | "copy" | "leave";
+
+// a site an earlier restore stopped part way through: added (finish adds
+// the photos still missing), merged (merging again finishes it) or brought
+// in beside the phone's (Keep both; target is that copy)
+export interface Unfinished {
+  site: Site;
+  target: Site;
+  how: "finish" | "merge" | "copy";
+}
+
 export interface RestorePlan {
   entries: Map<string, ZipEntry>;
   units: Map<string, SiteUnit>;
   // not on this phone
   newSites: Site[];
-  // added by an earlier restore that stopped before all their photos were
-  // in: this restore adds the photos still missing
-  unfinishedSites: Site[];
-  // on this phone, but the backup's copy changed later: replaced only if
-  // the person says so
-  newerSites: Site[];
-  // on this phone, as new as the backup's copy or newer: left as they are
+  unfinished: Unfinished[];
+  // on this phone, and the backup's copy has something the phone's
+  // doesn't: what a merge would do
+  sharedSites: { site: Site; merge: MergePlan }[];
+  // on this phone, with everything the backup's copy has: left as they are
   existingSites: Site[];
-  // when the phone's copy of each newer site last changed
-  phoneChangedAt: Map<string, number>;
 }
+
+// a backup's site as records (the photos' places in the zip apart)
+const records = (u: SiteUnit): SiteRecords => ({
+  ...u,
+  photos: u.photos.map(({ entry: _e, mime: _m, ...meta }) => meta),
+});
 
 const notMac = (n: string) => !n.startsWith("__MACOSX/") && !n.includes("/._");
 
@@ -252,47 +268,117 @@ export async function readBackup(file: Blob): Promise<RestorePlan> {
     throw new Error("This backup has no sites in it.");
   }
 
-  const plan: RestorePlan = { entries, units, newSites: [], unfinishedSites: [], newerSites: [], existingSites: [], phoneChangedAt: new Map() };
-  for (const { site } of [...units.values()].sort((a, b) => a.site.name.localeCompare(b.site.name))) {
-    const here = await getSite(site.id);
+  const plan: RestorePlan = { entries, units, newSites: [], unfinished: [], sharedSites: [], existingSites: [] };
+  const phone = await listSites();
+  const byId = new Map(phone.map((s) => [s.id, s]));
+  for (const unit of [...units.values()].sort((a, b) => a.site.name.localeCompare(b.site.name))) {
+    const { site } = unit;
+    // a Keep both copy of this site that stopped part way
+    for (const copy of phone) if (copy.copyOf === site.id && copy.restoreIncomplete) plan.unfinished.push({ site, target: copy, how: "copy" });
+    const here = byId.get(site.id);
     if (!here) plan.newSites.push(site);
-    else if (here.restoreIncomplete) plan.unfinishedSites.push(site);
-    else if (siteChangedAt(site) > siteChangedAt(here)) {
-      plan.newerSites.push(site);
-      plan.phoneChangedAt.set(site.id, siteChangedAt(here));
+    else if (here.restoreIncomplete) plan.unfinished.push({ site, target: here, how: here.restoreIncomplete === "merge" ? "merge" : "finish" });
+    else {
+      const mine = await siteRecords(site.id);
+      const merge = mine && planMerge(mine, records(unit));
+      if (merge && mergeChangesAnything(merge)) plan.sharedSites.push({ site, merge });
+      else plan.existingSites.push(site);
     }
-    else plan.existingSites.push(site);
   }
   return plan;
 }
 
-// One site at a time, records then photos, then the site is marked done.
-// New sites are added, unfinished ones get their missing photos, and the
-// newer ones replace the phone's copy only with `replace`.
+export interface RestoreResult {
+  sites: number;
+  finished: number;
+  // merged sites, with what the merge did
+  merged: { name: string; counts: MergePlan["counts"] }[];
+  // Keep both: the copies' names
+  copies: string[];
+  findings: number;
+  photos: number;
+  unreadable: number;
+  skipped: number;
+}
+
+// One site at a time: new ones are added, unfinished ones finished, and the
+// ones on the phone that differ merged, copied in beside it or left, as
+// chosen. A site's records go in first, then its photos, then it's marked
+// done.
 // A photo that can't be read from the backup (missing or damaged entry) is
 // counted and passed over, as restoring again wouldn't bring it back either;
 // anything else (phone full, say) stops the restore with the site still
 // marked unfinished.
-export async function applyRestore(plan: RestorePlan, replace: boolean, onPhoto: (done: number, total: number) => void) {
-  const work = [
-    ...plan.newSites.map((site) => ({ site, how: "add" as const })),
-    ...plan.unfinishedSites.map((site) => ({ site, how: "finish" as const })),
-    ...(replace ? plan.newerSites.map((site) => ({ site, how: "replace" as const })) : []),
+export async function applyRestore(plan: RestorePlan, choice: SharedChoice, onPhoto: (done: number, total: number) => void): Promise<RestoreResult> {
+  type Job = { unit: SiteUnit; how: "add" | "finish" | "merge" | "copy"; target?: Site; merge?: MergePlan };
+  const jobs: Job[] = [
+    ...plan.newSites.map((site) => ({ unit: plan.units.get(site.id)!, how: "add" as const })),
+    ...plan.unfinished.map((u) => ({ unit: plan.units.get(u.site.id)!, how: u.how, target: u.target })),
+    ...(choice === "leave" ? [] : plan.sharedSites.map(({ site, merge }) => ({ unit: plan.units.get(site.id)!, how: choice, merge }))),
   ];
-  const total = work.reduce((n, { site }) => n + plan.units.get(site.id)!.photos.length, 0);
-  let findings = 0;
-  let restored = 0;
-  let unreadable = 0;
+  const result: RestoreResult = { sites: plan.newSites.length, finished: 0, merged: [], copies: [], findings: 0, photos: 0, unreadable: 0, skipped: plan.existingSites.length };
+  if (choice === "leave") result.skipped += plan.sharedSites.length;
+
+  // what each job writes: its records, and its photos with where each is in the zip
+  type Photos = { meta: PhotoMeta; entry: string; mime: string; replace?: boolean }[];
+  const prepared: { job: Job; siteId: string; write: () => Promise<void>; photos: Photos }[] = [];
+  for (const job of jobs) {
+    const { unit } = job;
+    const where = new Map(unit.photos.map((p) => [p.id, p]));
+    const from = (meta: PhotoMeta, originalId = meta.id, replace = false) => ({ meta, entry: where.get(originalId)!.entry, mime: where.get(originalId)!.mime, replace });
+    if (job.how === "add" || job.how === "finish") {
+      const r = records(unit);
+      prepared.push({
+        job,
+        siteId: unit.site.id,
+        write: async () => {
+          if (job.how === "add") await restoreSiteRecords(r.site, r.findings, r.flowTests, r.stairTests);
+          result.findings += job.how === "add" ? r.findings.length : 0;
+        },
+        photos: r.photos.map((m) => from(m)),
+      });
+    } else if (job.how === "merge") {
+      // planned when the backup was read, or (finishing one) now, from the phone as it is
+      const mine = job.merge ? null : await siteRecords(job.target!.id);
+      const merge = job.merge ?? (mine ? planMerge(mine, records(unit)) : null);
+      if (!merge) continue;
+      prepared.push({
+        job,
+        siteId: merge.site.id,
+        write: async () => {
+          await mergeSiteRecords(merge.site, merge.findings, merge.flowTests, merge.stairTests);
+          if (job.merge) result.merged.push({ name: merge.site.name, counts: merge.counts });
+        },
+        photos: [...merge.addPhotos.map((m) => from(m)), ...merge.replacePhotos.map((m) => from(m, m.id, true))],
+      });
+    } else {
+      // Keep both: a new copy, or finishing one that stopped part way
+      const copyId = job.target?.id ?? crypto.randomUUID();
+      const copy = copyRecords(records(unit), copyId);
+      if (job.target) copy.site = { ...copy.site, name: job.target.name, createdAt: job.target.createdAt };
+      prepared.push({
+        job,
+        siteId: copyId,
+        write: async () => {
+          if (!job.target) {
+            await restoreSiteRecords(copy.site, copy.findings, copy.flowTests, copy.stairTests);
+            result.copies.push(copy.site.name);
+            result.findings += copy.findings.length;
+          }
+        },
+        photos: copy.photos.map((m, i) => from(m, unit.photos[i].id)),
+      });
+    }
+  }
+
+  const total = prepared.reduce((n, p) => n + p.photos.length, 0);
   let done = 0;
   onPhoto(0, total);
-  for (const { site, how } of work) {
-    const unit = plan.units.get(site.id)!;
-    if (how !== "finish") {
-      await restoreSiteRecords(unit.site, unit.findings, unit.flowTests, unit.stairTests, how === "replace");
-      findings += unit.findings.length;
-    }
-    for (const { entry: path, mime, ...meta } of unit.photos) {
-      if (how !== "finish" || !(await photoExists(meta.id))) {
+  for (const { job, siteId, write, photos } of prepared) {
+    await write();
+    for (const { meta, entry: path, mime, replace } of photos) {
+      // finishing, or merging again: what's already here stays
+      if (replace || job.how === "add" || !(await photoExists(meta.id))) {
         let blob: Blob | undefined;
         try {
           const entry = plan.entries.get(path);
@@ -302,23 +388,16 @@ export async function applyRestore(plan: RestorePlan, replace: boolean, onPhoto:
           console.error("backup photo can't be read", path, err);
         }
         if (blob) {
-          await restorePhoto({ ...meta, blob });
-          restored++;
+          await (replace ? replaceRestoredPhoto : restorePhoto)({ ...meta, blob });
+          result.photos++;
         } else {
-          unreadable++;
+          result.unreadable++;
         }
       }
       onPhoto(++done, total);
     }
-    await finishSiteRestore(site.id);
+    await finishSiteRestore(siteId);
+    if (job.how === "finish" || (job.how === "merge" && !job.merge) || (job.how === "copy" && job.target)) result.finished++;
   }
-  return {
-    sites: plan.newSites.length,
-    finished: plan.unfinishedSites.length,
-    replaced: replace ? plan.newerSites.length : 0,
-    findings,
-    photos: restored,
-    unreadable,
-    skipped: plan.existingSites.length + (replace ? 0 : plan.newerSites.length),
-  };
+  return result;
 }

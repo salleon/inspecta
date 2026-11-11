@@ -1,7 +1,8 @@
 // Settings: the build label, Back up (full, chosen sites, new since last
 // backup) and Restore. A backup has a folder per site; restoring brings back
-// every site, finding and photo exactly, never duplicates, and only
-// replaces a site the backup has a newer copy of after asking. Version 1
+// every site, finding and photo exactly, never duplicates, and a site on
+// both the phone and the backup is merged (nothing on the phone deleted),
+// kept beside the phone's, or left, as chosen. Version 1
 // backups (one backup.json, photos by id) still restore.
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
@@ -40,22 +41,33 @@ const snapshot = () =>
   });
 
 // change records straight in the database
-const dbEdit = (fn) =>
-  page.evaluate(async (src) => {
+// (fn is sent into the page, so it sees nothing outside it but arg)
+const dbEdit = (fn, arg) =>
+  page.evaluate(async ({ src, arg }) => {
     const req = indexedDB.open("inspecta");
     const idb = await new Promise((r) => (req.onsuccess = () => r(req.result)));
-    const tx = idb.transaction(["sites", "findings", "photos", "thumbnails"], "readwrite");
+    const tx = idb.transaction(["sites", "findings", "photos", "thumbnails", "flowTests", "stairTests"], "readwrite");
     const get = (store, id) => new Promise((r) => (tx.objectStore(store).get(id).onsuccess = (e) => r(e.target.result)));
     const put = (store, value) => tx.objectStore(store).put(value);
-    await new Function("tx", "get", "put", `return (${src})(tx, get, put)`)(tx, get, put);
+    await new Function("tx", "get", "put", "arg", `return (${src})(tx, get, put, arg)`)(tx, get, put, arg);
     await new Promise((r) => (tx.oncomplete = r));
     idb.close();
-  }, fn.toString());
+  }, { src: fn.toString(), arg });
 
 const wipe = () =>
   dbEdit((tx) => {
     for (const s of ["sites", "findings", "photos", "thumbnails"]) tx.objectStore(s).clear();
   });
+
+// every record in a store
+const rows = (store) =>
+  page.evaluate(async (store) => {
+    const req = indexedDB.open("inspecta");
+    const idb = await new Promise((r) => (req.onsuccess = () => r(req.result)));
+    const all = await new Promise((r) => (idb.transaction(store).objectStore(store).getAll().onsuccess = (e) => r(e.target.result)));
+    idb.close();
+    return all.map(({ blob: _b, ...rest }) => rest);
+  }, store);
 
 const findingNote = (id) =>
   page.evaluate(async (id) => {
@@ -230,30 +242,148 @@ test("choose sites: only the ticked ones go in", async () => {
   assert.equal(zipNames(file.path).filter((n) => n.endsWith("site.json")).join(), "Harbour Tower - 1 Harbour St/site.json");
 });
 
-test("a newer copy in the backup replaces the phone's only when asked", async () => {
-  // the phone's Riverside Plaza goes back to before the change in the
-  // since-last backup (as on another phone that had the older copy)
+// Riverside Plaza handed to a coworker at H (this phone's last backup of
+// it), and changed on both phones since
+let coworkerPath;
+let H;
+test("a site on both: Leave changes nothing, Merge keeps everything on the phone", async () => {
+  H = Date.now();
+  // the coworker's copy: a later note on f2, a finding and photo of their
+  // own, and readings in a flow test
   await dbEdit(async (_tx, get, put) => {
-    put("findings", { ...(await get("findings", "f2")), note: "Old note on this phone" });
-    put("sites", { ...(await get("sites", "s2")), changedAt: 1000 });
+    put("findings", { ...(await get("findings", "f2")), note: "Coworker note", updatedAt: Date.now() + 10 });
+    put("flowTests", { id: "ft", siteId: "s2", kind: "sprinkler", name: "Coworker readings", testedAt: 1, k: 0, sections: [], demand: [], order: 0, createdAt: 1, updatedAt: Date.now() + 20 });
   });
+  await seed(page, {
+    findings: [{ id: "cw", siteId: "s2", note: "Coworker finding", order: 5, updatedAt: Date.now() + 15 }],
+    photos: [{ id: "cwp", findingId: "cw", siteId: "s2", color: "#a3a" }],
+  });
+  await backUp("Choose sites");
+  await page.getByRole("checkbox", { name: /Riverside Plaza/ }).check();
+  coworkerPath = (await download(page, () => page.getByRole("button", { name: "Back up 1 site" }).click())).path;
+  await page.getByTestId("backup-row").waitFor();
 
-  await pickRestore(sincePath);
-  assert.match(await page.locator("text=newer copy").innerText(), /1 site on this phone has a newer copy in this backup: Riverside Plaza\. You'll be asked before it's replaced\./);
+  // this phone, since the hand-over: the coworker's things aren't here, a
+  // later note on f2, a finding of its own, and its own readings in the test
+  await dbEdit(async (tx, get, put, H) => {
+    tx.objectStore("findings").delete("cw");
+    tx.objectStore("photos").delete("cwp");
+    put("findings", { ...(await get("findings", "f2")), note: "My note", updatedAt: Date.now() + 30 });
+    put("findings", { id: "mine", siteId: "s2", note: "My finding", location: "", order: 6, createdAt: Date.now(), updatedAt: Date.now() + 40 });
+    put("flowTests", { ...(await get("flowTests", "ft")), name: "My readings", updatedAt: Date.now() + 50 });
+    put("sites", { ...(await get("sites", "s2")), backedUpAt: H - 1, changedAt: Date.now() + 50 });
+  }, H);
+
+  await pickRestore(coworkerPath);
+  assert.match(await page.locator("text=on this phone too").first().innerText(), /1 site is on this phone too, with differences: Riverside Plaza\. You'll choose/);
   await page.getByRole("button", { name: "Restore", exact: true }).click();
-  await page.getByText("Replace with the backup's copy?").waitFor();
-  await page.getByRole("button", { name: "Keep this phone's" }).click();
+  await page.getByText("Riverside Plaza is on this phone too").waitFor();
+  const question = await page.locator("text=nothing on this phone is deleted").innerText();
+  assert.match(question, /Riverside Plaza: the backup has 1 finding and 1 photo this phone doesn't\./);
+  assert.match(question, /This phone has 1 finding the backup doesn't; it's kept\./);
+  assert.match(question, /1 test changed on both: the backup's copy is added beside this phone's\./);
+  assert.match(question, /Keep both: the backup's copy comes in as its own site, "Riverside Plaza \(from backup\)"/);
+
+  const before = await snapshot();
+  await page.getByRole("button", { name: "Leave as it is" }).click();
   await page.getByText("Nothing restored").waitFor();
   await page.getByRole("button", { name: "OK", exact: true }).click();
-  assert.equal(await findingNote("f2"), "Old note on this phone");
+  assert.equal(await snapshot(), before);
 
-  await pickRestore(sincePath);
+  await pickRestore(coworkerPath);
   await page.getByRole("button", { name: "Restore", exact: true }).click();
-  await page.getByRole("button", { name: "Replace", exact: true }).click();
-  await page.waitForTimeout(1200);
-  assert.match(await page.locator("text=Replaced").innerText(), /Replaced 1 site with the backup's newer copy\. 1 photo added\./);
+  await page.getByRole("button", { name: "Merge", exact: true }).click();
+  await page.getByText("Restore finished").waitFor();
+  assert.match(await page.locator("text=Merged").innerText(), /Merged Riverside Plaza: added 1 finding, 1 photo and 1 test\./);
   await page.getByRole("button", { name: "OK", exact: true }).click();
-  assert.equal(await findingNote("f2"), "Hose reel tag replaced");
+
+  // nothing on the phone went: its own finding and its later note stay
+  assert.equal(await findingNote("mine"), "My finding");
+  assert.equal(await findingNote("f2"), "My note");
+  // the coworker's finding and photo came in
+  assert.equal(await findingNote("cw"), "Coworker finding");
+  assert.deepEqual((await rows("photos")).filter((p) => p.siteId === "s2").map((p) => p.id).sort(), ["cwp", "p2"]);
+  // the test changed on both: both kept, the backup's marked
+  const tests = (await rows("flowTests")).filter((t) => t.siteId === "s2").map((t) => [t.name, !!t.fromBackup]).sort();
+  assert.deepEqual(tests, [["Coworker readings", true], ["My readings", false]]);
+  const s2 = (await rows("sites")).find((x) => x.id === "s2");
+  assert.equal(s2.restoreIncomplete, undefined);
+  assert.equal(s2.backedUpAt, H - 1, "a merged site still needs backing up");
+});
+
+test("merging the same backup again adds nothing", async () => {
+  const before = await snapshot();
+  await pickRestore(coworkerPath);
+  assert.equal(await page.locator("text=Every site in this backup is already on this phone").count(), 1);
+  await page.getByRole("button", { name: "OK", exact: true }).click();
+  assert.equal(await snapshot(), before);
+  assert.equal((await rows("flowTests")).filter((t) => t.siteId === "s2").length, 2);
+});
+
+test("a merge that stopped part way is finished by restoring again", async () => {
+  const before = await snapshot();
+  await dbEdit(async (tx, get, put) => {
+    put("sites", { ...(await get("sites", "s2")), restoreIncomplete: "merge" });
+    tx.objectStore("photos").delete("cwp");
+  });
+  await pickRestore(coworkerPath);
+  assert.match(await page.locator("text=This finishes").innerText(), /This finishes 1 site .*: Riverside Plaza\./);
+  await page.getByRole("button", { name: "Restore", exact: true }).click();
+  await page.getByText("Restore finished").waitFor();
+  assert.match(await page.locator("text=Finished restoring").innerText(), /Finished restoring 1 site .* 1 photo added\./);
+  await page.getByRole("button", { name: "OK", exact: true }).click();
+  // everything's back (the site's changedAt moves: the merge changed it again)
+  const [a, b] = [JSON.parse(await snapshot()), JSON.parse(before)];
+  assert.deepEqual([a.findings, a.hashes], [b.findings, b.hashes]);
+  const s2 = (await rows("sites")).find((x) => x.id === "s2");
+  assert.equal(s2.restoreIncomplete, undefined);
+  assert.equal(s2.backedUpAt, H - 1, "finishing a merge doesn't count as a backup");
+});
+
+test("Keep both: the backup's copy as a separate site, the phone's untouched", async () => {
+  // the coworker's note on f2 is now the later one, so there's something to bring in
+  await dbEdit(async (_tx, get, put, H) => {
+    put("findings", { ...(await get("findings", "f2")), note: "My older note", updatedAt: H + 5 });
+  }, H);
+  const mine = JSON.stringify((await rows("findings")).filter((f) => f.siteId === "s2").sort((a, b) => a.id.localeCompare(b.id)));
+  await pickRestore(coworkerPath);
+  await page.getByRole("button", { name: "Restore", exact: true }).click();
+  await page.getByRole("button", { name: "Keep both", exact: true }).click();
+  await page.getByText("Restore finished").waitFor();
+  assert.match(await page.locator("text=Kept both").innerText(), /Kept both copies of 1 site; the backup's is "Riverside Plaza \(from backup\)"\./);
+  await page.getByRole("button", { name: "OK", exact: true }).click();
+
+  assert.equal(JSON.stringify((await rows("findings")).filter((f) => f.siteId === "s2").sort((a, b) => a.id.localeCompare(b.id))), mine, "the phone's site is untouched");
+  const copy = (await rows("sites")).find((x) => x.copyOf === "s2");
+  assert.equal(copy.name, "Riverside Plaza (from backup)");
+  assert.equal(copy.restoreIncomplete, undefined);
+  const notes = (await rows("findings")).filter((f) => f.siteId === copy.id).map((f) => f.note).sort();
+  assert.deepEqual(notes, ["Coworker finding", "Coworker note"]);
+  assert.equal((await rows("photos")).filter((p) => p.siteId === copy.id).length, 2);
+  await go(page, app, "/");
+  assert.equal(await page.getByText("Riverside Plaza (from backup)").count(), 1);
+
+  // stopped part way (a photo missing, still marked): restoring again finishes the copy
+  const done = await snapshot();
+  const lost = (await rows("photos")).find((p) => p.siteId === copy.id).id;
+  await dbEdit(
+    async (tx, get, put, { site, photo }) => {
+      put("sites", { ...(await get("sites", site)), restoreIncomplete: true });
+      tx.objectStore("photos").delete(photo);
+    },
+    { site: copy.id, photo: lost },
+  );
+  await pickRestore(coworkerPath);
+  assert.match(await page.locator("text=This finishes").innerText(), /Riverside Plaza \(from backup\)/);
+  await page.getByRole("button", { name: "Restore", exact: true }).click();
+  // Riverside Plaza itself is asked about again (the backup's f2 is still later): leave it
+  await page.getByRole("button", { name: "Leave as it is" }).click();
+  await page.getByText("Restore finished").waitFor();
+  await page.getByRole("button", { name: "OK", exact: true }).click();
+  const after = JSON.parse(await snapshot());
+  const was = JSON.parse(done);
+  assert.deepEqual(after.hashes, was.hashes);
+  assert.equal((await rows("sites")).find((x) => x.id === copy.id).restoreIncomplete, undefined);
 });
 
 test("a version 1 backup (before site folders) still restores", async () => {
@@ -290,7 +420,8 @@ test("a backup re-zipped (compressed, inside a folder) still reads", async () =>
   const remade = `${backupPath}.remade.zip`;
   execFileSync("python3", ["-c", "import sys,zipfile\nsrc=zipfile.ZipFile(sys.argv[1])\nout=zipfile.ZipFile(sys.argv[2],'w',zipfile.ZIP_DEFLATED)\nfor n in src.namelist(): out.writestr('Inspecta backup/'+n, src.read(n))\nout.close()", backupPath, remade]);
   await pickRestore(remade);
-  // Harbour Tower is as backed up, and the phone's Riverside Plaza is newer
+  // Harbour Tower is as backed up, and everything in the backup's Riverside
+  // Plaza is on the phone, or older than the phone's copy
   assert.equal(await page.locator("text=Every site in this backup is already on this phone").count(), 1);
   await page.getByRole("button", { name: "OK", exact: true }).click();
 });
@@ -306,7 +437,8 @@ test("a change made in the app counts for new since last backup", async () => {
   await page.waitForTimeout(400);
   await backUp("New since last backup");
   assert.equal(await page.getByText("Harbour Tower", { exact: true }).count(), 1);
-  assert.equal(await page.getByText("CHANGED", { exact: true }).count(), 1);
+  // Harbour Tower, and Riverside Plaza, merged earlier and not backed up since
+  assert.equal(await page.getByText("CHANGED", { exact: true }).count(), 2);
 });
 
 test("no page errors", () => {

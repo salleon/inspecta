@@ -636,25 +636,57 @@ export async function markBackedUp(siteIds: string[], at: number) {
 }
 
 // A restored site and its findings, marked restoreIncomplete until its
-// photos (added one at a time after this) are all in. With replace, the
-// copy of the site already on the phone goes first, all its findings,
-// photos and tests with it, in the same step.
-export async function restoreSiteRecords(site: Site, findings: Finding[], flowTests: FlowTest[] = [], stairTests: StairTest[] = [], replace = false) {
-  await db.transaction("rw", [db.sites, db.findings, db.flowTests, db.stairTests, db.photos, db.thumbnails, db.exportCopies], async () => {
-    if (replace) {
-      await db.thumbnails.where("siteId").equals(site.id).delete();
-      await db.exportCopies.where("siteId").equals(site.id).delete();
-      await db.photos.where("siteId").equals(site.id).delete();
-      await db.findings.where("siteId").equals(site.id).delete();
-      await db.flowTests.where("siteId").equals(site.id).delete();
-      await db.stairTests.where("siteId").equals(site.id).delete();
-      await db.sites.delete(site.id);
-    }
+// photos (added one at a time after this) are all in.
+export async function restoreSiteRecords(site: Site, findings: Finding[], flowTests: FlowTest[] = [], stairTests: StairTest[] = []) {
+  await db.transaction("rw", [db.sites, db.findings, db.flowTests, db.stairTests], async () => {
     const { backedUpAt: _backedUpAt, ...rest } = site;
     await db.sites.add({ ...rest, restoreIncomplete: true });
     await db.findings.bulkAdd(findings);
     await db.flowTests.bulkAdd(flowTests);
     await db.stairTests.bulkAdd(stairTests);
+  });
+}
+
+// A site's records on this phone, photos without their files (for a merge,
+// lib/siteMerge)
+export async function siteRecords(siteId: string) {
+  const site = await db.sites.get(siteId);
+  if (!site) return undefined;
+  const [findings, flowTests, stairTests] = await Promise.all([
+    db.findings.where("siteId").equals(siteId).toArray(),
+    db.flowTests.where("siteId").equals(siteId).toArray(),
+    db.stairTests.where("siteId").equals(siteId).toArray(),
+  ]);
+  const photos: Omit<Photo, "blob" | "marked">[] = [];
+  await db.photos
+    .where("siteId")
+    .equals(siteId)
+    .each(({ blob: _blob, marked: _marked, ...meta }) => {
+      photos.push(meta);
+    });
+  return { site, findings, flowTests, stairTests, photos };
+}
+
+// A merge's records (lib/siteMerge), in one step: the site, marked as a
+// merge still going until its photos are in, and the findings and tests
+// added or updated. Nothing on the phone is deleted.
+export async function mergeSiteRecords(site: Site, findings: Finding[], flowTests: FlowTest[], stairTests: StairTest[]) {
+  await db.transaction("rw", [db.sites, db.findings, db.flowTests, db.stairTests], async () => {
+    await db.sites.put({ ...site, restoreIncomplete: "merge" });
+    await db.findings.bulkPut(findings);
+    await db.flowTests.bulkPut(flowTests);
+    await db.stairTests.bulkPut(stairTests);
+  });
+}
+
+// A photo whose mark-up (or turned picture) comes from a backup in a merge:
+// its thumbnail and export copy are made again from the new one.
+export async function replaceRestoredPhoto(photo: Photo) {
+  delete photo.marked;
+  await db.transaction("rw", db.photos, db.thumbnails, db.exportCopies, async () => {
+    await db.photos.put(photo);
+    await db.thumbnails.delete(photo.id);
+    await db.exportCopies.delete(photo.id);
   });
 }
 
@@ -668,10 +700,11 @@ export async function restorePhoto(photo: Photo) {
 }
 
 // All of a restored site's photos are in: it's an ordinary site again, and
-// counts as backed up (it's in the backup it came from).
+// counts as backed up (it's in the backup it came from). A merged site
+// doesn't: what's on the phone now isn't in any one backup.
 export async function finishSiteRestore(siteId: string) {
   await db.sites.where("id").equals(siteId).modify((site) => {
+    if (site.restoreIncomplete !== "merge") site.backedUpAt = Date.now();
     delete site.restoreIncomplete;
-    site.backedUpAt = Date.now();
   });
 }
