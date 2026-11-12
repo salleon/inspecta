@@ -20,6 +20,7 @@ import {
 import { capturePhoto, markUpPhoto, pickFromGallery } from "../lib/capture";
 import { warmCamera } from "../lib/cameraStream";
 import { shownBlob } from "../lib/markup";
+import { confirmFirst } from "../components/Message";
 import { IconRetake, IconTrash, IconChevronLeft, IconPlus, IconCamera, IconCheck, IconPen, IconGallery } from "../components/Icons";
 import RoundIconButton from "../components/RoundIconButton";
 import DefectTypePill from "../components/DefectTypePill";
@@ -682,7 +683,7 @@ export default function Note() {
               </button>
               <button
                 aria-label="Delete photo"
-                onClick={handleDelete}
+                onClick={() => confirmFirst("Delete this photo?", "It comes off the finding.", () => void handleDelete())}
                 disabled={busy}
                 style={overlayIconButtonStyle}
               >
