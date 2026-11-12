@@ -2,7 +2,8 @@ import { useRef, useState, type PointerEvent as ReactPointerEvent, type ReactEle
 
 // The camera's zoom stops (.5× / 1× / 2×). Tap one to jump to it; hold or
 // slide on the bar and it opens into a dial you slide left and right to zoom
-// smoothly, one-handed (like Android's camera). Let go and it closes again.
+// smoothly, one-handed: left to zoom in, right to zoom out. Let go and it
+// closes again.
 
 type Props = {
   stops: number[];
@@ -49,9 +50,9 @@ export default function ZoomBar({ stops, zoom, min, max, onZoom }: Props) {
     const dx = e.clientX - d.x;
     if (!d.on && Math.abs(dx) > 6) grab(d);
     if (!d.on) return;
-    // slide right to zoom in, left to zoom out (the dial's marks follow the
-    // finger, so bigger zooms sit to the left)
-    onZoom(Math.min(max, Math.max(min, Math.exp(Math.log(d.z) + dx / PX))));
+    // slide left to zoom in, right to zoom out (the way the office wants
+    // it; the dial's marks follow the finger, so bigger zooms sit to the right)
+    onZoom(Math.min(max, Math.max(min, Math.exp(Math.log(d.z) - dx / PX))));
   }
   function grab(d: NonNullable<typeof drag.current>) {
     d.on = true;
@@ -76,7 +77,7 @@ export default function ZoomBar({ stops, zoom, min, max, onZoom }: Props) {
   if (open) {
     const majors = [...stops, 4, 8, 16].filter((m) => m >= min - 0.01 && m <= max + 0.01);
     for (let s = Math.max(min, 0.5); s <= max + 0.001; s = +(s + (s < 1 ? 0.05 : s < 2 ? 0.1 : s < 4 ? 0.25 : s < 8 ? 0.5 : 1)).toFixed(2)) {
-      const x = MID - Math.log(s / zoom) * PX;
+      const x = MID + Math.log(s / zoom) * PX;
       if (x < 14 || x > W - 14) continue;
       const major = majors.some((m) => Math.abs(m - s) < 0.03);
       const y0 = H - Math.sqrt(Math.max(0, 1 - ((x - MID) / R) ** 2)) * (H + 2);
