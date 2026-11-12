@@ -298,6 +298,30 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack
         onBack={onBack}
       />
       <div style={{ flexShrink: 0, padding: "0 14px", display: "flex", flexDirection: "column", gap: 7 }}>
+        {/* the requirements first: reference only, never tapped, so the
+            things that are tapped sit lower, nearer the thumb */}
+        <div data-testid="spf-rules" style={{ background: `${AMBER}.07)`, border: `1px solid ${AMBER}.45)`, borderRadius: 11, padding: "7px 9px", display: "flex", flexDirection: "column", gap: 4, fontSize: 12, color: "#d8c4a8", lineHeight: 1.4 }}>
+          <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", color: "#f7b977" }}>
+            Requirements · <span style={{ color: "#ffd9a8" }}>AS 1668.1-{sys.edition}{sys.type === "One test" ? "" : ` · ${sys.type}`}</span>
+          </div>
+          {section === "vel" ? (
+            <>
+              <div>
+                {rule("Doors open:")} {doorsOpen(sys).map((d) => d.toLowerCase()).join(" · ")}
+              </div>
+              <div>{rule(`Pass ≥ ${l.vel} m/s`)}</div>
+            </>
+          ) : section === "force" ? (
+            <>
+              <div>
+                {rule(sys.type === "Zone" ? `The ${word} above open` : "All stair doors closed")}, fan running
+              </div>
+              <div>{rule(`Pass ≤ ${l.force} N`)}</div>
+            </>
+          ) : (
+            <div>From fully open, each door must {rule("close and latch")}</div>
+          )}
+        </div>
         {/* the stairs: the main thing to switch */}
         {sys.stairs.length > 1 && (
           <div data-testid="spf-stairs" style={{ display: "flex", gap: 6, overflowX: "auto", scrollbarWidth: "none", margin: "0 -14px", padding: "0 14px" }}>
@@ -376,28 +400,6 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack
             </div>
           </>
         )}
-        <div data-testid="spf-rules" style={{ background: `${AMBER}.07)`, border: `1px solid ${AMBER}.45)`, borderRadius: 11, padding: "7px 9px", display: "flex", flexDirection: "column", gap: 4, fontSize: 12, color: "#d8c4a8", lineHeight: 1.4 }}>
-          <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", color: "#f7b977" }}>
-            Requirements · <span style={{ color: "#ffd9a8" }}>AS 1668.1-{sys.edition}{sys.type === "One test" ? "" : ` · ${sys.type}`}</span>
-          </div>
-          {section === "vel" ? (
-            <>
-              <div>
-                {rule("Doors open:")} {doorsOpen(sys).map((d) => d.toLowerCase()).join(" · ")}
-              </div>
-              <div>{rule(`Pass ≥ ${l.vel} m/s`)}</div>
-            </>
-          ) : section === "force" ? (
-            <>
-              <div>
-                {rule(sys.type === "Zone" ? `The ${word} above open` : "All stair doors closed")}, fan running
-              </div>
-              <div>{rule(`Pass ≤ ${l.force} N`)}</div>
-            </>
-          ) : (
-            <div>From fully open, each door must {rule("close and latch")}</div>
-          )}
-        </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--muted)" }}>
           <span style={{ whiteSpace: "nowrap" }}>
             <b style={{ color: "var(--text)" }}>
