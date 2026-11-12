@@ -9,7 +9,6 @@ import Onboarding from "./pages/Onboarding";
 import Splash from "./components/Splash";
 import UpdatePrompt from "./components/UpdatePrompt";
 import { startCopyBackfill } from "./lib/copyBackfill";
-import { playLaunchSound } from "./lib/launchSound";
 import Tour from "./components/Tour";
 import PhotoToolsHost from "./components/PhotoToolsHost";
 import { hasInspectorName } from "./lib/profile";
@@ -72,8 +71,6 @@ function App() {
   }, [needsOnboarding, splashVisible]);
 
   useEffect(() => {
-    // the launch sound starts with the splash (Android app, sound on only)
-    playLaunchSound();
     const leaveTimer = setTimeout(() => setSplashLeaving(true), SPLASH_HOLD_MS);
     const removeTimer = setTimeout(() => setSplashVisible(false), SPLASH_HOLD_MS + SPLASH_FADE_MS);
     return () => {

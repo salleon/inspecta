@@ -10,7 +10,6 @@ public class MainActivity extends BridgeActivity {
         // the app's own plugins, registered before the bridge starts
         registerPlugin(GalleryPlugin.class);
         registerPlugin(NativeCameraPlugin.class);
-        registerPlugin(LaunchSoundPlugin.class);
         super.onCreate(savedInstanceState);
     }
 
