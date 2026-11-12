@@ -242,9 +242,6 @@ export default function TestsList({ site, mode, onCount }: { site: Site; mode: "
             </span>
             <span style={{ flexGrow: 1 }}>
               <span style={{ display: "block", fontSize: 15, fontWeight: 800 }}>Stair pressurisation (SPF)</span>
-              {site.kind !== "afss" && (
-                <span style={{ display: "block", fontSize: 12, color: "var(--muted)", marginTop: 2 }}>Three-monthly check, Annual Testing or commissioning, to the stair’s AS 1668.1 edition.</span>
-              )}
             </span>
             <span style={{ color: "var(--muted-2)", fontSize: 18 }}>›</span>
           </button>
