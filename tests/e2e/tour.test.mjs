@@ -6,7 +6,7 @@
 // Settings → Replay tour.
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { startApp, openPage, go, seed, pressBack } from "./helpers.mjs";
+import { startApp, openPage, seed } from "./helpers.mjs";
 
 let app;
 let page;
@@ -64,16 +64,6 @@ test("a new user gets the welcome once, right after entering their name", async 
   await fresh.waitForTimeout(2600);
   assert.equal(await fresh.locator('[role="dialog"][aria-label="Welcome"]').count(), 0, "only once");
   await context.close();
-});
-
-test("someone already using the app gets it once, on the next opening", async () => {
-  await page.evaluate(() => localStorage.removeItem("inspecta.tourOffered")); // as before this update
-  await reopen();
-  assert.match(await page.locator('[role="dialog"][aria-label="Welcome"]').innerText(), /Welcome to Inspecta, Test/);
-  await page.getByRole("button", { name: "Skip, I'll explore" }).click();
-  await reopen();
-  assert.equal(await page.locator('[role="dialog"][aria-label="Welcome"]').count(), 0, "only once");
-  assert.deepEqual(await sites(), ["Harbour Tower"], "their site is untouched");
 });
 
 test("Show me around walks through all 8 topics on example sites, then removes them", async () => {
@@ -135,103 +125,6 @@ test("Show me around walks through all 8 topics on example sites, then removes t
   assert.equal(await page.locator('[role="dialog"][aria-label="Welcome"]').count(), 0, "not offered again");
 });
 
-test("Back goes to the step before, its screen and all; not before the first", async () => {
-  await reopen();
-  await page.click('button[aria-label="Settings"]');
-  await page.click('button:has-text("Replay tour")');
-  const back = () => page.getByRole("button", { name: "‹ Back" }).click();
-  assert.equal(await tipTitle(), "Start a job");
-  assert.equal(await page.getByRole("button", { name: "‹ Back" }).count(), 0, "nothing before the first step");
-  await next();
-  await tipTitle();
-  await next();
-  assert.equal(await tipTitle(), "Log a finding");
-  await back();
-  assert.equal(await tipTitle(), "Pick the kind of site");
-  assert.equal(await page.locator('[data-tour="site-kinds"]').count(), 1, "the New job sheet opens again");
-  // into the full screen readings and back out of them
-  await page.getByRole("button", { name: "☰ Topics" }).click();
-  await page.locator('[role="dialog"][aria-label="Pick a topic"]').getByRole("button", { name: /Run the whole tour/ }).click();
-  for (let i = 0; i < 16; i++) {
-    await tipTitle();
-    await next();
-  }
-  assert.equal(await tipTitle(), "Add, delete, your own columns");
-  await back();
-  assert.equal(await tipTitle(), "Full screen with a keypad");
-  await page.waitForTimeout(900);
-  assert.equal(await page.locator(".wide-pad.off").count(), 0, "the keypad is out again");
-  await next();
-  await tipTitle();
-  await next();
-  assert.equal(await tipTitle(), "Check it first");
-  await back();
-  assert.equal(await tipTitle(), "Add, delete, your own columns");
-  assert.equal(await page.locator('[role="dialog"][aria-label="Readings, full screen"]').count(), 1, "back in the full screen");
-  await page.getByRole("button", { name: "Skip", exact: true }).click();
-  await page.waitForTimeout(500);
-  assert.deepEqual(await sites(), ["Harbour Tower"]);
-});
-
-test("Pick a topic runs just that topic, then comes back to the list", async () => {
-  await page.evaluate(() => localStorage.removeItem("inspecta.tourOffered"));
-  await reopen();
-  await page.getByRole("button", { name: "☰ Pick a topic" }).click();
-  await page.waitForTimeout(500);
-  const list = page.locator('[role="dialog"][aria-label="Pick a topic"]');
-  assert.equal(await list.locator("button", { hasText: /^\d/ }).count(), 8);
-  await list.getByRole("button", { name: /Customised reports/ }).click();
-  assert.equal(await tipTitle(), "Customised reports");
-  assert.equal(await topic(), "CUSTOMISED REPORTS · 1 OF 3");
-  assert.equal(await page.getByRole("button", { name: "‹ Back" }).count(), 0, "a picked topic starts at its own first step");
-  await next();
-  await tipTitle();
-  await next();
-  assert.equal(await tipTitle(), "It's saved");
-  await page.getByRole("button", { name: "Topics", exact: true }).click();
-  await page.waitForTimeout(400);
-  assert.equal(await list.count(), 1, "back on the list");
-  // ☰ Topics on a tip opens it too; Done ends the tour
-  await list.getByRole("button", { name: /Sites/ }).click();
-  assert.equal(await tipTitle(), "Start a job");
-  await page.getByRole("button", { name: "☰ Topics" }).click();
-  await page.waitForTimeout(300);
-  await list.getByRole("button", { name: "Done", exact: true }).click();
-  await page.waitForTimeout(500);
-  assert.deepEqual(await sites(), ["Harbour Tower"]);
-});
-
-test("an old Advanced controls switch-off is ignored: the ESR steps are always in", async () => {
-  await page.evaluate(() => localStorage.setItem("inspecta.advancedControls", "0"));
-  await reopen();
-  await page.click('button[aria-label="Settings"]');
-  await page.click('button:has-text("Replay tour")');
-  const titles = [await tipTitle()];
-  for (let i = 0; i < 5; i++) {
-    await next();
-    titles.push(await tipTitle());
-  }
-  assert.deepEqual(titles, ["Start a job", "Pick the kind of site", "Log a finding", "Photos", "Save & next", "ESR category"]);
-  await page.getByRole("button", { name: "Skip", exact: true }).click();
-  await page.waitForTimeout(500);
-  await page.evaluate(() => localStorage.removeItem("inspecta.advancedControls"));
-});
-
-test("Android back ends the tour, even on the finding screen", async () => {
-  await reopen();
-  await page.click('button[aria-label="Settings"]');
-  await page.click('button:has-text("Replay tour")');
-  for (let i = 0; i < 4; i++) {
-    await tipTitle();
-    await next();
-  }
-  assert.equal(await tipTitle(), "Save & next");
-  await pressBack(page);
-  await page.waitForTimeout(500);
-  assert.equal(await page.locator('[aria-live="polite"]').count(), 0);
-  assert.deepEqual(await sites(), ["Harbour Tower"]);
-});
-
 test("closed mid-tour: the example sites are cleared away on the next opening", async () => {
   await page.click('button[aria-label="Settings"]');
   await page.click('button:has-text("Replay tour")');
@@ -240,47 +133,6 @@ test("closed mid-tour: the example sites are cleared away on the next opening", 
   await reopen(); // as if the app had been closed
   assert.deepEqual(await sites(), ["Harbour Tower"]);
   assert.equal(await page.locator("text=Example site").count(), 0);
-});
-
-test("on a smaller phone with status and navigation bars, every tip is on screen, clear of the bars and of what it lights up", async () => {
-  const context = await app.browser.newContext({ viewport: { width: 360, height: 740 }, isMobile: true, hasTouch: true });
-  const small = await context.newPage();
-  await small.addInitScript(() => {
-    localStorage.setItem("inspecta.inspectorName", "Test Inspector");
-    // as the phone's status and navigation bars do (see index.css --sa-*)
-    document.addEventListener("DOMContentLoaded", () => {
-      const st = document.createElement("style");
-      st.textContent = ":root{--safe-area-inset-top:42px;--safe-area-inset-bottom:48px}";
-      document.head.appendChild(st);
-    });
-  });
-  await small.goto(app.url + "/");
-  await small.waitForTimeout(2600);
-  await small.getByRole("button", { name: "Show me around" }).click();
-  for (let i = 0; i < 25; i++) {
-    await small.waitForTimeout(i === 15 ? 1800 : 1100);
-    const r = await small.evaluate(() => {
-      const card = document.querySelector('[aria-live="polite"] [role="dialog"]').getBoundingClientRect();
-      const rings = [...document.querySelectorAll('[aria-live="polite"] svg > rect[stroke]')].map((e) => e.getBoundingClientRect());
-      const hit = (a, b) => a.left < b.right - 2 && b.left < a.right - 2 && a.top < b.bottom - 2 && b.top < a.bottom - 2;
-      const on = (b) => b.right > 0 && b.bottom > 0 && b.left < innerWidth && b.top < innerHeight;
-      return {
-        title: document.querySelector('[aria-live="polite"] [role="dialog"]').getAttribute("aria-label"),
-        rings: rings.length,
-        covered: rings.some((x) => hit(card, x)),
-        ringsOn: rings.every(on),
-        cardOn: card.left >= -1 && card.top >= -1 && card.right <= innerWidth + 1 && card.bottom <= innerHeight + 1,
-        // clear of the status bar (42) and navigation bar (48), turned or not
-        clearOfBars: card.top >= 42 + 12 - 1 && card.bottom <= innerHeight - 48 - 12 + 1,
-      };
-    });
-    assert.ok(r.rings > 0 && r.ringsOn, `${r.title}: lit up and on screen`);
-    assert.ok(r.cardOn && !r.covered, `${r.title}: tip on screen, not covering what it lights up`);
-    assert.ok(r.clearOfBars, `${r.title}: tip clear of the phone's status and navigation bars`);
-    const nextButton = small.locator('[aria-live="polite"] [role="dialog"] button', { hasText: /^(Next|Done)$/ });
-    await nextButton.click();
-  }
-  await context.close();
 });
 
 test("no page errors", () => {

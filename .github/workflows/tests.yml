@@ -1,11 +1,11 @@
 name: Tests
 
-# Runs on every push, and before every APK build (build-apk.yml calls it),
-# so a broken change is caught before anyone installs it.
+# Runs before every APK build (build-apk.yml calls it), so a broken change
+# is caught before anyone installs it, and on demand (Actions → Tests → Run
+# workflow). Not on every push: that cost Actions minutes and emails mid-work.
 on:
-  push:
-  pull_request:
   workflow_call:
+  workflow_dispatch:
 
 jobs:
   test:
