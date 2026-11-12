@@ -579,7 +579,7 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack
 
 // ---- once a stair ----
 
-type OnceNum = "noiseStair" | "noiseOcc" | "ambient" | "restTime" | "pa" | "noiseRef";
+type OnceNum = "noiseStair" | "noiseOcc" | "ambient" | "restTime" | "pa" | "noiseRef" | "noiseOccMax";
 
 function Once({ section, sys, stair, stairNo, test, setTest, onBack }: Props & { section: StairSection }) {
   const once = test.once[stair.id] ?? {};
@@ -617,6 +617,7 @@ function Once({ section, sys, stair, stairNo, test, setTest, onBack }: Props & {
       const o = { ...t.once[stair.id], [f]: next };
       // a typed average or max is from a calibrated meter
       if (f === "noiseStair" || f === "noiseRef") o.noiseRefSource = "meter";
+      if (f === "noiseOcc" || f === "noiseOccMax") o.noiseOccSource = "meter";
       return { ...t, once: { ...t.once, [stair.id]: o } };
     });
   }
@@ -631,14 +632,32 @@ function Once({ section, sys, stair, stairNo, test, setTest, onBack }: Props & {
         {section === "noise" && (
           <>
             <PhoneMeter
+              title="Sound level · in the stair"
               saved={{ avg: once.noiseStair, max: once.noiseRef, meter: !!(once.noiseStair?.trim() || once.noiseRef?.trim()) && once.noiseRefSource !== "phone" }}
               limit={l.noiseStair}
               onSave={(avg, max) => set({ noiseStair: avg, noiseRef: max, noiseRefSource: avg || max ? "phone" : undefined })}
-              editing={pad?.field === "noiseStair" || pad?.field === "noiseRef" ? pad.field : null}
-              onEdit={(field) => setPad({ field, label: field === "noiseRef" ? "Max in the stair" : "Average in the stair", sub: field === "noiseRef" ? "dB(A) · from a calibrated meter" : `dB(A) · ≤ ${l.noiseStair} · from a calibrated meter` })}
+              editing={pad?.field === "noiseStair" ? "avg" : pad?.field === "noiseRef" ? "max" : null}
+              onEdit={(which) =>
+                setPad(which === "max" ? { field: "noiseRef", label: "Max in the stair", sub: "dB(A) · from a calibrated meter" } : { field: "noiseStair", label: "Average in the stair", sub: `dB(A) · ≤ ${l.noiseStair} · from a calibrated meter` })
+              }
               onListen={() => setPad(null)}
             />
-            {numField("noiseOcc", "Occupied space", l.noiseOcc === null ? "dB(A) · recorded" : `dB(A) · ≤ ${l.noiseOcc}`, l.noiseOcc)}
+            <PhoneMeter
+              title="Sound level · occupied space"
+              who="Occupied space"
+              saved={{ avg: once.noiseOcc, max: once.noiseOccMax, meter: !!(once.noiseOcc?.trim() || once.noiseOccMax?.trim()) && once.noiseOccSource !== "phone" }}
+              limit={l.noiseOcc}
+              onSave={(avg, max) => set({ noiseOcc: avg, noiseOccMax: max, noiseOccSource: avg || max ? "phone" : undefined })}
+              editing={pad?.field === "noiseOcc" ? "avg" : pad?.field === "noiseOccMax" ? "max" : null}
+              onEdit={(which) =>
+                setPad(
+                  which === "max"
+                    ? { field: "noiseOccMax", label: "Max in the occupied space", sub: "dB(A) · from a calibrated meter" }
+                    : { field: "noiseOcc", label: "Average in the occupied space", sub: `dB(A)${l.noiseOcc === null ? " · recorded" : ` · ≤ ${l.noiseOcc}`} · from a calibrated meter` },
+                )
+              }
+              onListen={() => setPad(null)}
+            />
             {numField("ambient", "Ambient, fan off", "dB(A) · recorded", null)}
           </>
         )}
@@ -748,6 +767,8 @@ function Field({ label, sub, value, onChange, onFocus }: { label: string; sub: s
 // With a calibrated meter on hand, tap Average or Max to type them instead.
 // The report says which it was. Listening again replaces typed ones.
 function PhoneMeter({
+  title,
+  who,
   saved,
   limit,
   onSave,
@@ -755,13 +776,16 @@ function PhoneMeter({
   onEdit,
   onListen,
 }: {
+  title: string;
+  who?: string; // a second card's name, before its buttons' and test ids'
   saved: { avg?: string; max?: string; meter: boolean };
-  limit: number;
+  limit: number | null; // null: recorded, no limit
   onSave: (avg: string | undefined, max: string | undefined) => void;
-  editing: "noiseStair" | "noiseRef" | null;
-  onEdit: (field: "noiseStair" | "noiseRef") => void;
+  editing: "avg" | "max" | null;
+  onEdit: (which: "avg" | "max") => void;
   onListen: () => void;
 }) {
+  const id = (t: string) => (who ? `${t}-${who.toLowerCase().replace(/\s+/g, "-")}` : t);
   const [level, setLevel] = useState<number | null>(null);
   const [raw, setRaw] = useState<number | null>(null);
   const [info, setInfo] = useState<MeterInfo | null>(null);
@@ -815,13 +839,13 @@ function PhoneMeter({
   const hasSaved = !!(saved.avg || saved.max);
   // the average against the stair's limit
   const avgNum = parseFloat(shownAvg);
-  const avgColour = Number.isNaN(avgNum) ? undefined : avgNum > limit ? FAIL : PASS;
+  const avgColour = Number.isNaN(avgNum) || limit === null ? undefined : avgNum > limit ? FAIL : PASS;
 
   return (
     <div style={{ background: "#0a2135", border: "1px dashed #2a5a82", borderRadius: 12, padding: "10px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
-        <b>Sound level</b>
-        <span data-testid="meter-source" style={{ marginLeft: "auto", fontSize: 10.5, fontWeight: 800, padding: "3px 8px", borderRadius: 999, background: !listening && saved.meter ? "rgba(var(--accent-rgb), .16)" : "rgba(139,160,181,.15)", color: !listening && saved.meter ? "var(--accent)" : "var(--muted)" }}>
+        <b>{title}</b>
+        <span data-testid={id("meter-source")} style={{ marginLeft: "auto", fontSize: 10.5, fontWeight: 800, padding: "3px 8px", borderRadius: 999, background: !listening && saved.meter ? "rgba(var(--accent-rgb), .16)" : "rgba(139,160,181,.15)", color: !listening && saved.meter ? "var(--accent)" : "var(--muted)" }}>
           {!listening && saved.meter ? "Calibrated meter" : "Indicative"}
         </span>
       </div>
@@ -830,10 +854,10 @@ function PhoneMeter({
           {listening ? level.toFixed(1) : "–"}
           <span style={{ fontSize: 12, color: "var(--muted)", marginLeft: 4 }}>dB(A)</span>
         </div>
-        <MeterStat label={`Average · ≤ ${limit}`} name="Average" value={shownAvg} colour={avgColour} active={editing === "noiseStair"} onClick={listening ? undefined : () => onEdit("noiseStair")} />
-        <MeterStat label="Max" name="Max" value={shownMax} active={editing === "noiseRef"} onClick={listening ? undefined : () => onEdit("noiseRef")} />
+        <MeterStat label={limit === null ? "Average" : `Average · ≤ ${limit}`} name={who ? `${who} average` : "Average"} value={shownAvg} colour={avgColour} active={editing === "avg"} onClick={listening ? undefined : () => onEdit("avg")} />
+        <MeterStat label="Max" name={who ? `${who} max` : "Max"} value={shownMax} active={editing === "max"} onClick={listening ? undefined : () => onEdit("max")} />
       </div>
-      <div data-testid="meter-status" style={{ fontSize: 11.5, color: "var(--muted)", fontWeight: 700, minHeight: 15 }}>
+      <div data-testid={id("meter-status")} style={{ fontSize: 11.5, color: "var(--muted)", fontWeight: 700, minHeight: 15 }}>
         {listening
           ? "Listening… Stop saves the average and max to this stair."
           : saved.meter
@@ -848,16 +872,16 @@ function PhoneMeter({
           cancelling off (a quiet room reading near 0 unweighted too means
           the phone is cleaning up the sound before the app gets it) */}
       {info && (
-        <div data-testid="meter-diagnostics" style={{ fontSize: 10.5, color: "var(--muted)", fontWeight: 700, lineHeight: 1.4 }}>
+        <div data-testid={id("meter-diagnostics")} style={{ fontSize: 10.5, color: "var(--muted)", fontWeight: 700, lineHeight: 1.4 }}>
           Unweighted {listening && raw !== null ? `${raw.toFixed(1)} dB` : "–"} · Noise suppr. {onOff(info.noiseSuppression)} · Auto gain {onOff(info.autoGainControl)} · Echo cancel {onOff(info.echoCancellation)} · {Math.round(info.sampleRate / 100) / 10} kHz
         </div>
       )}
       <div style={{ display: "flex", gap: 6 }}>
-        <MeterButton onClick={() => void toggle()} on={listening}>
+        <MeterButton onClick={() => void toggle()} on={listening} label={who ? `${who}: ${listening ? "Stop" : "Listen"}` : undefined}>
           {listening ? "Stop" : "Listen"}
         </MeterButton>
         {!listening && hasSaved && (
-          <MeterButton small label="Clear the saved reading" onClick={() => onSave(undefined, undefined)}>
+          <MeterButton small label={who ? `Clear the ${who.toLowerCase()} reading` : "Clear the saved reading"} onClick={() => onSave(undefined, undefined)}>
             Clear
           </MeterButton>
         )}

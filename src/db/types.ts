@@ -241,7 +241,9 @@ export interface StairDoor {
 export interface StairOnce {
   noiseLevel?: string; // no longer asked for: the noisiest door, on older tests
   noiseStair?: string; // dB(A): the average in the stair, the result judged against the limit
-  noiseOcc?: string; // dB(A), occupied space
+  noiseOcc?: string; // dB(A): the average in the occupied space, judged against its limit
+  noiseOccMax?: string; // dB(A): the max there, alongside the average
+  noiseOccSource?: "phone" | "meter"; // as noiseRefSource; absent = typed before the phone meter, a calibrated meter
   noiseRef?: string; // dB(A): the max in the stair, alongside the average
   noiseRefSource?: "phone" | "meter"; // where the average and max came from (phone: indicative only); absent = typed before the phone meter, a calibrated meter
   ambient?: string; // dB(A), the fan off; taken again at a noisier door

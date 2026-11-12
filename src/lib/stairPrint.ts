@@ -69,6 +69,21 @@ export interface StairPage {
 
 export const STAIR_HEAD = ["Level", "Adjacent door open", "Average velocity m/s (min 1)", "Door closes and latches", "Door opening force N (max 110)"];
 
+// the occupied space's noise, as the stair's: its average judged against the
+// limit (just recorded before 1998), the max and where they came from under it
+const occupiedBox = (once: StairOnce, l: ReturnType<typeof limits>): StairBox => {
+  const avg = (once.noiseOcc ?? "").trim();
+  const max = (once.noiseOccMax ?? "").trim();
+  const from = once.noiseOccSource === "phone" ? "indicative (phone)" : once.noiseOccSource === "meter" ? "calibrated meter" : "";
+  const ref = [max && `max ${max} dB(A)`, avg && from].filter(Boolean) as string[];
+  return {
+    label: "Noise, occupied space (average)",
+    value: avg ? `${avg} dB(A)${l.noiseOcc === null ? "" : Number(avg) > l.noiseOcc ? " ✗" : " ✓"}` : "",
+    fail: l.noiseOcc !== null && Number(avg) > l.noiseOcc,
+    ref: ref.length ? ref : undefined,
+  };
+};
+
 // under the stair's average noise: the max, where they came from (the
 // phone's are indicative only), and the ambient (fan off)
 const noiseRef = (once: StairOnce) => {
@@ -135,7 +150,7 @@ function generalPages(test: StairTest, sys: SpfSystem, site: Pick<Site, "name" |
     if (has("noise")) {
       const noise = onceStatus("noise", once, sys);
       boxes.push({ label: "Noise, stair (average)", value: n(once.noiseStair) ? `${n(once.noiseStair)} dB(A) ${Number(once.noiseStair) > l.noiseStair ? "✗" : "✓"}` : "", fail: noise.fail && Number(once.noiseStair) > l.noiseStair, ref: noiseRef(once) });
-      boxes.push({ label: "Max noise, occupied space", value: n(once.noiseOcc) ? `${n(once.noiseOcc)} dB(A)${l.noiseOcc === null ? "" : Number(once.noiseOcc) > l.noiseOcc ? " ✗" : " ✓"}` : "", fail: l.noiseOcc !== null && Number(once.noiseOcc) > l.noiseOcc });
+      boxes.push(occupiedBox(once, l));
     }
     if (has("rest")) {
       const rest = onceStatus("rest", once, sys);
@@ -207,7 +222,7 @@ export function stairPages(test: StairTest, sys: SpfSystem, site: Pick<Site, "na
     const n = (v?: string) => (v ?? "").trim();
     const boxes: StairBox[] = [
       { label: "Noise, stair (average)", value: has("noise") && n(once.noiseStair) ? `${n(once.noiseStair)} dB(A) ${Number(once.noiseStair) > l.noiseStair ? "✗" : "✓"}` : "", fail: noise.fail && Number(once.noiseStair) > l.noiseStair, ref: has("noise") ? noiseRef(once) : undefined },
-      { label: "Max noise, occupied space", value: has("noise") && n(once.noiseOcc) ? `${n(once.noiseOcc)} dB(A)${l.noiseOcc === null ? "" : Number(once.noiseOcc) > l.noiseOcc ? " ✗" : " ✓"}` : "", fail: l.noiseOcc !== null && Number(once.noiseOcc) > l.noiseOcc },
+      has("noise") ? occupiedBox(once, l) : { label: "Noise, occupied space (average)", value: "" },
       { label: "Pressure restoration", value: has("rest") ? rest.text : "", fail: rest.fail },
       { label: "Stair, all doors closed", value: has("pa") ? pa.text : "", fail: pa.fail },
     ];

@@ -52,7 +52,7 @@ const savedOnce = () =>
 test("Listen shows the level, average and max, with the diagnostics line", async () => {
   await go(page, app, "/site/s1/spf/t1/noise?stair=st1", 1200);
   assert.equal(await page.getByRole("button", { name: /^[−+]1$/ }).count(), 0, "no calibration nudges");
-  await page.getByRole("button", { name: "Listen" }).click();
+  await page.getByRole("button", { name: "Listen", exact: true }).click();
   await page.getByTestId("meter-diagnostics").waitFor();
   const text = await page.getByTestId("meter-diagnostics").innerText();
   assert.match(text, /Noise suppr\. (off|ON|\?)/);
@@ -66,7 +66,7 @@ test("Listen shows the level, average and max, with the diagnostics line", async
 });
 
 test("Stop saves the average and max to the stair; Clear takes them off", async () => {
-  await page.getByRole("button", { name: "Stop" }).click();
+  await page.getByRole("button", { name: "Stop", exact: true }).click();
   await page.getByText("Saved to this stair").waitFor();
   await page.waitForTimeout(800);
   const once = await savedOnce();
@@ -76,7 +76,7 @@ test("Stop saves the average and max to the stair; Clear takes them off", async 
   await go(page, app, "/site/s1/spf/t1/noise?stair=st1", 1200);
   assert.equal(await stat("Max"), once.noiseRef);
   assert.equal(await stat("Average · ≤ 80"), once.noiseStair);
-  await page.getByRole("button", { name: "Clear the saved reading" }).click();
+  await page.getByRole("button", { name: "Clear the saved reading", exact: true }).click();
   await page.waitForTimeout(800);
   const cleared = await savedOnce();
   assert.equal(cleared.noiseRef, undefined);
@@ -87,9 +87,9 @@ test("Stop saves the average and max to the stair; Clear takes them off", async 
 test("with a calibrated meter on hand: tap Average or Max and type them", async () => {
   assert.equal(await page.getByTestId("meter-source").innerText(), "Indicative");
   assert.equal(await page.getByRole("button", { name: "In the stair" }).count(), 0, "the average is the stair's reading now");
-  await page.getByRole("button", { name: "Average, dB(A)" }).click();
+  await page.getByRole("button", { name: "Average, dB(A)", exact: true }).click();
   for (const k of ["5", "8", ".", "2"]) await page.getByRole("button", { name: k, exact: true }).dispatchEvent("pointerdown");
-  await page.getByRole("button", { name: "Max, dB(A)" }).click();
+  await page.getByRole("button", { name: "Max, dB(A)", exact: true }).click();
   for (const k of ["6", "7"]) await page.getByRole("button", { name: k, exact: true }).dispatchEvent("pointerdown");
   await page.getByRole("button", { name: "Done" }).dispatchEvent("pointerdown");
   await page.waitForTimeout(800);
@@ -105,15 +105,32 @@ test("the report says which it was", async () => {
   assert.match(sheet, /Noise, stair \(average\)\s+58\.2 dB\(A\) ✓[\s\S]*max 67 dB\(A\)[\s\S]*calibrated meter/);
   // listening with the phone again replaces them, as indicative
   await go(page, app, "/site/s1/spf/t1/noise?stair=st1", 1200);
-  await page.getByRole("button", { name: "Listen" }).click();
+  await page.getByRole("button", { name: "Listen", exact: true }).click();
   await page.waitForTimeout(1500);
-  await page.getByRole("button", { name: "Stop" }).click();
+  await page.getByRole("button", { name: "Stop", exact: true }).click();
   await page.waitForTimeout(800);
   assert.equal((await savedOnce()).noiseRefSource, "phone");
   assert.equal(await page.getByTestId("meter-source").innerText(), "Indicative");
   await go(page, app, "/site/s1/spf/t1", 1200);
   await page.getByRole("button", { name: "Preview the report" }).click();
   assert.match(await page.getByTestId("spf-page").innerText(), /Noise, stair \(average\)\s+[\d.]+ dB\(A\) [✓✗][\s\S]*max [\d.]+ dB\(A\)[\s\S]*indicative \(phone\)/);
+});
+
+test("occupied space works the same: an average and max, typed or from the phone", async () => {
+  await go(page, app, "/site/s1/spf/t1/noise?stair=st1", 1200);
+  assert.equal(await page.getByTestId("meter-source-occupied-space").innerText(), "Indicative");
+  await page.getByRole("button", { name: "Occupied space average, dB(A)" }).click();
+  for (const k of ["5", "2"]) await page.getByRole("button", { name: k, exact: true }).dispatchEvent("pointerdown");
+  await page.getByRole("button", { name: "Occupied space max, dB(A)" }).click();
+  for (const k of ["6", "0"]) await page.getByRole("button", { name: k, exact: true }).dispatchEvent("pointerdown");
+  await page.getByRole("button", { name: "Done" }).dispatchEvent("pointerdown");
+  await page.waitForTimeout(800);
+  assert.equal(await page.getByTestId("meter-source-occupied-space").innerText(), "Calibrated meter");
+  const once = await savedOnce();
+  assert.deepEqual([once.noiseOcc, once.noiseOccMax, once.noiseOccSource], ["52", "60", "meter"]);
+  await go(page, app, "/site/s1/spf/t1", 1200);
+  await page.getByRole("button", { name: "Preview the report" }).click();
+  assert.match(await page.getByTestId("spf-page").first().innerText(), /Noise, occupied space \(average\)\s+52 dB\(A\) ✓\s*max 60 dB\(A\)\s*calibrated meter/);
 });
 
 test("no page errors", () => {
