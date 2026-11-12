@@ -14,8 +14,7 @@ import { PageHeader, Pill } from "../components/StairUi";
 // set for the site, so it only asks what's being tested. Before the system
 // is set up it shows the order as numbered steps (canvas SpfSetupFirst,
 // option A): 1 · set up the system, 2 · what you're testing, greyed out
-// until then. An AFSS site starts on Annual Testing instead (its stair test
-// is the annual one). Starting opens the test's overview.
+// until then. Starting opens the test's overview.
 
 const stepNum = (on: boolean): CSSProperties => ({
   width: 24,
@@ -60,12 +59,7 @@ export default function StairNew() {
   const kinds = kindsFor(useFlowMode());
 
   useEffect(() => {
-    if (siteId)
-      void getSite(siteId).then((s) => {
-        setSite(s ?? null);
-        // an AFSS site's stair test is its annual one (as + Add a test says there)
-        if (s?.kind === "afss") setKind("annual");
-      });
+    if (siteId) void getSite(siteId).then((s) => setSite(s ?? null));
   }, [siteId]);
 
   const ready = !!site?.spf?.stairs.length;
