@@ -177,7 +177,8 @@ test("an AFSS site: Other tests, + Add a test, and the export chooser", async ()
   await page.getByRole("button", { name: "+ Add a test" }).click();
   const sheet = await page.locator(".sheet-panel").innerText();
   assert.match(sheet, /Flow test/);
-  assert.match(sheet, /Stair pressurisation \(SPF\)[\s\S]*Set to Annual Testing for the AFSS/);
+  assert.match(sheet, /Stair pressurisation \(SPF\)/);
+  assert.ok(!sheet.includes("Set to Annual Testing"));
   await page.getByRole("button", { name: "Cancel" }).click();
   await page.getByRole("button", { name: "Export Other Tests Only" }).click();
   assert.match(await page.locator(".sheet-panel").innerText(), /Export tests[\s\S]*All tests[\s\S]*Sprinkler/);
