@@ -3,7 +3,7 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import type { StairSection } from "../db/types";
 import { ALL_SECTIONS, doorStats, KIND_LABEL, onceStatus, runCount, SECTION, stairDoors } from "../lib/stairTest";
 import { useBackHandler } from "../lib/backButton";
-import { card, cardLabel, fieldInput, PageHeader, Pill, StairName, useStairTest } from "../components/StairUi";
+import { card, cardLabel, fieldInput, PageHeader, Pill, StairChin, StairName, useStairTest } from "../components/StairUi";
 import ConfirmDialog from "../components/ConfirmDialog";
 import SwipeRow from "../components/SwipeRow";
 import { saveSiteSpf } from "../db/db";
@@ -30,12 +30,18 @@ export default function StairTestPage() {
   // the test being taken off (asked first), and whether it has readings
   const [dropping, setDropping] = useState<{ s: StairSection; read: boolean } | null>(null);
   const [openSwipe, setOpenSwipe] = useState<StairSection | null>(null);
+  // a note's ✕ asks first
+  const [deletingNote, setDeletingNote] = useState<number | null>(null);
 
   const back = () => {
     flush();
     navigate(`/site/${siteId}/findings?tab=flow`);
   };
   useBackHandler(() => {
+    if (deletingNote !== null) {
+      setDeletingNote(null);
+      return true;
+    }
     if (dropping) {
       setDropping(null);
       return true;
@@ -186,7 +192,8 @@ export default function StairTestPage() {
               <span style={{ color: "var(--muted-2)", fontSize: 18 }}>›</span>
             </button>
           </div>
-          <div style={{ flexShrink: 0, padding: "10px 16px calc(24px + env(safe-area-inset-bottom))" }}>
+          <div style={{ flexShrink: 0, padding: "10px 16px calc(24px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 10 }}>
+            <StairChin stairs={stairs} i={stairs.indexOf(stair)} onGo={(k) => setParams({ stair: stairs[k].id }, { replace: true })} />
             <button
               onClick={() => {
                 flush();
@@ -212,6 +219,20 @@ export default function StairTestPage() {
             navigate(`/site/${siteId}/spf/${testId}/report`);
           }}
         />
+      )}
+
+      {deletingNote !== null && (
+        <div style={{ position: "absolute", inset: 0, zIndex: 8 }}>
+          <ConfirmDialog
+            title={`Delete note ${deletingNote + 1}?`}
+            message="It comes off this test and its report."
+            onCancel={() => setDeletingNote(null)}
+            onConfirm={() => {
+              setTest((t) => ({ ...t, notes: t.notes.filter((_, j) => j !== deletingNote) }));
+              setDeletingNote(null);
+            }}
+          />
+        </div>
       )}
 
       {dropping && (
@@ -244,7 +265,7 @@ export default function StairTestPage() {
                     onChange={(e) => setTest((t) => ({ ...t, notes: t.notes.map((x, j) => (j === i ? { ...x, location: e.target.value } : x)) }))}
                     style={{ ...fieldInput, flex: 1, padding: "7px 9px", fontSize: 13 }}
                   />
-                  <button aria-label={`Delete note ${i + 1}`} onClick={() => setTest((t) => ({ ...t, notes: t.notes.filter((_, j) => j !== i) }))} style={{ border: "none", background: "none", color: "var(--muted-2)", fontSize: 15 }}>
+                  <button aria-label={`Delete note ${i + 1}`} onClick={() => setDeletingNote(i)} style={{ border: "none", background: "none", color: "var(--muted-2)", fontSize: 15 }}>
                     ✕
                   </button>
                 </div>

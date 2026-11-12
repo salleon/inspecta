@@ -196,6 +196,33 @@ test("many doors on a level: each keeps a usable width, and the row scrolls side
   await tap(["Done"]);
 });
 
+test("the chin bar: swipe to the next stair and stay on the same level, keypad open", async () => {
+  const chin = page.getByTestId("stair-chin");
+  const swipe = async (dx) => {
+    const box = await chin.boundingBox();
+    const y = box.y + box.height / 2;
+    await page.mouse.move(box.x + box.width / 2, y);
+    await page.mouse.down();
+    for (let i = 1; i <= 8; i++) await page.mouse.move(box.x + box.width / 2 + (dx * i) / 8, y);
+    await page.mouse.up();
+  };
+  // from SPF 2 back to SPF 1: a swipe right
+  await swipe(120);
+  await page.getByText("Velocity · SPF 1").waitFor();
+  await page.getByRole("button", { name: "Level P3", exact: true }).click();
+  await page.getByTestId("spf-value").waitFor();
+  // the bar rides on the keypad
+  const [bar, pad] = await Promise.all([chin.boundingBox(), page.locator(".np").boundingBox()]);
+  assert.ok(bar.y + bar.height <= pad.y, "above the keypad");
+  // on to SPF 2: still on P3, keypad still open
+  await swipe(-120);
+  await page.getByText("Velocity · SPF 2").waitFor();
+  assert.match(page.url(), /stair=s2/);
+  await page.getByTestId("spf-value").waitFor();
+  assert.match(await page.locator(".np").innerText(), /P3/);
+  await tap(["Done"]);
+});
+
 test("Review level layout: groups that open, and P to B offers to change the rest", async () => {
   await go(page, app, "/site/g1/spf-system", 1200);
   // a big group starts closed, a small one open

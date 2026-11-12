@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import type { SpfStair, SpfSystem, StairDoor, StairOnce, StairSection, StairTest, Tick } from "../db/types";
 import {
@@ -32,7 +32,7 @@ import {
 } from "../lib/stairTest";
 import { startMeter, type Meter, type MeterInfo } from "../lib/soundMeter";
 import { useBackHandler } from "../lib/backButton";
-import { AMBER, PageHeader, StairName, useStairTest } from "../components/StairUi";
+import { AMBER, PageHeader, StairChin, StairName, useStairTest } from "../components/StairUi";
 import NumPad, { BLANK, k, numberKeys, PadTag, readingKeys } from "../components/NumPad";
 import ConfirmDialog from "../components/ConfirmDialog";
 
@@ -94,7 +94,7 @@ export default function StairSectionPage() {
       }}
     />
   ) : (
-    <Once section={section} sys={sys} stair={stair} stairNo={i} test={test} setTest={setTest} onBack={leave} />
+    <Once section={section} sys={sys} stair={stair} stairNo={i} test={test} setTest={setTest} onBack={leave} onStair={(id) => setParams(query(id, run), { replace: true })} />
   );
 }
 
@@ -114,11 +114,25 @@ const chip = (on: boolean, dashed = false) =>
     color: on ? "#d6c4ff" : dashed ? "var(--muted)" : "#bfd0de",
   }) as const;
 
+// Where you were on the readings screen, carried to the stair you move to
+// (chin bar or stair cards): the level being typed, the keypad still open
+// (the same level there, else the one in the same place), or how far down
+// the list was scrolled.
+let carried: { level: string; li: number; scroll: number } | null = null;
+
 function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack, run, onStair, onRun, onSection }: EveryProps) {
   const general = test.kind === "general";
   const levels = stairLevels(stair);
   const mine = runDoors(test, run)[stair.id] ?? {};
-  const [cur, setCur] = useState<{ li: number; n: number } | null>(null);
+  const [cur, setCur] = useState<{ li: number; n: number } | null>(() => {
+    if (!carried || carried.li < 0) return null;
+    const li = levels.indexOf(carried.level);
+    return { li: li >= 0 ? li : Math.min(carried.li, levels.length - 1), n: 0 };
+  });
+  const goStair = (id: string) => {
+    carried = { level: cur ? levels[cur.li] : "", li: cur ? cur.li : -1, scroll: list.current?.scrollTop ?? 0 };
+    onStair(id);
+  };
   const [flash, setFlash] = useState<string | null>(null);
   const [sheet, setSheet] = useState<{ edit: boolean; text: string } | null>(null);
   const [adding, setAdding] = useState(false);
@@ -145,7 +159,7 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack
     if (!row) return;
     const box = list.current.getBoundingClientRect();
     const r = row.getBoundingClientRect();
-    const visible = box.height - 330;
+    const visible = box.height - 400; // above the keypad and the chin bar
     if (r.top < box.top || r.bottom > box.top + visible) list.current.scrollTop += r.top - box.top - Math.max(0, visible - 3 * r.height);
     // and, on a level with more doors than fit, the door being typed
     const door = row.querySelector<HTMLElement>("[data-editing]");
@@ -157,6 +171,13 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack
       else if (d.right > sr.right) strip.scrollLeft += d.right - sr.right + 24;
     }
   }, [cur]);
+
+  // arriving from another stair with the keypad closed: as far down the list as there
+  useLayoutEffect(() => {
+    if (!carried) return;
+    if (carried.li < 0 && list.current) list.current.scrollTop = carried.scroll;
+    carried = null;
+  }, []);
 
   // a door's reading in this run, from the latest so quick taps never drop a digit
   const write = (key: string, change: (d: StairDoor) => StairDoor | null) =>
@@ -286,7 +307,7 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack
               return (
                 <button
                   key={st.id}
-                  onClick={() => onStair(st.id)}
+                  onClick={() => goStair(st.id)}
                   style={{ flex: "1 0 auto", minWidth: 84, textAlign: "left", padding: "7px 10px", borderRadius: 10, background: on ? "rgba(177,140,255,.18)" : "var(--panel)", border: on ? "1px solid #b18cff" : "1px solid var(--border-strong)", color: "var(--text)" }}
                 >
                   <b style={{ display: "block", fontSize: 12.5, whiteSpace: "nowrap" }}>
@@ -397,7 +418,7 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack
           <span />
         </div>
       </div>
-      <div ref={list} style={{ flexGrow: 1, overflowY: "auto", padding: `0 14px ${cur === null ? 20 : 360}px`, display: "flex", flexDirection: "column", gap: 6 }}>
+      <div ref={list} style={{ flexGrow: 1, overflowY: "auto", padding: `0 14px ${cur === null ? 90 : 430}px`, display: "flex", flexDirection: "column", gap: 6 }}>
         {levels.map((level, li) => {
           const of = doorsAt(stair, level);
           return (
@@ -469,6 +490,8 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack
         })}
       </div>
 
+      {/* out of the way while a sheet or question is up */}
+      {!sheet && !adding && !ask && <StairChin floating stairs={sys.stairs} i={stairNo} onGo={(k) => goStair(sys.stairs[k].id)} sub={`${stats.done} of ${stats.total} doors`} />}
       {cur !== null && (
         <NumPad
           tint="spf"
@@ -581,7 +604,7 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack
 
 type OnceNum = "noiseStair" | "noiseOcc" | "ambient" | "restTime" | "pa" | "noiseRef" | "noiseOccMax";
 
-function Once({ section, sys, stair, stairNo, test, setTest, onBack }: Props & { section: StairSection }) {
+function Once({ section, sys, stair, stairNo, test, setTest, onBack, onStair }: Props & { section: StairSection; onStair: (id: string) => void }) {
   const once = test.once[stair.id] ?? {};
   const l = limits(sys);
   const [pad, setPad] = useState<{ field: OnceNum; label: string; sub: string } | null>(null);
@@ -628,7 +651,7 @@ function Once({ section, sys, stair, stairNo, test, setTest, onBack }: Props & {
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
       <PageHeader title={SECTION[section].name} sub={<StairName stair={stair} i={stairNo} />} onBack={onBack} />
-      <div style={{ flexGrow: 1, overflowY: "auto", padding: `4px 14px ${pad ? 360 : 16}px`, display: "flex", flexDirection: "column", gap: 7 }}>
+      <div style={{ flexGrow: 1, overflowY: "auto", padding: `4px 14px ${pad ? 430 : 86}px`, display: "flex", flexDirection: "column", gap: 7 }}>
         {section === "noise" && (
           <>
             <PhoneMeter
@@ -702,6 +725,7 @@ function Once({ section, sys, stair, stairNo, test, setTest, onBack }: Props & {
           </button>
         </div>
       )}
+      <StairChin floating stairs={sys.stairs} i={stairNo} onGo={(k) => onStair(sys.stairs[k].id)} />
       {pad && (
         <NumPad
           tint="spf"

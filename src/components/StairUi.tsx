@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { Site, SpfStair, SpfSystem, StairTest } from "../db/types";
 import { getSite, getStairTest, saveSiteSpf, saveStairTest } from "../db/db";
 import { doorsOpen, fanIsDefault, fanName, limitTiles, wellIsDefault, wellName } from "../lib/stairTest";
@@ -182,4 +182,103 @@ export function useStairTest(siteId: string | undefined, testId: string | undefi
   }, []);
 
   return { site, test, setTest, setSpf, flush };
+}
+
+// The chin bar (design: "carousel"): the stair being tested, with the stairs
+// either side peeking in at the edges and a dot per stair. Swipe it sideways
+// (or tap a peeking stair) to move to the next or previous stair, one-handed.
+// Floating, it sits at the bottom of the screen, or just above the keypad
+// while one is open (a sibling .np), so a reading can be typed and the stair
+// changed without reaching up.
+export function StairChin({ stairs, i, onGo, sub, floating = false }: { stairs: SpfStair[]; i: number; onGo: (i: number) => void; sub?: string; floating?: boolean }) {
+  const root = useRef<HTMLDivElement>(null);
+  const [bottom, setBottom] = useState<number | null>(null);
+  const [dx, setDx] = useState(0);
+  const drag = useRef<{ x: number; y: number; on: boolean } | null>(null);
+  useLayoutEffect(() => {
+    if (!floating) return;
+    const pad = root.current?.parentElement?.querySelector<HTMLElement>(".np");
+    const b = pad ? pad.offsetHeight + 8 : null;
+    if (b !== bottom) setBottom(b);
+  });
+  if (stairs.length < 2) return null;
+  const prev = i > 0 ? stairs[i - 1] : null;
+  const next = i < stairs.length - 1 ? stairs[i + 1] : null;
+  const peek = (st: SpfStair | null, k: number, side: "left" | "right") =>
+    st ? (
+      <button
+        aria-label={`${side === "left" ? "Previous" : "Next"} stair: ${fanName(st, k)} · ${wellName(st, k)}`}
+        onClick={() => onGo(k)}
+        style={{ flex: "0 0 84px", alignSelf: "stretch", border: "none", background: "none", padding: side === "left" ? "0 0 0 12px" : "0 12px 0 0", textAlign: side, color: "#8ba0b5", fontSize: 12, fontWeight: 800, lineHeight: 1.2, WebkitMaskImage: `linear-gradient(${side === "left" ? 90 : 270}deg, transparent, #000 75%)`, maskImage: `linear-gradient(${side === "left" ? 90 : 270}deg, transparent, #000 75%)` }}
+      >
+        {fanName(st, k)}
+        <span style={{ display: "block", fontSize: 10, fontWeight: 700 }}>{wellName(st, k)}</span>
+      </button>
+    ) : (
+      <span style={{ flex: "0 0 84px" }} />
+    );
+  return (
+    <div
+      ref={root}
+      data-testid="stair-chin"
+      onPointerDown={(e) => (drag.current = { x: e.clientX, y: e.clientY, on: false })}
+      onPointerMove={(e) => {
+        const d = drag.current;
+        if (!d) return;
+        const mx = e.clientX - d.x;
+        if (!d.on) {
+          if (Math.abs(mx) < 8 || Math.abs(mx) < Math.abs(e.clientY - d.y)) return;
+          d.on = true;
+          e.currentTarget.setPointerCapture(e.pointerId);
+        }
+        // a little give at the ends
+        setDx(Math.max(-90, Math.min(90, (mx < 0 && !next) || (mx > 0 && !prev) ? mx / 4 : mx)));
+      }}
+      onPointerUp={() => {
+        const d = drag.current;
+        drag.current = null;
+        if (d?.on) {
+          if (dx < -40 && next) onGo(i + 1);
+          else if (dx > 40 && prev) onGo(i - 1);
+        }
+        setDx(0);
+      }}
+      onPointerCancel={() => {
+        drag.current = null;
+        setDx(0);
+      }}
+      onClickCapture={(e) => {
+        // a swipe that ends on a peeking stair isn't a tap on it
+        if (dx !== 0) e.stopPropagation();
+      }}
+      style={{
+        ...(floating ? { position: "absolute", left: 10, right: 10, bottom: bottom ?? "calc(14px + env(safe-area-inset-bottom))", zIndex: 30 } : {}),
+        flexShrink: 0,
+        height: 56,
+        borderRadius: 16,
+        background: "#12304b",
+        border: "1px solid #2a5a82",
+        boxShadow: "0 -6px 20px rgba(0,0,0,.35)",
+        overflow: "hidden",
+        touchAction: "pan-y",
+        userSelect: "none",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", height: "100%", transform: `translateX(${dx}px)`, transition: dx ? "none" : "transform 200ms ease-out" }}>
+        {peek(prev, i - 1, "left")}
+        <span style={{ flex: 1, minWidth: 0, textAlign: "center", lineHeight: 1.15, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          <b style={{ fontSize: 15 }}>
+            <StairName stair={stairs[i]} i={i} />
+          </b>
+          {sub && <span style={{ display: "block", fontSize: 10.5, color: "#8ba0b5", fontWeight: 700 }}>{sub}</span>}
+        </span>
+        {peek(next, i + 1, "right")}
+      </div>
+      <span style={{ position: "absolute", left: "50%", bottom: 5, transform: "translateX(-50%)", display: "flex", gap: 4, pointerEvents: "none" }}>
+        {stairs.map((st, k) => (
+          <i key={st.id} style={{ width: k === i ? 14 : 5, height: 4, borderRadius: 2, background: k === i ? "#5ff0e0" : "#3f5a74" }} />
+        ))}
+      </span>
+    </div>
+  );
 }
