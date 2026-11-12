@@ -164,7 +164,7 @@ function drawPage(doc: JsPDF, page: StairPage, logo: Logo) {
   };
   if (page.tables) {
     for (const t of page.tables) {
-      // level, then the stairs' doors in equal columns (not stretched when there are only a few)
+      // level, then the runs in equal columns (not stretched when there are only a few)
       const each = Math.min(90, (width - 60) / Math.max(1, t.head.length - 1));
       table(t.head, t.rows, [60, ...t.head.slice(1).map(() => each)], t.title);
     }
@@ -186,6 +186,7 @@ function drawPage(doc: JsPDF, page: StairPage, logo: Logo) {
     text.forEach((t, i) => doc.text(t, M, y + 11 + i * 10));
     y += 16 + Math.max(1, text.length) * 10;
   };
+  if (page.runs?.length) block("Runs", page.runs);
   if (page.readings?.length) block("Other readings", page.readings);
   if (page.fanLabel) block(page.fanLabel, [page.fan || " "]);
   if (page.quick !== null) block("Three-monthly check (AS 1851-2012 Table 13.4.2.2)", [page.quick || " "]);

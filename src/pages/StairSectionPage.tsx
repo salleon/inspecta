@@ -15,7 +15,7 @@ import {
   doorValue,
   FAN_CHECKS,
   FAN_SOURCE,
-  GENERAL_EXTRA,
+  GENERAL_SECTIONS,
   isCustomLevel,
   KIND_LABEL,
   latestDoor,
@@ -147,6 +147,15 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack
     const r = row.getBoundingClientRect();
     const visible = box.height - 330;
     if (r.top < box.top || r.bottom > box.top + visible) list.current.scrollTop += r.top - box.top - Math.max(0, visible - 3 * r.height);
+    // and, on a level with more doors than fit, the door being typed
+    const door = row.querySelector<HTMLElement>("[data-editing]");
+    const strip = door?.parentElement;
+    if (door && strip) {
+      const d = door.getBoundingClientRect();
+      const sr = strip.getBoundingClientRect();
+      if (d.left < sr.left) strip.scrollLeft -= sr.left - d.left;
+      else if (d.right > sr.right) strip.scrollLeft += d.right - sr.right + 24;
+    }
   }, [cur]);
 
   // a door's reading in this run, from the latest so quick taps never drop a digit
@@ -254,7 +263,7 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack
   const before = cur !== null && run > 0 ? doorValue(section, latestDoor(test, stair.id, curKey, section, run - 1)) : "";
   const rule = (b: ReactNode) => <b style={{ color: "#ffd9a8" }}>{b}</b>;
   const colour = (d: StairDoor | undefined) => (doorFails(section, d, sys) ? FAIL : doorMarginal(section, d, sys) ? WARN : PASS);
-  const missing = GENERAL_EXTRA.filter((s) => !test.sections.includes(s));
+  const missing = GENERAL_SECTIONS.filter((s) => !test.sections.includes(s));
   const lead = section === "vel" ? "44px 44px" : "44px";
 
   return (
@@ -395,7 +404,8 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack
             <div key={level} data-i={li} style={{ display: "grid", gridTemplateColumns: `${lead} 1fr 54px`, gap: 6, alignItems: "center", flexShrink: 0 }}>
               <span style={{ height: 40, borderRadius: 8, background: "var(--panel-2)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 14, overflow: "hidden", whiteSpace: "nowrap" }}>{levelChip(level)}</span>
               {section === "vel" && <span style={{ fontSize: 12.5, color: "var(--muted)", fontWeight: 700, textAlign: "center" }}>{adjacentDoor(levels, li, sys) || "–"}</span>}
-              <span style={{ display: "flex", gap: 6, minWidth: 0 }}>
+              {/* each door at a usable width; more than fit scroll sideways, faded at the edge */}
+              <span className="door-row" style={{ display: "flex", gap: 6, minWidth: 0, overflowX: "auto", scrollbarWidth: "none", maskImage: of > 3 ? "linear-gradient(90deg, #000 85%, transparent)" : undefined }}>
                 {Array.from({ length: of }, (_, n) => {
                   const dk = doorKey(level, n);
                   const d = mine[dk];
@@ -409,8 +419,9 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack
                       key={n}
                       aria-label={`${isCustomLevel(level) ? level : `Level ${level}`}${of > 1 ? ` door ${doorLetter(n)}` : ""}`}
                       onClick={() => setCur({ li, n })}
+                      data-editing={editing || undefined}
                       style={{
-                        flex: "1 1 0",
+                        flex: of > 1 ? "1 0 72px" : "1 1 0",
                         minWidth: 0,
                         height: 40,
                         display: "flex",

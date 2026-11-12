@@ -37,21 +37,28 @@ after(async () => {
   await app?.close();
 });
 
-test("the kinds: General first; Contractor mode adds Commissioning and the Three-monthly check", async () => {
+test("the kinds: General first and picked, Commissioning last; Contractor adds the Three-monthly check; no Custom", async () => {
   await go(page, app, "/site/g1/spf/new", 1200);
-  const kinds = async () => (await page.getByRole("radio").allInnerTexts()).map((t) => t.split("\n")[0]);
-  assert.deepEqual(await kinds(), ["General system testing", "Annual Testing", "Custom"]);
+  const kinds = async () => (await page.getByRole("radio").allInnerTexts()).map((t) => t.split("\n")[0].replace(/\s*Contractor$/, ""));
+  assert.deepEqual(await kinds(), ["General system testing", "Annual Testing", "Commissioning"]);
+  assert.equal(await page.getByRole("radio", { name: /General system testing/ }).getAttribute("aria-checked"), "true");
   await page.evaluate(() => localStorage.setItem("inspecta.flowMode", "contractor"));
   await go(page, app, "/site/g1/spf/new", 1200);
-  assert.deepEqual(await kinds(), ["General system testing", "Annual Testing", "Commissioning", "Three-monthly check", "Custom"]);
+  assert.deepEqual(await kinds(), ["General system testing", "Annual Testing", "Three-monthly check", "Commissioning"]);
   await page.evaluate(() => localStorage.removeItem("inspecta.flowMode"));
   await go(page, app, "/site/g1/spf/new", 1200);
 });
 
-test("General system testing starts on its velocities, with other tests to add", async () => {
-  await page.getByRole("radio", { name: /General system testing/ }).click({ position: { x: 30, y: 16 } });
-  assert.match(await page.getByRole("radio", { name: /General system testing/ }).innerText(), /Velocity[\s\S]*\+\s*Door force[\s\S]*\+\s*Noise/);
-  await page.getByRole("button", { name: "Start ›" }).click();
+test("General system testing: any tests, none ticked to start; Start opens the overview", async () => {
+  const general = page.getByRole("radio", { name: /General system testing/ });
+  assert.match(await general.innerText(), /Velocity\s*Door force\s*Door closes & latches\s*Noise\s*Pressure restoration\s*Stair pressure, doors closed\s*Fan checks/);
+  assert.equal(await general.locator('button[aria-pressed="true"]').count(), 0, "nothing ticked");
+  assert.ok(await page.getByRole("button", { name: "Pick what you're testing" }).isDisabled());
+  await general.getByRole("button", { name: "Velocity" }).click();
+  await page.getByRole("button", { name: "Start · 1 test ›" }).click();
+  // the overview first, then into its velocities
+  await page.getByRole("button", { name: "Preview the report" }).waitFor();
+  await page.getByRole("button", { name: /^\S+ Velocity/ }).click();
   await page.waitForURL(/\/spf\/[^/]+\/vel/);
   await page.getByTestId("spf-runs").waitFor();
   assert.match(await page.locator("body").innerText(), /General system testing\s*Velocity · SPF 1/);
@@ -99,16 +106,21 @@ test("+ Run: what changed, then the same doors again beside the last run's", asy
   assert.match(await page.locator("body").innerText(), /Velocity · SPF 2[\s\S]*0 of 3/);
 });
 
-test("the report: one page, a table per run with its stairs side by side", async () => {
+test("the report: a page per stair, its runs side by side, a dash where a door wasn't read", async () => {
   await page.getByRole("button", { name: "Back" }).click();
   await page.getByRole("button", { name: "Preview the report" }).click();
-  const sheet = await page.getByTestId("spf-page").first().innerText();
-  assert.match(sheet, /Stair pressurisation · General system testing\s*All stairs/);
-  const tables = await page.getByTestId("spf-page").first().getByTestId("spf-run-table").allInnerTexts();
-  assert.equal(tables.length, 2);
-  assert.match(tables[0], /Run 1 · \d\d:\d\d · As found · Average velocity m\/s \(min 1\)\s*Level\s*SPF 1 A\s*SPF 1 B\s*P1\s*1\.05\s*P2\s*0\.2/);
-  assert.match(tables[1], /Run 2 · \d\d:\d\d · P3 relief damper shut[\s\S]*P2\s*1\.3/);
-  assert.equal(await page.getByTestId("spf-page").count(), 1, "every stair on one page");
+  // the stairs still on placeholder names: on with the suggestions
+  await page.getByRole("button", { name: /Not now/ }).click();
+  await page.getByTestId("spf-page").first().waitFor();
+  assert.equal(await page.getByTestId("spf-page").count(), 6, "a page per stair, then a summary page per stair");
+  assert.match(await page.getByTestId("spf-page").nth(3).innerText(), /General system testing · Summary\s*SPF 1 · Stair 1 · latest reading at each door[\s\S]*P2 B\s*\S+\s*1\.3/);
+  const first = page.getByTestId("spf-page").first();
+  assert.match(await first.innerText(), /Stair pressurisation · General system testing\s*SPF 1 · Stair 1/);
+  const tables = await first.getByTestId("spf-run-table").allInnerTexts();
+  assert.equal(tables.length, 1);
+  assert.match(tables[0], /Average velocity m\/s \(min 1\), run by run\s*Level\s*Adjacent door open\s*Run 1\s*\d\d:\d\d\s*Run 2\s*\d\d:\d\d/);
+  assert.match(tables[0], /P1\s*\S+\s*1\.05\s*–[\s\S]*P2 A\s*\S+\s*–\s*–[\s\S]*P2 B\s*\S+\s*0\.2\s*1\.3/);
+  assert.match(await first.innerText(), /Runs\s*Run 1 · \d\d:\d\d · As found\s*Run 2 · \d\d:\d\d · P3 relief damper shut\s*– not read in that run/);
   assert.deepEqual(errors, []);
 });
 
@@ -148,6 +160,28 @@ test("what's added can be taken away: a Yes / No answer, a door, a run, a test",
   assert.equal(await page.getByRole("button", { name: "Remove the Door closes & latches test" }).count(), 0);
   assert.equal(await page.getByRole("button", { name: "Remove the Velocity test" }).count(), 0, "the last test stays");
   assert.deepEqual(errors, []);
+});
+
+test("many doors on a level: each keeps a usable width, and the row scrolls sideways", async () => {
+  await page.getByRole("button", { name: /^\S+ Velocity/ }).click();
+  await page.getByTestId("spf-stairs").getByRole("button", { name: /SPF 2/ }).click();
+  await page.getByText("Velocity · SPF 2").waitFor();
+  for (let i = 0; i < 5; i++) await page.getByRole("button", { name: "Add a door on level P1" }).click();
+  const doors = page.getByRole("button", { name: /^Level P1 door / });
+  assert.equal(await doors.count(), 6);
+  const widths = await doors.evaluateAll((els) => els.map((e) => e.getBoundingClientRect().width));
+  assert.ok(widths.every((w) => w >= 72), `door widths ${widths.map(Math.round)}`);
+  const row = await doors.first().evaluate((e) => ({ scroll: e.parentElement.scrollWidth, shown: e.parentElement.clientWidth }));
+  assert.ok(row.scroll > row.shown, "more than fit: it scrolls");
+  // typing into the last door brings it into view
+  await doors.last().click();
+  const inView = await doors.last().evaluate((e) => {
+    const d = e.getBoundingClientRect();
+    const r = e.parentElement.getBoundingClientRect();
+    return d.right <= r.right + 1 && d.left >= r.left - 1;
+  });
+  assert.ok(inView);
+  await tap(["Done"]);
 });
 
 test("Review level layout: groups that open, and P to B offers to change the rest", async () => {

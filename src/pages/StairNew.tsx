@@ -2,21 +2,20 @@ import { useEffect, useState, type CSSProperties } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import type { Site, StairSection, StairTestKind } from "../db/types";
 import { addStairTest, getSite } from "../db/db";
-import { CUSTOM_SECTIONS, GENERAL_EXTRA, KIND_HINT, KIND_LABEL, kindsFor, newStairTest, SECTION, systemLine } from "../lib/stairTest";
+import { GENERAL_SECTIONS, KIND_HINT, KIND_LABEL, kindsFor, newStairTest, SECTION, systemLine } from "../lib/stairTest";
 import { useFlowMode } from "../lib/settings";
 import { getInspectorName } from "../lib/profile";
 import { PageHeader, Pill } from "../components/StairUi";
 
-// A new stair test (design canvas StairTestSimple, "1 · Pick the test"; the
-// kinds and their order from the Stair general system testing canvas, 1a and
-// 1b: EnFact mode has General system testing, Annual Testing and Custom;
-// Contractor mode adds Commissioning and the Three-monthly check. General
-// system testing is velocities, with chips to add other tests to it):
-// the system is already set for the site, so it only asks what's being
-// tested. Annual Testing to start with (an AFSS site's is always
-// annual, but it can still be changed). Before the system is set up it shows
-// the order as numbered steps (canvas SpfSetupFirst, option A): 1 · set up
-// the system, 2 · what you're testing, greyed out until then.
+// A new stair test (design canvas StairTestSimple, "1 · Pick the test"):
+// General system testing first and picked, with every test as a chip and
+// none ticked (Start waits for one); then Annual Testing, the three-monthly
+// check (Contractor phones only) and Commissioning. The system is already
+// set for the site, so it only asks what's being tested. Before the system
+// is set up it shows the order as numbered steps (canvas SpfSetupFirst,
+// option A): 1 · set up the system, 2 · what you're testing, greyed out
+// until then. An AFSS site starts on Annual Testing instead (its stair test
+// is the annual one). Starting opens the test's overview.
 
 const stepNum = (on: boolean): CSSProperties => ({
   width: 24,
@@ -55,13 +54,18 @@ export default function StairNew() {
   const { siteId } = useParams<{ siteId: string }>();
   const navigate = useNavigate();
   const [site, setSite] = useState<Site | null>(null);
-  const [kind, setKind] = useState<StairTestKind>("annual");
+  const [kind, setKind] = useState<StairTestKind>("general");
   const [picked, setPicked] = useState<StairSection[]>([]);
   const [busy, setBusy] = useState(false);
   const kinds = kindsFor(useFlowMode());
 
   useEffect(() => {
-    if (siteId) void getSite(siteId).then((s) => setSite(s ?? null));
+    if (siteId)
+      void getSite(siteId).then((s) => {
+        setSite(s ?? null);
+        // an AFSS site's stair test is its annual one (as + Add a test says there)
+        if (s?.kind === "afss") setKind("annual");
+      });
   }, [siteId]);
 
   const ready = !!site?.spf?.stairs.length;
@@ -71,13 +75,11 @@ export default function StairNew() {
   async function start() {
     if (!siteId || busy) return;
     if (!ready) return editSystem();
-    if (kind === "custom" && !picked.length) return;
+    if (kind === "general" && !picked.length) return;
     setBusy(true);
     try {
       const test = await addStairTest(newStairTest(siteId, kind, picked, getInspectorName()));
       navigate(`/site/${siteId}/spf/${test.id}`, { replace: true });
-      // general system testing goes straight to its velocities (back is the test)
-      if (kind === "general") navigate(`/site/${siteId}/spf/${test.id}/vel?stair=${site?.spf?.stairs[0]?.id ?? ""}`);
     } finally {
       setBusy(false);
     }
@@ -143,12 +145,12 @@ export default function StairNew() {
                 <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 15, fontWeight: 800 }}>
                   <span style={radio(on)} />
                   {KIND_LABEL[k]}
+                  {k === "quick" && <span style={{ marginLeft: "auto", fontSize: 10, fontWeight: 800, padding: "2px 7px", borderRadius: 999, border: "1px solid #f5a55c88", color: "#f5a55c" }}>Contractor</span>}
                 </div>
                 <div style={{ fontSize: 12, color: "var(--muted)", margin: "3px 0 0 24px", lineHeight: 1.4 }}>{KIND_HINT[k]}</div>
-                {(k === "custom" || k === "general") && on && (
+                {k === "general" && on && (
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 5, margin: "8px 0 0 24px" }}>
-                    {k === "general" && <span style={{ fontSize: 11, fontWeight: 800, padding: "5px 9px", borderRadius: 999, background: "rgba(var(--accent-rgb), .16)", border: "1px solid var(--accent)", color: "#5ff0e0" }}>Velocity</span>}
-                    {(k === "general" ? GENERAL_EXTRA : CUSTOM_SECTIONS).map((s) => {
+                    {GENERAL_SECTIONS.map((s) => {
                       const sel = picked.includes(s);
                       return (
                         <button
@@ -160,7 +162,7 @@ export default function StairNew() {
                           }}
                           style={{ fontSize: 11, fontWeight: 800, padding: "5px 9px", borderRadius: 999, background: sel ? "rgba(var(--accent-rgb), .16)" : "var(--panel-2)", border: sel ? "1px solid var(--accent)" : "1px solid var(--border-strong)", color: sel ? "#5ff0e0" : "var(--muted)" }}
                         >
-                          {k === "general" && !sel ? "+ " : ""}
+                          {sel ? "✓ " : ""}
                           {SECTION[s].name}
                         </button>
                       );
@@ -175,7 +177,7 @@ export default function StairNew() {
       <div style={{ flexShrink: 0, padding: "10px 16px calc(24px + env(safe-area-inset-bottom))" }}>
         <button
           onClick={() => void start()}
-          disabled={busy || steps || (ready && kind === "custom" && !picked.length)}
+          disabled={busy || steps || (ready && kind === "general" && !picked.length)}
           className={steps ? undefined : "glow-sweep"}
           style={{
             position: "relative",
@@ -188,10 +190,10 @@ export default function StairNew() {
             color: steps ? "var(--muted)" : "var(--accent-text)",
             fontSize: 16,
             fontWeight: 800,
-            opacity: ready && kind === "custom" && !picked.length ? 0.45 : 1,
+            opacity: ready && kind === "general" && !picked.length ? 0.45 : 1,
           }}
         >
-          {!ready ? "Set up the system first" : kind === "custom" && !picked.length ? "Pick what you're testing" : "Start ›"}
+          {!ready ? "Set up the system first" : kind === "general" ? (picked.length ? `Start · ${picked.length} test${picked.length === 1 ? "" : "s"} ›` : "Pick what you're testing") : "Start ›"}
         </button>
       </div>
     </div>

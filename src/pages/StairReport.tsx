@@ -126,6 +126,7 @@ function Paper({ page }: { page: StairPage }) {
       ) : (
         <Table head={page.head} rows={page.rows} />
       )}
+      {!!page.runs?.length && <Block label="Runs" lines={page.runs} />}
       {!!page.readings?.length && <Block label="Other readings" lines={page.readings} />}
       {page.fanLabel && <Block label={page.fanLabel} lines={[page.fan || " "]} />}
       {page.quick !== null && <Block label="Three-monthly check (AS 1851-2012 Table 13.4.2.2)" lines={[page.quick || " "]} />}

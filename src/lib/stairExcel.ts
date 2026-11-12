@@ -36,7 +36,7 @@ export function addStairSheets(wb: Workbook, tests: StairTest[], sys: SpfSystem,
   const box = { top: thin, left: thin, bottom: thin, right: thin };
   for (const test of tests) {
     for (const page of stairPages(test, sys, site)) {
-      const ws = wb.addWorksheet(sheetName(wb, `SPF ${page.subtitle}`), {
+      const ws = wb.addWorksheet(sheetName(wb, page.sheet ?? `SPF ${page.subtitle}`), {
         pageSetup: { paperSize: 9, orientation: "portrait", fitToPage: true, fitToWidth: 1, fitToHeight: 0, margins: { left: 0.5, right: 0.5, top: 0.6, bottom: 0.6, header: 0.3, footer: 0.3 } },
       });
       const across = Math.max(WIDTHS.length, ...(page.tables ?? []).map((t) => t.head.length));
@@ -114,6 +114,7 @@ export function addStairSheets(wb: Workbook, tests: StairTest[], sys: SpfSystem,
         for (const l of lines) put(l, { size: 9 });
         r++;
       };
+      if (page.runs?.length) block("Runs", page.runs);
       if (page.readings?.length) block("Other readings", page.readings);
       if (page.fanLabel) block(page.fanLabel, [page.fan]);
       if (page.quick !== null) block("Three-monthly check (AS 1851-2012 Table 13.4.2.2)", [page.quick]);

@@ -125,7 +125,8 @@ test("the system is set once: edition, type, stairs; the rules follow the editio
 });
 
 test("pick Annual Testing: only its sections", async () => {
-  assert.equal(await page.getByRole("radio", { name: /Annual Testing/ }).getAttribute("aria-checked"), "true");
+  assert.equal(await page.getByRole("radio", { name: /General system testing/ }).getAttribute("aria-checked"), "true", "General to start with");
+  await page.getByRole("radio", { name: /Annual Testing/ }).click({ position: { x: 30, y: 16 } });
   await page.getByRole("button", { name: "Start ›" }).click();
   await page.getByRole("button", { name: /^≋ Velocity/ }).waitFor();
   const text = await page.locator("body").innerText();
@@ -185,17 +186,15 @@ test("an AFSS site: Other tests, + Add a test, and the export chooser", async ()
   assert.deepEqual(errors, []);
 });
 
-test("Custom starts with nothing picked; the chips only light up under Custom", async () => {
+test("General starts with nothing picked: any test, velocity not forced", async () => {
   await go(page, app, "/", 1200);
   await page.getByText("Harbour Tower").click();
   await page.getByRole("button", { name: "+ New stair test" }).click();
-  await page.getByRole("button", { name: "Start ›" }).waitFor();
-  assert.equal(await page.locator('button[aria-pressed="true"]').count(), 0, "nothing picked under Annual Testing");
-  await page.getByRole("radio", { name: /Custom/ }).click({ position: { x: 30, y: 16 } });
-  assert.equal(await page.locator('button[aria-pressed="true"]').count(), 0, "Custom starts empty");
+  await page.getByRole("button", { name: "Pick what you're testing" }).waitFor();
+  assert.equal(await page.locator('button[aria-pressed="true"]').count(), 0, "General starts empty");
   assert.ok(await page.getByRole("button", { name: "Pick what you're testing" }).isDisabled());
   await page.getByRole("button", { name: "Door force" }).click();
-  await page.getByRole("button", { name: "Start ›" }).click();
+  await page.getByRole("button", { name: "Start · 1 test ›" }).click();
   // the test itself, not the Door force chip still on the new test page
   await page.waitForURL(/\/spf\/(?!new)[^/?]+$/);
   await page.getByRole("button", { name: /Door force/ }).first().waitFor();

@@ -1,14 +1,12 @@
-import type { Site, SpfStair, SpfSystem, StairOnce, StairTest } from "../db/types";
+import type { Site, SpfSystem, StairOnce, StairSection, StairTest } from "../db/types";
 import {
   adjacentDoor,
   doorFails,
-  doorKey,
-  doorLetter,
   doorMarginal,
-  doorsAt,
   doorValue,
   FAN_CHECKS,
   KIND_LABEL,
+  latestDoor,
   limits,
   onceStatus,
   QUICK_CHECKS,
@@ -20,7 +18,6 @@ import {
   stairDoors,
   fanName,
   stairLabel,
-  wellName,
   stairLevels,
   type Every,
 } from "./stairTest";
@@ -30,9 +27,8 @@ import {
 // not tested left blank. The preview, the PDF and the Excel are all drawn
 // from this, so what's previewed is what's exported. A level with more than
 // one door has a row for each ("P2 A", "P2 B"). A pass that's only just one
-// is marked (warns) and shaded yellow. General system testing prints run by
-// run instead (the Stair general system testing canvas, board 5): for each
-// run a table with its stairs side by side.
+// is marked (warns) and shaded yellow. General system testing has a page per
+// stair too, with its runs side by side (generalPages).
 
 export interface StairBox {
   label: string;
@@ -60,13 +56,15 @@ export interface StairPage {
   boxes: StairBox[];
   head: string[];
   rows: StairRow[];
-  tables?: StairTable[]; // general system testing: a table per run, in place of head and rows
-  readings?: string[]; // and its once-a-stair readings, a line per stair
+  tables?: StairTable[]; // general system testing: a table per door reading, its runs across, in place of head and rows
+  runs?: string[]; // and under them, what changed before each run, then the key
+  readings?: string[]; // older layouts: once-a-stair readings, a line per stair
   fan: string; // the fan's functionality checks ("" if not tested)
   fanLabel: string;
   quick: string | null; // the three-monthly ticks (only on that test)
   notes: string[];
   siteNotes: string;
+  sheet?: string; // the Excel sheet's name, when not the stair's
 }
 
 export const STAIR_HEAD = ["Level", "Adjacent door open", "Average velocity m/s (min 1)", "Door closes and latches", "Door opening force N (max 110)"];
@@ -90,90 +88,109 @@ const ticks = (list: [string, string][], got: Record<string, "y" | "n"> | undefi
     .join(" · ");
 
 const clock = (ms: number) => new Date(ms).toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", hour12: false });
-const COLS = 8; // reading columns across a run's table before it splits
 
-// the levels of several stairs as one list, each stair's order kept
-function mergeLevels(lists: string[][]): string[] {
-  const out: string[] = [];
-  for (const list of lists) {
-    let at = 0;
-    for (const level of list) {
-      const i = out.indexOf(level);
-      if (i >= 0) at = i + 1;
-      else out.splice(at++, 0, level);
-    }
-  }
-  return out;
-}
 
-// general system testing: a table per run and reading
+// General system testing: a page per stair, as the other tests, so a
+// door's readings can be followed as things are adjusted. For each door
+// reading, a table with a row per door and a column per run ("–" where a
+// door wasn't read in that run: a spot check, or not re-read). What changed
+// before each run is listed under the tables, with a key to the colours.
+// After them, a summary page per stair in the other tests' record layout,
+// each door's latest reading side by side.
+const RUN_COLS = 6; // run columns across before the table carries on below
+
 function generalPages(test: StairTest, sys: SpfSystem, site: Pick<Site, "name" | "address">): StairPage[] {
   const every = test.sections.filter((s): s is Every => SECTION[s].every);
+  const has = (s: StairSection) => test.sections.includes(s);
   const cell = (section: Every, v: string) => (section === "latch" ? (v === "Yes" ? "Y" : v === "No" ? "N" : "") : v);
-  const tables: StairTable[] = [];
-  for (let r = 0; r < runCount(test); r++) {
-    const doors = runDoors(test, r);
+  const runs = runCount(test);
+  const runLines = Array.from({ length: runs }, (_, r) => `Run ${r + 1} · ${clock(runAt(test, r))} · ${r === 0 ? runChange(test, r) || "As found" : runChange(test, r) || "No change noted"}`);
+  const key = `– not read in that run · red: fail · yellow: a pass within 0.1 m/s or 5 N of the limit`;
+  const l = limits(sys);
+  const runPages = sys.stairs.map((stair, k): StairPage => {
+    const levels = stairLevels(stair);
+    const once = test.once[stair.id] ?? {};
+    const n = (v?: string) => (v ?? "").trim();
+    const tables: StairTable[] = [];
     for (const section of every) {
-      const read = (st: SpfStair) => stairDoors(st).some((d) => doorValue(section, doors[st.id]?.[d.key]));
-      // the stairs read in this run (every stair, on a first run with nothing in it yet)
-      const stairs = sys.stairs.filter(read);
-      const shown = stairs.length ? stairs : r === 0 && section === every[0] ? sys.stairs : [];
-      const cols = shown.flatMap((st) => {
-        const of = Math.max(...stairLevels(st).map((l) => doorsAt(st, l)));
-        // the fan, then the stairwell's name on a second line
-        const k = sys.stairs.indexOf(st);
-        const fan = fanName(st, k);
-        const well = `\n${wellName(st, k)}`;
-        return Array.from({ length: of }, (_, n) => ({ st, n, label: `${of > 1 ? `${fan} ${doorLetter(n)}` : fan}${well}` }));
-      });
-      const levels = mergeLevels(shown.map(stairLevels));
-      for (let c = 0; c < cols.length; c += COLS) {
-        const part = cols.slice(c, c + COLS);
+      for (let r0 = 0; r0 < runs; r0 += RUN_COLS) {
+        const rs = Array.from({ length: Math.min(RUN_COLS, runs - r0) }, (_, j) => r0 + j);
+        const vel = section === "vel";
         tables.push({
-          title: `Run ${r + 1} · ${clock(runAt(test, r))} · ${runChange(test, r) || "No change noted"} · ${SECTION[section].column}`,
-          head: ["Level", ...part.map((x) => x.label)],
-          rows: levels.map((level) => {
-            const ds = part.map((x) => (stairLevels(x.st).includes(level) && x.n < doorsAt(x.st, level) ? doors[x.st.id]?.[doorKey(level, x.n)] : undefined));
+          title: `${SECTION[section].column}, run by run${r0 ? " (continued)" : ""}`,
+          head: ["Level", ...(vel ? ["Adjacent door open"] : []), ...rs.map((r) => `Run ${r + 1}\n${clock(runAt(test, r))}`)],
+          rows: stairDoors(stair).map((door) => {
+            const ds = rs.map((r) => runDoors(test, r)[stair.id]?.[door.key]);
             return {
-              cells: [level, ...ds.map((d) => cell(section, doorValue(section, d)))],
-              fails: [false, ...ds.map((d) => !!doorFails(section, d, sys))],
-              warns: [false, ...ds.map((d) => doorMarginal(section, d, sys))],
+              cells: [door.label, ...(vel ? [adjacentDoor(levels, door.li, sys) || "–"] : []), ...ds.map((d) => cell(section, doorValue(section, d)) || "–")],
+              fails: [false, ...(vel ? [false] : []), ...ds.map((d) => !!doorFails(section, d, sys))],
+              warns: [false, ...(vel ? [false] : []), ...ds.map((d) => doorMarginal(section, d, sys))],
             };
           }),
         });
       }
     }
-  }
-  const once = sys.stairs
-    .map((st) => {
-      const parts = (["noise", "rest", "pa"] as const).filter((s) => test.sections.includes(s)).map((s) => [s, onceStatus(s, test.once[st.id], sys).text] as const).filter(([, t]) => t);
-      return parts.length ? `${stairLabel(st, sys.stairs.indexOf(st))}: ${parts.map(([s, t]) => `${SECTION[s].name} ${t}`).join(" · ")}` : "";
-    })
-    .filter(Boolean);
-  return [
-    {
+    // the once-a-stair readings and the fan checks: only those being tested
+    const boxes: StairBox[] = [];
+    if (has("noise")) {
+      const noise = onceStatus("noise", once, sys);
+      boxes.push({ label: "Noise, stair (average)", value: n(once.noiseStair) ? `${n(once.noiseStair)} dB(A) ${Number(once.noiseStair) > l.noiseStair ? "✗" : "✓"}` : "", fail: noise.fail && Number(once.noiseStair) > l.noiseStair, ref: noiseRef(once) });
+      boxes.push({ label: "Max noise, occupied space", value: n(once.noiseOcc) ? `${n(once.noiseOcc)} dB(A)${l.noiseOcc === null ? "" : Number(once.noiseOcc) > l.noiseOcc ? " ✗" : " ✓"}` : "", fail: l.noiseOcc !== null && Number(once.noiseOcc) > l.noiseOcc });
+    }
+    if (has("rest")) {
+      const rest = onceStatus("rest", once, sys);
+      boxes.push({ label: "Pressure restoration", value: rest.text, fail: rest.fail });
+    }
+    if (has("pa")) {
+      const pa = onceStatus("pa", once, sys);
+      boxes.push({ label: "Stair, all doors closed", value: pa.text, fail: pa.fail });
+    }
+    if (has("fan")) {
+      const fan = onceStatus("fan", once, sys);
+      const failed = FAN_CHECKS.filter(([key]) => once.fan?.[key] === "n").map(([, label]) => `No: ${label}`);
+      boxes.push({ label: "Fan checks", value: fan.text, fail: fan.fail, ref: failed.length ? failed : undefined });
+    }
+    return {
       title: `Stair pressurisation · ${KIND_LABEL.general}`,
-      subtitle: "All stairs",
+      subtitle: stairLabel(stair, k),
       details: [
-        { label: "Site", value: [site.name, site.address].filter((s) => s?.trim()).join(", ") },
+        { label: "Site", value: [site.name, site.address].filter((x) => x?.trim()).join(", ") },
         { label: "Date", value: day(test.testedAt) },
         { label: "System", value: `${sys.type === "One test" ? "" : `${sys.type} · `}built to AS 1668.1-${sys.edition}` },
-        { label: "Runs", value: String(runCount(test)) },
-        { label: "Stairs", value: sys.stairs.map((st, k) => stairLabel(st, k)).join(", ") },
+        { label: "Runs", value: String(runs) },
+        { label: "Fan", value: fanName(stair, k) },
         { label: "Tested by", value: test.testedBy?.trim() ?? "" },
       ],
-      boxes: [],
+      boxes,
       head: [],
       rows: [],
       tables,
-      readings: once,
+      runs: tables.length ? [...runLines, key] : undefined,
       fan: "",
       fanLabel: "",
       quick: null,
-      notes: test.notes.filter((x) => x.text.trim()).map((x, k) => `${k + 1} · ${x.location.trim() ? `${x.location.trim()} · ` : ""}${x.text.trim()}`),
+      notes: test.notes.filter((x) => x.text.trim()).map((x, j) => `${j + 1} · ${x.location.trim() ? `${x.location.trim()} · ` : ""}${x.text.trim()}`),
       siteNotes: sys.notes.trim(),
-    },
-  ];
+    };
+  });
+  // then a summary page per stair, in the record layout: a row per door with
+  // its readings side by side, each the latest from any run
+  const latest: StairTest["doors"] = Object.fromEntries(
+    sys.stairs.map((st) => [
+      st.id,
+      Object.fromEntries(
+        stairDoors(st).map((d) => [d.key, { vel: latestDoor(test, st.id, d.key, "vel")?.vel, force: latestDoor(test, st.id, d.key, "force")?.force, latch: latestDoor(test, st.id, d.key, "latch")?.latch }]),
+      ),
+    ]),
+  );
+  const summary = stairPages({ ...test, kind: "custom", doors: latest, runs: undefined }, sys, site).map((page) => ({
+    ...page,
+    sheet: `Summary ${page.subtitle}`,
+    title: `Stair pressurisation · ${KIND_LABEL.general} · Summary`,
+    subtitle: `${page.subtitle} · latest reading at each door`,
+    details: page.details.map((d) => (d.label === "Test" ? { label: "Test", value: `${KIND_LABEL.general}: each door's latest reading of ${runs} run${runs === 1 ? "" : "s"}` } : d)),
+  }));
+  return [...runPages, ...summary];
 }
 
 export function stairPages(test: StairTest, sys: SpfSystem, site: Pick<Site, "name" | "address">): StairPage[] {

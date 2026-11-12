@@ -236,25 +236,26 @@ export const systemLine = (sys: SpfSystem | undefined) =>
 
 export const KIND_LABEL: Record<StairTestKind, string> = { general: "General system testing", quick: "Three-monthly check", annual: "Annual Testing", comm: "Commissioning", custom: "Custom" };
 export const KIND_HINT: Record<StairTestKind, string> = {
-  general: "Runs: test, adjust, test again",
+  general: "Pick any tests. Test, adjust, test again: each run kept.",
   quick: "Panel start: tick it works",
-  annual: "All doors: velocities, forces, latches etc",
+  annual: "AS 1851: velocities, forces, latches, noise, restoration, fan checks",
   comm: "All tests",
   custom: "Pick the tests",
 };
-export const KINDS: StairTestKind[] = ["general", "annual", "comm", "quick", "custom"];
-// EnFact's consultants don't commission or do the three-monthly check
-export const kindsFor = (mode: "enfact" | "contractor"): StairTestKind[] => (mode === "enfact" ? ["general", "annual", "custom"] : KINDS);
-// general system testing is velocities, and whatever else is added to it
-export const GENERAL_EXTRA: StairSection[] = ["force", "latch", "pa", "noise", "rest"];
+// the tests a new stair test can be: General first, Commissioning last;
+// the three-monthly check for Contractor phones only. (Custom is no longer
+// offered: General picks any tests, and Annual can have tests taken off or
+// added. Older Custom tests still open and print.)
+export const kindsFor = (mode: "enfact" | "contractor"): StairTestKind[] => (mode === "enfact" ? ["general", "annual", "comm"] : ["general", "annual", "quick", "comm"]);
+// general system testing picks any of these, none to start with
+export const GENERAL_SECTIONS: StairSection[] = ["vel", "force", "latch", "noise", "rest", "pa", "fan"];
 export const KIND_SECTIONS: Record<Exclude<StairTestKind, "custom" | "general">, StairSection[]> = {
   quick: ["quick"],
   annual: ["vel", "force", "latch", "noise", "rest", "fan"],
   comm: ["vel", "force", "latch", "noise", "rest", "pa", "fan"],
 };
-// the order sections are listed in, and the ones Custom can pick
+// the order sections are listed in
 export const ALL_SECTIONS: StairSection[] = ["vel", "force", "latch", "noise", "rest", "pa", "fan", "quick"];
-export const CUSTOM_SECTIONS: StairSection[] = ["vel", "force", "latch", "noise", "rest", "pa", "fan"];
 
 export interface SectionInfo {
   name: string;
@@ -308,7 +309,7 @@ export const QUICK_CHECKS: [string, string][] = [
 ];
 
 export function sectionsFor(kind: StairTestKind, picked: StairSection[] = []): StairSection[] {
-  const list = kind === "custom" ? picked : kind === "general" ? ["vel", ...picked] : KIND_SECTIONS[kind];
+  const list = kind === "custom" || kind === "general" ? picked : KIND_SECTIONS[kind];
   return ALL_SECTIONS.filter((s) => list.includes(s));
 }
 
