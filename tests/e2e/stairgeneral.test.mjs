@@ -155,9 +155,21 @@ test("what's added can be taken away: a Yes / No answer, a door, a run, a test",
   assert.match(await page.getByTestId("spf-runs").innerText(), /^Run 1\s*As found\s*\+ Run$/);
   // the test comes off the stair test again
   await page.getByRole("button", { name: "Back" }).click();
+  // swiped left, Remove, asked first
+  const swipeLeft = async (text) => {
+    const box = await page.getByRole("button", { name: new RegExp(`^\\S+ ${text}`) }).boundingBox();
+    await page.mouse.move(box.x + box.width - 30, box.y + box.height / 2);
+    await page.mouse.down();
+    for (let i = 1; i <= 8; i++) await page.mouse.move(box.x + box.width - 30 - i * 15, box.y + box.height / 2);
+    await page.mouse.up();
+  };
+  await swipeLeft("Door closes & latches");
   await page.getByRole("button", { name: "Remove the Door closes & latches test" }).click();
+  await page.getByText("Remove Door closes & latches?").waitFor();
+  await page.getByRole("button", { name: "Remove", exact: true }).click();
   await page.getByText("Additional tests").waitFor();
-  assert.equal(await page.getByRole("button", { name: "Remove the Door closes & latches test" }).count(), 0);
+  assert.equal(await page.getByRole("button", { name: /^\S+ Door closes & latches/ }).count(), 0);
+  // the last test can't be swiped away (a plain row, no Remove behind it)
   assert.equal(await page.getByRole("button", { name: "Remove the Velocity test" }).count(), 0, "the last test stays");
   assert.deepEqual(errors, []);
 });
