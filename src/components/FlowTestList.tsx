@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { FlowKind, FlowTest } from "../db/types";
 import { addFlowTest, deleteFlowTest, listFlowTests } from "../db/db";
 import { blankThumbSvg, chartSvg, KIND_HINT, KIND_LABEL, newFlowTest, readingCount, summary } from "../lib/flowTest";
 import { useBackHandler } from "../lib/backButton";
+import SwipeRow from "./SwipeRow";
 import ConfirmDialog from "./ConfirmDialog";
 import { shortDate } from "../lib/dates";
 
@@ -145,9 +146,6 @@ export default function FlowTestList({ siteId, onCount, onExport, exportLabel = 
 }
 
 // swipe-to-delete, the same feel as the findings and site rows
-const SWIPE_REVEAL = 84;
-const SWIPE_START_PX = 8;
-
 function FlowRow({
   test,
   index,
@@ -165,44 +163,6 @@ function FlowRow({
   onOpen: () => void;
   onDelete: () => void;
 }) {
-  const [dragX, setDragX] = useState(0);
-  const [swiping, setSwiping] = useState(false);
-  const start = useRef({ x: 0, y: 0, offset: 0 });
-  const moved = useRef(false);
-
-  useEffect(() => {
-    setDragX(swipeOpen ? -SWIPE_REVEAL : 0);
-  }, [swipeOpen]);
-
-  function down(e: ReactPointerEvent<HTMLButtonElement>) {
-    start.current = { x: e.clientX, y: e.clientY, offset: swipeOpen ? -SWIPE_REVEAL : 0 };
-    moved.current = false;
-  }
-  function move(e: ReactPointerEvent<HTMLButtonElement>) {
-    const dx = e.clientX - start.current.x;
-    const dy = e.clientY - start.current.y;
-    if (!swiping) {
-      if (Math.abs(dx) > SWIPE_START_PX && Math.abs(dx) > Math.abs(dy) * 1.2) {
-        setSwiping(true);
-        e.currentTarget.setPointerCapture(e.pointerId);
-      } else return;
-    }
-    moved.current = true;
-    setDragX(Math.min(0, Math.max(-SWIPE_REVEAL, start.current.offset + dx)));
-  }
-  function end() {
-    if (!swiping) return;
-    setSwiping(false);
-    setDragX((x) => {
-      if (x <= -SWIPE_REVEAL / 2) {
-        onSwipeOpen();
-        return -SWIPE_REVEAL;
-      }
-      onSwipeClose();
-      return 0;
-    });
-  }
-
   const v = summary(test);
   const sub =
     test.kind === "blank"
@@ -211,52 +171,15 @@ function FlowRow({
   const tag = test.fromBackup ? " · From backup" : "";
   const thumb = test.kind === "blank" ? blankThumbSvg(72, 52) : chartSvg(test, 72, 52, { small: true });
 
+  // swipe-to-delete: the shared row, the same everywhere
   return (
-    <div className="pop-in" style={{ position: "relative", overflow: "hidden", borderRadius: 14, flexShrink: 0, animationDelay: `${Math.min(index, 8) * 35}ms` }}>
-      {(dragX < 0 || swipeOpen) && (
-        <button
-          onClick={onDelete}
-          aria-label="Delete flow test"
-          style={{ position: "absolute", top: 0, bottom: 0, right: 0, width: SWIPE_REVEAL - 6, border: "none", borderRadius: 14, background: "#ff6b6b", color: "#fff", fontSize: 13, fontWeight: 800 }}
-        >
-          Delete
-        </button>
-      )}
-      <button
-        onPointerDown={down}
-        onPointerMove={move}
-        onPointerUp={end}
-        onPointerCancel={end}
-        onClick={() => {
-          if (moved.current) return;
-          if (swipeOpen) onSwipeClose();
-          else onOpen();
-        }}
-        style={{
-          position: "relative",
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-          width: "100%",
-          padding: "12px 14px",
-          borderRadius: 14,
-          background: "var(--panel)",
-          border: "1px solid var(--border)",
-          color: "var(--text)",
-          textAlign: "left",
-          transform: `translateX(${dragX}px)`,
-          transition: swiping ? "none" : "transform 220ms cubic-bezier(0.16, 1, 0.3, 1)",
-          touchAction: "pan-y",
-        }}
-      >
+    <SwipeRow index={index} label="Delete flow test" swipeOpen={swipeOpen} onSwipeOpen={onSwipeOpen} onSwipeClose={onSwipeClose} onOpen={onOpen} onDelete={onDelete}>
         <div style={{ width: 72, height: 52, flexShrink: 0, borderRadius: 8, background: "var(--bg)", overflow: "hidden" }} dangerouslySetInnerHTML={{ __html: thumb }} />
         <div style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
           <div style={{ fontSize: 14, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{test.name || "Untitled"}</div>
           <div style={{ fontSize: 12, color: "var(--muted)" }}>{sub}{tag}</div>
           <div style={{ fontSize: 11, fontWeight: 800, color: v.colour }}>{v.text}</div>
         </div>
-        <span style={{ color: "var(--muted-2)", fontSize: 18 }}>›</span>
-      </button>
-    </div>
+    </SwipeRow>
   );
 }
