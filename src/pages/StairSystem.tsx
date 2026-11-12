@@ -4,6 +4,7 @@ import type { Site, SpfEdition, SpfStair, SpfSystem, SpfType, StairTest } from "
 import { getSite, listStairTests, saveSiteSpf, saveStairTest } from "../db/db";
 import { defaultSystem, doorsEach, EDITIONS, joinLevel, LEVEL_TYPES, levelChanges, levelName, levelsEdited, levelsRead, levelType, newStair, fanIsDefault, renameDoorLevels, splitLevel, stairLabel, stairDoors, stairRange, TYPES, typeFor, type LevelType } from "../lib/stairTest";
 import { useBackHandler } from "../lib/backButton";
+import SwipeRow from "../components/SwipeRow";
 import { AMBER, card, cardLabel, fieldInput, PageHeader, RulesBox, Seg, StairName } from "../components/StairUi";
 import NumPad, { k, numberKeys, PadTag } from "../components/NumPad";
 import SiteKindIcon from "../components/SiteKindIcon";
@@ -44,6 +45,7 @@ export default function StairSystem() {
   const [guard, setGuard] = useState<{ id: string; go: () => void } | null>(null);
   // a stair with readings, asked about before it's removed
   const [removing, setRemoving] = useState<string | null>(null);
+  const [openSwipe, setOpenSwipe] = useState<string | null>(null);
   // the site's stair tests: a renamed level takes its readings with it, and
   // a level with readings is asked about before it's removed
   const [tests, setTests] = useState<StairTest[]>([]);
@@ -298,18 +300,27 @@ export default function StairSystem() {
                   onReview={() => (setPad(null), setMenu(null), setReview(st.id))}
                   onClose={() => (setOpen(null), setPad(null), setMenu(null))}
                   onText={() => (setPad(null), setMenu(null))}
-                  onRemove={() => (hasRead(st) ? setRemoving(st.id) : removeStair(st.id))}
                 />
               ) : (
-                <button
-                  key={st.id}
-                  data-stair={st.id}
-                  onClick={() => {
+                // swipe a stair left to remove it, asked first
+                <div key={st.id} data-stair={st.id}>
+                <SwipeRow
+                  label={`Remove ${stairLabel(st, i)}`}
+                  action="Remove"
+                  swipeOpen={openSwipe === st.id}
+                  onSwipeOpen={() => setOpenSwipe(st.id)}
+                  onSwipeClose={() => setOpenSwipe((x) => (x === st.id ? null : x))}
+                  onOpen={() => {
                     setOpen(st.id);
                     setPad(null);
                     setMenu(null);
                   }}
-                  style={summaryRow}
+                  onDelete={() => {
+                    setOpenSwipe(null);
+                    setRemoving(st.id);
+                  }}
+                  rowStyle={{ gap: 10, padding: "11px 12px" }}
+                  chevron={false}
                 >
                   <span style={numBadge}>{i + 1}</span>
                   <span style={{ flex: 1, minWidth: 0, fontSize: 14.5, fontWeight: 800 }}>
@@ -320,12 +331,14 @@ export default function StairSystem() {
                     </small>
                   </span>
                   <span style={editPill}>Edit</span>
-                </button>
+                </SwipeRow>
+                </div>
               ),
             )}
             <button onClick={addStair} className={open === null ? "pulse-teal" : undefined} style={open === null ? addHot : addButton}>
               + Add another stair
             </button>
+            <div style={{ fontSize: 11.5, color: "var(--muted-2)", textAlign: "center" }}>Swipe a stair left to remove it.</div>
           </>
         )}
 
@@ -351,7 +364,7 @@ export default function StairSystem() {
           <div className="lr-dim" onClick={() => setRemoving(null)} />
           <div className="lr-dlg" role="dialog" aria-label="Remove this stair?">
             <h3>Remove {stairLabel(sys.stairs.find((s) => s.id === removing) ?? newStair(), Math.max(0, sys.stairs.findIndex((s) => s.id === removing)))}?</h3>
-            <p>It has readings in a stair test. They stay saved, but won't show on the test or its report.</p>
+            <p>{hasRead(sys.stairs.find((s) => s.id === removing) ?? newStair()) ? "It has readings in a stair test. They stay saved, but won't show on the test or its report." : "It comes off the system and every test's report."}</p>
             <div className="bb">
               <button onClick={() => setRemoving(null)}>Keep it</button>
               <button className="warn" onClick={() => removeStair(removing)}>
@@ -425,7 +438,6 @@ function StairCard({
   onPad,
   onMenu,
   onType,
-  onRemove,
   onText,
   onReview,
   onClose,
@@ -438,7 +450,6 @@ function StairCard({
   onPad: (which: Which) => void;
   onMenu: (which: Which) => void;
   onType: (which: Which, type: LevelType) => void;
-  onRemove: () => void;
   onText: () => void;
   onReview: () => void;
   onClose: () => void;
@@ -458,9 +469,6 @@ function StairCard({
         <span style={{ marginLeft: "auto", fontSize: 12, fontWeight: 800, borderRadius: 999, padding: "5px 10px", whiteSpace: "nowrap", color: count ? "#5ff0e0" : "#6a8098", background: count ? "rgba(var(--accent-rgb), .1)" : "var(--panel-2)" }}>
           {count ? `${count} door${count === 1 ? "" : "s"}` : "— doors"}
         </span>
-        <button onClick={onRemove} style={{ border: "none", background: "none", color: "#ff7a6a", fontSize: 12, fontWeight: 800, padding: "2px 0 2px 4px" }}>
-          Remove
-        </button>
         <button aria-label="Close the stair" onClick={onClose} style={{ ...editPill, padding: "4px 9px", fontSize: 13, lineHeight: 1 }}>
           ▴
         </button>
@@ -592,7 +600,6 @@ const rowLabel: CSSProperties = { width: 78, flexShrink: 0, fontSize: 12, fontWe
 const numBadge: CSSProperties = { width: 26, height: 26, borderRadius: "50%", background: "rgba(var(--accent-rgb), .16)", color: "#5ff0e0", fontWeight: 800, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 };
 const addButton: CSSProperties = { border: "1.5px dashed rgba(var(--accent-rgb), .6)", borderRadius: 12, padding: 12, background: "rgba(var(--accent-rgb), .05)", color: "#5ff0e0", fontWeight: 800, fontSize: 14 };
 const addHot: CSSProperties = { ...addButton, background: "rgba(var(--accent-rgb), .14)", border: "1.5px solid rgba(var(--accent-rgb), .6)", fontSize: 15, padding: 15, boxShadow: "0 0 0 3px rgba(var(--accent-rgb), .12)" };
-const summaryRow: CSSProperties = { display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", background: "var(--panel)", border: "1px solid var(--border)", borderRadius: 14, padding: "11px 12px", color: "var(--text)" };
 const editPill: CSSProperties = { flexShrink: 0, fontSize: 11.5, fontWeight: 800, padding: "6px 11px", borderRadius: 999, background: "rgba(var(--accent-rgb), .14)", color: "#5ff0e0", border: "1px solid rgba(var(--accent-rgb), .4)" };
 const inputStyle = (focus: boolean): CSSProperties => ({
   height: 40,
