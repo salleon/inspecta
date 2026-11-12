@@ -31,6 +31,7 @@ import {
 import { IconChevronLeft } from "../components/Icons";
 import RoundIconButton from "../components/RoundIconButton";
 import ConfirmDialog from "../components/ConfirmDialog";
+import { confirmFirst } from "../components/Message";
 import { useBackHandler } from "../lib/backButton";
 import { applyEquipment, deviceFor, deviceLabel, matchDevices, overLimit, type FlowDevice } from "../lib/flowEquipment";
 import { useFlowMode } from "../lib/settings";
@@ -395,7 +396,7 @@ export default function FlowTest() {
                 {row.map((c, j) => (
                   <input key={j} value={c} aria-label="Cell" onChange={(e) => change((t) => void (t.cells![i][j] = e.target.value))} style={{ ...cellStyle(14), ...cellW }} />
                 ))}
-                <button aria-label="Remove row" onClick={() => change((t) => void t.cells!.splice(i, 1))} style={{ ...xButton, width: 30 }}>
+                <button aria-label="Remove row" onClick={() => confirmFirst(`Delete row ${i + 1}?`, "It comes off this test.", () => change((t) => void t.cells!.splice(i, 1)))} style={{ ...xButton, width: 30 }}>
                   ✕
                 </button>
               </div>
@@ -652,7 +653,7 @@ export default function FlowTest() {
             />
             <input style={cellStyle(14)} inputMode="decimal" value={d.kpa} aria-label="Demand pressure" onChange={(e) => change((t) => void (t.demand[i].kpa = e.target.value))} />
             {combined && (i === 0 ? <span style={dutyTag}>Pump duty</span> : <span />)}
-            <button style={xButton} aria-label="Remove demand point" onClick={() => change((t) => void t.demand.splice(i, 1))}>
+            <button style={xButton} aria-label="Remove demand point" onClick={() => confirmFirst(`Delete demand point ${i + 1}?`, `${shown(d.flow, d.flowUnit) || "–"} flow · ${d.kpa || "–"} kPa`, () => change((t) => void t.demand.splice(i, 1)))}>
               ✕
             </button>
           </div>
@@ -815,7 +816,7 @@ export default function FlowTest() {
             <input style={cellStyle(font)} inputMode="decimal" value={r.dis} aria-label="Discharge" onChange={(e) => updateRow(i, (x) => void (x.dis = e.target.value))} />
             <input style={cellStyle(font)} inputMode="decimal" value={r.suc} aria-label="Suction" onChange={(e) => updateRow(i, (x) => void (x.suc = e.target.value))} />
             {pumpCells(r, i, cellStyle(font))}
-            <button style={xButton} aria-label="Remove reading" onClick={() => removeRow(i)}>
+            <button style={xButton} aria-label="Remove reading" onClick={() => confirmFirst(`Delete reading ${i + 1}?`, rowSummary(r), () => removeRow(i))}>
               ✕
             </button>
           </div>
