@@ -1,6 +1,7 @@
 import type { Workbook } from "exceljs";
 import type { Site, SpfSystem, StairTest } from "../db/types";
 import { stairPages, type StairRow } from "./stairPrint";
+import { sheetName } from "./excelSheetName";
 
 // Stair tests in Excel: a sheet per stair, laid out like the preview and the
 // PDF (lib/stairPrint): title, details, the once-a-stair readings, the
@@ -18,13 +19,6 @@ const WARN_FILL = "FFFFF0B8";
 const WARN_INK = "FF6B4A00";
 const WIDTHS = [10, 16, 20, 18, 20];
 
-function sheetName(wb: Workbook, base: string): string {
-  const clean = base.replace(/[[\]:*?/\\]/g, " ").trim().slice(0, 31) || "Stair";
-  let name = clean;
-  for (let n = 2; wb.worksheets.some((w) => w.name.toLowerCase() === name.toLowerCase()); n++) name = `${clean.slice(0, 26)} (${n})`;
-  return name;
-}
-
 const value = (v: string) => {
   const t = v.trim();
   if (!t) return null;
@@ -36,7 +30,7 @@ export function addStairSheets(wb: Workbook, tests: StairTest[], sys: SpfSystem,
   const box = { top: thin, left: thin, bottom: thin, right: thin };
   for (const test of tests) {
     for (const page of stairPages(test, sys, site)) {
-      const ws = wb.addWorksheet(sheetName(wb, page.sheet ?? `SPF ${page.subtitle}`), {
+      const ws = wb.addWorksheet(sheetName(wb, page.sheet ?? `SPF ${page.subtitle}`, "Stair"), {
         pageSetup: { paperSize: 9, orientation: "portrait", fitToPage: true, fitToWidth: 1, fitToHeight: 0, margins: { left: 0.5, right: 0.5, top: 0.6, bottom: 0.6, header: 0.3, footer: 0.3 } },
       });
       const across = Math.max(WIDTHS.length, ...(page.tables ?? []).map((t) => t.head.length));

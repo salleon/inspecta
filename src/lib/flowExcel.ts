@@ -5,6 +5,7 @@ import { ZipWriter } from "./zip";
 import { chartAxes, chartSeries, printDemand, printDetails, printSubtitle, printTables, printTitle, printUnit, PRINT_DEMAND, type PrintSeries } from "./flowPrint";
 // the logo (EnFact's, or the company's in Contractor mode), as on the preview
 import { reportLogoUrl } from "./branding";
+import { sheetName } from "./excelSheetName";
 
 // Flow tests in Excel, laid out like the export preview and the PDF (design
 // canvas FlowExports): the title and logo, the details and demand, a table
@@ -36,14 +37,6 @@ const colLetter = (n: number) => {
   for (; n > 0; n = Math.floor((n - 1) / 26)) s = String.fromCharCode(65 + ((n - 1) % 26)) + s;
   return s;
 };
-
-// a sheet name Excel accepts, not already taken
-function sheetName(wb: Workbook, base: string): string {
-  const clean = base.replace(/[[\]:*?/\\]/g, " ").trim().slice(0, 31) || "Flow test";
-  let name = clean;
-  for (let n = 2; wb.worksheets.some((w) => w.name.toLowerCase() === name.toLowerCase()); n++) name = `${clean.slice(0, 26)} (${n})`;
-  return name;
-}
 
 // one chart to add to the written file
 interface FlowChart {
@@ -79,7 +72,7 @@ export async function addFlowSheets(wb: Workbook, tests: FlowTest[], site: Pick<
   }
   for (const test of tests) {
     const kindName = SHEET[test.kind];
-    const name = sheetName(wb, byTest || test.kind === "blank" ? test.name.trim() || kindName : kindName);
+    const name = sheetName(wb, byTest || test.kind === "blank" ? test.name.trim() || kindName : kindName, "Flow test");
     const chart = fillSheet(wb.addWorksheet(name), name, test, site, logo);
     if (chart) charts.push(chart);
   }
