@@ -47,7 +47,9 @@ export default function Dashboard() {
   useEdgeBump(listRef);
 
   async function refresh() {
-    const list = await listSites();
+    // newest first by when the site was made: changing something in a
+    // site doesn't move it up the list
+    const list = (await listSites()).sort((a, b) => b.createdAt - a.createdAt);
     const withCounts = await Promise.all(
       list.map(async (s) => ({
         ...s,
@@ -102,7 +104,7 @@ export default function Dashboard() {
       s.name.toLowerCase().includes(query.toLowerCase()) ||
       s.address.toLowerCase().includes(query.toLowerCase()),
   );
-  // one list, most recent first (listSites' order), narrowed by the chips
+  // one list, newest first (see refresh), narrowed by the chips
   const shown = kinds.length ? filtered.filter((s) => kinds.includes(s.kind)) : filtered;
   const toggleKind = (k: SiteKind) => setKinds((ks) => (ks.includes(k) ? ks.filter((x) => x !== k) : [...ks, k]));
 

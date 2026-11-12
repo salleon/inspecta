@@ -1,5 +1,5 @@
-// The home page (pages/Dashboard): every job in one list, most recently
-// edited first whatever its type, each row tagged with its type. The chips
+// The home page (pages/Dashboard): every job in one list, newest made first
+// whatever its type (editing one doesn't move it), each row tagged with its type. The chips
 // under the search show only the types picked (none picked: all), and
 // reset to the whole list when the app opens.
 import { test, before, after } from "node:test";
@@ -35,11 +35,11 @@ after(async () => {
 const order = () => page.locator("[data-site-id]").evaluateAll((els) => els.map((e) => e.getAttribute("data-site-id")));
 const chip = (label) => page.locator(`[role="group"][aria-label="Show job types"] button:has-text("${label}")`);
 
-test("one list, most recently edited first, whatever the type", async () => {
+test("one list, newest made first whatever the type; editing a site doesn't move it", async () => {
   await go(page, app, "/");
   await page.reload();
   await page.locator("[data-site-id]").first().waitFor();
-  assert.deepEqual(await order(), ["new-stair", "afss", "flow", "proj", "old-afss"]);
+  assert.deepEqual(await order(), ["proj", "flow", "afss", "new-stair", "old-afss"], "by when each was made, not last edited");
   // no group headings any more
   assert.equal(await page.getByText("Stair pressurisation", { exact: true }).count(), 0);
   // the date on a row is still when the job was made
@@ -52,7 +52,7 @@ test("chips show only the types picked; tapping again drops one", async () => {
   assert.deepEqual(await order(), ["new-stair"]);
   assert.equal(await chip("Stair").getAttribute("aria-pressed"), "true");
   await chip("AFSS").click();
-  assert.deepEqual(await order(), ["new-stair", "afss", "old-afss"]);
+  assert.deepEqual(await order(), ["afss", "new-stair", "old-afss"]);
   await chip("Stair").click();
   assert.deepEqual(await order(), ["afss", "old-afss"]);
   await chip("AFSS").click();
