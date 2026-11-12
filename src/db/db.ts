@@ -321,7 +321,7 @@ export async function addPhoto(findingId: string, siteId: string, blob: Blob, ta
 // Photos are kept at most this many px on their long side (about 1 MB):
 // twice what the reports use, still sharp zoomed in on the phone, and a
 // fraction of a 12 MP original's space.
-export const PHOTO_MAX_EDGE = 2400;
+const PHOTO_MAX_EDGE = 2400;
 
 async function shrinkPhoto(photo: Photo) {
   const blob = photo.blob;

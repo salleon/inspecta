@@ -53,14 +53,14 @@ function remove(key: string) {
 }
 
 // a salted SHA-256 fingerprint of a PIN, as kept in setup files
-export type PinPrint = { salt: string; hash: string };
+type PinPrint = { salt: string; hash: string };
 
 async function sha256Hex(text: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-export async function makePinPrint(pin: string): Promise<PinPrint> {
+async function makePinPrint(pin: string): Promise<PinPrint> {
   const salt = [...crypto.getRandomValues(new Uint8Array(16))].map((b) => b.toString(16).padStart(2, "0")).join("");
   return { salt, hash: await sha256Hex(salt + pin) };
 }
@@ -106,7 +106,7 @@ export async function currentPinPrint(): Promise<PinPrint> {
 // writes down the PIN this phone opens with, so it carries on as it is
 // when the mode changes (an EnFact phone on EnFact's PIN moved to
 // Contractor keeps that PIN, rather than being left with none)
-export function keepPin() {
+function keepPin() {
   const current = storedOrDefault();
   if (current !== null && get(PIN_KEY) === null) set(PIN_KEY, current);
 }

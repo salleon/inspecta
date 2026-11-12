@@ -1,7 +1,7 @@
 import type { jsPDF as JsPDF } from "jspdf";
 import type { FlowTest, Site } from "../db/types";
 import { reportLogoUrl } from "./branding";
-import { chartModel, flowFileName, PRINT_DEMAND, printDemand, printDetails, printSubtitle, printTables, printTitle } from "./flowPrint";
+import { chartModel, PRINT_DEMAND, printDemand, printDetails, printSubtitle, printTables, printTitle } from "./flowPrint";
 
 // The flow tests as a PDF (design canvas FlowExports): a full A4 page per
 // test, laid out as in lib/flowPrint (the export preview draws the same).
@@ -54,8 +54,6 @@ export async function appendFlowPages(doc: JsPDF, tests: FlowTest[], site: Pick<
     drawPage(doc, test, site, logo, n + 1, tests.length, "Flow test");
   });
 }
-
-export const flowPdfName = (site: Pick<Site, "name">) => flowFileName(site, "pdf");
 
 function drawPage(doc: JsPDF, test: FlowTest, site: Pick<Site, "name" | "address">, logo: { data: string; w: number; h: number } | null, page: number, pages: number, counter = "Page") {
   const { w: W, h: H, m: M } = PAGE;

@@ -9,7 +9,7 @@ import { getStamped } from "../db/db";
 import { addFlowCharts, addFlowSheets } from "./flowExcel";
 
 // the site's flow tests, which go in as tabs after the findings (lib/flowExcel)
-export interface FlowExport {
+interface FlowExport {
   tests: FlowTest[];
   site: Pick<Site, "name" | "address">;
   // the site's stair tests, sheets after the flow tests

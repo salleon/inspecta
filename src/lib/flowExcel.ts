@@ -46,7 +46,7 @@ function sheetName(wb: Workbook, base: string): string {
 }
 
 // one chart to add to the written file
-export interface FlowChart {
+interface FlowChart {
   sheet: string;
   from: { col: number; row: number }; // 0-based, like the drawing XML
   to: { col: number; row: number };
@@ -261,7 +261,7 @@ function axis(id: number, cross: number, pos: "b" | "l", title: string, scale: S
   return `<c:valAx><c:axId val="${id}"/><c:scaling><c:orientation val="minMax"/><c:max val="${scale.max}"/><c:min val="${scale.min}"/></c:scaling><c:delete val="0"/><c:axPos val="${pos}"/><c:majorGridlines><c:spPr><a:ln w="6350"><a:solidFill><a:srgbClr val="E3E8EC"/></a:solidFill></a:ln></c:spPr></c:majorGridlines><c:title>${richText(title, 900, pos === "l" ? -5400000 : undefined)}<c:overlay val="0"/></c:title><c:numFmt formatCode="General" sourceLinked="0"/><c:majorTickMark val="out"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/><c:spPr><a:ln w="9525"><a:solidFill><a:srgbClr val="9AA6B1"/></a:solidFill></a:ln></c:spPr><c:txPr><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="900"><a:solidFill><a:srgbClr val="55636F"/></a:solidFill></a:defRPr></a:pPr><a:endParaRPr lang="en-AU"/></a:p></c:txPr><c:crossAx val="${cross}"/><c:crosses val="autoZero"/><c:crossBetween val="midCat"/><c:majorUnit val="${scale.step}"/></c:valAx>`;
 }
 
-export type ChartSeries = PrintSeries & { x: string; y: string; demand?: boolean };
+type ChartSeries = PrintSeries & { x: string; y: string; demand?: boolean };
 
 const hex = (c: string) => c.replace("#", "").toUpperCase();
 
@@ -269,7 +269,7 @@ const hex = (c: string) => c.replace("#", "").toUpperCase();
 // dashed, suction dotted), the demand points as red diamonds, the legend on
 // the right and the same axes. The cached values let viewers that don't
 // recalculate (phone previews) draw it too.
-export function chartXml(sheet: string, series: ChartSeries[], scale: { x: Scale; y: Scale }, unit = "L/min"): string {
+function chartXml(sheet: string, series: ChartSeries[], scale: { x: Scale; y: Scale }, unit = "L/min"): string {
   const sers = series.map((s, i) => {
     const colour = hex(s.colour);
     const ln = s.demand

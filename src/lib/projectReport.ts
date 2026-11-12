@@ -5,7 +5,7 @@ import type { Finding, Photo } from "../db/types";
 // photo's time, or, for a note-only finding, when it was written. Ties keep
 // the list order. AFSS sites are untouched.
 
-export function findingTime(finding: Finding, photos: Pick<Photo, "takenAt">[]): number {
+function findingTime(finding: Finding, photos: Pick<Photo, "takenAt">[]): number {
   return photos.length ? Math.min(...photos.map((p) => p.takenAt)) : finding.createdAt;
 }
 

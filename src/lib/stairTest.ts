@@ -144,7 +144,7 @@ export const doorKey = (level: string, n: number) => (n === 0 ? level : `${level
 export const doorsEach = (stair: Pick<SpfStair, "doors">) => Math.max(1, Math.min(9, Math.round(stair.doors ?? 1) || 1));
 export const doorsAt = (stair: Pick<SpfStair, "doors" | "more">, level: string) => doorsEach(stair) + Math.max(0, stair.more?.[level] ?? 0);
 
-export interface DoorRef {
+interface DoorRef {
   level: string;
   li: number; // the level's place in the stair, top down
   n: number; // which of the level's doors
@@ -162,7 +162,7 @@ export function stairDoors(stair: Pick<SpfStair, "from" | "to" | "extra" | "leve
 
 // A stair goes by its fan ("SPF 1"), with its stairwell's name when one was
 // entered ("SPF 1 · East stairwell"). Never a made-up "Stair 3".
-export const stairFan = (stair: SpfStair) => (/^SPF-?\s*$/i.test(stair.fan.trim()) ? "" : stair.fan.trim());
+const stairFan = (stair: SpfStair) => (/^SPF-?\s*$/i.test(stair.fan.trim()) ? "" : stair.fan.trim());
 // Until the fans are identified, a stair goes by placeholders from its place
 // in the list (shown in amber on screen, printed as they are): SPF-1 and
 // Stair 1, SPF-2 and Stair 2… Never stored, so they follow the stairs as
@@ -198,7 +198,7 @@ export function doorsOpen(sys: Pick<SpfSystem, "edition" | "type">): string[] {
   return [`Fire ${w}`, `${W} above (top level: the one below)`, "Discharge doors"];
 }
 
-export interface Limits {
+interface Limits {
   vel: number; // m/s, at least
   force: number; // N, at most
   rest: number; // s, at most
@@ -249,7 +249,7 @@ export const KIND_HINT: Record<StairTestKind, string> = {
 export const kindsFor = (mode: "enfact" | "contractor"): StairTestKind[] => (mode === "enfact" ? ["general", "annual", "comm"] : ["general", "annual", "quick", "comm"]);
 // general system testing picks any of these, none to start with
 export const GENERAL_SECTIONS: StairSection[] = ["vel", "force", "latch", "noise", "rest", "pa", "fan"];
-export const KIND_SECTIONS: Record<Exclude<StairTestKind, "custom" | "general">, StairSection[]> = {
+const KIND_SECTIONS: Record<Exclude<StairTestKind, "custom" | "general">, StairSection[]> = {
   quick: ["quick"],
   annual: ["vel", "force", "latch", "noise", "rest", "fan"],
   comm: ["vel", "force", "latch", "noise", "rest", "pa", "fan"],
@@ -257,7 +257,7 @@ export const KIND_SECTIONS: Record<Exclude<StairTestKind, "custom" | "general">,
 // the order sections are listed in
 export const ALL_SECTIONS: StairSection[] = ["vel", "force", "latch", "noise", "rest", "pa", "fan", "quick"];
 
-export interface SectionInfo {
+interface SectionInfo {
   name: string;
   every: boolean; // a reading at every door
   unit?: string;
@@ -339,7 +339,7 @@ export function doorFails(section: Every, door: StairDoor | undefined, sys: Pick
 }
 
 // a pass, but only just: within 0.1 m/s of the velocity limit, or 5 N of the force limit
-export const MARGIN = { vel: 0.1, force: 5 };
+const MARGIN = { vel: 0.1, force: 5 };
 export function doorMarginal(section: Every, door: StairDoor | undefined, sys: Pick<SpfSystem, "edition">): boolean {
   if (section === "latch" || doorFails(section, door, sys) !== false) return false;
   const l = limits(sys);
@@ -424,7 +424,7 @@ export function doorStats(test: StairTest, stair: SpfStair, section: Every, sys:
   return { done, fails, marginal, total: doors.length };
 }
 
-export const tickCount = (ticks: Record<string, Tick> | undefined) => Object.values(ticks ?? {}).filter(Boolean).length;
+const tickCount = (ticks: Record<string, Tick> | undefined) => Object.values(ticks ?? {}).filter(Boolean).length;
 
 // a stair's once-off section: done, and its result in a few words
 export function onceStatus(section: StairSection, once: StairOnce | undefined, sys: Pick<SpfSystem, "edition">): { done: boolean; text: string; fail: boolean } {

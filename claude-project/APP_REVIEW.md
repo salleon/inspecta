@@ -61,5 +61,5 @@ Already on your list, so not repeated below: cutting hint text (specific ones ar
 ## E. Polish
 
 - [ ] **E1. Report previews can't be zoomed.** *(code)* Zoom is off app-wide and the stair report preview uses 7.5 to 9 px text.
-- [ ] **E2. Built Android files are committed to the repo.** *(code)* 37 generated files, already out of date. They add noise to every search and review.
+- [x] **E2. Built Android files are committed to the repo.** Done 12 Nov: untracked and ignored; npx cap sync android makes them. *(code)* 37 generated files, already out of date. They add noise to every search and review.
 - [ ] **E3. iPhone checks to do on a device.** Safe areas around the number pads and bottom buttons, the back gesture, and the volume-key shutter (Android only today).

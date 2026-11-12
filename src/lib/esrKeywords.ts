@@ -11,7 +11,7 @@ import { currentCode, esrItem } from "./esrCategories";
 
 export type KeywordKind = "!" | "" | "~"; // near-certain, normal, weak hint
 
-export interface Keyword {
+interface Keyword {
   text: string;
   kind: KeywordKind;
   builtIn: boolean;

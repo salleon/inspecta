@@ -7,8 +7,8 @@
 // them live (components/ProgressOverlay); the backup's is played as a video
 // that scripts/render-animations renders from here (see AnimationVideo).
 
-export type LoaderArt = "conveyor" | "sheet" | "zip" | "box";
-export type LoaderUpdate = (t: number, pct: number, count?: number) => void;
+type LoaderArt = "conveyor" | "sheet" | "zip" | "box";
+type LoaderUpdate = (t: number, pct: number, count?: number) => void;
 
 const NS = "http://www.w3.org/2000/svg";
 const A = "var(--accent)";

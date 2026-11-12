@@ -67,7 +67,7 @@ export interface StairPage {
   sheet?: string; // the Excel sheet's name, when not the stair's
 }
 
-export const STAIR_HEAD = ["Level", "Adjacent door open", "Average velocity m/s (min 1)", "Door closes and latches", "Door opening force N (max 110)"];
+const STAIR_HEAD = ["Level", "Adjacent door open", "Average velocity m/s (min 1)", "Door closes and latches", "Door opening force N (max 110)"];
 
 // the occupied space's noise, as the stair's: its average judged against the
 // limit (just recorded before 1998), the max and where they came from under it

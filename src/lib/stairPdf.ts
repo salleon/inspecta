@@ -34,13 +34,6 @@ export async function appendStairPages(doc: JsPDF, tests: StairTest[], sys: SpfS
   }
 }
 
-export async function buildStairPdf(tests: StairTest[], sys: SpfSystem, site: Pick<Site, "name" | "address">): Promise<Blob> {
-  const { jsPDF } = await import("jspdf");
-  const doc = new jsPDF({ unit: "pt", format: "a4" });
-  await appendStairPages(doc, tests, sys, site, true);
-  return doc.output("blob");
-}
-
 function drawPage(doc: JsPDF, page: StairPage, logo: Logo) {
   const { w: W, h: H, m: M } = PAGE;
   const width = W - 2 * M;

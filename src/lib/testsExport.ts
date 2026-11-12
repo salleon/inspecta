@@ -10,7 +10,7 @@ import { testsFileName } from "./stairTest";
 // per stair of each stair test) and / or one Excel (a sheet each), shared
 // together.
 
-export async function buildTestsPdf(flow: FlowTest[], stair: StairTest[], sys: SpfSystem | undefined, site: Pick<Site, "name" | "address">): Promise<Blob> {
+async function buildTestsPdf(flow: FlowTest[], stair: StairTest[], sys: SpfSystem | undefined, site: Pick<Site, "name" | "address">): Promise<Blob> {
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   if (flow.length) {
@@ -21,7 +21,7 @@ export async function buildTestsPdf(flow: FlowTest[], stair: StairTest[], sys: S
   return doc.output("blob");
 }
 
-export async function buildTestsWorkbook(flow: FlowTest[], stair: StairTest[], sys: SpfSystem | undefined, site: Pick<Site, "name" | "address">): Promise<Blob> {
+async function buildTestsWorkbook(flow: FlowTest[], stair: StairTest[], sys: SpfSystem | undefined, site: Pick<Site, "name" | "address">): Promise<Blob> {
   const ExcelJS = (await import("exceljs")).default;
   const { addFlowSheets, addFlowCharts } = await import("./flowExcel");
   const wb = new ExcelJS.Workbook();

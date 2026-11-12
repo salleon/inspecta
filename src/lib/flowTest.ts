@@ -9,7 +9,7 @@ import { getFlowMode } from "./settings";
 // Flows are always typed. Working them out from " Hg depends on the test
 // equipment, so it waits for each rig's figures (FlowTest.k stays 0).
 
-export const SECTION_COLOURS = ["#2ec4b6", "#f5a55c", "#b48cff", "#5ab0ff", "#ff7ab8", "#e8d44d"];
+const SECTION_COLOURS = ["#2ec4b6", "#f5a55c", "#b48cff", "#5ab0ff", "#ff7ab8", "#e8d44d"];
 export const sectionColour = (i: number) => SECTION_COLOURS[i % SECTION_COLOURS.length];
 
 export const PASS_COLOUR = "#2bd47a";
@@ -70,7 +70,7 @@ export function showFlow(v: number | null, unit: FlowUnit): string {
   return unit === "sec" ? String(Math.round(v / 6) / 10) : String(r1(v));
 }
 
-export interface Verdict {
+interface Verdict {
   text: string;
   colour: string;
   pass: boolean | null; // null: not enough to say
@@ -124,7 +124,7 @@ export function isTested(test: FlowTest, index: number): boolean {
   return test.kind === "combined" || test.sections[index].rows.some((r) => r.dis.trim() !== "");
 }
 
-export interface SectionVerdict extends Verdict {
+interface SectionVerdict extends Verdict {
   index: number;
   name: string;
 }
@@ -236,12 +236,12 @@ export function newFlowTest(siteId: string, kind: FlowKind): Omit<FlowTest, "id"
 // ("Diesel pump"); two or more are numbered 1, 2, 3… in tab order, so
 // there's only ever one of each number (see renumber).
 export const SUPPLY_KINDS = ["Town main", "Electric pump", "Diesel pump", "Booster pump", "Jockey pump"];
-export const PUMP_KINDS = ["Diesel pump", "Electric pump"];
+const PUMP_KINDS = ["Diesel pump", "Electric pump"];
 export const nameKinds = (test: Pick<FlowTest, "kind">) => (test.kind === "combined" ? PUMP_KINDS : SUPPLY_KINDS);
 // what a supply tab's list offers: in EnFact mode (Admin) just these three
 // (Custom… covers anything else); numbering still goes by every kind
-export const ENFACT_SUPPLY_KINDS = ["Town main", "Electric pump", "Diesel pump"];
-export const offeredKinds = (test: Pick<FlowTest, "kind">) => (test.kind !== "combined" && getFlowMode() === "enfact" ? ENFACT_SUPPLY_KINDS : nameKinds(test));
+const ENFACT_SUPPLY_KINDS = ["Town main", "Electric pump", "Diesel pump"];
+const offeredKinds = (test: Pick<FlowTest, "kind">) => (test.kind !== "combined" && getFlowMode() === "enfact" ? ENFACT_SUPPLY_KINDS : nameKinds(test));
 
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const ofKind = (name: string, base: string) => name === base || new RegExp(`^${escapeRe(base)} \\d+$`).test(name);
@@ -255,7 +255,7 @@ export function renumber(sections: { name: string }[], kinds: string[]) {
   }
 }
 
-export interface NameOption {
+interface NameOption {
   base: string;
   name: string; // what this tab would be called
   note: string; // what it would rename on the other tabs

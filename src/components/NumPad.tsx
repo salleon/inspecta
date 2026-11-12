@@ -7,7 +7,7 @@ import "./NumPad.css";
 // with ⌫ always third row, right; the two keys above it and the one bottom
 // left change with the screen; Done ✓ is bottom right.
 
-export type PadKey = { key: string; label: ReactNode; kind?: "num" | "fn" | "ins" | "bs" | "go" | "go1" | "blank" | "yes" | "no"; aria?: string };
+type PadKey = { key: string; label: ReactNode; kind?: "num" | "fn" | "ins" | "bs" | "go" | "go1" | "blank" | "yes" | "no"; aria?: string };
 
 export const k = (key: string, label: ReactNode = key, kind: PadKey["kind"] = "num", aria?: string): PadKey => ({ key, label, kind, aria });
 

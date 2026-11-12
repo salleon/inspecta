@@ -16,7 +16,7 @@ import {
 // installed from Play (not the web version, nor the GitHub "Inspecta
 // Test" app, which Play knows nothing about).
 
-export type UpdateStatus =
+type UpdateStatus =
   | "unsupported" // not the Play app (web, test app, no Play)
   | "checking"
   | "none" // up to date
@@ -33,7 +33,7 @@ interface State {
 }
 
 // The bits of the plugin used here, so tests can stand in for Play.
-export interface UpdateBackend {
+interface UpdateBackend {
   getAppUpdateInfo(): Promise<Pick<AppUpdateInfo, "updateAvailability" | "flexibleUpdateAllowed" | "installStatus">>;
   startFlexibleUpdate(): Promise<{ code: AppUpdateResultCode }>;
   completeFlexibleUpdate(): Promise<void>;

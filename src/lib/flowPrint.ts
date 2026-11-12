@@ -7,8 +7,8 @@ import { demandPoints, extraHeading, fit, flowOf, flowUnitFor, hasData, sectionH
 // The export screen's preview (SVG) and the PDF (lib/flowPdf) both draw
 // from these, so they match.
 
-export const PRINT_COLOURS = ["#1f6fb2", "#e07b25", "#7b4fc9", "#2a9d5b", "#c2185b", "#8d6e00"];
-export const PRINT_TOWN = "#7d8a96";
+const PRINT_COLOURS = ["#1f6fb2", "#e07b25", "#7b4fc9", "#2a9d5b", "#c2185b", "#8d6e00"];
+const PRINT_TOWN = "#7d8a96";
 export const PRINT_DEMAND = "#d33030";
 
 const TITLE: Record<FlowTest["kind"], string> = {
@@ -28,7 +28,7 @@ export function printSubtitle(test: FlowTest): string {
   return test.kind === "blank" || !n || n === KIND_LABEL[test.kind] ? "" : n;
 }
 
-export const printDate = (ms: number) => new Date(ms).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" });
+const printDate = (ms: number) => new Date(ms).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" });
 
 // as the app shows them: hydrants and combined systems in L/s, sprinklers in L/min
 export const printUnit = (test: FlowTest) => (flowUnitFor(test) === "sec" ? "L/s" : "L/min");
@@ -109,7 +109,7 @@ export function printTables(test: FlowTest): PrintTable[] {
 
 // ---- the graph, as shapes, for SVG or PDF ----
 
-export interface ChartModel {
+interface ChartModel {
   w: number;
   h: number;
   plot: { x: number; y: number; w: number; h: number };

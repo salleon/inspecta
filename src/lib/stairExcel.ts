@@ -124,10 +124,3 @@ export function addStairSheets(wb: Workbook, tests: StairTest[], sys: SpfSystem,
   }
 }
 
-export async function buildStairWorkbook(tests: StairTest[], sys: SpfSystem, site: Pick<Site, "name" | "address">): Promise<Blob> {
-  const ExcelJS = (await import("exceljs")).default;
-  const wb = new ExcelJS.Workbook();
-  addStairSheets(wb, tests, sys, site);
-  const buffer = await wb.xlsx.writeBuffer();
-  return new Blob([buffer as ArrayBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-}

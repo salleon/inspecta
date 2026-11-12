@@ -21,7 +21,7 @@ const F3 = 737.86223;
 const F4 = 12194.217;
 
 // a first-order section: y = b0·x + b1·x[-1] − a1·y[-1]
-export interface Section {
+interface Section {
   b: [number, number];
   a: [number, number];
 }
@@ -45,7 +45,7 @@ function sectionGain(sec: Section, f: number, fs: number): number {
 
 // the A-weighting filter at a sample rate: six first-order sections, the
 // first scaled so the whole is exactly 0 dB at 1 kHz
-export function aWeightingSections(fs: number): Section[] {
+function aWeightingSections(fs: number): Section[] {
   // the bilinear transform squeezes the top of the range, so the 12 kHz
   // poles are placed to give the right shape up to 8 kHz (the high-pass
   // poles are low enough not to notice)

@@ -24,7 +24,7 @@ export interface TourIds {
   flowSiteId: string; // the Flow testing site
 }
 
-export interface TourState {
+interface TourState {
   welcome: boolean; // the "Welcome, want a tour?" card
   active: boolean;
   step: number; // index into the steps the Tour component shows

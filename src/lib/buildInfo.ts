@@ -4,5 +4,5 @@
 // and in Settings, so it's never mistaken for the one the team uses.
 declare const __BUILD_BRANCH__: string;
 
-export const BUILD_BRANCH: string = __BUILD_BRANCH__;
+const BUILD_BRANCH: string = __BUILD_BRANCH__;
 export const IS_TEST_BUILD = BUILD_BRANCH !== "" && BUILD_BRANCH !== "main" && BUILD_BRANCH !== "master";

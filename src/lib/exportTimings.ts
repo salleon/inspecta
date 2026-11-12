@@ -4,7 +4,7 @@
 
 const KEY = "inspecta.lastExportTimings";
 
-export interface ExportTimings {
+interface ExportTimings {
   at: number;
   kind: string;
   photos: number;

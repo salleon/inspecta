@@ -63,7 +63,7 @@ export default function CameraStartScreen({ live }: { live: boolean }) {
 
 // The EnFact camera: camera body, and the swoosh traced round it by a
 // moving point (behind the camera over the top, in front underneath).
-export function CameraIcon({ size, paused = false }: { size: number; paused?: boolean }) {
+function CameraIcon({ size, paused = false }: { size: number; paused?: boolean }) {
   const back = useRef<HTMLCanvasElement>(null);
   const front = useRef<HTMLCanvasElement>(null);
   useEffect(() => {

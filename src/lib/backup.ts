@@ -288,7 +288,7 @@ export async function readBackup(file: Blob): Promise<RestorePlan> {
   return plan;
 }
 
-export interface RestoreResult {
+interface RestoreResult {
   sites: number;
   finished: number;
   // merged sites, with what the merge did

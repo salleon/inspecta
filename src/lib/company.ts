@@ -112,7 +112,7 @@ export function rgb(hex: string): [number, number, number] {
   const n = parseInt(hex.replace("#", ""), 16);
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
-export function toHex(c: number[]): string {
+function toHex(c: number[]): string {
   return "#" + c.map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0")).join("");
 }
 export function mix(a: string, b: string, t: number): string {
@@ -120,10 +120,7 @@ export function mix(a: string, b: string, t: number): string {
   const y = rgb(b);
   return toHex(x.map((v, i) => v + (y[i] - v) * t));
 }
-export function alpha(hex: string, o: number): string {
-  const [r, g, b] = rgb(hex);
-  return `rgba(${r},${g},${b},${o})`;
-}
+
 export function luminance(hex: string): number {
   const c = rgb(hex).map((v) => {
     v /= 255;
@@ -245,7 +242,7 @@ export function onColour(fill: string, primary: string): string {
 }
 
 // The app's colours (index.css variables) from a scheme
-export function themeVars(s: Scheme): Record<string, string> {
+function themeVars(s: Scheme): Record<string, string> {
   const dark = luminance(s.primary) < 0.4;
   const text = dark ? s.light : "#14202b";
   const toward = dark ? "#ffffff" : "#000000";
@@ -297,7 +294,7 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 // the report covers add it as a PNG. Any picture the phone can open is
 // taken: bigger ones are shrunk, and a drawing (SVG) is drawn at full size,
 // as it stays sharp at any size.
-export type PreparedLogo = { logo: string; colours: string[]; width: number; height: number };
+type PreparedLogo = { logo: string; colours: string[]; width: number; height: number };
 
 function shrinkLogo(img: HTMLImageElement, vector = false): PreparedLogo {
   const w0 = img.naturalWidth || 400;
@@ -315,7 +312,7 @@ function shrinkLogo(img: HTMLImageElement, vector = false): PreparedLogo {
 export const logoLooksSmall = (logo: { width: number; height: number }) => logo.width < 440 && logo.height < 120;
 
 // the largest picture taken as a logo
-export const MAX_LOGO_BYTES = 25 * 1024 * 1024;
+const MAX_LOGO_BYTES = 25 * 1024 * 1024;
 const MAX_LOGO_MB = MAX_LOGO_BYTES / 1024 / 1024;
 
 // An uploaded logo. Throws an Error saying why it can't be used.
@@ -369,7 +366,7 @@ export async function repairLogo() {
 
 // The logo's main colours: shrink it, bucket the pixels, merge near-same
 // buckets, keep the biggest few (white and clear skipped)
-export function logoColours(source: HTMLCanvasElement | HTMLImageElement): string[] {
+function logoColours(source: HTMLCanvasElement | HTMLImageElement): string[] {
   const sw = source instanceof HTMLCanvasElement ? source.width : source.naturalWidth;
   const sh = source instanceof HTMLCanvasElement ? source.height : source.naturalHeight;
   const k = Math.min(64 / (sw || 64), 64 / (sh || 64));

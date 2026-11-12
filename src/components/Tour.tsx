@@ -23,7 +23,7 @@ interface Step {
 const b = (t: string) => <b style={{ color: "var(--text)" }}>{t}</b>;
 const t = (sel: string) => () => [sel];
 
-export const TOPICS: { name: string; hint: string; time: string }[] = [
+const TOPICS: { name: string; hint: string; time: string }[] = [
   { name: "Sites", hint: "AFSS, project or flow testing", time: "20 s" },
   { name: "Findings", hint: "With a photo or just a note", time: "30 s" },
   { name: "ESR categories", hint: "Categories, levels, defect types", time: "30 s" },
@@ -347,7 +347,7 @@ const overlaps = (a: Box, b: Box) => a.x < b.x + b.w && b.x < a.x + a.w && a.y <
 // or right), then the four corners; the first spot that's on screen and
 // clear of every lit-up thing wins. Only if nowhere is clear (a lit-up
 // thing filling the screen) does it sit over the least of them.
-export interface Insets {
+interface Insets {
   top: number;
   right: number;
   bottom: number;
@@ -366,7 +366,7 @@ function safeInsets(): Insets {
   return out;
 }
 
-export function placeCard(lit: Box[], view: { w: number; h: number }, width: number, height: number, gap: number, safe: Insets = NONE): Place {
+function placeCard(lit: Box[], view: { w: number; h: number }, width: number, height: number, gap: number, safe: Insets = NONE): Place {
   const m = 12; // from the screen's edges, inside the phone's bars
   const left = m + safe.left;
   const right = m + safe.right;

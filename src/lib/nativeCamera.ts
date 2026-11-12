@@ -6,7 +6,7 @@ import { getCameraFlash, getCameraZsl, setCameraZsl } from "./settings";
 // while the in-app camera is open. Used by InAppCamera on the phone; the
 // browser camera (lib/cameraStream) everywhere else.
 
-export interface NativeCameraInfo {
+interface NativeCameraInfo {
   zoomMin: number;
   zoomMax: number;
   zoom: number;

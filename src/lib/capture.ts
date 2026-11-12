@@ -21,12 +21,12 @@ export interface CameraLabel {
 
 // ---- the in-app camera and the markup editor, shown by PhotoToolsHost ----
 
-export type PhotoToolRequest =
+type PhotoToolRequest =
   | { kind: "camera"; label: CameraLabel; resolve: (r: Captured | null | "fallback") => void }
   | { kind: "markup"; blob: Blob; marks: Mark[]; resolve: (r: MarkedUp | null) => void };
 
 /** What Mark up gives back: the marks, and the photo if it was turned (⟲). */
-export type MarkedUp = { marks: Mark[]; blob?: Blob };
+type MarkedUp = { marks: Mark[]; blob?: Blob };
 
 let request: PhotoToolRequest | null = null;
 const listeners = new Set<() => void>();
@@ -123,7 +123,7 @@ export async function saveToGallery(blob: Blob, takenAt = Date.now(), path?: str
 }
 
 // a site name as a folder / album name
-export function albumName(site?: string): string | undefined {
+function albumName(site?: string): string | undefined {
   return site?.replace(/[\\/:*?"<>|\x00-\x1f]/g, " ").replace(/\s+/g, " ").trim().replace(/^\.+|\.+$/g, "") || undefined;
 }
 
@@ -132,7 +132,7 @@ export function albumName(site?: string): string | undefined {
  * plain web): the captured photo, or null if cancelled. On Android this also
  * saves a copy straight to the device's photo gallery.
  */
-export async function systemCamera(direction: CameraDirection = CameraDirection.Rear): Promise<Blob | null> {
+async function systemCamera(direction: CameraDirection = CameraDirection.Rear): Promise<Blob | null> {
   try {
     const result = await Camera.takePhoto({
       quality: 85,
@@ -156,7 +156,7 @@ export async function systemCamera(direction: CameraDirection = CameraDirection.
   }
 }
 
-export interface PickedPhoto {
+interface PickedPhoto {
   blob: Blob;
   // when it was taken, if the phone can tell (for the date stamp)
   takenAt?: number;

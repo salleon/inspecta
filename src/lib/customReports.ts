@@ -24,12 +24,12 @@ export function newSince(all: Entry[], report: SiteReport): number {
   return all.filter((e) => !ids.has(e.finding.id) && e.finding.createdAt > report.updatedAt).length;
 }
 
-export interface BulkOption {
+interface BulkOption {
   key: string;
   label: string;
   ids: string[];
 }
-export interface BulkGroup {
+interface BulkGroup {
   heading: string;
   options: BulkOption[];
 }

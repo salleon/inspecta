@@ -73,7 +73,7 @@ function assign(options: [number, number][][], used: [number, number][] = []): n
 // - Low: only one word group in the note (the subject taken from the
 //   category, or a one-group defect);
 // - Medium: anything in between, or a second defect also matched.
-export type Confidence = "High" | "Medium" | "Low";
+type Confidence = "High" | "Medium" | "Low";
 
 // ESR section headings broad enough that a finding filed under the heading
 // itself (not one of its items) says little
@@ -105,7 +105,7 @@ function score(p: Prepared, note: Tokens, category: string): Match | null {
   return { score: p.groups.length * 100 + wordsUsed * 10, fromNote };
 }
 
-export interface Suggestion {
+interface Suggestion {
   defect: CommonDefect;
   confidence: Confidence;
   // the next best match, when there is one (never with High confidence)

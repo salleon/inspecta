@@ -155,12 +155,12 @@ export function drawMark(g: CanvasRenderingContext2D, m: Mark, w: number, h: num
   g.restore();
 }
 
-export function drawMarks(g: CanvasRenderingContext2D, marks: Mark[], w: number, h: number) {
+function drawMarks(g: CanvasRenderingContext2D, marks: Mark[], w: number, h: number) {
   for (const m of marks) drawMark(g, m, w, h);
 }
 
 // the photo upright (EXIF rotation applied), whatever the browser
-export async function decodeUpright(blob: Blob): Promise<{ source: CanvasImageSource; width: number; height: number; done: () => void }> {
+async function decodeUpright(blob: Blob): Promise<{ source: CanvasImageSource; width: number; height: number; done: () => void }> {
   try {
     const bmp = await createImageBitmap(blob, { imageOrientation: "from-image" });
     return { source: bmp, width: bmp.width, height: bmp.height, done: () => bmp.close() };
@@ -180,7 +180,7 @@ export async function decodeUpright(blob: Blob): Promise<{ source: CanvasImageSo
 // The photo with the marks drawn in (a JPEG), at most `maxEdge` px on its
 // long side: what's shown and exported for a marked-up photo. (Twice what
 // the reports use; a full 12 MP canvas was too much for some phones.)
-export async function renderMarked(original: Blob, marks: Mark[], maxEdge = 2400): Promise<Blob> {
+async function renderMarked(original: Blob, marks: Mark[], maxEdge = 2400): Promise<Blob> {
   const photo = await decodeUpright(original);
   const scale = Math.min(1, maxEdge / Math.max(photo.width, photo.height));
   const canvas = document.createElement("canvas");

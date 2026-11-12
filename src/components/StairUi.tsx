@@ -77,7 +77,7 @@ export function Seg<T extends string>({ options, value, onChange, label }: { opt
 }
 
 // the doors open for velocity, as dot points
-export function DoorsOpen({ sys }: { sys: Pick<SpfSystem, "edition" | "type"> }) {
+function DoorsOpen({ sys }: { sys: Pick<SpfSystem, "edition" | "type"> }) {
   return (
     <div style={{ fontSize: 12, color: "#d8c4a8", lineHeight: 1.4 }}>
       <b style={{ color: "#ffd9a8" }}>Doors open for velocity</b>

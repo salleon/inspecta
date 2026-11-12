@@ -157,7 +157,7 @@ const PATHS: Record<string, ReactNode> = {
   ),
 };
 
-export const TEAL = "#2ec4b6"; // shown as the theme accent (the company's in Contractor mode)
+const TEAL = "#2ec4b6"; // shown as the theme accent (the company's in Contractor mode)
 export const BLUE = "#5ab0ff";
 export const ORANGE = "#f5a55c";
 export const GREY = "#8ba0b5";

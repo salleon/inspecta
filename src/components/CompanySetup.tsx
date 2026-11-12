@@ -51,7 +51,7 @@ export function CompanyLogo({ height, maxWidth, style }: { height: number; maxWi
 
 // the intro's mark, "Inspecta" and the line underneath; animated when the
 // screen first shows (the contractor splash), at rest otherwise
-export function CompanyMark({ animate }: { animate: boolean }) {
+function CompanyMark({ animate }: { animate: boolean }) {
   const c = useCompany();
   const name = companyName(c);
   return (
@@ -114,7 +114,7 @@ export function StepScreen({ title, onBack, step, children, button }: { title: s
   );
 }
 
-export function NameEditor() {
+function NameEditor() {
   const c = useCompany();
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -134,7 +134,7 @@ export function NameEditor() {
 }
 
 // a cover-coloured strip to show the logo as it'll sit on a report
-export function coverGradient(s: Scheme): string {
+function coverGradient(s: Scheme): string {
   return `linear-gradient(172deg, ${s.primary} 0%, ${s.primary} 48%, #000000 160%)`;
 }
 

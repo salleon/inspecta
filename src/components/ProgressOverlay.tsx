@@ -12,7 +12,7 @@ import { mountArt } from "./loaderArt";
 //   shown never runs ahead of an even 0 → 100 over that long, so a quick
 //   export still shows the animation counting smoothly up for a moment
 //   (the export screen waits out the rest before sharing).
-export type LoaderArt = "conveyor" | "sheet" | "zip" | "box";
+type LoaderArt = "conveyor" | "sheet" | "zip" | "box";
 const LIVE: LoaderArt[] = ["conveyor", "sheet", "zip"];
 const SIZE = 132;
 const STROKE = 10;

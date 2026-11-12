@@ -10,7 +10,7 @@ import updateGears from "../assets/animations/update-gears.webm";
 // shown. Each takes the space of its picture; the extra room round it (pad:
 // top, right, bottom, left) is for bits drawn outside it, like photos
 // dropping in from above, and overlaps what's around.
-export type Animation = "conveyor" | "sheet" | "zip" | "box" | "update-gears";
+type Animation = "conveyor" | "sheet" | "zip" | "box" | "update-gears";
 
 const LOADER = { w: 240, h: 220, pad: [100, 30, 20, 30] };
 const GEARS = { w: 300, h: 230, pad: [10, 10, 10, 10] };
