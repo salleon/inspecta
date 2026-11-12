@@ -222,7 +222,7 @@ test("the system can be changed any time from the site's list", async () => {
   assert.match(await box.innerText(), /The system[\s\S]*Purge · built to AS 1668.1-1998 · 1 stair/);
   await box.getByRole("button", { name: "Edit" }).click();
   // the stair has readings: changing its range asks first
-  await page.locator("button[data-stair]").first().click();
+  await page.locator("[data-stair]").first().click();
   await page.getByRole("button", { name: "Highest level", exact: true }).click();
   const ask = page.getByRole("dialog", { name: "Change the range?" });
   assert.match(await ask.innerText(), /This stair has readings/);
