@@ -263,8 +263,16 @@ test("Review level layout: groups that open, and P to B offers to change the res
     return all.map((t) => [Object.keys(t.doors.s1 ?? {}).sort().join(","), t.doors.s1?.B1?.vel]);
   });
   assert.deepEqual(keys, [["B1", "1.05"]]);
-  // a level with readings is asked about before it's removed (B1 is still picked)
-  await page.getByRole("button", { name: "Remove", exact: true }).click();
+  // a level with readings is asked about before it's removed: swiped left, Remove
+  {
+    const box = await page.locator('[data-level="B1"]').boundingBox();
+    const y = box.y + box.height / 2;
+    await page.mouse.move(box.x + box.width - 30, y);
+    await page.mouse.down();
+    for (let i = 1; i <= 8; i++) await page.mouse.move(box.x + box.width - 30 - i * 15, y);
+    await page.mouse.up();
+  }
+  await page.getByRole("button", { name: "Remove Basement 1" }).click();
   const ask = page.getByRole("dialog", { name: "Remove B1?" });
   assert.match(await ask.innerText(), /It has readings in a stair test/);
   await ask.getByRole("button", { name: "Keep it" }).click();

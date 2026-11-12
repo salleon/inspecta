@@ -91,7 +91,17 @@ test("the system is set once: edition, type, stairs; the rules follow the editio
   await page.getByRole("button", { name: "Add", exact: true }).click();
   assert.match(await list.innerText(), /PR\s*Plant room[\s\S]*3/);
   assert.match(await page.locator("body").innerText(), /5 doors/);
-  await page.getByRole("button", { name: "Remove", exact: true }).click();
+  // swiped left, Remove, asked first
+  {
+    const box = await page.locator('[data-level="Plant room"]').boundingBox();
+    const y = box.y + box.height / 2;
+    await page.mouse.move(box.x + box.width - 30, y);
+    await page.mouse.down();
+    for (let i = 1; i <= 8; i++) await page.mouse.move(box.x + box.width - 30 - i * 15, y);
+    await page.mouse.up();
+  }
+  await page.getByRole("button", { name: "Remove Plant room" }).click();
+  await page.locator(".lr-dlg").getByRole("button", { name: "Remove", exact: true }).click();
   assert.match(await page.locator("body").innerText(), /SPF-1 · Front · 4 doors/);
   // Edit a level: a real tap on Done saves it and stays on the review (the
   // tap mustn't carry through to Looks right ✓ underneath the pad)

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { SpfStair } from "../db/types";
+import SwipeRow from "../components/SwipeRow";
 import { isCustomLevel, joinLevel, LEVEL_TYPES, levelChip, levelName, levelType, splitLevel, stairLevels, suggestLevels, type LevelType } from "../lib/stairTest";
 import { useBackHandler } from "../lib/backButton";
 import { PageHeader, StairName } from "../components/StairUi";
@@ -75,6 +76,7 @@ export default function LevelReview({
   const [edit, setEdit] = useState<{ i: number; was: string; type: LevelType; num: string; menu: boolean } | null>(null);
   const [named, setNamed] = useState<{ rename: boolean; value: string } | null>(null);
   const [removing, setRemoving] = useState<number | null>(null);
+  const [openSwipe, setOpenSwipe] = useState<number | null>(null);
   const [swap, setSwap] = useState<{ was: string; now: string; from: "P" | "B"; to: "P" | "B" } | null>(null);
   const list = useRef<HTMLDivElement>(null);
 
@@ -177,11 +179,28 @@ export default function LevelReview({
           const i = p.i + k;
           const on = sel === i;
           return (
-            <button key={`${i} ${code}`} data-level={code} className={`lr-lv${on ? " sel" : suggested.includes(code) ? "" : " new"}`} onClick={() => setSel(on ? null : i)}>
-              <span className="c">{levelChip(code)}</span>
-              <small>{levelName(code)}</small>
-              <span className="ch">{on ? "✓" : "›"}</span>
-            </button>
+            // swipe a level left to remove it, asked first
+            <div key={`${i} ${code}`} data-level={code}>
+              <SwipeRow
+                label={`Remove ${levelName(code)}`}
+                action="Remove"
+                swipeOpen={openSwipe === i}
+                onSwipeOpen={() => setOpenSwipe(i)}
+                onSwipeClose={() => setOpenSwipe((x) => (x === i ? null : x))}
+                onOpen={() => setSel(on ? null : i)}
+                onDelete={() => {
+                  setOpenSwipe(null);
+                  setRemoving(i);
+                }}
+                className={`lr-lv${on ? " sel" : suggested.includes(code) ? "" : " new"}`}
+                chevron={false}
+                radius={10}
+              >
+                <span className="c">{levelChip(code)}</span>
+                <small>{levelName(code)}</small>
+                <span className="ch">{on ? "✓" : "›"}</span>
+              </SwipeRow>
+            </div>
           );
         })}
       </div>,
@@ -202,10 +221,11 @@ export default function LevelReview({
         <div ref={list} className="lr-list" data-testid="level-list">
           {rows}
         </div>
+        <div style={{ fontSize: 11.5, color: "var(--muted-2)", textAlign: "center" }}>Swipe a level left to remove it.</div>
         {sel !== null && (
           <div className="lr-tools">
             <div className="lr-tl">{levelName(c)}</div>
-            <div className="lr-q3" style={{ gridTemplateColumns: "2fr 1fr" }}>
+            <div className="lr-q3" style={{ gridTemplateColumns: "1fr" }}>
               <button
                 className="fn"
                 onClick={() => {
@@ -215,17 +235,6 @@ export default function LevelReview({
                 }}
               >
                 Edit
-              </button>
-              <button
-                className="rm"
-                onClick={() => {
-                  // a level with readings is asked about first
-                  if (read?.has(c)) return setRemoving(sel);
-                  put(L.filter((_, j) => j !== sel));
-                  setSel(null);
-                }}
-              >
-                Remove
               </button>
             </div>
             <div className="lr-tl">
@@ -278,7 +287,7 @@ export default function LevelReview({
           <div className="lr-dim" onClick={() => setRemoving(null)} />
           <div className="lr-dlg" role="dialog" aria-label={`Remove ${L[removing]}?`}>
             <h3>Remove {L[removing]}?</h3>
-            <p>It has readings in a stair test. They stay saved, but won't show on the test or its report.</p>
+            <p>{read?.has(L[removing]) ? "It has readings in a stair test. They stay saved, but won't show on the test or its report." : "Its door comes off this stair."}</p>
             <div className="bb">
               <button onClick={() => setRemoving(null)}>Keep it</button>
               <button

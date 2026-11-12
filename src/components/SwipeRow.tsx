@@ -20,6 +20,7 @@ export default function SwipeRow({
   rowStyle,
   chevron = true,
   radius = 14,
+  className,
 }: {
   index?: number;
   label: string;
@@ -33,6 +34,7 @@ export default function SwipeRow({
   rowStyle?: CSSProperties; // the row's own look, over the default
   chevron?: boolean;
   radius?: number;
+  className?: string; // a row styled by its own class (the default look is left off)
 }) {
   const [dragX, setDragX] = useState(0);
   const [swiping, setSwiping] = useState(false);
@@ -89,18 +91,13 @@ export default function SwipeRow({
           if (swipeOpen) onSwipeClose();
           else onOpen();
         }}
+        className={className}
         style={{
           position: "relative",
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
           width: "100%",
-          padding: "12px 14px",
-          borderRadius: radius,
-          background: "var(--panel)",
-          border: "1px solid var(--border)",
-          color: "var(--text)",
-          textAlign: "left",
+          ...(className
+            ? {}
+            : { display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: radius, background: "var(--panel)", border: "1px solid var(--border)", color: "var(--text)", textAlign: "left" }),
           ...rowStyle,
           transform: `translateX(${dragX}px)`,
           transition: swiping ? "none" : "transform 220ms cubic-bezier(0.16, 1, 0.3, 1)",
