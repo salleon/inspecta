@@ -12,6 +12,7 @@ import SwipeRow from "./SwipeRow";
 import ProgressOverlay from "./ProgressOverlay";
 import SiteKindIcon from "./SiteKindIcon";
 import { Pill } from "./StairUi";
+import { shortDate } from "../lib/dates";
 
 // The Other tests tab of an AFSS or project site, and a stair pressurisation
 // site's list (design canvas SiteTests): every test on the site, flow and
@@ -25,7 +26,7 @@ const MIN_LOADER_MS = 3000;
 
 type Item = { kind: "flow"; test: FlowTest } | { kind: "stair"; test: StairTest };
 
-const formatDay = (ms: number) => new Date(ms).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" });
+const formatDay = shortDate;
 
 const sheetPanel: CSSProperties = {
   width: "100%",

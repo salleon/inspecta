@@ -3,6 +3,7 @@ import { backupRecords, finishSiteRestore, listSites, mergeSiteRecords, photoBlo
 import { copyRecords, mergeChangesAnything, planMerge, type MergePlan, type SiteRecords } from "./siteMerge";
 import { photoExtension, photoFiles, siteChangedAt, siteFolders } from "./backupNames";
 import { readZip, ZipWriter, type ZipEntry } from "./zip";
+import { isoDay } from "./dates";
 
 // Backup: the chosen sites (all of them, some, or the ones new or changed
 // since their last backup) in one .zip, one folder per site:
@@ -73,8 +74,6 @@ interface V1Json {
 }
 
 export function backupFileName(kind: BackupKind, sites: number, since?: number): string {
-  const d = new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
   const what =
     kind === "full"
       ? "full"
@@ -83,7 +82,7 @@ export function backupFileName(kind: BackupKind, sites: number, since?: number):
         : since
           ? `since ${new Date(since).toLocaleDateString("en-AU", { day: "numeric", month: "short" })}`
           : "new";
-  return `inspecta-backup-${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} (${what}).zip`;
+  return `inspecta-backup-${isoDay(Date.now())} (${what}).zip`;
 }
 
 const README = (kind: BackupKind, when: Date, folders: string[]) =>

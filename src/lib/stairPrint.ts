@@ -21,6 +21,7 @@ import {
   stairLevels,
   type Every,
 } from "./stairTest";
+import { clock24, numericDate } from "./dates";
 
 // A stair test as it prints (design canvas StairTestSimple, "The report"):
 // a page per stair, the sheet's full set of columns every time and anything
@@ -94,7 +95,7 @@ const noiseRef = (once: StairOnce) => {
   return parts.length ? parts : undefined;
 };
 
-const day = (ms: number) => new Date(ms).toLocaleDateString("en-AU", { day: "2-digit", month: "2-digit", year: "numeric" });
+const day = numericDate;
 
 const ticks = (list: [string, string][], got: Record<string, "y" | "n"> | undefined) =>
   list
@@ -102,7 +103,7 @@ const ticks = (list: [string, string][], got: Record<string, "y" | "n"> | undefi
     .map(([k, label]) => `${label}: ${got![k] === "y" ? "Yes" : "No"}`)
     .join(" · ");
 
-const clock = (ms: number) => new Date(ms).toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", hour12: false });
+const clock = clock24;
 
 
 // General system testing: a page per stair, as the other tests, so a

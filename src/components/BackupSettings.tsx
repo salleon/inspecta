@@ -7,6 +7,7 @@ import ProgressOverlay from "./ProgressOverlay";
 import { IconChevronRight } from "./Icons";
 import { applyRestore, readBackup, type RestorePlan, type SharedChoice } from "../lib/backup";
 import { COPY_SUFFIX, type MergePlan } from "../lib/siteMerge";
+import { shortDate } from "../lib/dates";
 
 // Settings rows: "Back up" (opens the Back up page, pages/Backup) and
 // "Restore from backup" (see lib/backup). Restoring shows the packed-box
@@ -17,7 +18,7 @@ import { COPY_SUFFIX, type MergePlan } from "../lib/siteMerge";
 function lastBackup(): string {
   try {
     const at = lastBackupAt();
-    return at ? `Last backup made ${new Date(at).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}` : "Not backed up yet";
+    return at ? `Last backup made ${shortDate(at)}` : "Not backed up yet";
   } catch {
     return "Not backed up yet";
   }

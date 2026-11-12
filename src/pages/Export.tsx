@@ -35,6 +35,7 @@ import { isContractor } from "../lib/settings";
 import { coverBackground, coverColours, drawCoverLogo } from "../lib/contractorCover";
 import { getCompany } from "../lib/company";
 import { useTourScene } from "../lib/tour";
+import { numericDate } from "../lib/dates";
 
 // the export loading screen shows for at least this long: a quick export
 // still gets its animation, counting smoothly up to 100%
@@ -63,12 +64,7 @@ interface FindingImages {
 }
 
 
-function formatDate(ms: number) {
-  const d = new Date(ms);
-  const dd = String(d.getDate()).padStart(2, "0");
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  return `${dd}/${mm}/${d.getFullYear()}`;
-}
+const formatDate = numericDate;
 
 // "Tuesday, 22 September 2026" — the cover page's date badge, spelled out
 // in full since it's the largest, most prominent date on the report.

@@ -8,6 +8,7 @@ import ConfirmDialog from "../components/ConfirmDialog";
 import SwipeRow from "../components/SwipeRow";
 import { saveSiteSpf } from "../db/db";
 import StairNameCheck, { stairsToName } from "../components/StairNameCheck";
+import { shortDate } from "../lib/dates";
 
 // A stair test (design canvas StairTestSimple, "2 · The sections"; tidied on
 // SpfTidy): a tab per stair (scrolls sideways for any number), then only the
@@ -17,7 +18,7 @@ import StairNameCheck, { stairsToName } from "../components/StairNameCheck";
 // again, asked first (its readings are kept, and come back if it's added back).
 
 const ICON: Record<StairSection, string> = { vel: "≋", force: "⇥", latch: "⊡", noise: "◖", rest: "↻", pa: "▣", fan: "✻", quick: "✓" };
-const formatDay = (ms: number) => new Date(ms).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" });
+const formatDay = shortDate;
 
 export default function StairTestPage() {
   const { siteId, testId } = useParams<{ siteId: string; testId: string }>();

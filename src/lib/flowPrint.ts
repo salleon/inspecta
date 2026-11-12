@@ -1,5 +1,6 @@
 import type { FlowTest, Site } from "../db/types";
 import { demandPoints, extraHeading, fit, flowOf, flowUnitFor, hasData, sectionHeading, isReference, isTested, KIND_LABEL, lineShown, points, sectionName, verdict, type Point } from "./flowTest";
+import { reportFileName } from "./dates";
 
 // What a flow test looks like printed (design canvas FlowExports): one page
 // per test with its title, the site details and demand, a table per supply
@@ -228,5 +229,5 @@ export function chartModelSvg(m: ChartModel, font = 8): string {
 }
 
 export const flowFileName = (site: Pick<Site, "name">, ext: "pdf" | "xlsx", at = Date.now()) =>
-  `${(site.name || "Site").replace(/[\\/:*?"<>|]/g, " ").trim()} – Flow tests – ${new Date(at).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}.${ext}`;
+  reportFileName(site.name, "Flow tests", ext, at);
 

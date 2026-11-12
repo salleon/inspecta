@@ -1,4 +1,5 @@
 import type { StairRun, SpfEdition, SpfStair, SpfSystem, SpfType, StairDoor, StairOnce, StairSection, StairTest, StairTestKind, Tick } from "../db/types";
+import { reportFileName } from "./dates";
 
 // Stair pressurisation testing (design canvas StairTestSimple, StairTestRules).
 // The system is set once per site: the AS 1668.1 edition it was built to and
@@ -492,7 +493,7 @@ export function stairTestHasData(test: StairTest): boolean {
 }
 
 export const stairFileName = (site: { name: string }, ext: "pdf" | "xlsx", at = Date.now()) =>
-  `${(site.name || "Site").replace(/[\\/:*?"<>|]/g, " ").trim()} – Stair pressurisation – ${new Date(at).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}.${ext}`;
+  reportFileName(site.name, "Stair pressurisation", ext, at);
 
 export const testsFileName = (site: { name: string }, ext: "pdf" | "xlsx", at = Date.now()) =>
-  `${(site.name || "Site").replace(/[\\/:*?"<>|]/g, " ").trim()} – Tests – ${new Date(at).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}.${ext}`;
+  reportFileName(site.name, "Tests", ext, at);

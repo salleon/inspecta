@@ -13,6 +13,7 @@ import { siteBackupState } from "../lib/backupNames";
 import { LAST_BACKUP_KEY } from "../lib/backupDue";
 import { CacheFileWriter } from "../lib/cacheFile";
 import { numberedExport } from "../lib/exportName";
+import { shortDate } from "../lib/dates";
 
 // Settings → Back up: what goes in the backup file. Full backup (every
 // site), Choose sites, or New since last backup (sites never backed up, or
@@ -37,7 +38,7 @@ function size(bytes: number): string {
 
 const summary = (rows: Row[]) => `${plural(rows.length, "site")} · ${plural(rows.reduce((n, r) => n + r.photos, 0), "photo")} · ${size(rows.reduce((n, r) => n + r.bytes, 0))}`;
 
-const day = (ms: number) => new Date(ms).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" });
+const day = shortDate;
 
 const OPTIONS: { kind: BackupKind; title: string; hint: string }[] = [
   { kind: "full", title: "Full backup", hint: "Every site on this phone." },

@@ -5,15 +5,14 @@ import { addFlowTest, deleteFlowTest, listFlowTests } from "../db/db";
 import { blankThumbSvg, chartSvg, KIND_HINT, KIND_LABEL, newFlowTest, readingCount, summary } from "../lib/flowTest";
 import { useBackHandler } from "../lib/backButton";
 import ConfirmDialog from "./ConfirmDialog";
+import { shortDate } from "../lib/dates";
 
 // The Flow tests tab of a site (canvas option E1): its flow tests, each
 // with a small graph and its result, swipe left to delete; and + New flow test, which asks what kind.
 
 const KINDS: FlowKind[] = ["sprinkler", "hydrant", "combined", "blank"];
 
-function formatDay(ms: number) {
-  return new Date(ms).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" });
-}
+const formatDay = shortDate;
 
 // onExport: the flow test export, above + New flow test (a flow testing
 // site's only export; on AFSS / project sites, Export Flow Tests Only)

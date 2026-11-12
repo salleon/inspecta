@@ -2,6 +2,7 @@ import type { jsPDF as JsPDF } from "jspdf";
 import type { FlowTest, Site } from "../db/types";
 import { reportLogoUrl } from "./branding";
 import { chartModel, PRINT_DEMAND, printDemand, printDetails, printSubtitle, printTables, printTitle } from "./flowPrint";
+import { shortDate } from "./dates";
 
 // The flow tests as a PDF (design canvas FlowExports): a full A4 page per
 // test, laid out as in lib/flowPrint (the export preview draws the same).
@@ -166,7 +167,7 @@ function drawPage(doc: JsPDF, test: FlowTest, site: Pick<Site, "name" | "address
   doc.line(M, H - M + 8, W - M, H - M + 8);
   doc.setFontSize(7.5);
   doc.setTextColor(SOFT);
-  doc.text(`${site.name} · Flow tests · ${new Date().toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}`, M, H - M + 20);
+  doc.text(`${site.name} · Flow tests · ${shortDate(Date.now())}`, M, H - M + 20);
   doc.text(`${counter} ${page} of ${pages}`, W - M, H - M + 20, { align: "right" });
 }
 

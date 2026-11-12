@@ -37,6 +37,7 @@ import { applyEquipment, deviceFor, deviceLabel, matchDevices, overLimit, type F
 import { useFlowMode } from "../lib/settings";
 import { useTourScene } from "../lib/tour";
 import CellPad from "../components/CellPad";
+import { isoDay } from "../lib/dates";
 
 // One flow test (see lib/flowTest), as mocked up on the design canvas:
 // the graph and pass lines at the top follow the readings as they're typed.
@@ -140,11 +141,7 @@ function RenameField({ value, onChange, placeholder, label, size = 16, dot }: { 
   );
 }
 
-const two = (n: number) => String(n).padStart(2, "0");
-function dateInputValue(ms: number) {
-  const d = new Date(ms);
-  return `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}`;
-}
+const dateInputValue = isoDay;
 
 export default function FlowTest() {
   const { siteId, testId } = useParams<{ siteId: string; testId: string }>();

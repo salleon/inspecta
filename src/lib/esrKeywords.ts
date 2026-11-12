@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { currentCode, esrItem } from "./esrCategories";
+import { isoDay } from "./dates";
 
 // Admin keyword tuning: changes to the built-in ESR keywords
 // (esrCategories.ts), made on this phone from Settings → Admin. Stored as
@@ -152,9 +153,7 @@ export function keywordFile(): Blob {
 }
 
 export function keywordFileName(): string {
-  const d = new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `inspecta-keywords-${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}.json`;
+  return `inspecta-keywords-${isoDay(Date.now())}.json`;
 }
 
 // Reads a shared file; returns how many categories it changes, or throws
