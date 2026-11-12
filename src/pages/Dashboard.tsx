@@ -1,11 +1,12 @@
 import { backupDue } from "../lib/backupDue";
-import { useEffect, useRef, useState, type FormEvent, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent, type CSSProperties } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Site, SiteKind } from "../db/types";
 import { createSite, deleteSite, findingCount, firstSitePhoto, flowTestCount, getThumbnail, listSites, stairTestCount } from "../db/db";
-import { IconSearch, IconBuilding, IconPlus, IconTrash, IconSettings } from "../components/Icons";
+import { IconSearch, IconBuilding, IconPlus, IconSettings } from "../components/Icons";
 import CountUp from "../components/CountUp";
 import ConfirmDialog from "../components/ConfirmDialog";
+import SwipeRow from "../components/SwipeRow";
 import { SITES_CHANGED, useTourScene } from "../lib/tour";
 import { useEdgeBump } from "../lib/edgeBump";
 import logo from "../assets/logo.png";
@@ -474,12 +475,6 @@ function kindToggleStyle(active: boolean, kind: SiteKind): CSSProperties {
   };
 }
 
-// Distance (px) the row slides left to reveal the delete panel — matches
-// the trash button's own width, so the reveal exactly fits it.
-const SWIPE_REVEAL = 84;
-// Fraction of the reveal distance a drag must pass to snap open on release.
-const SWIPE_OPEN_THRESHOLD = SWIPE_REVEAL / 2;
-
 function SiteButton({
   site,
   thumb,
@@ -499,122 +494,9 @@ function SiteButton({
   onClose: () => void;
   onDelete: () => void;
 }) {
-  // dragX tracks the row's live horizontal offset: 0 (resting) to
-  // -SWIPE_REVEAL (fully open, trash panel showing). While the parent's
-  // isOpen flips this row closed (another row was opened, or this site
-  // was just deleted), dragX snaps to match it.
-  const [dragX, setDragX] = useState(0);
-  // Whether a drag is in progress — read during render to switch the
-  // transition off while tracking the finger, so the row doesn't lag.
-  const [dragging, setDragging] = useState(false);
-  const startX = useRef(0);
-  const startOffset = useRef(0);
-  const draggedFar = useRef(false);
-
-  useEffect(() => {
-    setDragX(isOpen ? -SWIPE_REVEAL : 0);
-  }, [isOpen]);
-
-  function handlePointerDown(e: ReactPointerEvent<HTMLButtonElement>) {
-    setDragging(true);
-    draggedFar.current = false;
-    startX.current = e.clientX;
-    startOffset.current = isOpen ? -SWIPE_REVEAL : 0;
-    e.currentTarget.setPointerCapture(e.pointerId);
-  }
-
-  function handlePointerMove(e: ReactPointerEvent<HTMLButtonElement>) {
-    if (!dragging) return;
-    const delta = e.clientX - startX.current;
-    if (Math.abs(delta) > 6) draggedFar.current = true;
-    setDragX(Math.min(0, Math.max(-SWIPE_REVEAL, startOffset.current + delta)));
-  }
-
-  function endDrag() {
-    if (!dragging) return;
-    setDragging(false);
-    setDragX((current) => {
-      if (current <= -SWIPE_OPEN_THRESHOLD) {
-        onOpen();
-        return -SWIPE_REVEAL;
-      }
-      onClose();
-      return 0;
-    });
-  }
-
-  function handleRowClick() {
-    if (draggedFar.current) return; // this click ended a swipe, not a tap
-    if (isOpen) {
-      onClose();
-      return;
-    }
-    onClick();
-  }
-
+  // swipe-to-delete: the shared row, the same everywhere (asked first)
   return (
-    <div style={{ position: "relative", borderRadius: 14, overflow: "hidden" }}>
-      {/* delete panel, revealed as the row above slides left. Slightly
-          inset top and bottom, and only shown once a swipe starts: the
-          rows "pop in" from 94% scale, which otherwise let the red peek
-          out around every row's edge for a moment. */}
-      <div
-        style={{
-          position: "absolute",
-          inset: "2px 0",
-          borderRadius: 12,
-          opacity: dragX < 0 || isOpen ? 1 : 0,
-          // hide only once the row has finished sliding back over it
-          transition: dragX < 0 || isOpen ? "none" : "opacity 0s linear 0.22s",
-          background: "#ff6b6b",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "flex-end",
-        }}
-      >
-        <button
-          type="button"
-          aria-label={`Delete ${site.name}`}
-          onClick={onDelete}
-          style={{
-            width: SWIPE_REVEAL,
-            height: "100%",
-            background: "none",
-            border: "none",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <IconTrash size={22} strokeWidth={2} color="#2a0808" />
-        </button>
-      </div>
-
-      <button
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={endDrag}
-        onPointerCancel={endDrag}
-        onClick={handleRowClick}
-        className="pop-in"
-        style={{
-          position: "relative",
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-          width: "100%",
-          background: "var(--panel)",
-          border: "1px solid var(--border)",
-          borderRadius: 14,
-          padding: 14,
-          textAlign: "left",
-          color: "inherit",
-          touchAction: "pan-y",
-          transform: `translateX(${dragX}px)`,
-          transition: dragging ? "none" : "transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1)",
-          animationDelay: `${Math.min(index, 8) * 35}ms`,
-        }}
-      >
+    <SwipeRow index={index} label={`Delete ${site.name}`} swipeOpen={isOpen} onSwipeOpen={onOpen} onSwipeClose={onClose} onOpen={onClick} onDelete={onDelete} rowStyle={{ padding: 14, color: "inherit" }} chevron={false}>
         <div
           style={{
             flexShrink: 0,
@@ -675,8 +557,7 @@ function SiteButton({
             )}
           </span>
         </div>
-      </button>
-    </div>
+    </SwipeRow>
   );
 }
 
