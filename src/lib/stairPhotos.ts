@@ -1,7 +1,6 @@
 import type { Finding, Photo, StairTest } from "../db/types";
-import { getStamped, listTestFindings } from "../db/db";
+import { listTestFindings } from "../db/db";
 import { defectTypeStyle } from "./defectTypes";
-import { EXPORT_MAX_EDGE, STAMP_VERSION, watermarkBlob } from "./watermark";
 
 // A stair test's Photos & notes (lib/testPhotos) as they print: their own
 // page after the stair pages, in the preview, the PDF and the Excel alike.
@@ -44,24 +43,4 @@ export function photoItems(rows: { finding: Finding; photos: Photo[] }[]): Stair
 
 export async function testPhotoItems(test: StairTest): Promise<StairPhotoItem[]> {
   return photoItems(await listTestFindings(test.siteId, test.id));
-}
-
-// the photos as tiles in the PDF: cropped 4:3, stamped with when they were
-// taken, made once and kept (db/getStamped)
-export const PDF_TILE_ASPECT = 4 / 3;
-export async function pdfTile(p: Photo) {
-  const key = `${STAMP_VERSION}:${EXPORT_MAX_EDGE}:${PDF_TILE_ASPECT.toFixed(4)}:${p.takenAt}`;
-  const tile = await getStamped(p, "pdf", key, async (source) => {
-    const { jpeg, width, height } = await watermarkBlob(source, p.takenAt, { cropAspect: PDF_TILE_ASPECT, maxEdge: EXPORT_MAX_EDGE });
-    return { blob: jpeg, width, height };
-  });
-  return new Uint8Array(await tile.blob.arrayBuffer());
-}
-
-// a photo for the Excel, the same stamp the findings register uses
-export function excelTile(p: Photo) {
-  return getStamped(p, "excel", `${STAMP_VERSION}:${EXPORT_MAX_EDGE}:${p.takenAt}`, async (source) => {
-    const { jpeg, width, height } = await watermarkBlob(source, p.takenAt, { maxEdge: EXPORT_MAX_EDGE });
-    return { blob: jpeg, width, height };
-  });
 }

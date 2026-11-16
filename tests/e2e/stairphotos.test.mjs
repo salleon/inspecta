@@ -105,8 +105,10 @@ test("kept out of the site's findings; their own page in the report", async () =
   await photosPage.waitFor({ state: "attached" });
   const text = await photosPage.innerText();
   assert.match(text, /Photos & notes/);
-  assert.match(text, /1\s*Fan room locked, key from FM/);
-  assert.match(text, /2 · Level 2\s*Door closer arm loose/);
+  // as the findings report lays one out: the note, then the level
+  assert.match(text, /Fan room locked, key from FM/);
+  assert.match(text, /Door closer arm loose\s*Level 2/);
+  assert.match(text, /No photo/, "the note has no photo");
   assert.equal(await photosPage.locator("img[src^='blob:']").count(), 1, "the photo");
 });
 

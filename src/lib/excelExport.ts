@@ -46,7 +46,7 @@ import templateDataUrl from "../assets/findings-template.xlsx?inline";
 // in the Description cell, so that's still far sharper than the cell
 // needs). Built for desktop Excel.
 
-interface ExcelFinding {
+export interface ExcelFinding {
   finding: Finding;
   photos: Photo[];
 }
@@ -135,15 +135,39 @@ export async function buildFindingsWorkbook(
   onProgress?: (progress: ExcelProgress) => void,
   flow?: FlowExport,
 ): Promise<Blob> {
-  const totalPhotos = items.reduce((n, i) => n + i.photos.length, 0);
-  let donePhotos = 0;
-  onProgress?.({ stage: "photos", done: 0, total: totalPhotos });
-
   const ExcelJS = (await import("exceljs")).default;
   const wb = new ExcelJS.Workbook();
   const template = await (await fetch(templateDataUrl)).arrayBuffer();
   await wb.xlsx.load(template);
-  const ws = wb.worksheets[0];
+  await fillFindingsSheet(wb, wb.worksheets[0], items, inspectionMs, onProgress);
+  onProgress?.({ stage: "building" });
+  return writeWorkbook(wb, flow);
+}
+
+// A findings register sheet of its own in another workbook (a stair or
+// flow test's photos and defects): the template's heading row and column
+// widths copied over, then filled exactly as the findings report's sheet.
+export async function addFindingsSheet(wb: import("exceljs").Workbook, name: string, items: ExcelFinding[], inspectionMs: number) {
+  const ExcelJS = (await import("exceljs")).default;
+  const t = new ExcelJS.Workbook();
+  await t.xlsx.load(await (await fetch(templateDataUrl)).arrayBuffer());
+  const from = t.worksheets[0];
+  const ws = wb.addWorksheet(name, { pageSetup: JSON.parse(JSON.stringify(from.pageSetup)) });
+  for (let c = 1; c <= from.columnCount; c++) ws.getColumn(c).width = from.getColumn(c).width;
+  const head = from.getRow(1);
+  ws.getRow(1).height = head.height;
+  head.eachCell({ includeEmpty: true }, (cell, c) => {
+    const to = ws.getRow(1).getCell(c);
+    to.value = cell.value;
+    to.style = JSON.parse(JSON.stringify(cell.style));
+  });
+  await fillFindingsSheet(wb, ws, items, inspectionMs);
+}
+
+async function fillFindingsSheet(wb: import("exceljs").Workbook, ws: import("exceljs").Worksheet, items: ExcelFinding[], inspectionMs: number, onProgress?: (progress: ExcelProgress) => void) {
+  const totalPhotos = items.reduce((n, i) => n + i.photos.length, 0);
+  let donePhotos = 0;
+  onProgress?.({ stage: "photos", done: 0, total: totalPhotos });
 
   // Description column: wide enough for two 5 cm photos side by side when
   // any finding has more than one, plus padding either side.
@@ -368,8 +392,6 @@ export async function buildFindingsWorkbook(
   // keep the header visible while scrolling through tall photo rows
   ws.views = [{ state: "frozen", ySplit: 1, topLeftCell: "A2", activeCell: "A2" }];
 
-  onProgress?.({ stage: "building" });
-  return writeWorkbook(wb, flow);
 }
 
 // Stored, not deflated: the photos are already JPEG-compressed, so
@@ -380,7 +402,7 @@ async function writeWorkbook(wb: import("exceljs").Workbook, flow?: FlowExport):
   if (flow?.stair?.tests.length) {
     const { addStairSheets, addStairPhotoSheets } = await import("./stairExcel");
     addStairSheets(wb, flow.stair.tests, flow.stair.sys, flow.site);
-    await addStairPhotoSheets(wb, flow.stair.tests, flow.stair.sys, flow.site);
+    await addStairPhotoSheets(wb, flow.stair.tests);
   }
   const buffer = await wb.xlsx.writeBuffer({ zip: { compression: "STORE" } } as never);
   const bytes = await addFlowCharts(new Uint8Array(buffer as ArrayBuffer), charts);

@@ -129,25 +129,24 @@ function PhotosPaper({ first, items, thumbs }: { first: StairPage; items: StairP
           <Detail key={d.label} label={d.label} value={d.value} />
         ))}
       </div>
+      {/* each as the findings report draws one: photos on the left half,
+          type, note, level and location on the right */}
       {items.map((it) => (
-        <div key={it.finding.id} style={{ display: "flex", flexDirection: "column", gap: 4, borderBottom: "1px solid #e3e9ee", padding: "4px 0 7px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 9.5 }}>
-            <b>
-              {it.n}
-              {it.place ? ` · ${it.place}` : ""}
-            </b>
-            {it.type && <span style={{ marginLeft: "auto", fontSize: 8, fontWeight: 700, padding: "1px 7px", borderRadius: 8, background: it.type.bg, color: it.type.text, border: it.type.bg === "#ffffff" ? "1px solid #c9c4b8" : "none" }}>{it.type.label}</span>}
+        <div key={it.finding.id} style={{ display: "flex", gap: 10, borderTop: "1px solid #e3e9ee", paddingTop: 8, marginTop: 2 }}>
+          <div style={{ flex: "0 0 48%", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, alignContent: "start" }}>
+            {it.photos.map((p) => (
+              <span key={p.id} style={{ aspectRatio: "121/161", background: "#e3e9ee", overflow: "hidden" }}>
+                {thumbs[p.id] && <img src={thumbs[p.id]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />}
+              </span>
+            ))}
+            {!it.photos.length && <span style={{ gridColumn: "1", height: 34, border: "1px dashed #c9c4b8", borderRadius: 3, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8, color: "#8c8c8c" }}>No photo</span>}
           </div>
-          {it.note && <div style={{ fontSize: 9.5, lineHeight: 1.35, whiteSpace: "pre-wrap" }}>{it.note}</div>}
-          {it.photos.length > 0 && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 5 }}>
-              {it.photos.map((p) => (
-                <span key={p.id} style={{ aspectRatio: "4/3", background: "#e3e9ee", overflow: "hidden" }}>
-                  {thumbs[p.id] && <img src={thumbs[p.id]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />}
-                </span>
-              ))}
-            </div>
-          )}
+          <div style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
+            {it.type && <span style={{ alignSelf: "flex-start", fontSize: 8, fontWeight: 700, padding: "1px 7px", borderRadius: 8, background: it.type.bg, color: it.type.text, border: it.type.bg === "#ffffff" ? "1px solid #c9c4b8" : "none" }}>{it.type.label}</span>}
+            <div style={{ fontSize: 10.5, fontWeight: 700, lineHeight: 1.3, whiteSpace: "pre-wrap" }}>{it.note || "Untitled finding"}</div>
+            {it.finding.level && <div style={{ fontSize: 9, color: "#8c8c8c" }}>{it.finding.level}</div>}
+            {it.finding.location.trim() && <div style={{ fontSize: 9, color: "#8c8c8c" }}>{it.finding.location.trim()}</div>}
+          </div>
         </div>
       ))}
     </div>
