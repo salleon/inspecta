@@ -147,3 +147,34 @@ export function TestPhotosSheet({ items, onClose, onOpen, onPhoto, onNote }: { i
     </div>
   );
 }
+
+// A flow test's defects, as a slim row at the bottom of its Comments card:
+// Note and Photo, then the ones taken so far (tap one to open it).
+export function FlowDefectsRow({ items, onNote, onPhoto, onOpen }: { items: TestPhoto[]; onNote: () => void; onPhoto: () => void; onOpen: (findingId: string) => void }) {
+  const pill: CSSProperties = { display: "flex", alignItems: "center", gap: 6, padding: "8px 12px", borderRadius: 999, fontSize: 12.5, fontWeight: 800, minHeight: 36 };
+  return (
+    <div data-testid="flow-defects" style={{ display: "flex", flexDirection: "column", gap: 8, borderTop: "1px solid var(--border)", paddingTop: 10, marginTop: 2 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ flexGrow: 1, fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--muted)" }}>
+          Photos &amp; defects{items.length ? ` · ${items.length}` : ""}
+        </span>
+        <button aria-label="Add a defect note" onClick={onNote} style={{ ...pill, border: "1px solid var(--border-strong)", background: "none", color: "#bfd0de" }}>
+          <IconPen size={14} /> Note
+        </button>
+        <button aria-label="Take a defect photo" onClick={onPhoto} style={{ ...pill, border: "1px solid rgba(var(--accent-rgb), .55)", background: "rgba(var(--accent-rgb), .1)", color: "#5ff0e0" }}>
+          <IconCamera size={15} strokeWidth={2.2} /> Photo
+        </button>
+      </div>
+      {items.length > 0 && (
+        <div style={{ display: "flex", gap: 7, alignItems: "center", flexWrap: "wrap" }}>
+          {items.map((i) => (
+            <button key={i.finding.id} aria-label={`Open defect: ${i.finding.note.trim() || "no note yet"}`} onClick={() => onOpen(i.finding.id)} style={{ border: "none", background: "none", padding: 0 }}>
+              <Thumb item={i} size={52} />
+            </button>
+          ))}
+          <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--muted)", lineHeight: 1.35, paddingLeft: 2 }}>On the page after the test in the export.</span>
+        </div>
+      )}
+    </div>
+  );
+}

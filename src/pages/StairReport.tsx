@@ -1,5 +1,5 @@
 import { say } from "../components/Message";
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useRef, useState, type CSSProperties } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { stairPages, type StairPage, type StairRow } from "../lib/stairPrint";
 import { KIND_LABEL, stairFileName } from "../lib/stairTest";
@@ -7,8 +7,8 @@ import { exportTests, type TestsFormat } from "../lib/testsExport";
 import ProgressOverlay from "../components/ProgressOverlay";
 import { PageHeader, useStairTest } from "../components/StairUi";
 import { reportLogoUrl } from "../lib/branding";
-import { getThumbnail } from "../db/db";
-import { PHOTOS_SUBTITLE, testPhotoItems, type StairPhotoItem } from "../lib/stairPhotos";
+import { PHOTOS_SUBTITLE, type StairPhotoItem } from "../lib/stairPhotos";
+import { FindingsOnPaper, useReportPhotos } from "../components/FindingsOnPaper";
 
 // A stair test's report, previewed as it prints (lib/stairPrint): a page
 // per stair, swiped sideways, then the test's Photos & notes on a page of
@@ -26,28 +26,9 @@ export default function StairReport() {
   const strip = useRef<HTMLDivElement>(null);
 
   const stairs = site?.spf && test ? stairPages(test, site.spf, site) : [];
-  // Photos & notes, with their photos' thumbnails (photo id → URL)
-  const [photos, setPhotos] = useState<{ items: StairPhotoItem[]; thumbs: Record<string, string> }>({ items: [], thumbs: {} });
-  useEffect(() => {
-    if (!test) return;
-    let cancelled = false;
-    const urls: string[] = [];
-    void (async () => {
-      const items = await testPhotoItems(test);
-      const thumbs: Record<string, string> = {};
-      for (const p of items.flatMap((i) => i.photos)) {
-        const b = await getThumbnail(p).catch(() => null);
-        if (b) urls.push((thumbs[p.id] = URL.createObjectURL(b)));
-      }
-      if (!cancelled) setPhotos({ items, thumbs });
-    })();
-    return () => {
-      cancelled = true;
-      urls.forEach((u) => URL.revokeObjectURL(u));
-    };
-    // read once the test has loaded
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [test?.id]);
+  // Photos & notes, with their photos' thumbnails
+  const photoData = useReportPhotos(test ? [test] : []);
+  const photos = { items: (test && photoData.byTest[test.id]) || [], thumbs: photoData.thumbs };
   const withPhotos = photos.items.length > 0 && stairs.length > 0;
   const pages: (StairPage | "photos")[] = withPhotos ? [...stairs, "photos"] : stairs;
   const go = (i: number) => strip.current?.scrollTo({ left: i * strip.current.clientWidth, behavior: "smooth" });
@@ -129,26 +110,7 @@ function PhotosPaper({ first, items, thumbs }: { first: StairPage; items: StairP
           <Detail key={d.label} label={d.label} value={d.value} />
         ))}
       </div>
-      {/* each as the findings report draws one: photos on the left half,
-          type, note, level and location on the right */}
-      {items.map((it) => (
-        <div key={it.finding.id} style={{ display: "flex", gap: 10, borderTop: "1px solid #e3e9ee", paddingTop: 8, marginTop: 2 }}>
-          <div style={{ flex: "0 0 48%", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, alignContent: "start" }}>
-            {it.photos.map((p) => (
-              <span key={p.id} style={{ aspectRatio: "121/161", background: "#e3e9ee", overflow: "hidden" }}>
-                {thumbs[p.id] && <img src={thumbs[p.id]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />}
-              </span>
-            ))}
-            {!it.photos.length && <span style={{ gridColumn: "1", height: 34, border: "1px dashed #c9c4b8", borderRadius: 3, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8, color: "#8c8c8c" }}>No photo</span>}
-          </div>
-          <div style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
-            {it.type && <span style={{ alignSelf: "flex-start", fontSize: 8, fontWeight: 700, padding: "1px 7px", borderRadius: 8, background: it.type.bg, color: it.type.text, border: it.type.bg === "#ffffff" ? "1px solid #c9c4b8" : "none" }}>{it.type.label}</span>}
-            <div style={{ fontSize: 10.5, fontWeight: 700, lineHeight: 1.3, whiteSpace: "pre-wrap" }}>{it.note || "Untitled finding"}</div>
-            {it.finding.level && <div style={{ fontSize: 9, color: "#8c8c8c" }}>{it.finding.level}</div>}
-            {it.finding.location.trim() && <div style={{ fontSize: 9, color: "#8c8c8c" }}>{it.finding.location.trim()}</div>}
-          </div>
-        </div>
-      ))}
+      <FindingsOnPaper items={items} thumbs={thumbs} />
     </div>
   );
 }

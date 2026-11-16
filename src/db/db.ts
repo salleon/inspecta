@@ -202,7 +202,7 @@ export async function deleteSite(siteId: string) {
   await db.sites.delete(siteId);
 }
 
-export async function createFinding(siteId: string, carried: Partial<Pick<Finding, "level" | "stairTestId">> = {}) {
+export async function createFinding(siteId: string, carried: Partial<Pick<Finding, "level" | "stairTestId" | "flowTestId">> = {}) {
   const now = Date.now();
   const finding: Finding = {
     id: uid(),
@@ -258,16 +258,19 @@ export async function firstSitePhoto(siteId: string): Promise<Photo | undefined>
   return undefined;
 }
 
-// the site's own findings: not the photos and notes taken in its stair
-// tests, which are the tests' (listTestFindings)
+// a stair or flow test's own photos and defects, not the site's
+const ofATest = (f: Finding) => !!(f.stairTestId || f.flowTestId);
+
+// the site's own findings: not the photos and notes taken in its stair and
+// flow tests, which are the tests' (listTestFindings)
 export async function listFindings(siteId: string) {
-  const findings = await db.findings.where("siteId").equals(siteId).filter((f) => !f.stairTestId).toArray();
+  const findings = await db.findings.where("siteId").equals(siteId).filter((f) => !ofATest(f)).toArray();
   return findings.sort((a, b) => a.order - b.order);
 }
 
-// A stair test's photos and notes, oldest first, each with its photos.
+// A stair or flow test's photos and defects, oldest first, each with its photos.
 export async function listTestFindings(siteId: string, testId: string) {
-  const findings = await db.findings.where("siteId").equals(siteId).filter((f) => f.stairTestId === testId).toArray();
+  const findings = await db.findings.where("siteId").equals(siteId).filter((f) => f.stairTestId === testId || f.flowTestId === testId).toArray();
   findings.sort((a, b) => a.createdAt - b.createdAt);
   return Promise.all(findings.map(async (finding) => ({ finding, photos: await listPhotos(finding.id) })));
 }
@@ -296,7 +299,7 @@ export async function getFinding(findingId: string) {
 }
 
 export async function findingCount(siteId: string) {
-  return db.findings.where("siteId").equals(siteId).filter((f) => !f.stairTestId).count();
+  return db.findings.where("siteId").equals(siteId).filter((f) => !ofATest(f)).count();
 }
 
 // takenAt: when a photo from the gallery was taken (defaults to now);
@@ -561,6 +564,8 @@ export async function saveFlowTest(test: FlowTest) {
 
 export async function deleteFlowTest(testId: string) {
   const test = await db.flowTests.get(testId);
+  // its defects go with it
+  if (test) for (const f of await db.findings.where("siteId").equals(test.siteId).filter((f) => f.flowTestId === testId).toArray()) await deleteFinding(f.id);
   await db.flowTests.delete(testId);
   if (test) await touchSite(test.siteId);
 }

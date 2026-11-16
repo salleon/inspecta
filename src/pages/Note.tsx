@@ -33,7 +33,7 @@ import { EsrBrowseSheet, EsrLink, EsrSelectedCard, EsrSuggestionList } from "../
 import { useBackHandler } from "../lib/backButton";
 import PhotoViewer from "../components/PhotoViewer";
 import { useTourScene } from "../lib/tour";
-import { testFindingUrl } from "../lib/testPhotos";
+import { testFindingUrl, type TestKind } from "../lib/testPhotos";
 
 interface PhotoRect {
   top: number;
@@ -54,12 +54,16 @@ export default function Note() {
   const { siteId, findingId } = useParams<{ siteId: string; findingId: string }>();
   const navigate = useNavigate();
   const routerLocation = useRouterLocation();
-  // a stair test's photo or note (lib/testPhotos): it stays with the test,
-  // and leaving goes back to where in the test it was opened from
+  // a stair test's photo or note, or a flow test's defect (lib/testPhotos):
+  // it stays with the test, and leaving goes back to where in the test it
+  // was opened from
   const [search] = useSearchParams();
-  const testId = search.get("test") || undefined;
+  const testKind: TestKind = search.get("flow") ? "flow" : "stair";
+  const testId = search.get("flow") || search.get("test") || undefined;
   const leaveTo = (testId && search.get("back")) || `/site/${siteId}/findings`;
-  const nextUrl = (id: string) => (testId ? testFindingUrl(siteId!, testId, id, leaveTo) : `/site/${siteId}/finding/${id}/note`);
+  const nextUrl = (id: string) => (testId ? testFindingUrl(siteId!, testId, id, leaveTo, testKind) : `/site/${siteId}/finding/${id}/note`);
+  const ofTest = testId ? (testKind === "flow" ? { flowTestId: testId } : { stairTestId: testId }) : {};
+  const flowDefect = !!testId && testKind === "flow";
 
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
@@ -358,7 +362,7 @@ export default function Note() {
     try {
       await persist(true);
       const carry = level || undefined;
-      const finding = await createFinding(siteId, { ...(carry ? { level: carry } : {}), ...(testId ? { stairTestId: testId } : {}) });
+      const finding = await createFinding(siteId, { ...(carry ? { level: carry } : {}), ...ofTest });
       navigate(nextUrl(finding.id), { state: { carriedLevel: carry, noteOnly: true } });
     } finally {
       startingNoteOnly.current = false;
@@ -381,7 +385,7 @@ export default function Note() {
         navigate(leaveTo);
         return;
       }
-      const finding = await createFinding(siteId, { ...(carry ? { level: carry } : {}), ...(testId ? { stairTestId: testId } : {}) });
+      const finding = await createFinding(siteId, { ...(carry ? { level: carry } : {}), ...ofTest });
       await addPhoto(finding.id, siteId, shot.blob, undefined, shot.marks);
       navigate(nextUrl(finding.id), carry ? { state: { carriedLevel: carry } } : undefined);
     } finally {
@@ -520,12 +524,12 @@ export default function Note() {
     <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
       {/* top bar */}
       <div style={{ flexShrink: 0, padding: "18px 18px 12px", display: "flex", alignItems: "center", gap: 12 }}>
-        <RoundIconButton size={32} ariaLabel={testId ? "Save and back to the test" : "Save and back to findings"} onClick={handleBack}>
+        <RoundIconButton size={32} ariaLabel={flowDefect ? "Save and back to the flow test" : testId ? "Save and back to the test" : "Save and back to findings"} onClick={handleBack}>
           <IconChevronLeft size={20} strokeWidth={2.2} />
         </RoundIconButton>
         <div style={{ lineHeight: 1.2 }}>
-          <div style={{ fontSize: 15, fontWeight: 800 }}>{testId ? "Photo or note" : "Finding"}</div>
-          {testId && <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)" }}>Stair test · Photos &amp; notes</div>}
+          <div style={{ fontSize: 15, fontWeight: 800 }}>{flowDefect ? "Photo or defect" : testId ? "Photo or note" : "Finding"}</div>
+          {testId && <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)" }}>{flowDefect ? "Flow test · Defects" : "Stair test · Photos & notes"}</div>}
         </div>
       </div>
 
@@ -934,7 +938,7 @@ export default function Note() {
             color: "var(--text)",
           }}
         >
-          {testId ? "Back to the test" : <>Save &amp; close</>}
+          {flowDefect ? "Back to the flow test" : testId ? "Back to the test" : <>Save &amp; close</>}
         </button>
         {/* pen on the left: next finding without a photo; the rest opens
             the camera for the next finding, as before */}

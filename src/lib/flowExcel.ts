@@ -429,10 +429,24 @@ export async function addFlowCharts(xlsx: Uint8Array, charts: FlowChart[]): Prom
 
 // A flow testing site's own workbook: a sheet per flow test, named after it
 // (design canvas FlowExports), laid out like the preview, with its graph.
+// Each flow test's defects (lib/testPhotos): a findings register sheet of
+// their own after the tests, laid out exactly as the findings report's
+// (lib/excelExport), named after the test.
+export async function addFlowDefectSheets(wb: Workbook, tests: FlowTest[]) {
+  const { listTestFindings } = await import("../db/db");
+  const { photoItems } = await import("./stairPhotos");
+  const { addFindingsSheet } = await import("./excelExport");
+  for (const t of tests) {
+    const items = photoItems(await listTestFindings(t.siteId, t.id));
+    if (items.length) await addFindingsSheet(wb, sheetName(wb, `${t.name.trim() || SHEET[t.kind]} defects`, "Defects"), items.map((i) => ({ finding: i.finding, photos: i.photos })), t.testedAt);
+  }
+}
+
 export async function buildFlowWorkbook(tests: FlowTest[], site: Pick<Site, "name" | "address">): Promise<Blob> {
   const ExcelJS = (await import("exceljs")).default;
   const wb = new ExcelJS.Workbook();
   const charts = await addFlowSheets(wb, tests, site, true);
+  await addFlowDefectSheets(wb, tests);
   const buffer = await wb.xlsx.writeBuffer({ zip: { compression: "STORE" } } as never);
   const bytes = await addFlowCharts(new Uint8Array(buffer as ArrayBuffer), charts);
   return new Blob([bytes as BlobPart], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });

@@ -5,6 +5,9 @@ import { Share } from "@capacitor/share";
 import { Capacitor } from "@capacitor/core";
 import type { FlowTest, Site } from "../db/types";
 import { getSite, listFlowTests } from "../db/db";
+import { FindingsOnPaper, useReportPhotos } from "../components/FindingsOnPaper";
+import { DEFECTS_HEADING, type StairPhotoItem } from "../lib/stairPhotos";
+import { shortDate } from "../lib/dates";
 import { chartModel, chartModelSvg, flowFileName, printDemand, printDetails, printSubtitle, printTables, printTitle, type PrintTable } from "../lib/flowPrint";
 import { writeBlobToCache } from "../lib/cacheFile";
 import { numberedExport } from "../lib/exportName";
@@ -29,6 +32,7 @@ export default function FlowExport() {
   const [busy, setBusy] = useState<{ kind: Kind; percent: number; step: string } | null>(null);
   const started = useRef(0);
   const strip = useRef<HTMLDivElement>(null);
+  const defects = useReportPhotos(tests);
 
   useEffect(() => {
     if (!siteId) return;
@@ -90,6 +94,9 @@ export default function FlowExport() {
   }
 
   const back = () => navigate(`/site/${siteId}/findings?tab=flow`);
+  // a page per test, then its defects on the next page when it has any
+  const pages: { test: FlowTest; defects: boolean }[] = tests.flatMap((t) => [{ test: t, defects: false }, ...(defects.byTest[t.id]?.length ? [{ test: t, defects: true }] : [])]);
+  const label = (p: { test: FlowTest; defects: boolean } | undefined) => (p ? `${p.test.name || "Flow test"}${p.defects ? " · defects" : ""}` : "");
   const btn: CSSProperties = { width: "100%", padding: "14px 0", borderRadius: 12, fontSize: 15, fontWeight: 800 };
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
@@ -110,9 +117,9 @@ export default function FlowExport() {
             ‹
           </button>
           <span>
-            {tests[page]?.name || "Flow test"} <span style={{ color: "var(--muted)", fontWeight: 700 }}>· page {page + 1} of {tests.length}</span>
+            {label(pages[page])} <span style={{ color: "var(--muted)", fontWeight: 700 }}>· page {page + 1} of {pages.length}</span>
           </span>
-          <button aria-label="Next page" disabled={page >= tests.length - 1} onClick={() => go(page + 1)} style={{ border: "none", background: "none", color: page >= tests.length - 1 ? "var(--muted-2)" : "var(--accent)", fontSize: 18, padding: "0 8px" }}>
+          <button aria-label="Next page" disabled={page >= pages.length - 1} onClick={() => go(page + 1)} style={{ border: "none", background: "none", color: page >= pages.length - 1 ? "var(--muted-2)" : "var(--accent)", fontSize: 18, padding: "0 8px" }}>
             ›
           </button>
         </div>
@@ -123,24 +130,24 @@ export default function FlowExport() {
         style={{ flexGrow: 1, minHeight: 0, display: "flex", overflowX: "auto", overflowY: "hidden", scrollSnapType: "x mandatory" }}
       >
         {site &&
-          tests.map((t) => (
-            <div key={t.id} style={{ flex: "0 0 100%", scrollSnapAlign: "center", overflowY: "auto", padding: "6px 16px 12px", boxSizing: "border-box" }}>
-              <PreviewPage test={t} site={site} />
+          pages.map((p) => (
+            <div key={`${p.test.id}${p.defects ? ":defects" : ""}`} style={{ flex: "0 0 100%", scrollSnapAlign: "center", overflowY: "auto", padding: "6px 16px 12px", boxSizing: "border-box" }}>
+              {p.defects ? <DefectsPage test={p.test} site={site} items={defects.byTest[p.test.id] ?? []} thumbs={defects.thumbs} /> : <PreviewPage test={p.test} site={site} />}
             </div>
           ))}
       </div>
-      {tests.length > 1 && (
+      {pages.length > 1 && (
         <div style={{ flexShrink: 0, display: "flex", justifyContent: "center", gap: 6, padding: "6px 0" }}>
-          {tests.map((_, i) => (
+          {pages.map((_, i) => (
             <span key={i} style={{ width: i === page ? 16 : 5, height: 5, borderRadius: 3, background: i === page ? "var(--accent)" : "var(--border-strong)", transition: "width .2s" }} />
           ))}
         </div>
       )}
       <div data-tour="flow-export-buttons" style={{ flexShrink: 0, padding: "10px 16px calc(24px + env(safe-area-inset-bottom))", borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 10 }}>
-        <div style={{ fontSize: 11.5, color: "var(--muted-2)", textAlign: "center" }}>Each test is one page in the PDF and one sheet in the Excel.</div>
+        <div style={{ fontSize: 11.5, color: "var(--muted-2)", textAlign: "center" }}>Each test is a page in the PDF and a sheet in the Excel; its defects, if any, follow it.</div>
         <button disabled={!tests.length || !!busy} onClick={() => void share("excel")} style={{ ...btn, border: "1px solid rgba(var(--accent-rgb), .55)", background: "rgba(var(--accent-rgb), .12)", color: "var(--accent)" }}>
           Export Excel
-          {tests.length > 0 && <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 700, color: "var(--muted)" }}>sheets: {tests.map((t) => t.name || "Flow test").join(" · ")}</span>}
+          {tests.length > 0 && <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 700, color: "var(--muted)" }}>sheets: {pages.map((p) => label(p)).join(" · ")}</span>}
         </button>
         <button disabled={!tests.length || !!busy} onClick={() => void share("pdf")} style={{ ...btn, padding: "16px 0", border: "none", background: "var(--accent)", color: "var(--accent-text)" }}>
           Export PDF
@@ -161,6 +168,24 @@ export default function FlowExport() {
 }
 
 // one flow test as it prints, on white paper
+// a test's defects, on the page after it: headed like it, then each as the findings report draws one
+function DefectsPage({ test, site, items, thumbs }: { test: FlowTest; site: Site; items: StairPhotoItem[]; thumbs: Record<string, string> }) {
+  return (
+    <div data-testid="flow-defects-page" style={{ background: "#fff", color: "#1c2833", borderRadius: 6, padding: "16px 14px", display: "flex", flexDirection: "column", gap: 6, boxShadow: "0 8px 24px rgba(0,0,0,.35)", fontFamily: "Helvetica, Arial, sans-serif" }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: "0.02em" }}>{printTitle(test)}</div>
+          <div style={{ width: 40, height: 2.5, background: "#1f6fb2", marginTop: 4 }} />
+          <div style={{ fontSize: 10.5, fontWeight: 700, marginTop: 4 }}>{DEFECTS_HEADING}</div>
+          <div style={{ fontSize: 9, marginTop: 2 }}>{[site.name, shortDate(test.testedAt)].filter(Boolean).join(" · ")}</div>
+        </div>
+        {reportLogoUrl() && <img src={reportLogoUrl()!} alt="" style={{ height: 22, maxWidth: 90, objectFit: "contain", flexShrink: 0 }} />}
+      </div>
+      <FindingsOnPaper items={items} thumbs={thumbs} />
+    </div>
+  );
+}
+
 function PreviewPage({ test, site }: { test: FlowTest; site: Site }) {
   const demand = printDemand(test);
   const sub = printSubtitle(test);

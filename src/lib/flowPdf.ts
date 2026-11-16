@@ -3,6 +3,41 @@ import type { FlowTest, Site } from "../db/types";
 import { reportLogoUrl } from "./branding";
 import { chartModel, PRINT_DEMAND, printDemand, printDetails, printSubtitle, printTables, printTitle } from "./flowPrint";
 import { shortDate } from "./dates";
+import { listTestFindings } from "../db/db";
+import { DEFECTS_HEADING, photoItems } from "./stairPhotos";
+
+// A flow test's defects (its Comments card, lib/testPhotos) on the page
+// after it: headed like it, then drawn exactly as the findings report
+// draws findings (lib/findingsPdf).
+async function drawDefects(doc: JsPDF, test: FlowTest, site: Pick<Site, "name" | "address">, logo: { data: string; w: number; h: number } | null) {
+  const items = photoItems(await listTestFindings(test.siteId, test.id));
+  if (!items.length) return;
+  doc.addPage();
+  const { w: W, m: M } = PAGE;
+  let y = M + 6;
+  doc.setTextColor(INK);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(15);
+  doc.text(printTitle(test), M, y + 8);
+  if (logo) {
+    const lh = Math.min(26, (120 * logo.h) / logo.w);
+    const lw = (logo.w / logo.h) * lh;
+    doc.addImage(logo.data, "PNG", W - M - lw, y - 8, lw, lh);
+  }
+  doc.setFillColor(BLUE);
+  doc.rect(M, y + 15, 46, 2.5, "F");
+  y += 28;
+  doc.setFontSize(10);
+  doc.text(DEFECTS_HEADING, M, y + 6);
+  y += 12;
+  doc.setFontSize(8.5);
+  doc.setFont("helvetica", "normal");
+  doc.text([site.name, shortDate(test.testedAt)].filter(Boolean).join(" · "), M, y + 6);
+  y += 26;
+  const { drawFindings } = await import("./findingsPdf");
+  await drawFindings(doc, items.map((i) => ({ finding: i.finding, photos: i.photos })), undefined, y);
+}
+
 
 // The flow tests as a PDF (design canvas FlowExports): a full A4 page per
 // test, laid out as in lib/flowPrint (the export preview draws the same).
@@ -38,10 +73,11 @@ export async function buildFlowPdf(tests: FlowTest[], site: Pick<Site, "name" | 
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const logo = await logoImage().catch(() => null);
-  tests.forEach((test, n) => {
+  for (const [n, test] of tests.entries()) {
     if (n) doc.addPage();
     drawPage(doc, test, site, logo, n + 1, tests.length);
-  });
+    await drawDefects(doc, test, site, logo);
+  }
   return doc.output("blob");
 }
 
@@ -50,10 +86,11 @@ export async function buildFlowPdf(tests: FlowTest[], site: Pick<Site, "name" | 
 export async function appendFlowPages(doc: JsPDF, tests: FlowTest[], site: Pick<Site, "name" | "address">): Promise<void> {
   if (!tests.length) return;
   const logo = await logoImage().catch(() => null);
-  tests.forEach((test, n) => {
+  for (const [n, test] of tests.entries()) {
     doc.addPage();
     drawPage(doc, test, site, logo, n + 1, tests.length, "Flow test");
-  });
+    await drawDefects(doc, test, site, logo);
+  }
 }
 
 function drawPage(doc: JsPDF, test: FlowTest, site: Pick<Site, "name" | "address">, logo: { data: string; w: number; h: number } | null, page: number, pages: number, counter = "Page") {

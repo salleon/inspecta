@@ -1,4 +1,4 @@
-import type { Finding, Photo, StairTest } from "../db/types";
+import type { Finding, Photo } from "../db/types";
 import { listTestFindings } from "../db/db";
 import { defectTypeStyle } from "./defectTypes";
 
@@ -17,6 +17,8 @@ export interface StairPhotoItem {
 }
 
 export const PHOTOS_SUBTITLE = "Photos & notes";
+// a flow test's, on the page after it
+export const DEFECTS_HEADING = "Defects found during testing";
 
 // its level and location, the level once if the location already says it
 function place(f: Finding) {
@@ -41,6 +43,6 @@ export function photoItems(rows: { finding: Finding; photos: Photo[] }[]): Stair
     });
 }
 
-export async function testPhotoItems(test: StairTest): Promise<StairPhotoItem[]> {
+export async function testPhotoItems(test: { id: string; siteId: string }): Promise<StairPhotoItem[]> {
   return photoItems(await listTestFindings(test.siteId, test.id));
 }

@@ -5,6 +5,22 @@ matches a commit on the `test` branch (called `advanced_controls` until
 29 September 2026) or `main`; the commit itself has
 the technical detail.
 
+## 16 November 2026
+
+- **Defects while flow testing.** A flow test's Comments card has a slim
+  **Photos & defects** row: **Note** and **Photo**, then the ones taken
+  so far. Each opens on the usual Finding screen (photos, mark-up, defect
+  type, location); **Back to the flow test** returns to the same place on
+  the page. They're kept out of the site's own findings, go on the page
+  after the test in the export preview and PDF, and get a sheet of their
+  own in the Excel, laid out as the findings register; they're deleted
+  with the test.
+
+- **Stair and flow test photos laid out like the findings report.** In
+  the PDF each is drawn as the findings report draws a finding, and in
+  the Excel the sheet is the findings register, without ESR headings.
+  The stair sheets' once-a-stair readings no longer get cut off.
+
 ## 15 November 2026
 
 - **Photos & notes while stair testing.** A stair test can now have its

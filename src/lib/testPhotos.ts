@@ -23,21 +23,30 @@ export function findingLevel(code: string | undefined): string | undefined {
   return c;
 }
 
+// which test a photo or note is for: a stair test's Photos & notes, or a
+// flow test's defects (its Comments card)
+export type TestKind = "stair" | "flow";
+const field = (kind: TestKind, testId: string) => (kind === "flow" ? { flowTestId: testId } : { stairTestId: testId });
+
 // the Finding screen for one of a test's photos or notes, coming back to `back`
-export const testFindingUrl = (siteId: string, testId: string, findingId: string, back: string) =>
-  `/site/${siteId}/finding/${findingId}/note?test=${encodeURIComponent(testId)}&back=${encodeURIComponent(back)}`;
+export const testFindingUrl = (siteId: string, testId: string, findingId: string, back: string, kind: TestKind = "stair") =>
+  `/site/${siteId}/finding/${findingId}/note?${kind === "flow" ? "flow" : "test"}=${encodeURIComponent(testId)}&back=${encodeURIComponent(back)}`;
+
+type Opts = { siteId: string; testId: string; level?: string; back: string; kind?: TestKind };
 
 // the camera, then the new photo's Finding screen; nothing is made if the camera's cancelled
-export async function takeTestPhoto(navigate: NavigateFunction, o: { siteId: string; testId: string; level?: string; back: string }) {
-  const shot = await capturePhoto({ title: "Stair test photo", level: o.level, siteId: o.siteId });
+export async function takeTestPhoto(navigate: NavigateFunction, o: Opts) {
+  const kind = o.kind ?? "stair";
+  const shot = await capturePhoto({ title: kind === "flow" ? "Flow test defect" : "Stair test photo", level: o.level, siteId: o.siteId });
   if (!shot) return;
-  const finding = await createFinding(o.siteId, { stairTestId: o.testId, ...(o.level ? { level: o.level } : {}) });
+  const finding = await createFinding(o.siteId, { ...field(kind, o.testId), ...(o.level ? { level: o.level } : {}) });
   await addPhoto(finding.id, o.siteId, shot.blob, undefined, shot.marks);
-  navigate(testFindingUrl(o.siteId, o.testId, finding.id, o.back));
+  navigate(testFindingUrl(o.siteId, o.testId, finding.id, o.back, kind));
 }
 
 // a note with no photo yet: its Finding screen with the keyboard up
-export async function addTestNote(navigate: NavigateFunction, o: { siteId: string; testId: string; level?: string; back: string }) {
-  const finding = await createFinding(o.siteId, { stairTestId: o.testId, ...(o.level ? { level: o.level } : {}) });
-  navigate(testFindingUrl(o.siteId, o.testId, finding.id, o.back), { state: { noteOnly: true } });
+export async function addTestNote(navigate: NavigateFunction, o: Opts) {
+  const kind = o.kind ?? "stair";
+  const finding = await createFinding(o.siteId, { ...field(kind, o.testId), ...(o.level ? { level: o.level } : {}) });
+  navigate(testFindingUrl(o.siteId, o.testId, finding.id, o.back, kind), { state: { noteOnly: true } });
 }

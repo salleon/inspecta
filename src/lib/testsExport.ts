@@ -26,6 +26,7 @@ async function buildTestsWorkbook(flow: FlowTest[], stair: StairTest[], sys: Spf
   const { addFlowSheets, addFlowCharts } = await import("./flowExcel");
   const wb = new ExcelJS.Workbook();
   const charts = flow.length ? await addFlowSheets(wb, flow, site, true) : [];
+  if (flow.length) await (await import("./flowExcel")).addFlowDefectSheets(wb, flow);
   if (stair.length && sys) {
     const { addStairSheets, addStairPhotoSheets } = await import("./stairExcel");
     addStairSheets(wb, stair, sys, site);

@@ -38,6 +38,12 @@ import { useFlowMode } from "../lib/settings";
 import { useTourScene } from "../lib/tour";
 import CellPad from "../components/CellPad";
 import { isoDay } from "../lib/dates";
+import { FlowDefectsRow, useTestPhotos } from "../components/TestPhotos";
+import { addTestNote, takeTestPhoto, testFindingUrl } from "../lib/testPhotos";
+
+// where the page was scrolled to, by test, so coming back from a defect
+// lands on the Comments card again, not the top
+const scrolledTo = new Map<string, number>();
 
 // One flow test (see lib/flowTest), as mocked up on the design canvas:
 // the graph and pass lines at the top follow the readings as they're typed.
@@ -161,6 +167,8 @@ export default function FlowTest() {
   const [chartW, setChartW] = useState(340);
   const chartBox = useRef<HTMLDivElement>(null);
   const pageScroll = useRef<HTMLDivElement>(null);
+  // the test's defects (lib/testPhotos), read again each time it opens
+  const defects = useTestPhotos(siteId, testId);
 
   // Saved as it's typed: every change is written straight away, one write
   // at a time so an older copy can never land after a newer one; and again
@@ -210,6 +218,25 @@ export default function FlowTest() {
     };
   }, [siteId, testId, navigate]);
 
+  // back from a defect: as far down as it was
+  // (kept at for a moment while the graph and the defects' thumbnails
+  // come in and make the page long enough to get there)
+  useEffect(() => {
+    const top = testId ? scrolledTo.get(testId) : undefined;
+    if (test === null || top === undefined) return;
+    scrolledTo.delete(testId!);
+    const until = performance.now() + 1500;
+    let frame = 0;
+    const settle = () => {
+      const el = pageScroll.current;
+      if (!el) return;
+      el.scrollTop = top;
+      if (Math.abs(el.scrollTop - top) > 2 && performance.now() < until) frame = requestAnimationFrame(settle);
+    };
+    settle();
+    return () => cancelAnimationFrame(frame);
+  }, [test !== null]);
+
   useEffect(() => {
     const el = chartBox.current;
     if (!el) return;
@@ -241,6 +268,13 @@ export default function FlowTest() {
   const back = () => {
     flush();
     navigate(`/site/${siteId}/findings?tab=flow`);
+  };
+
+  // a defect: saved first, then the Finding screen, which comes back here
+  const defectOpts = () => {
+    void flush();
+    scrolledTo.set(test.id, pageScroll.current?.scrollTop ?? 0);
+    return { siteId, testId: test.id, back: `/site/${siteId}/flow/${test.id}`, kind: "flow" as const };
   };
 
   // Save & close: everything's saved as it's typed; this saves anything still
@@ -877,6 +911,15 @@ export default function FlowTest() {
           style={{ ...cellStyle(14), textAlign: "left", padding: "10px 12px", fontWeight: 600, lineHeight: 1.45, resize: "vertical", fontFamily: "inherit", minHeight: 84 /* never dragged too small to open again */ }}
         />
         <div style={{ fontSize: 11, color: "var(--muted-2)" }}>Printed under the graph in the export.</div>
+        <FlowDefectsRow
+          items={defects}
+          onNote={() => void addTestNote(navigate, defectOpts())}
+          onPhoto={() => void takeTestPhoto(navigate, defectOpts())}
+          onOpen={(id) => {
+            const o = defectOpts();
+            navigate(testFindingUrl(o.siteId, o.testId, id, o.back, "flow"));
+          }}
+        />
       </div>
 
     </>,

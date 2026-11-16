@@ -6,7 +6,7 @@ import { reportRows } from "./esrGrouping";
 import { suggestedCorrectiveAction } from "./correctiveAction";
 import { EXPORT_MAX_EDGE, STAMP_VERSION, watermarkBlob } from "./watermark";
 import { getStamped } from "../db/db";
-import { addFlowCharts, addFlowSheets } from "./flowExcel";
+import { addFlowCharts, addFlowDefectSheets, addFlowSheets } from "./flowExcel";
 
 // the site's flow tests, which go in as tabs after the findings (lib/flowExcel)
 interface FlowExport {
@@ -399,6 +399,7 @@ async function fillFindingsSheet(wb: import("exceljs").Workbook, ws: import("exc
 // freezes the loading screen) for a negligible saving on the XML.
 async function writeWorkbook(wb: import("exceljs").Workbook, flow?: FlowExport): Promise<Blob> {
   const charts = flow?.tests.length ? await addFlowSheets(wb, flow.tests, flow.site) : [];
+  if (flow?.tests.length) await addFlowDefectSheets(wb, flow.tests);
   if (flow?.stair?.tests.length) {
     const { addStairSheets, addStairPhotoSheets } = await import("./stairExcel");
     addStairSheets(wb, flow.stair.tests, flow.stair.sys, flow.site);

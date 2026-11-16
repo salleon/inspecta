@@ -70,6 +70,8 @@ export interface Finding {
   // to that test, not the site's findings list or report, and goes with the
   // test when it's deleted. Absent on every other finding.
   stairTestId?: string;
+  // the same for a flow test's defects (its Comments card)
+  flowTestId?: string;
   // manual sort position within a site's findings list — lower sorts
   // first. New findings get a very small (very negative) value so they
   // appear first, same as the old createdAt-desc default, until dragged.
