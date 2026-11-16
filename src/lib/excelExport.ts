@@ -380,7 +380,7 @@ async function writeWorkbook(wb: import("exceljs").Workbook, flow?: FlowExport):
   if (flow?.stair?.tests.length) {
     const { addStairSheets, addStairPhotoSheets } = await import("./stairExcel");
     addStairSheets(wb, flow.stair.tests, flow.stair.sys, flow.site);
-    await addStairPhotoSheets(wb, flow.stair.tests);
+    await addStairPhotoSheets(wb, flow.stair.tests, flow.stair.sys, flow.site);
   }
   const buffer = await wb.xlsx.writeBuffer({ zip: { compression: "STORE" } } as never);
   const bytes = await addFlowCharts(new Uint8Array(buffer as ArrayBuffer), charts);

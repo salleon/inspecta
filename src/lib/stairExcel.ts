@@ -123,7 +123,7 @@ export function addStairSheets(wb: Workbook, tests: StairTest[], sys: SpfSystem,
 // stair sheets, a row each: number, level and location, type, note, then
 // its photos across.
 const PHOTO_W = 220; // px
-export async function addStairPhotoSheets(wb: Workbook, tests: StairTest[]) {
+export async function addStairPhotoSheets(wb: Workbook, tests: StairTest[], sys: SpfSystem, site: Pick<Site, "name" | "address">) {
   const { testPhotoItems, excelTile, PHOTOS_SUBTITLE } = await import("./stairPhotos");
   const thin = { style: "thin" as const, color: { argb: LINE } };
   const box = { top: thin, left: thin, bottom: thin, right: thin };
@@ -135,19 +135,37 @@ export async function addStairPhotoSheets(wb: Workbook, tests: StairTest[]) {
     });
     const most = Math.max(1, ...items.map((i) => i.photos.length));
     ws.columns = [{ width: 5 }, { width: 24 }, { width: 15 }, { width: 44 }, ...Array.from({ length: most }, () => ({ width: 32 }))];
-    const t = ws.getCell(1, 1);
-    t.value = PHOTOS_SUBTITLE;
-    t.font = { name: FONT, bold: true, size: 15, color: { argb: INK } };
+    // headed like the test's stair sheets: its title, then the site and date
+    const first = stairPages(test, sys, site)[0];
+    let top = 1;
+    const put = (text: string, bold: boolean, size: number) => {
+      const c = ws.getCell(top++, 1);
+      c.value = text;
+      c.font = { name: FONT, bold, size, color: { argb: INK } };
+    };
+    put(first?.title ?? "Stair pressurisation", true, 15);
+    put(PHOTOS_SUBTITLE, true, 11);
+    top++;
+    for (const d of (first?.details ?? []).filter((x) => ["Site", "Date", "Test", "Tested by"].includes(x.label))) {
+      // the label beside the narrow # column, the value running on from it
+      ws.getCell(top, 2).value = d.label;
+      ws.getCell(top, 2).font = { name: FONT, bold: true, size: 9, color: { argb: NAVY } };
+      ws.getCell(top, 3).value = d.value || "–";
+      ws.getCell(top, 3).font = { name: FONT, size: 9, color: { argb: INK } };
+      top++;
+    }
+    top++;
+    const headRow = top;
     const heads = ["#", "Level · location", "Type", "Note", ...Array.from({ length: most }, (_, i) => (most > 1 ? `Photo ${i + 1}` : "Photo"))];
     heads.forEach((h, i) => {
-      const c = ws.getCell(3, i + 1);
+      const c = ws.getCell(headRow, i + 1);
       c.value = h;
       c.font = { name: FONT, bold: true, size: 9, color: { argb: "FFFFFFFF" } };
       c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: NAVY } };
       c.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
       c.border = box;
     });
-    let r = 4;
+    let r = headRow + 1;
     for (const it of items) {
       const row = ws.getRow(r);
       const cells: [number, string | number | null][] = [[1, it.n], [2, it.place || null], [3, it.type?.label ?? null], [4, it.note || null]];

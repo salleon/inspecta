@@ -29,7 +29,7 @@ async function buildTestsWorkbook(flow: FlowTest[], stair: StairTest[], sys: Spf
   if (stair.length && sys) {
     const { addStairSheets, addStairPhotoSheets } = await import("./stairExcel");
     addStairSheets(wb, stair, sys, site);
-    await addStairPhotoSheets(wb, stair);
+    await addStairPhotoSheets(wb, stair, sys, site);
   }
   const buffer = await wb.xlsx.writeBuffer({ zip: { compression: "STORE" } } as never);
   const bytes = await addFlowCharts(new Uint8Array(buffer as ArrayBuffer), charts);
