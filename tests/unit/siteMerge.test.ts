@@ -143,3 +143,11 @@ test("Keep both: the backup's copy with its own ids, the same each time", () => 
   // the backup's own records are untouched
   assert.equal(backup.findings[0].id, "f1");
 });
+
+test("Keep both: a stair test's photos and notes stay with the copy's test", () => {
+  const backup = records({ site: site(), findings: [{ ...finding("f1", 50), stairTestId: "t1" }, finding("f2", 50)], stairTests: [stair("t1", 50)] });
+  const c = copyRecords(backup, "copy", NOW);
+  assert.equal(c.findings[0].stairTestId, copiedId("copy", "t1"));
+  assert.equal(c.findings[0].stairTestId, c.stairTests[0].id);
+  assert.equal("stairTestId" in c.findings[1], false, "a site finding gets none");
+});

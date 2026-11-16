@@ -22,9 +22,13 @@ export default function LevelField({
   const [focused, setFocused] = useState(false);
   const parsed = parseLevel(value);
   const kind = parsed?.kind ?? "level";
-  const prefix =
-    kind === "basement" ? "Basement" : kind === "ground" ? "Ground" : kind === "mezzanine" ? "Mezzanine" : kind === "roof" ? "Roof" : "Level";
-  const numbered = kind === "level" || kind === "basement";
+  // a level that isn't one of ours ("P3", "Plant room", from a stair test)
+  // shows as it is; typing a number makes it Level n
+  const other = !!value && !parsed;
+  const prefix = other
+    ? value
+    : kind === "basement" ? "Basement" : kind === "ground" ? "Ground" : kind === "mezzanine" ? "Mezzanine" : kind === "roof" ? "Roof" : "Level";
+  const numbered = !other && (kind === "level" || kind === "basement");
 
   // Buttons around the box don't take focus from it — if the keyboard is up
   // it stays up, and the Note screen's photo doesn't re-expand and shove

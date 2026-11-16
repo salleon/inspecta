@@ -2,6 +2,7 @@ import type { jsPDF as JsPDF } from "jspdf";
 import type { Site, SpfSystem, StairTest } from "../db/types";
 import { logoImage } from "./flowPdf";
 import { stairPages, type StairPage, type StairRow } from "./stairPrint";
+import { PDF_TILE_ASPECT, PHOTOS_SUBTITLE, pdfTile, testPhotoItems, type StairPhotoItem } from "./stairPhotos";
 
 // Stair tests in the PDF (design canvas StairTestSimple, "The report"): a
 // page per stair, laid out as lib/stairPrint (the preview draws the same).
@@ -26,22 +27,30 @@ export async function appendStairPages(doc: JsPDF, tests: StairTest[], sys: SpfS
   const logo = await logoImage().catch(() => null);
   let fresh = first;
   for (const test of tests) {
-    for (const page of stairPages(test, sys, site)) {
+    const pages = stairPages(test, sys, site);
+    for (const page of pages) {
       if (!fresh) doc.addPage();
       fresh = false;
       drawPage(doc, page, logo);
     }
+    // the test's photos and notes, on their own page after its stairs
+    const items = await testPhotoItems(test);
+    if (items.length && pages[0]) {
+      if (!fresh) doc.addPage();
+      fresh = false;
+      await drawPhotos(doc, pages[0], items, logo);
+    }
   }
 }
 
-function drawPage(doc: JsPDF, page: StairPage, logo: Logo) {
-  const { w: W, h: H, m: M } = PAGE;
-  const width = W - 2 * M;
+// the heading every page has: title, logo, rule, subtitle; returns where the page goes on from
+function heading(doc: JsPDF, title: string, subtitle: string, logo: Logo) {
+  const { w: W, m: M } = PAGE;
   let y = M + 6;
   doc.setTextColor(INK);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(15);
-  doc.text(page.title, M, y + 8);
+  doc.text(title, M, y + 8);
   if (logo) {
     const lh = Math.min(26, (120 * logo.h) / logo.w); // a wide company logo: 120 pt across at most
     doc.addImage(logo.data, "PNG", W - M - (logo.w / logo.h) * lh, y - 8, (logo.w / logo.h) * lh, lh);
@@ -50,8 +59,83 @@ function drawPage(doc: JsPDF, page: StairPage, logo: Logo) {
   doc.rect(M, y + 15, 46, 2.5, "F");
   y += 30;
   doc.setFontSize(11);
-  doc.text(page.subtitle, M, y + 4);
-  y += 16;
+  doc.text(subtitle, M, y + 4);
+  return y + 16;
+}
+
+// Photos & notes: each one's place and type, its note, then its photos two across
+async function drawPhotos(doc: JsPDF, first: StairPage, items: StairPhotoItem[], logo: Logo) {
+  const { w: W, h: H, m: M } = PAGE;
+  const width = W - 2 * M;
+  let y = heading(doc, first.title, PHOTOS_SUBTITLE, logo);
+  // the site and date, as on the stair pages
+  doc.setFontSize(8.5);
+  first.details
+    .filter((d) => ["Site", "Date", "Test", "Tested by"].includes(d.label))
+    .forEach((d, i) => {
+      const x = M + (i % 2) * (width / 2);
+      const yy = y + Math.floor(i / 2) * 12;
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(NAVY);
+      doc.text(d.label, x, yy);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(INK);
+      doc.text(doc.splitTextToSize(d.value || "–", width / 2 - 60)[0] ?? "", x + 52, yy);
+    });
+  y += 34;
+  const gap = 8;
+  const tileW = (width - gap) / 2;
+  const tileH = tileW / PDF_TILE_ASPECT;
+  for (const it of items) {
+    doc.setFontSize(8.5);
+    const note = it.note ? (doc.splitTextToSize(it.note, width) as string[]) : [];
+    const head = `${it.n}${it.place ? ` · ${it.place}` : ""}`;
+    // the heading and note kept together, with the first row of photos where there's room
+    const need = 14 + note.length * 10.5 + (it.photos.length ? tileH + 8 : 0);
+    if (y + Math.min(need, H - 2 * M) > H - M) {
+      doc.addPage();
+      y = M;
+    }
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9.5);
+    doc.setTextColor(INK);
+    doc.text(head, M, y + 8);
+    if (it.type) {
+      doc.setFontSize(7.5);
+      const tw = doc.getTextWidth(it.type.label) + 12;
+      doc.setFillColor(it.type.bg);
+      doc.setDrawColor(it.type.bg === "#ffffff" ? "#c9c4b8" : it.type.bg);
+      doc.roundedRect(M + width - tw, y, tw, 11, 5.5, 5.5, "FD");
+      doc.setTextColor(it.type.text);
+      doc.text(it.type.label, M + width - tw / 2, y + 7.8, { align: "center" });
+    }
+    y += 14;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    doc.setTextColor(INK);
+    note.forEach((l) => {
+      doc.text(l, M, y + 8);
+      y += 10.5;
+    });
+    for (let i = 0; i < it.photos.length; i += 2) {
+      if (y + tileH > H - M) {
+        doc.addPage();
+        y = M;
+      }
+      for (let k = i; k < Math.min(i + 2, it.photos.length); k++) doc.addImage(await pdfTile(it.photos[k]), "JPEG", M + (k - i) * (tileW + gap), y + 4, tileW, tileH);
+      y += tileH + gap;
+    }
+    y += 6;
+    doc.setDrawColor(LINE);
+    doc.line(M, y, M + width, y);
+    y += 10;
+  }
+}
+
+function drawPage(doc: JsPDF, page: StairPage, logo: Logo) {
+  const { w: W, h: H, m: M } = PAGE;
+  const width = W - 2 * M;
+  let y = heading(doc, page.title, page.subtitle, logo);
 
   // details, two columns
   doc.setFontSize(8.5);

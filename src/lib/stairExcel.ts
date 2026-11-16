@@ -118,3 +118,66 @@ export function addStairSheets(wb: Workbook, tests: StairTest[], sys: SpfSystem,
   }
 }
 
+
+// A test's Photos & notes (lib/stairPhotos): a sheet of their own after its
+// stair sheets, a row each: number, level and location, type, note, then
+// its photos across.
+const PHOTO_W = 220; // px
+export async function addStairPhotoSheets(wb: Workbook, tests: StairTest[]) {
+  const { testPhotoItems, excelTile, PHOTOS_SUBTITLE } = await import("./stairPhotos");
+  const thin = { style: "thin" as const, color: { argb: LINE } };
+  const box = { top: thin, left: thin, bottom: thin, right: thin };
+  for (const test of tests) {
+    const items = await testPhotoItems(test);
+    if (!items.length) continue;
+    const ws = wb.addWorksheet(sheetName(wb, `SPF ${PHOTOS_SUBTITLE}`, "Photos"), {
+      pageSetup: { paperSize: 9, orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0, margins: { left: 0.5, right: 0.5, top: 0.6, bottom: 0.6, header: 0.3, footer: 0.3 } },
+    });
+    const most = Math.max(1, ...items.map((i) => i.photos.length));
+    ws.columns = [{ width: 5 }, { width: 24 }, { width: 15 }, { width: 44 }, ...Array.from({ length: most }, () => ({ width: 32 }))];
+    const t = ws.getCell(1, 1);
+    t.value = PHOTOS_SUBTITLE;
+    t.font = { name: FONT, bold: true, size: 15, color: { argb: INK } };
+    const heads = ["#", "Level · location", "Type", "Note", ...Array.from({ length: most }, (_, i) => (most > 1 ? `Photo ${i + 1}` : "Photo"))];
+    heads.forEach((h, i) => {
+      const c = ws.getCell(3, i + 1);
+      c.value = h;
+      c.font = { name: FONT, bold: true, size: 9, color: { argb: "FFFFFFFF" } };
+      c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: NAVY } };
+      c.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+      c.border = box;
+    });
+    let r = 4;
+    for (const it of items) {
+      const row = ws.getRow(r);
+      const cells: [number, string | number | null][] = [[1, it.n], [2, it.place || null], [3, it.type?.label ?? null], [4, it.note || null]];
+      for (const [col, v] of cells) {
+        const c = row.getCell(col);
+        c.value = v;
+        c.font = { name: FONT, size: 9, bold: col === 1, color: { argb: INK } };
+        c.alignment = { vertical: "top", horizontal: col === 1 ? "center" : "left", wrapText: true };
+        c.border = box;
+      }
+      if (it.type) {
+        const c = row.getCell(3);
+        c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: `FF${it.type.bg.slice(1).toUpperCase()}` } };
+        c.font = { name: FONT, size: 9, bold: true, color: { argb: `FF${it.type.text.slice(1).toUpperCase()}` } };
+      }
+      let tallest = 0;
+      for (const [k, p] of it.photos.entries()) {
+        const { blob, width, height } = await excelTile(p);
+        const id = wb.addImage({ buffer: new Uint8Array(await blob.arrayBuffer()) as unknown as ArrayBuffer, extension: "jpeg" });
+        const h = Math.round((PHOTO_W * height) / width);
+        tallest = Math.max(tallest, h);
+        ws.addImage(id, { tl: { col: 4 + k + 0.04, row: r - 1 + 0.04 } as never, ext: { width: PHOTO_W, height: h }, editAs: "oneCell" });
+        row.getCell(5 + k).border = box;
+      }
+      const lines = Math.ceil((it.note.length || 1) / 55) + 1;
+      row.height = Math.max(lines * 13, tallest ? tallest * 0.75 + 8 : 0);
+      r++;
+    }
+    const note = ws.getCell(r + 1, 1);
+    note.value = `${items.length} taken during testing (photos timestamped)`;
+    note.font = { name: FONT, size: 8, italic: true, color: { argb: SOFT } };
+  }
+}

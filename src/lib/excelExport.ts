@@ -377,7 +377,11 @@ export async function buildFindingsWorkbook(
 // freezes the loading screen) for a negligible saving on the XML.
 async function writeWorkbook(wb: import("exceljs").Workbook, flow?: FlowExport): Promise<Blob> {
   const charts = flow?.tests.length ? await addFlowSheets(wb, flow.tests, flow.site) : [];
-  if (flow?.stair?.tests.length) (await import("./stairExcel")).addStairSheets(wb, flow.stair.tests, flow.stair.sys, flow.site);
+  if (flow?.stair?.tests.length) {
+    const { addStairSheets, addStairPhotoSheets } = await import("./stairExcel");
+    addStairSheets(wb, flow.stair.tests, flow.stair.sys, flow.site);
+    await addStairPhotoSheets(wb, flow.stair.tests);
+  }
   const buffer = await wb.xlsx.writeBuffer({ zip: { compression: "STORE" } } as never);
   const bytes = await addFlowCharts(new Uint8Array(buffer as ArrayBuffer), charts);
   return new Blob([bytes as BlobPart], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });

@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import type { SpfStair, SpfSystem, StairDoor, StairOnce, StairSection, StairTest, Tick } from "../db/types";
 import {
   adjacentDoor,
@@ -35,6 +35,9 @@ import { useBackHandler } from "../lib/backButton";
 import { AMBER, PageHeader, StairChin, StairName, useStairTest } from "../components/StairUi";
 import NumPad, { BLANK, k, numberKeys, PadTag, readingKeys } from "../components/NumPad";
 import ConfirmDialog from "../components/ConfirmDialog";
+import { CameraButton, TestPhotosSheet, useTestPhotos } from "../components/TestPhotos";
+import { IconCamera } from "../components/Icons";
+import { addTestNote, findingLevel, takeTestPhoto, testFindingUrl } from "../lib/testPhotos";
 
 // One section of a stair test (design canvas StairTestSimple, phones 3 and 4;
 // tidied on SpfTidy; general system testing on the Stair general system
@@ -143,9 +146,17 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack
   const l = limits(sys);
   const word = sys.edition === "1979" ? "storey" : sys.edition === "1991" ? "floor" : "compartment";
   const runs = runCount(test);
+  // Photos & notes: the whole test's; a photo taken with the keypad open
+  // is given that level (optional, it can be cleared). Back here after.
+  const navigate = useNavigate();
+  const here = useLocation();
+  const photos = useTestPhotos(test.siteId, test.id);
+  const [photosOpen, setPhotosOpen] = useState(false);
+  const photoOpts = () => ({ siteId: test.siteId, testId: test.id, back: here.pathname + here.search, level: cur === null ? undefined : findingLevel(levels[cur.li]) });
 
   useBackHandler(() => {
-    if (ask) setAsk(null);
+    if (photosOpen) setPhotosOpen(false);
+    else if (ask) setAsk(null);
     else if (sheet) setSheet(null);
     else if (cur !== null) setCur(null);
     else return false;
@@ -296,6 +307,7 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack
           </>
         }
         onBack={onBack}
+        right={<CameraButton onClick={() => void takeTestPhoto(navigate, photoOpts())} />}
       />
       <div style={{ flexShrink: 0, padding: "0 14px", display: "flex", flexDirection: "column", gap: 7 }}>
         {/* the requirements first: reference only, never tapped, so the
@@ -378,6 +390,14 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack
                   {SECTION[s].name}
                 </button>
               ))}
+              {/* the whole test's photos and notes, after the tests in use */}
+              <button data-testid="spf-photos-chip" onClick={() => setPhotosOpen(true)} style={{ ...chip(false), display: "flex", alignItems: "center", gap: 6, color: "#5ff0e0", border: "1px solid rgba(var(--accent-rgb), .55)", background: "rgba(var(--accent-rgb), .1)" }}>
+                <IconCamera size={15} strokeWidth={2.2} />
+                Photos &amp; notes
+                {photos.length > 0 && (
+                  <span style={{ minWidth: 18, height: 18, padding: "0 5px", boxSizing: "border-box", borderRadius: 9, background: "#5ff0e0", color: "#04140f", fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center" }}>{photos.length}</span>
+                )}
+              </button>
               {missing.length > 0 && (
                 <button aria-expanded={adding} onClick={() => setAdding(!adding)} style={chip(false, true)}>
                   + Test
@@ -584,6 +604,15 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack
         </div>
       )}
 
+      {photosOpen && (
+        <TestPhotosSheet
+          items={photos}
+          onClose={() => setPhotosOpen(false)}
+          onOpen={(id) => navigate(testFindingUrl(test.siteId, test.id, id, here.pathname + here.search))}
+          onPhoto={() => void takeTestPhoto(navigate, photoOpts())}
+          onNote={() => void addTestNote(navigate, photoOpts())}
+        />
+      )}
       {ask && (
         <div style={{ position: "absolute", inset: 0, zIndex: 8 }}>
           <ConfirmDialog
@@ -609,6 +638,8 @@ type OnceNum = "noiseStair" | "noiseOcc" | "ambient" | "restTime" | "pa" | "nois
 function Once({ section, sys, stair, stairNo, test, setTest, onBack, onStair }: Props & { section: StairSection; onStair: (id: string) => void }) {
   const once = test.once[stair.id] ?? {};
   const l = limits(sys);
+  const navigate = useNavigate();
+  const here = useLocation();
   const [pad, setPad] = useState<{ field: OnceNum; label: string; sub: string } | null>(null);
   const set = (patch: Partial<StairOnce>) => setTest((t) => ({ ...t, once: { ...t.once, [stair.id]: { ...t.once[stair.id], ...patch } } }));
   const tick = (field: "fan" | "quick", key: string, v: Tick) => {
@@ -652,7 +683,12 @@ function Once({ section, sys, stair, stairNo, test, setTest, onBack, onStair }: 
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
-      <PageHeader title={SECTION[section].name} sub={<StairName stair={stair} i={stairNo} />} onBack={onBack} />
+      <PageHeader
+        title={SECTION[section].name}
+        sub={<StairName stair={stair} i={stairNo} />}
+        onBack={onBack}
+        right={<CameraButton onClick={() => void takeTestPhoto(navigate, { siteId: test.siteId, testId: test.id, back: here.pathname + here.search })} />}
+      />
       <div style={{ flexGrow: 1, overflowY: "auto", padding: `4px 14px ${pad ? 430 : 86}px`, display: "flex", flexDirection: "column", gap: 7 }}>
         {section === "noise" && (
           <>

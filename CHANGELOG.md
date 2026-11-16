@@ -5,6 +5,22 @@ matches a commit on the `test` branch (called `advanced_controls` until
 29 September 2026) or `main`; the commit itself has
 the technical detail.
 
+## 15 November 2026
+
+- **Photos & notes while stair testing.** A stair test can now have its
+  own photos and notes, taken without leaving the test. There's a camera
+  in the heading of every reading screen and beside **Preview the
+  report**, a **Photos & notes** chip among the tests in General system
+  testing, and a **Photos & notes** card on the test's overview, straight
+  after the tests in use. They belong to the whole test, not a stair (relief
+  air, the fan room…); one taken with a level open on the keypad is given
+  that level, which can be cleared. Each opens on the usual Finding screen
+  (photos, mark-up, defect type, location), whose **Back to the test**
+  returns to the same screen. They're kept out of the site's own findings
+  list and report, go on their own page at the end of the stair report
+  (preview, PDF and Excel), and are deleted with the test. The test's
+  existing Notes are unchanged.
+
 ## 11 November 2026
 
 - **Build 9.3 update, out to coworkers.** Restore can merge a site

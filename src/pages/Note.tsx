@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
-import { useNavigate, useParams, useLocation as useRouterLocation } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams, useLocation as useRouterLocation } from "react-router-dom";
 import type { DefectType, Finding, Photo } from "../db/types";
 import {
   addPhoto,
@@ -33,6 +33,7 @@ import { EsrBrowseSheet, EsrLink, EsrSelectedCard, EsrSuggestionList } from "../
 import { useBackHandler } from "../lib/backButton";
 import PhotoViewer from "../components/PhotoViewer";
 import { useTourScene } from "../lib/tour";
+import { testFindingUrl } from "../lib/testPhotos";
 
 interface PhotoRect {
   top: number;
@@ -53,6 +54,12 @@ export default function Note() {
   const { siteId, findingId } = useParams<{ siteId: string; findingId: string }>();
   const navigate = useNavigate();
   const routerLocation = useRouterLocation();
+  // a stair test's photo or note (lib/testPhotos): it stays with the test,
+  // and leaving goes back to where in the test it was opened from
+  const [search] = useSearchParams();
+  const testId = search.get("test") || undefined;
+  const leaveTo = (testId && search.get("back")) || `/site/${siteId}/findings`;
+  const nextUrl = (id: string) => (testId ? testFindingUrl(siteId!, testId, id, leaveTo) : `/site/${siteId}/finding/${id}/note`);
 
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
@@ -340,7 +347,7 @@ export default function Note() {
   // action (persist the note/location, then return to the list).
   async function handleBack() {
     await persist(true);
-    navigate(`/site/${siteId}/findings`);
+    navigate(leaveTo);
   }
 
   // the pen part of Save & next: the next finding without a photo — no
@@ -351,8 +358,8 @@ export default function Note() {
     try {
       await persist(true);
       const carry = level || undefined;
-      const finding = await createFinding(siteId, carry ? { level: carry } : {});
-      navigate(`/site/${siteId}/finding/${finding.id}/note`, { state: { carriedLevel: carry, noteOnly: true } });
+      const finding = await createFinding(siteId, { ...(carry ? { level: carry } : {}), ...(testId ? { stairTestId: testId } : {}) });
+      navigate(nextUrl(finding.id), { state: { carriedLevel: carry, noteOnly: true } });
     } finally {
       startingNoteOnly.current = false;
     }
@@ -371,12 +378,12 @@ export default function Note() {
       const carry = level || undefined;
       const shot = await capturePhoto({ title: "Next finding", level: carry, siteId });
       if (!shot) {
-        navigate(`/site/${siteId}/findings`);
+        navigate(leaveTo);
         return;
       }
-      const finding = await createFinding(siteId, carry ? { level: carry } : {});
+      const finding = await createFinding(siteId, { ...(carry ? { level: carry } : {}), ...(testId ? { stairTestId: testId } : {}) });
       await addPhoto(finding.id, siteId, shot.blob, undefined, shot.marks);
-      navigate(`/site/${siteId}/finding/${finding.id}/note`, carry ? { state: { carriedLevel: carry } } : undefined);
+      navigate(nextUrl(finding.id), carry ? { state: { carriedLevel: carry } } : undefined);
     } finally {
       setBusy(false);
     }
@@ -493,7 +500,8 @@ export default function Note() {
   // only: never on a Projects site
   const showDefectType = true;
   const showLevel = true;
-  const showCategory = !isProject;
+  // nor on a stair test's photos, which aren't in the site's report
+  const showCategory = !isProject && !testId;
 
   async function handleDelete() {
     if (!activePhoto || !findingId) return;
@@ -512,10 +520,13 @@ export default function Note() {
     <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
       {/* top bar */}
       <div style={{ flexShrink: 0, padding: "18px 18px 12px", display: "flex", alignItems: "center", gap: 12 }}>
-        <RoundIconButton size={32} ariaLabel="Save and back to findings" onClick={handleBack}>
+        <RoundIconButton size={32} ariaLabel={testId ? "Save and back to the test" : "Save and back to findings"} onClick={handleBack}>
           <IconChevronLeft size={20} strokeWidth={2.2} />
         </RoundIconButton>
-        <div style={{ fontSize: 15, fontWeight: 800 }}>Finding</div>
+        <div style={{ lineHeight: 1.2 }}>
+          <div style={{ fontSize: 15, fontWeight: 800 }}>{testId ? "Photo or note" : "Finding"}</div>
+          {testId && <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)" }}>Stair test · Photos &amp; notes</div>}
+        </div>
       </div>
 
       {/* .finding-scroll stops every section in here from shrinking — the
@@ -923,7 +934,7 @@ export default function Note() {
             color: "var(--text)",
           }}
         >
-          Save &amp; close
+          {testId ? "Back to the test" : <>Save &amp; close</>}
         </button>
         {/* pen on the left: next finding without a photo; the rest opens
             the camera for the next finding, as before */}

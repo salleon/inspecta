@@ -202,7 +202,7 @@ export async function deleteSite(siteId: string) {
   await db.sites.delete(siteId);
 }
 
-export async function createFinding(siteId: string, carried: Partial<Pick<Finding, "level">> = {}) {
+export async function createFinding(siteId: string, carried: Partial<Pick<Finding, "level" | "stairTestId">> = {}) {
   const now = Date.now();
   const finding: Finding = {
     id: uid(),
@@ -258,9 +258,18 @@ export async function firstSitePhoto(siteId: string): Promise<Photo | undefined>
   return undefined;
 }
 
+// the site's own findings: not the photos and notes taken in its stair
+// tests, which are the tests' (listTestFindings)
 export async function listFindings(siteId: string) {
-  const findings = await db.findings.where("siteId").equals(siteId).toArray();
+  const findings = await db.findings.where("siteId").equals(siteId).filter((f) => !f.stairTestId).toArray();
   return findings.sort((a, b) => a.order - b.order);
+}
+
+// A stair test's photos and notes, oldest first, each with its photos.
+export async function listTestFindings(siteId: string, testId: string) {
+  const findings = await db.findings.where("siteId").equals(siteId).filter((f) => f.stairTestId === testId).toArray();
+  findings.sort((a, b) => a.createdAt - b.createdAt);
+  return Promise.all(findings.map(async (finding) => ({ finding, photos: await listPhotos(finding.id) })));
 }
 
 /** A site's findings list in three reads, however many findings and photos
@@ -287,7 +296,7 @@ export async function getFinding(findingId: string) {
 }
 
 export async function findingCount(siteId: string) {
-  return db.findings.where("siteId").equals(siteId).count();
+  return db.findings.where("siteId").equals(siteId).filter((f) => !f.stairTestId).count();
 }
 
 // takenAt: when a photo from the gallery was taken (defaults to now);
@@ -586,6 +595,8 @@ export async function saveStairTest(test: StairTest) {
 
 export async function deleteStairTest(testId: string) {
   const test = await db.stairTests.get(testId);
+  // its photos and notes go with it
+  if (test) for (const f of await db.findings.where("siteId").equals(test.siteId).filter((f) => f.stairTestId === testId).toArray()) await deleteFinding(f.id);
   await db.stairTests.delete(testId);
   if (test) await touchSite(test.siteId);
 }

@@ -63,7 +63,7 @@ test("General system testing: any tests, none ticked to start; Start opens the o
   await page.getByTestId("spf-runs").waitFor();
   assert.match(await page.locator("body").innerText(), /General system testing\s*Velocity · SPF 1/);
   assert.match(await page.getByTestId("spf-stairs").innerText(), /SPF 1[\s\S]*SPF 2[\s\S]*SPF 3/);
-  assert.match(await page.getByTestId("spf-tests").innerText(), /Velocity\s*\+ Test/);
+  assert.match(await page.getByTestId("spf-tests").innerText(), /Velocity\s*Photos & notes\s*\+ Test/);
 });
 
 test("a pass within 0.1 m/s is marginal; + Door adds a door at a level", async () => {

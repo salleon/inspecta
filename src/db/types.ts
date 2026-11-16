@@ -66,6 +66,10 @@ export interface Finding {
   // the defect in `note`; empty or absent = none. Goes in the reports as
   // written, alongside the suggested corrective action, never instead of it.
   rectification?: string;
+  // a photo or note taken during a stair test (Photos & notes): it belongs
+  // to that test, not the site's findings list or report, and goes with the
+  // test when it's deleted. Absent on every other finding.
+  stairTestId?: string;
   // manual sort position within a site's findings list — lower sorts
   // first. New findings get a very small (very negative) value so they
   // appear first, same as the old createdAt-desc default, until dragged.

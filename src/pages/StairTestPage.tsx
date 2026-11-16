@@ -7,8 +7,11 @@ import { card, cardLabel, fieldInput, PageHeader, Pill, StairChin, StairName, us
 import ConfirmDialog from "../components/ConfirmDialog";
 import SwipeRow from "../components/SwipeRow";
 import { saveSiteSpf } from "../db/db";
+import { IconCamera } from "../components/Icons";
 import StairNameCheck, { stairsToName } from "../components/StairNameCheck";
 import { shortDate } from "../lib/dates";
+import { TestPhotosCard, TestPhotosSheet, useTestPhotos } from "../components/TestPhotos";
+import { addTestNote, takeTestPhoto, testFindingUrl } from "../lib/testPhotos";
 
 // A stair test (design canvas StairTestSimple, "2 · The sections"; tidied on
 // SpfTidy): a tab per stair (scrolls sideways for any number), then only the
@@ -28,6 +31,9 @@ export default function StairTestPage() {
   // the check before the report, while any stair still has placeholder names
   const [checkingNames, setCheckingNames] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
+  // Photos & notes (lib/testPhotos): the whole test's, the sheet listing them
+  const photos = useTestPhotos(siteId, testId);
+  const [photosOpen, setPhotosOpen] = useState(false);
   // the test being taken off (asked first), and whether it has readings
   const [dropping, setDropping] = useState<{ s: StairSection; read: boolean } | null>(null);
   const [openSwipe, setOpenSwipe] = useState<StairSection | null>(null);
@@ -51,6 +57,10 @@ export default function StairTestPage() {
       setNotesOpen(false);
       return true;
     }
+    if (photosOpen) {
+      setPhotosOpen(false);
+      return true;
+    }
     return false;
   });
 
@@ -58,6 +68,12 @@ export default function StairTestPage() {
   const sys = site.spf;
   const stairs = sys?.stairs ?? [];
   const stair = stairs.find((s) => s.id === params.get("stair")) ?? stairs[0];
+  // back here, on the same stair, from a photo or note
+  const here = `/site/${siteId}/spf/${testId}?stair=${stair?.id ?? ""}`;
+  const photo = () => {
+    flush();
+    void takeTestPhoto(navigate, { siteId: site.id, testId: test.id, back: here });
+  };
   const editSystem = () => navigate(`/site/${siteId}/spf-system?back=${encodeURIComponent(`/site/${siteId}/spf/${testId}`)}`);
   const missing = ALL_SECTIONS.filter((s) => s !== "quick" && !test.sections.includes(s));
 
@@ -169,6 +185,8 @@ export default function StairTestPage() {
 
           <div style={{ flexGrow: 1, overflowY: "auto", padding: "8px 14px 16px", display: "flex", flexDirection: "column", gap: 7 }}>
             {test.sections.map(sectionCard)}
+            {/* straight after the tests in use, before the ones not added */}
+            <TestPhotosCard items={photos} onOpen={() => setPhotosOpen(true)} />
             {missing.length > 0 && <div style={{ fontSize: 13, fontWeight: 800, color: "#bfd0de", marginTop: 4 }}>Additional tests</div>}
             {missing.map((s) => (
               <div key={s} style={{ display: "flex", alignItems: "center", gap: 11, padding: "10px 12px", borderRadius: 13, border: "1px dashed var(--border-strong)" }}>
@@ -195,18 +213,43 @@ export default function StairTestPage() {
           </div>
           <div style={{ flexShrink: 0, padding: "10px 16px calc(24px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 10 }}>
             <StairChin stairs={stairs} i={stairs.indexOf(stair)} onGo={(k) => setParams({ stair: stairs[k].id }, { replace: true })} />
-            <button
-              onClick={() => {
-                flush();
-                if (stairsToName(stairs).length) setCheckingNames(true);
-                else navigate(`/site/${siteId}/spf/${testId}/report`);
-              }}
-              style={{ width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: "var(--accent)", color: "var(--accent-text)", fontSize: 16, fontWeight: 800 }}
-            >
-              Preview the report
-            </button>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                aria-label="Take a photo for this test"
+                onClick={photo}
+                style={{ flex: "0 0 58px", borderRadius: 14, background: "rgba(var(--accent-rgb), .14)", border: "1px solid rgba(var(--accent-rgb), .55)", color: "#5ff0e0", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
+              >
+                <IconCamera size={24} strokeWidth={2.2} />
+              </button>
+              <button
+                onClick={() => {
+                  flush();
+                  if (stairsToName(stairs).length) setCheckingNames(true);
+                  else navigate(`/site/${siteId}/spf/${testId}/report`);
+                }}
+                style={{ flex: 1, padding: "16px 0", borderRadius: 14, border: "none", background: "var(--accent)", color: "var(--accent-text)", fontSize: 16, fontWeight: 800 }}
+              >
+                Preview the report
+              </button>
+            </div>
           </div>
         </>
+      )}
+
+      {photosOpen && (
+        <TestPhotosSheet
+          items={photos}
+          onClose={() => setPhotosOpen(false)}
+          onOpen={(id) => {
+            flush();
+            navigate(testFindingUrl(site.id, test.id, id, here));
+          }}
+          onPhoto={photo}
+          onNote={() => {
+            flush();
+            void addTestNote(navigate, { siteId: site.id, testId: test.id, back: here });
+          }}
+        />
       )}
 
       {checkingNames && (

@@ -271,7 +271,7 @@ export function copyRecords(backup: SiteRecords, copySiteId: string, now = Date.
       changedAt: now,
       reports: backup.site.reports?.map((r) => ({ ...r, id: id(r.id), findingIds: r.findingIds.map(id) })),
     },
-    findings: backup.findings.map((f) => ({ ...f, id: id(f.id), siteId: copySiteId })),
+    findings: backup.findings.map((f) => ({ ...f, id: id(f.id), siteId: copySiteId, ...(f.stairTestId ? { stairTestId: id(f.stairTestId) } : {}) })),
     flowTests: backup.flowTests.map((t) => ({ ...t, id: id(t.id), siteId: copySiteId })),
     stairTests: backup.stairTests.map((t) => ({ ...t, id: id(t.id), siteId: copySiteId })),
     photos: backup.photos.map((p) => ({ ...p, id: id(p.id), findingId: id(p.findingId), siteId: copySiteId })),

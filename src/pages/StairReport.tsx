@@ -1,5 +1,5 @@
 import { say } from "../components/Message";
-import { useRef, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { stairPages, type StairPage, type StairRow } from "../lib/stairPrint";
 import { KIND_LABEL, stairFileName } from "../lib/stairTest";
@@ -7,9 +7,12 @@ import { exportTests, type TestsFormat } from "../lib/testsExport";
 import ProgressOverlay from "../components/ProgressOverlay";
 import { PageHeader, useStairTest } from "../components/StairUi";
 import { reportLogoUrl } from "../lib/branding";
+import { getThumbnail } from "../db/db";
+import { PHOTOS_SUBTITLE, testPhotoItems, type StairPhotoItem } from "../lib/stairPhotos";
 
 // A stair test's report, previewed as it prints (lib/stairPrint): a page
-// per stair, swiped sideways, then Export PDF or Excel.
+// per stair, swiped sideways, then the test's Photos & notes on a page of
+// their own (lib/stairPhotos), then Export PDF or Excel.
 
 const MIN_LOADER_MS = 3000;
 
@@ -22,7 +25,31 @@ export default function StairReport() {
   const started = useRef(0);
   const strip = useRef<HTMLDivElement>(null);
 
-  const pages = site?.spf && test ? stairPages(test, site.spf, site) : [];
+  const stairs = site?.spf && test ? stairPages(test, site.spf, site) : [];
+  // Photos & notes, with their photos' thumbnails (photo id → URL)
+  const [photos, setPhotos] = useState<{ items: StairPhotoItem[]; thumbs: Record<string, string> }>({ items: [], thumbs: {} });
+  useEffect(() => {
+    if (!test) return;
+    let cancelled = false;
+    const urls: string[] = [];
+    void (async () => {
+      const items = await testPhotoItems(test);
+      const thumbs: Record<string, string> = {};
+      for (const p of items.flatMap((i) => i.photos)) {
+        const b = await getThumbnail(p).catch(() => null);
+        if (b) urls.push((thumbs[p.id] = URL.createObjectURL(b)));
+      }
+      if (!cancelled) setPhotos({ items, thumbs });
+    })();
+    return () => {
+      cancelled = true;
+      urls.forEach((u) => URL.revokeObjectURL(u));
+    };
+    // read once the test has loaded
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [test?.id]);
+  const withPhotos = photos.items.length > 0 && stairs.length > 0;
+  const pages: (StairPage | "photos")[] = withPhotos ? [...stairs, "photos"] : stairs;
   const go = (i: number) => strip.current?.scrollTo({ left: i * strip.current.clientWidth, behavior: "smooth" });
 
   async function share(kind: TestsFormat) {
@@ -53,7 +80,7 @@ export default function StairReport() {
             ‹
           </button>
           <span>
-            {pages[page]?.subtitle} <span style={{ color: "var(--muted)", fontWeight: 700 }}>· page {page + 1} of {pages.length}</span>
+            {pages[page] === "photos" ? PHOTOS_SUBTITLE : (pages[page] as StairPage | undefined)?.subtitle} <span style={{ color: "var(--muted)", fontWeight: 700 }}>· page {page + 1} of {pages.length}</span>
           </span>
           <button aria-label="Next page" disabled={page >= pages.length - 1} onClick={() => go(page + 1)} style={{ border: "none", background: "none", color: page >= pages.length - 1 ? "var(--muted-2)" : "var(--accent)", fontSize: 18, padding: "0 8px" }}>
             ›
@@ -67,7 +94,7 @@ export default function StairReport() {
       >
         {pages.map((p, i) => (
           <div key={i} style={{ flex: "0 0 100%", scrollSnapAlign: "center", overflowY: "auto", padding: "6px 14px 12px", boxSizing: "border-box" }}>
-            <Paper page={p} />
+            {p === "photos" ? <PhotosPaper first={stairs[0]} items={photos.items} thumbs={photos.thumbs} /> : <Paper page={p} />}
           </div>
         ))}
       </div>
@@ -80,6 +107,49 @@ export default function StairReport() {
         </button>
       </div>
       {busy && <ProgressOverlay percent={busy.percent} title={busy.kind === "pdf" ? "Preparing PDF" : "Preparing Excel"} step={busy.step} art={busy.kind === "pdf" ? "conveyor" : "sheet"} startedAt={started.current} minMs={MIN_LOADER_MS} />}
+    </div>
+  );
+}
+
+// the test's Photos & notes as they print: each one's place and type, its note, its photos
+function PhotosPaper({ first, items, thumbs }: { first: StairPage; items: StairPhotoItem[]; thumbs: Record<string, string> }) {
+  const details = first.details.filter((d) => ["Site", "Date", "Test", "Tested by"].includes(d.label));
+  return (
+    <div data-testid="spf-photos-page" style={{ background: "#fff", color: "#14212e", borderRadius: 6, padding: "16px 14px", display: "flex", flexDirection: "column", gap: 7, boxShadow: "0 8px 24px rgba(0,0,0,.35)", fontFamily: "Helvetica, Arial, sans-serif", fontSize: 10 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+        <div>
+          <div style={{ fontSize: 13.5, fontWeight: 800, color: "#0b3550" }}>{first.title}</div>
+          <div style={{ width: 40, height: 2.5, background: "#1f6fb2", marginTop: 4 }} />
+          <div style={{ fontSize: 11, fontWeight: 700, marginTop: 4 }}>{PHOTOS_SUBTITLE}</div>
+        </div>
+        {reportLogoUrl() && <img src={reportLogoUrl()!} alt="" style={{ height: 22, maxWidth: 90, objectFit: "contain", flexShrink: 0 }} />}
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "auto 1fr auto 1fr", gap: "1px 6px", fontSize: 9 }}>
+        {details.map((d) => (
+          <Detail key={d.label} label={d.label} value={d.value} />
+        ))}
+      </div>
+      {items.map((it) => (
+        <div key={it.finding.id} style={{ display: "flex", flexDirection: "column", gap: 4, borderBottom: "1px solid #e3e9ee", padding: "4px 0 7px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 9.5 }}>
+            <b>
+              {it.n}
+              {it.place ? ` · ${it.place}` : ""}
+            </b>
+            {it.type && <span style={{ marginLeft: "auto", fontSize: 8, fontWeight: 700, padding: "1px 7px", borderRadius: 8, background: it.type.bg, color: it.type.text, border: it.type.bg === "#ffffff" ? "1px solid #c9c4b8" : "none" }}>{it.type.label}</span>}
+          </div>
+          {it.note && <div style={{ fontSize: 9.5, lineHeight: 1.35, whiteSpace: "pre-wrap" }}>{it.note}</div>}
+          {it.photos.length > 0 && (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 5 }}>
+              {it.photos.map((p) => (
+                <span key={p.id} style={{ aspectRatio: "4/3", background: "#e3e9ee", overflow: "hidden" }}>
+                  {thumbs[p.id] && <img src={thumbs[p.id]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
