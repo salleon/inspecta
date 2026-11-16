@@ -7,6 +7,12 @@ the technical detail.
 
 ## 16 November 2026
 
+- **Build 9.4, out to coworkers.** Photos & notes while stair testing;
+  defects while flow testing; stair and flow test photos laid out like
+  the findings report; the camera zoom dial flipped; home screen jobs in
+  the order they were made, with the same swipe-to-delete as elsewhere;
+  deleting a photo, reading or demand point asks first.
+
 - **Defects while flow testing.** A flow test's Comments card has a slim
   **Photos & defects** row: **Note** and **Photo**, then the ones taken
   so far. Each opens on the usual Finding screen (photos, mark-up, defect
