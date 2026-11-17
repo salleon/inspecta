@@ -1,6 +1,5 @@
 import type { Site, SpfSystem, StairOnce, StairSection, StairTest } from "../db/types";
 import {
-  adjacentDoor,
   doorFails,
   doorMarginal,
   doorValue,
@@ -9,6 +8,7 @@ import {
   latestDoor,
   limits,
   onceStatus,
+  openWith,
   QUICK_CHECKS,
   runAt,
   runChange,
@@ -138,7 +138,7 @@ function generalPages(test: StairTest, sys: SpfSystem, site: Pick<Site, "name" |
           rows: stairDoors(stair).map((door) => {
             const ds = rs.map((r) => runDoors(test, r)[stair.id]?.[door.key]);
             return {
-              cells: [door.label, ...(vel ? [adjacentDoor(levels, door.li, sys) || "–"] : []), ...ds.map((d) => cell(section, doorValue(section, d)) || "–")],
+              cells: [door.label, ...(vel ? [openWith(levels, door.li, sys, ...[...rs].reverse().map((r) => runDoors(test, r)[stair.id]?.[door.key])) || "–"] : []), ...ds.map((d) => cell(section, doorValue(section, d)) || "–")],
               fails: [false, ...(vel ? [false] : []), ...ds.map((d) => !!doorFails(section, d, sys))],
               warns: [false, ...(vel ? [false] : []), ...ds.map((d) => doorMarginal(section, d, sys))],
             };
@@ -231,7 +231,7 @@ export function stairPages(test: StairTest, sys: SpfSystem, site: Pick<Site, "na
       const d = doors[door.key];
       const cells = [
         door.label,
-        has("vel") ? adjacentDoor(levels, door.li, sys) || "–" : "",
+        has("vel") ? openWith(levels, door.li, sys, d) || "–" : "",
         has("vel") ? doorValue("vel", d) : "",
         has("latch") ? (d?.latch === "y" ? "Y" : d?.latch === "n" ? "N" : "") : "",
         has("force") ? doorValue("force", d) : "",

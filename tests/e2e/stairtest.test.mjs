@@ -153,8 +153,24 @@ test("a velocity at one level: Done saves it and closes the keypad", async () =>
   await page.waitForTimeout(300);
   assert.equal(await page.getByTestId("spf-value").count(), 0, "the keypad closes; it doesn't move on to the next level");
   const row = await page.locator('[data-i="1"]').innerText();
-  assert.match(row, /2[\s\S]*3[\s\S]*0\.8[\s\S]*Fail/, "level 2, the level above open, 0.8 m/s fails");
+  assert.match(row, /2[\s\S]*0\.8[\s\S]*Fail/, "level 2, 0.8 m/s fails");
   assert.match(await page.locator("body").innerText(), /1 of 4 · 1 fail/);
+});
+
+test("the other open door: the app's pick, typed over if need be", async () => {
+  const open = page.getByLabel("Other door open with 2");
+  assert.equal(await open.inputValue(), "3", "the level above, to start");
+  await open.fill("Lobby");
+  await open.press("Enter");
+  await page.locator('[data-i="1"]').click();
+  assert.match(await page.locator("body").innerText(), /Open: 2 \+ Lobby \+ discharge/);
+  await page.getByRole("button", { name: "Done" }).dispatchEvent("pointerdown");
+  // cleared, it goes back to the app's pick; typed again, it stays
+  await open.fill("");
+  await open.press("Enter");
+  assert.equal(await open.inputValue(), "3");
+  await open.fill("Lobby");
+  await open.press("Enter");
 });
 
 test("ambient: one plain reading per stair, no noisiest door", async () => {
@@ -177,7 +193,7 @@ test("the report: every column, blanks where not tested", async () => {
   assert.match(sheet, /Stair pressurisation · Annual Testing/);
   assert.match(sheet, /SPF-1 · Front/);
   assert.match(sheet, /Door opening force N \(max 110\)/);
-  assert.match(sheet, /2\s+3\s+0\.8/);
+  assert.match(sheet, /2\s+Lobby\s+0\.8/);
   assert.match(sheet, /Noise, stair \(average\)[\s\S]*ambient 64 dB\(A\)(?! at)/);
 });
 

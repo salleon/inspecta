@@ -189,6 +189,12 @@ export function adjacentDoor(levels: string[], i: number, sys: Pick<SpfSystem, "
   return i > 0 ? levels[i - 1] : levels[1];
 }
 
+// what's typed in a door's Open box (the first of these runs that has one),
+// otherwise the app's pick
+export function openWith(levels: string[], i: number, sys: Pick<SpfSystem, "type">, ...firstDoors: (StairDoor | undefined)[]): string {
+  return firstDoors.map((d) => d?.open?.trim()).find(Boolean) ?? adjacentDoor(levels, i, sys);
+}
+
 // the doors open for the velocity tests, as dot points
 export function doorsOpen(sys: Pick<SpfSystem, "edition" | "type">): string[] {
   const w = WORD[sys.edition];

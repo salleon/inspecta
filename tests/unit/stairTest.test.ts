@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { levelsRead, renameDoorLevels } from "../../src/lib/stairTest";
 import { doorFails, doorMarginal, fanIsDefault, kindsFor, latestDoor, newRun, stairDoors, stairLabel, wellIsDefault } from "../../src/lib/stairTest";
-import { adjacentDoor, doorsOpen, doorStats, isCustomLevel, joinLevel, levelChanges, levelChip, levelName, levelsEdited, limits, onceStatus, sectionsFor, splitLevel, stairLevels, stairTestHasData, stairTestSummary, typeFor } from "../../src/lib/stairTest";
+import { adjacentDoor, openWith, doorsOpen, doorStats, isCustomLevel, joinLevel, levelChanges, levelChip, levelName, levelsEdited, limits, onceStatus, sectionsFor, splitLevel, stairLevels, stairTestHasData, stairTestSummary, typeFor } from "../../src/lib/stairTest";
 import { stairPages } from "../../src/lib/stairPrint";
 import type { SpfSystem, StairTest } from "../../src/db/types";
 
@@ -38,6 +38,10 @@ test("the other door open: the level above, the top one below; none for zone", (
   assert.equal(adjacentDoor(levels, 0, { type: "Purge" }), "2");
   assert.equal(adjacentDoor(levels, 2, { type: "Purge" }), "2");
   assert.equal(adjacentDoor(levels, 2, { type: "Zone" }), "");
+  // the Open box: what's typed wins, the latest run first; blank falls back to the app's pick
+  assert.equal(openWith(levels, 2, { type: "Purge" }, { open: " Lobby " }), "Lobby");
+  assert.equal(openWith(levels, 2, { type: "Purge" }, { open: "" }, { open: "4" }), "4");
+  assert.equal(openWith(levels, 2, { type: "Purge" }, undefined, {}), "2");
 });
 
 test("the edition sets the limits", () => {

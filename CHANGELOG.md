@@ -17,6 +17,17 @@ the technical detail.
   Before, the new stair's name slid in the wrong way and the page just
   swapped.
 
+- **Plant room for a finding's level.** The level box now has a Plant
+  room button alongside Ground, Basement, Mezzanine and Roof.
+
+- **The other open door can be changed.** On the stair velocity screen,
+  the Open box beside each door still starts with the app's pick (the
+  level above, or below for the top level), but you can now tap it and
+  type something else when the building is odd, such as "Lobby". The
+  keypad line and the report use what you typed; clear the box and the
+  app's pick comes back. A level with more than one door shows a line
+  per door, each with its own Open box.
+
 ## 16 November 2026
 
 - **Build 9.4, out to coworkers.** Photos & notes while stair testing;
