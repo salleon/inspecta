@@ -3,7 +3,7 @@ import { formatLevel, parseLevel, stepLevel } from "../lib/levels";
 
 // Level input for a finding: − [ Level 25 ✕ ] +
 // The word "Level" is pre-filled so you only type the number (number
-// keypad). Ground / Basement / Mezzanine / Roof quick buttons show while
+// keypad). Ground / Basement / Mezzanine / Roof / Plant room quick buttons show while
 // the box has focus. Always optional — ✕ clears it.
 export default function LevelField({
   value,
@@ -126,6 +126,7 @@ export default function LevelField({
           <button type="button" {...quick("Basement")} style={chipStyle}>Basement…</button>
           <button type="button" {...quick("Mezzanine")} style={chipStyle}>Mezzanine</button>
           <button type="button" {...quick("Roof")} style={chipStyle}>Roof</button>
+          <button type="button" {...quick("Plant room")} style={chipStyle}>Plant room</button>
         </div>
       )}
     </div>

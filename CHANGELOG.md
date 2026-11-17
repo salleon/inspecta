@@ -7,6 +7,9 @@ the technical detail.
 
 ## 17 November 2026
 
+- **Plant room for a finding's level.** The level box now has a Plant
+  room button alongside Ground, Basement, Mezzanine and Roof.
+
 - **The other open door can be changed.** On the stair velocity screen,
   the Open box beside each door still starts with the app's pick (the
   level above, or below for the top level), but you can now tap it and

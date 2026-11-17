@@ -70,3 +70,13 @@ test("the main part still opens the camera", async () => {
 test("no page errors", () => {
   assert.deepEqual(errors, []);
 });
+
+test("level: Plant room is one of the quick buttons", async () => {
+  await go(page, app, "/site/s1/finding/f0/note", 1500);
+  await page.focus("#levelInput");
+  await page.getByRole("button", { name: "Plant room", exact: true }).click();
+  assert.match(await page.locator("[data-keep-visible]", { has: page.locator("#levelInput") }).innerText(), /Plant room/);
+  // a number typed after it makes it a level again
+  await page.keyboard.type("4");
+  assert.equal(await page.inputValue("#levelInput"), "4");
+});
