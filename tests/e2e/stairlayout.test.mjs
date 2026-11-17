@@ -64,6 +64,21 @@ test("door force: a level with two doors shows a line a door, as velocity does",
   }
 });
 
+test("the Open box: wide across the row while typing, then the whole text on two lines", async () => {
+  await go(page, app, "/site/p1/spf/t1/vel?stair=s1&run=0", 1500);
+  const open = page.getByLabel("Other door open with 5", { exact: true });
+  await open.click();
+  const box = await open.boundingBox();
+  assert.ok(box.width > 200, `typing box ${box.width} wide`);
+  await open.fill("6 + Plant room");
+  await open.press("Enter");
+  const shown = page.locator('[data-i="7"] [aria-hidden]').first();
+  assert.equal(await shown.innerText(), "6 + Plant room");
+  const s = await shown.evaluate((e) => ({ sh: e.firstElementChild.scrollHeight, ch: e.firstElementChild.clientHeight }));
+  assert.ok(s.sh <= s.ch + 1, "not cut off");
+  assert.ok((await open.boundingBox()).width < 80, "narrow again");
+});
+
 test("Fan checks: the stair bar sits between the list and Done, overlapping neither", async () => {
   await go(page, app, "/site/p1/spf/t1/fan?stair=s1&run=0", 1500);
   await page.addStyleTag({ content: ":root { --safe-area-inset-bottom: 48px }" });

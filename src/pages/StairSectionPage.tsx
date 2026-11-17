@@ -153,6 +153,7 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack
   const here = useLocation();
   const photos = useTestPhotos(test.siteId, test.id);
   const [photosOpen, setPhotosOpen] = useState(false);
+  const [openEdit, setOpenEdit] = useState<string | null>(null); // the Open box being typed in, "level:door"
   const photoOpts = () => ({ siteId: test.siteId, testId: test.id, back: here.pathname + here.search, level: cur === null ? undefined : findingLevel(levels[cur.li]) });
 
   useBackHandler(() => {
@@ -316,7 +317,7 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack
   const rule = (b: ReactNode) => <b style={{ color: "#ffd9a8" }}>{b}</b>;
   const colour = (d: StairDoor | undefined) => (doorFails(section, d, sys) ? FAIL : doorMarginal(section, d, sys) ? WARN : PASS);
   const missing = GENERAL_SECTIONS.filter((s) => !test.sections.includes(s));
-  const lead = section === "vel" ? "44px 44px" : "44px";
+  const lead = section === "vel" ? "44px 64px" : "44px";
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
@@ -465,24 +466,37 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack
       </div>
         {levels.map((level, li) => {
           const of = doorsAt(stair, level);
-          const openBox = (n: number) => (
-            <input
-              aria-label={`Other door open with ${level}${of > 1 ? ` ${doorLetter(n)}` : ""}`}
-              key={n + openAt(li, n)}
-              defaultValue={openAt(li, n)}
-              placeholder="–"
-              onFocus={(e) => e.currentTarget.select()}
-              onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-              onBlur={(e) => {
-                // saved when you leave the box; cleared, or the same as the app's pick, it goes back to the app's pick
-                const open = e.target.value.trim();
-                if (open === openAt(li, n)) return;
-                if (!open) e.target.value = adjacentDoor(levels, li, sys);
-                write(doorKey(level, n), (d) => ({ ...d, open: open === adjacentDoor(levels, li, sys) ? "" : open }));
-              }}
-              style={{ height: 40, minWidth: 0, width: "100%", borderRadius: 8, border: "1px dashed var(--border-strong)", background: "transparent", color: "var(--muted)", fontSize: 12.5, fontWeight: 700, textAlign: "center", padding: "0 2px" }}
-            />
-          );
+          // the Open box shows two lines; typing, it opens wide across the row so longer text fits
+          const openBox = (n: number) => {
+            const wide = openEdit === `${li}:${n}`;
+            return (
+              <Fragment key={`open${n}`}>
+                <span aria-hidden style={{ height: 40, minWidth: 0, borderRadius: 8, border: "1px dashed var(--border-strong)", color: "var(--muted)", fontSize: 11.5, fontWeight: 700, lineHeight: 1.2, padding: "0 3px", display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", overflow: "hidden" }}>
+                  <span style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", overflowWrap: "anywhere" }}>{wide ? "" : openAt(li, n) || "–"}</span>
+                </span>
+                <input
+                  aria-label={`Other door open with ${level}${of > 1 ? ` ${doorLetter(n)}` : ""}`}
+                  key={n + openAt(li, n)}
+                  defaultValue={openAt(li, n)}
+                  placeholder="–"
+                  onFocus={(e) => {
+                    setOpenEdit(`${li}:${n}`);
+                    e.currentTarget.select();
+                  }}
+                  onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+                  onBlur={(e) => {
+                    setOpenEdit(null);
+                    // saved when you leave the box; cleared, or the same as the app's pick, it goes back to the app's pick
+                    const open = e.target.value.trim();
+                    if (open === openAt(li, n)) return;
+                    if (!open) e.target.value = adjacentDoor(levels, li, sys);
+                    write(doorKey(level, n), (d) => ({ ...d, open: open === adjacentDoor(levels, li, sys) ? "" : open }));
+                  }}
+                  style={{ position: "absolute", top: n * 46, left: 50, height: 40, zIndex: wide ? 2 : 0, ...(wide ? { right: 0, padding: "0 12px", border: "1.5px solid var(--accent)", background: "#0a2135", color: "var(--text)", fontSize: 14, textAlign: "left", opacity: 1 } : { width: 64, padding: 0, border: "none", background: "transparent", opacity: 0 }), borderRadius: 8, fontWeight: 700, minWidth: 0 }}
+                />
+              </Fragment>
+            );
+          };
           const doorButton = (n: number) => {
             const dk = doorKey(level, n);
             const d = mine[dk];
@@ -536,7 +550,7 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack
           // a level with more doors: a line a door (on velocity, each with its own Open box)
           if (of > 1)
             return (
-              <div key={level} data-i={li} style={{ display: "grid", gridTemplateColumns: `${lead} 1fr 54px`, gridTemplateRows: `repeat(${of}, 40px)`, gap: 6, alignItems: "center", flexShrink: 0 }}>
+              <div key={level} data-i={li} style={{ display: "grid", gridTemplateColumns: `${lead} 1fr 54px`, gridTemplateRows: `repeat(${of}, 40px)`, gap: 6, alignItems: "center", flexShrink: 0, position: "relative" }}>
                 <span style={{ gridRow: `span ${of}`, height: "100%", borderRadius: 8, background: "var(--panel-2)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 14, overflow: "hidden", whiteSpace: "nowrap" }}>{levelChip(level)}</span>
                 {Array.from({ length: of }, (_, n) => (
                   <Fragment key={n}>
@@ -548,7 +562,7 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack
               </div>
             );
           return (
-            <div key={level} data-i={li} style={{ display: "grid", gridTemplateColumns: `${lead} 1fr 54px`, gap: 6, alignItems: "center", flexShrink: 0 }}>
+            <div key={level} data-i={li} style={{ display: "grid", gridTemplateColumns: `${lead} 1fr 54px`, gap: 6, alignItems: "center", flexShrink: 0, position: "relative" }}>
               <span style={{ height: 40, borderRadius: 8, background: "var(--panel-2)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 14, overflow: "hidden", whiteSpace: "nowrap" }}>{levelChip(level)}</span>
               {section === "vel" && openBox(0)}
               {/* each door at a usable width; more than fit scroll sideways, faded at the edge */}

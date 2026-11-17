@@ -7,6 +7,10 @@ the technical detail.
 
 ## 17 November 2026
 
+- **Stair velocity: longer text in the Open box.** The box is a little
+  wider and shows two lines, and while you type it opens wide across the
+  row, so "6 + Plant room" fits and can be read back.
+
 - **Build 9.6, out to coworkers.** Nothing hides behind the phone's
   gesture bar; on the stair readings screen the top scrolls away so the
   level being typed shows above the keypad; the stair bar no longer
