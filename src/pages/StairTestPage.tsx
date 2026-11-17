@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from "react";
+import { useRef, useState, type CSSProperties } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import type { StairSection } from "../db/types";
 import { ALL_SECTIONS, doorStats, KIND_LABEL, onceStatus, runCount, SECTION, stairDoors } from "../lib/stairTest";
@@ -39,6 +39,8 @@ export default function StairTestPage() {
   const [openSwipe, setOpenSwipe] = useState<StairSection | null>(null);
   // a note's ✕ asks first
   const [deletingNote, setDeletingNote] = useState<number | null>(null);
+  // the stair's own part of the screen, slid along by the chin bar
+  const body = useRef<HTMLDivElement>(null);
 
   const back = () => {
     flush();
@@ -183,7 +185,7 @@ export default function StairTestPage() {
             </button>
           </div>
 
-          <div style={{ flexGrow: 1, overflowY: "auto", padding: "8px 14px 16px", display: "flex", flexDirection: "column", gap: 7 }}>
+          <div ref={body} style={{ flexGrow: 1, overflowY: "auto", padding: "8px 14px 16px", display: "flex", flexDirection: "column", gap: 7 }}>
             {test.sections.map(sectionCard)}
             {/* straight after the tests in use, before the ones not added */}
             <TestPhotosCard items={photos} onOpen={() => setPhotosOpen(true)} />
@@ -212,7 +214,7 @@ export default function StairTestPage() {
             </button>
           </div>
           <div style={{ flexShrink: 0, padding: "10px 16px calc(24px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 10 }}>
-            <StairChin stairs={stairs} i={stairs.indexOf(stair)} onGo={(k) => setParams({ stair: stairs[k].id }, { replace: true })} />
+            <StairChin stairs={stairs} i={stairs.indexOf(stair)} onGo={(k) => setParams({ stair: stairs[k].id }, { replace: true })} follow={body} />
             <div style={{ display: "flex", gap: 10 }}>
               <button
                 aria-label="Take a photo for this test"

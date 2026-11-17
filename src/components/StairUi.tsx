@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
+import { createPortal } from "react-dom";
 import type { Site, SpfStair, SpfSystem, StairTest } from "../db/types";
 import { getSite, getStairTest, saveSiteSpf, saveStairTest } from "../db/db";
 import { doorsOpen, fanIsDefault, fanName, limitTiles, wellIsDefault, wellName } from "../lib/stairTest";
@@ -184,101 +185,321 @@ export function useStairTest(siteId: string | undefined, testId: string | undefi
   return { site, test, setTest, setSpf, flush };
 }
 
-// The chin bar (design: "carousel"): the stair being tested, with the stairs
-// either side peeking in at the edges and a dot per stair. Swipe it sideways
-// (or tap a peeking stair) to move to the next or previous stair, one-handed.
+// The chin bar: a strip of the stairs, the one being tested in the middle and
+// the next ones half in view either side, a grab handle, arrows and a dot per
+// stair. Drag it sideways (or tap an arrow or a half-shown stair) to move to
+// the next or previous stair, one-handed. Everything is drawn from one number,
+// how far along the stairs the finger has got (0.4 = 40% of the way to the
+// next), so the strip, the dots and the page (`follow`, the part of the screen
+// that belongs to the stair) all move together and the same way: the page
+// slides off and the next stair's card slides in behind it, then the stair
+// changes. Letting go springs to the nearest stair; a quick flick goes on to
+// the next even short of halfway. Once per phone the bar nudges toward the
+// next stair on its own, to show it moves.
 // Floating, it sits at the bottom of the screen, or just above the keypad
 // while one is open (a sibling .np), so a reading can be typed and the stair
 // changed without reaching up.
-export function StairChin({ stairs, i, onGo, sub, floating = false }: { stairs: SpfStair[]; i: number; onGo: (i: number) => void; sub?: string; floating?: boolean }) {
+const HINT_KEY = "inspecta.stairChinHint";
+const SLOT = 0.5; // a stair's share of the bar's width
+const PAGE_GAP = 12;
+
+function reducedMotion() {
+  try {
+    return matchMedia("(prefers-reduced-motion: reduce)").matches;
+  } catch {
+    return false;
+  }
+}
+
+// a spring from `from` to `to` (critically damped: no bounce past a stair),
+// starting at speed `v` (per second); returns a stop function
+function spring(from: number, to: number, v: number, set: (x: number) => void, done?: () => void) {
+  const k = 300;
+  const c = 2 * Math.sqrt(k);
+  let x = from;
+  let last = performance.now();
+  let raf = 0;
+  const step = (t: number) => {
+    const dt = Math.min(0.032, (t - last) / 1000);
+    last = t;
+    v += (-k * (x - to) - c * v) * dt;
+    x += v * dt;
+    if (Math.abs(x - to) < 0.002 && Math.abs(v) < 0.05) {
+      set(to);
+      done?.();
+      return;
+    }
+    set(x);
+    raf = requestAnimationFrame(step);
+  };
+  raf = requestAnimationFrame(step);
+  return () => cancelAnimationFrame(raf);
+}
+
+export function StairChin({
+  stairs,
+  i,
+  onGo,
+  sub,
+  subFor,
+  follow,
+  floating = false,
+}: {
+  stairs: SpfStair[];
+  i: number;
+  onGo: (i: number) => void;
+  sub?: string;
+  // the line under a stair's name, for the stairs either side
+  subFor?: (k: number) => string;
+  // the part of the page that's the stair's own, slid along with the bar
+  follow?: RefObject<HTMLElement | null>;
+  floating?: boolean;
+}) {
   const root = useRef<HTMLDivElement>(null);
   const [bottom, setBottom] = useState<number | null>(null);
-  const [dx, setDx] = useState(0);
-  const drag = useRef<{ x: number; y: number; on: boolean } | null>(null);
+  const pos = useRef(0); // offset from stair i, in stairs
+  const stop = useRef<() => void>(() => {});
+  const drag = useRef<{ x: number; y: number; on: boolean; p0: number; t: number; lx: number; v: number } | null>(null);
+  const dragged = useRef(false);
+  const ghostEl = useRef<HTMLDivElement>(null);
+  const [ghost, setGhost] = useState<{ k: number; host: HTMLElement; box: { left: number; top: number; width: number; height: number } } | null>(null);
+  const n = stairs.length;
+  const iRef = useRef(i);
+  iRef.current = i;
+
   useLayoutEffect(() => {
     if (!floating) return;
     const pad = root.current?.parentElement?.querySelector<HTMLElement>(".np");
     const b = pad ? pad.offsetHeight + 8 : null;
     if (b !== bottom) setBottom(b);
   });
-  if (stairs.length < 2) return null;
-  const prev = i > 0 ? stairs[i - 1] : null;
-  const next = i < stairs.length - 1 ? stairs[i + 1] : null;
-  const peek = (st: SpfStair | null, k: number, side: "left" | "right") =>
-    st ? (
-      <button
-        aria-label={`${side === "left" ? "Previous" : "Next"} stair: ${fanName(st, k)} · ${wellName(st, k)}`}
-        onClick={() => onGo(k)}
-        style={{ flex: "0 0 84px", alignSelf: "stretch", border: "none", background: "none", padding: side === "left" ? "0 0 0 12px" : "0 12px 0 0", textAlign: side, color: "#8ba0b5", fontSize: 12, fontWeight: 800, lineHeight: 1.2, WebkitMaskImage: `linear-gradient(${side === "left" ? 90 : 270}deg, transparent, #000 75%)`, maskImage: `linear-gradient(${side === "left" ? 90 : 270}deg, transparent, #000 75%)` }}
-      >
-        {fanName(st, k)}
-        <span style={{ display: "block", fontSize: 10, fontWeight: 700 }}>{wellName(st, k)}</span>
-      </button>
-    ) : (
-      <span style={{ flex: "0 0 84px" }} />
-    );
-  return (
-    <div
-      ref={root}
-      data-testid="stair-chin"
-      onPointerDown={(e) => (drag.current = { x: e.clientX, y: e.clientY, on: false })}
-      onPointerMove={(e) => {
-        const d = drag.current;
-        if (!d) return;
-        const mx = e.clientX - d.x;
-        if (!d.on) {
-          if (Math.abs(mx) < 8 || Math.abs(mx) < Math.abs(e.clientY - d.y)) return;
-          d.on = true;
-          e.currentTarget.setPointerCapture(e.pointerId);
-        }
-        // a little give at the ends
-        setDx(Math.max(-90, Math.min(90, (mx < 0 && !next) || (mx > 0 && !prev) ? mx / 4 : mx)));
-      }}
-      onPointerUp={() => {
-        const d = drag.current;
-        drag.current = null;
-        if (d?.on) {
-          if (dx < -40 && next) onGo(i + 1);
-          else if (dx > 40 && prev) onGo(i - 1);
-        }
-        setDx(0);
-      }}
-      onPointerCancel={() => {
-        drag.current = null;
-        setDx(0);
-      }}
-      onClickCapture={(e) => {
-        // a swipe that ends on a peeking stair isn't a tap on it
-        if (dx !== 0) e.stopPropagation();
-      }}
-      style={{
-        ...(floating ? { position: "absolute", left: 10, right: 10, bottom: bottom ?? "calc(14px + env(safe-area-inset-bottom))", zIndex: 30 } : {}),
-        flexShrink: 0,
-        height: 56,
-        borderRadius: 16,
-        background: "#12304b",
-        border: "1px solid #2a5a82",
-        boxShadow: "0 -6px 20px rgba(0,0,0,.35)",
-        overflow: "hidden",
-        touchAction: "pan-y",
-        userSelect: "none",
-      }}
+
+  // the next stair's card, beside the page as it slides
+  const showGhost = useCallback(
+    (k: number | null) => {
+      const el = follow?.current;
+      setGhost((g) => {
+        if (k === null || !el || !(el.offsetParent instanceof HTMLElement)) return g ? null : g;
+        if (g?.k === k) return g;
+        return { k, host: el.offsetParent, box: { left: el.offsetLeft, top: el.offsetTop, width: el.offsetWidth, height: el.offsetHeight } };
+      });
+    },
+    [follow],
+  );
+
+  const paint = useCallback(
+    (x: number) => {
+      pos.current = x;
+      const r = root.current;
+      if (!r) return;
+      const at = iRef.current;
+      const sw = r.clientWidth * SLOT;
+      r.querySelectorAll<HTMLElement>("[data-k]").forEach((el) => {
+        const d = Number(el.dataset.k) - at - x;
+        const a = Math.min(1, Math.abs(d));
+        el.style.transform = `translateX(${d * sw}px) scale(${1 - 0.14 * a})`;
+        el.style.opacity = String(1 - 0.5 * a);
+        const s = el.querySelector<HTMLElement>("[data-sub]");
+        if (s) s.style.opacity = String(1 - a);
+      });
+      r.querySelectorAll<HTMLElement>("[data-dot]").forEach((el) => {
+        const near = Math.max(0, 1 - Math.abs(Number(el.dataset.dot) - at - x));
+        el.style.width = `${5 + 11 * near}px`;
+        el.style.background = near > 0.5 ? "#5ff0e0" : "#3f5a74";
+      });
+      const l = r.querySelector<HTMLElement>("[data-chev=l]");
+      const rt = r.querySelector<HTMLElement>("[data-chev=r]");
+      if (l) l.style.opacity = String(Math.max(0, Math.min(1, at + x)));
+      if (rt) rt.style.opacity = String(Math.max(0, Math.min(1, n - 1 - at - x)));
+      const page = follow?.current;
+      if (page) {
+        const pw = page.offsetWidth + PAGE_GAP;
+        page.style.transform = x ? `translateX(${-x * pw}px)` : "";
+        const k = x > 0.001 && at < n - 1 ? at + 1 : x < -0.001 && at > 0 ? at - 1 : null;
+        showGhost(k);
+        if (ghostEl.current && k !== null) ghostEl.current.style.transform = `translateX(${(Math.sign(x) - x) * pw}px)`;
+      }
+    },
+    [follow, n, showGhost],
+  );
+
+  // a new stair (or back on this one): everything back in the middle
+  useLayoutEffect(() => {
+    stop.current();
+    paint(0);
+    return () => {
+      const page = follow?.current;
+      if (page) page.style.transform = "";
+    };
+  }, [i, n, paint, follow]);
+  useLayoutEffect(() => {
+    if (ghostEl.current) paint(pos.current);
+  }, [ghost, paint]);
+  useEffect(() => () => stop.current(), []);
+
+  // springs to the stair `to` places along (-1, 0 or 1), then moves to it
+  const settle = useCallback(
+    (to: number, v = 0) => {
+      stop.current();
+      const at = iRef.current;
+      if (at + to < 0 || at + to > n - 1) to = 0;
+      if (reducedMotion()) {
+        paint(0);
+        if (to) onGo(at + to);
+        return;
+      }
+      stop.current = spring(pos.current, to, v, paint, () => {
+        if (to) onGo(at + to);
+      });
+    },
+    [n, onGo, paint],
+  );
+
+  // once per phone, a nudge toward the next stair and back
+  useEffect(() => {
+    if (n < 2 || reducedMotion()) return;
+    let store: Storage | null = null;
+    try {
+      store = localStorage;
+      if (store.getItem(HINT_KEY)) return;
+    } catch {
+      return;
+    }
+    const dir = iRef.current < n - 1 ? 1 : -1;
+    const t = setTimeout(() => {
+      if (drag.current || pos.current) return;
+      store?.setItem(HINT_KEY, "1");
+      stop.current = spring(0, dir * 0.22, 0, paint, () => {
+        stop.current = spring(pos.current, 0, 0, paint);
+      });
+    }, 700);
+    return () => clearTimeout(t);
+  }, [n, paint]);
+
+  if (n < 2) return null;
+  const near = stairs.map((st, k) => ({ st, k })).filter(({ k }) => Math.abs(k - i) <= 2);
+  const chev = (side: "l" | "r") => (
+    <button
+      data-chev={side}
+      aria-label={side === "l" ? "Previous stair" : "Next stair"}
+      disabled={side === "l" ? i === 0 : i === n - 1}
+      onClick={() => settle(side === "l" ? -1 : 1)}
+      style={{ position: "absolute", top: 0, bottom: 0, [side === "l" ? "left" : "right"]: 0, width: 32, border: "none", background: "none", padding: 0, color: "#5ff0e0", fontSize: 24, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2 }}
     >
-      <div style={{ display: "flex", alignItems: "center", height: "100%", transform: `translateX(${dx}px)`, transition: dx ? "none" : "transform 200ms ease-out" }}>
-        {peek(prev, i - 1, "left")}
-        <span style={{ flex: 1, minWidth: 0, textAlign: "center", lineHeight: 1.15, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-          <b style={{ fontSize: 15 }}>
-            <StairName stair={stairs[i]} i={i} />
-          </b>
-          {sub && <span style={{ display: "block", fontSize: 10.5, color: "#8ba0b5", fontWeight: 700 }}>{sub}</span>}
-        </span>
-        {peek(next, i + 1, "right")}
-      </div>
-      <span style={{ position: "absolute", left: "50%", bottom: 5, transform: "translateX(-50%)", display: "flex", gap: 4, pointerEvents: "none" }}>
-        {stairs.map((st, k) => (
-          <i key={st.id} style={{ width: k === i ? 14 : 5, height: 4, borderRadius: 2, background: k === i ? "#5ff0e0" : "#3f5a74" }} />
+      {side === "l" ? "‹" : "›"}
+    </button>
+  );
+  const ghostSub = ghost && subFor?.(ghost.k);
+  return (
+    <>
+      <div
+        ref={root}
+        data-testid="stair-chin"
+        onPointerDown={(e) => {
+          stop.current();
+          dragged.current = false;
+          drag.current = { x: e.clientX, y: e.clientY, on: false, p0: pos.current, t: performance.now(), lx: e.clientX, v: 0 };
+        }}
+        onPointerMove={(e) => {
+          const d = drag.current;
+          if (!d) return;
+          const mx = e.clientX - d.x;
+          if (!d.on) {
+            if (Math.abs(mx) < 8 || Math.abs(mx) < Math.abs(e.clientY - d.y)) return;
+            d.on = true;
+            dragged.current = true;
+            e.currentTarget.setPointerCapture(e.pointerId);
+          }
+          const t = performance.now();
+          d.v = 0.7 * d.v + (0.3 * (e.clientX - d.lx)) / Math.max(1, t - d.t);
+          d.t = t;
+          d.lx = e.clientX;
+          const sw = e.currentTarget.clientWidth * SLOT;
+          let x = d.p0 - mx / sw;
+          // a little give past the first and last stair
+          if ((x > 0 && i === n - 1) || (x < 0 && i === 0)) x /= 4;
+          paint(Math.max(-1, Math.min(1, x)));
+        }}
+        onPointerUp={(e) => {
+          const d = drag.current;
+          drag.current = null;
+          if (!d?.on) return;
+          const v = (-d.v * 1000) / (e.currentTarget.clientWidth * SLOT); // stairs a second
+          const x = pos.current;
+          settle(Math.abs(v) > 1.2 ? Math.sign(v) : Math.round(x), v);
+        }}
+        onPointerCancel={() => {
+          drag.current = null;
+          settle(0);
+        }}
+        onClickCapture={(e) => {
+          // a swipe that ends on a button isn't a tap on it
+          if (dragged.current) e.stopPropagation();
+        }}
+        style={{
+          ...(floating ? { position: "absolute", left: 10, right: 10, bottom: bottom ?? "calc(14px + env(safe-area-inset-bottom))", zIndex: 30 } : { position: "relative" }),
+          flexShrink: 0,
+          height: 58,
+          borderRadius: 16,
+          background: "#12304b",
+          border: "1px solid #2a5a82",
+          boxShadow: "0 -6px 20px rgba(0,0,0,.35)",
+          overflow: "hidden",
+          touchAction: "pan-y",
+          userSelect: "none",
+          cursor: "grab",
+        }}
+      >
+        {near.map(({ st, k }) => (
+          <button
+            key={st.id}
+            data-k={k}
+            tabIndex={k === i ? -1 : 0}
+            aria-label={k === i ? undefined : `${k < i ? "Previous" : "Next"} stair: ${fanName(st, k)} · ${wellName(st, k)}`}
+            onClick={() => k !== i && settle(Math.sign(k - i))}
+            style={{ position: "absolute", top: 0, bottom: 0, left: "25%", width: "50%", border: "none", background: "none", padding: "2px 0 0", color: "var(--text)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", lineHeight: 1.15, whiteSpace: "nowrap", cursor: "inherit" }}
+          >
+            <b style={{ fontSize: 15 }}>
+              <StairName stair={st} i={k} />
+            </b>
+            {(k === i ? sub : subFor?.(k)) && (
+              <span data-sub style={{ display: "block", fontSize: 10.5, color: "#8ba0b5", fontWeight: 700 }}>
+                {k === i ? sub : subFor?.(k)}
+              </span>
+            )}
+          </button>
         ))}
-      </span>
-    </div>
+        {/* the stairs either side fade out under the arrows */}
+        <span style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "linear-gradient(90deg, #12304b 0, rgba(18,48,75,0) 24%, rgba(18,48,75,0) 76%, #12304b 100%)" }} />
+        <span style={{ position: "absolute", top: 5, left: "50%", width: 30, height: 4, marginLeft: -15, borderRadius: 2, background: "#3f6a90", pointerEvents: "none" }} />
+        {chev("l")}
+        {chev("r")}
+        <span style={{ position: "absolute", left: "50%", bottom: 5, transform: "translateX(-50%)", display: "flex", gap: 4, pointerEvents: "none" }}>
+          {stairs.map((st, k) => (
+            <i key={st.id} data-dot={k} style={{ height: 4, borderRadius: 2 }} />
+          ))}
+        </span>
+      </div>
+      {ghost &&
+        createPortal(
+          <div
+            ref={ghostEl}
+            aria-hidden
+            style={{ position: "absolute", left: ghost.box.left, top: ghost.box.top, width: ghost.box.width, height: ghost.box.height, padding: "8px 14px", pointerEvents: "none", zIndex: 1 }}
+          >
+            <div style={{ borderRadius: 14, background: "var(--panel)", border: "1px solid var(--border)", padding: "16px 14px", display: "flex", flexDirection: "column", gap: 4 }}>
+              <b style={{ fontSize: 17 }}>
+                <StairName stair={stairs[ghost.k]} i={ghost.k} />
+              </b>
+              {ghostSub && <span style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)" }}>{ghostSub}</span>}
+            </div>
+            {/* the outline of a page, filled in once the stair has changed */}
+            {[0, 1, 2, 3, 4].map((r) => (
+              <div key={r} style={{ height: 44, marginTop: 7, borderRadius: 12, background: "var(--panel)", border: "1px solid var(--border)", opacity: 0.55 - r * 0.09 }} />
+            ))}
+          </div>,
+          ghost.host,
+        )}
+    </>
   );
 }

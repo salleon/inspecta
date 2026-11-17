@@ -5,6 +5,18 @@ matches a commit on the `test` branch (called `advanced_controls` until
 29 September 2026) or `main`; the commit itself has
 the technical detail.
 
+## 17 November 2026
+
+- **The stair bar at the bottom slides the page with it.** Dragging it
+  moves the stair's page along with your finger, and the next stair's
+  card slides in behind it, the same way round as the swipe; let go and
+  it settles on the nearest stair (a quick flick goes on to the next).
+  It looks like something to swipe: a grab handle, arrows at each end,
+  the stairs either side half in view, and a dot that stretches as you
+  drag. The first time, the bar nudges toward the next stair on its own.
+  Before, the new stair's name slid in the wrong way and the page just
+  swapped.
+
 ## 16 November 2026
 
 - **Build 9.4, out to coworkers.** Photos & notes while stair testing;

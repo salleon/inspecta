@@ -513,7 +513,20 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack
       </div>
 
       {/* out of the way while a sheet or question is up */}
-      {!sheet && !adding && !ask && <StairChin floating stairs={sys.stairs} i={stairNo} onGo={(k) => goStair(sys.stairs[k].id)} sub={`${stats.done} of ${stats.total} doors`} />}
+      {!sheet && !adding && !ask && (
+        <StairChin
+          floating
+          stairs={sys.stairs}
+          i={stairNo}
+          onGo={(k) => goStair(sys.stairs[k].id)}
+          sub={`${stats.done} of ${stats.total} doors`}
+          subFor={(k) => {
+            const s = doorStats(test, sys.stairs[k], section, sys);
+            return `${s.done} of ${s.total} doors`;
+          }}
+          follow={list}
+        />
+      )}
       {cur !== null && (
         <NumPad
           tint="spf"
@@ -638,6 +651,7 @@ type OnceNum = "noiseStair" | "noiseOcc" | "ambient" | "restTime" | "pa" | "nois
 function Once({ section, sys, stair, stairNo, test, setTest, onBack, onStair }: Props & { section: StairSection; onStair: (id: string) => void }) {
   const once = test.once[stair.id] ?? {};
   const l = limits(sys);
+  const body = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const here = useLocation();
   const [pad, setPad] = useState<{ field: OnceNum; label: string; sub: string } | null>(null);
@@ -689,7 +703,7 @@ function Once({ section, sys, stair, stairNo, test, setTest, onBack, onStair }: 
         onBack={onBack}
         right={<CameraButton onClick={() => void takeTestPhoto(navigate, { siteId: test.siteId, testId: test.id, back: here.pathname + here.search })} />}
       />
-      <div style={{ flexGrow: 1, overflowY: "auto", padding: `4px 14px ${pad ? 430 : 86}px`, display: "flex", flexDirection: "column", gap: 7 }}>
+      <div ref={body} style={{ flexGrow: 1, overflowY: "auto", padding: `4px 14px ${pad ? 430 : 86}px`, display: "flex", flexDirection: "column", gap: 7 }}>
         {section === "noise" && (
           <>
             <PhoneMeter
@@ -763,7 +777,7 @@ function Once({ section, sys, stair, stairNo, test, setTest, onBack, onStair }: 
           </button>
         </div>
       )}
-      <StairChin floating stairs={sys.stairs} i={stairNo} onGo={(k) => onStair(sys.stairs[k].id)} />
+      <StairChin floating stairs={sys.stairs} i={stairNo} onGo={(k) => onStair(sys.stairs[k].id)} follow={body} />
       {pad && (
         <NumPad
           tint="spf"
