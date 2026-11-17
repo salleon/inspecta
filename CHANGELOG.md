@@ -5,6 +5,15 @@ matches a commit on the `test` branch (called `advanced_controls` until
 29 September 2026) or `main`; the commit itself has
 the technical detail.
 
+## 17 November 2026
+
+- **The other open door can be changed.** On the stair velocity screen,
+  the Open box beside each level still starts with the app's pick (the
+  level above, or below for the top level), but you can now tap it and
+  type something else when the building is odd, such as "Lobby". The
+  keypad line and the report use what you typed; clear the box and the
+  app's pick comes back.
+
 ## 16 November 2026
 
 - **Build 9.4, out to coworkers.** Photos & notes while stair testing;

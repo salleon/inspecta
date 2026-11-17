@@ -22,6 +22,7 @@ import {
   levelChip,
   limits,
   newRun,
+  openWith,
   QUICK_CHECKS,
   runChange,
   runCount,
@@ -200,12 +201,15 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack
       if (!next.vel) delete next.vel;
       if (!next.force) delete next.force;
       if (!next.latch) delete next.latch;
+      if (!next.open?.trim()) delete next.open;
       forStair[key] = next;
       const doors = { ...all, [stair.id]: forStair };
       return run === 0 ? { ...t, doors } : { ...t, runs: (t.runs ?? []).map((x, j) => (j === run - 1 ? { ...x, doors } : x)) };
     });
 
   const curKey = cur === null ? "" : doorKey(levels[cur.li], cur.n);
+  // the other door open for a level's velocity: what's typed in its Open box, else the app's pick
+  const openAt = (li: number) => openWith(levels, li, sys, mine[levels[li]], run > 0 ? runDoors(test, 0)[stair.id]?.[levels[li]] : undefined);
   function key(k: string) {
     if (cur === null) return;
     if (k === "done") {
@@ -446,7 +450,24 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack
           return (
             <div key={level} data-i={li} style={{ display: "grid", gridTemplateColumns: `${lead} 1fr 54px`, gap: 6, alignItems: "center", flexShrink: 0 }}>
               <span style={{ height: 40, borderRadius: 8, background: "var(--panel-2)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 14, overflow: "hidden", whiteSpace: "nowrap" }}>{levelChip(level)}</span>
-              {section === "vel" && <span style={{ fontSize: 12.5, color: "var(--muted)", fontWeight: 700, textAlign: "center" }}>{adjacentDoor(levels, li, sys) || "–"}</span>}
+              {section === "vel" && (
+                <input
+                  aria-label={`Other door open with ${level}`}
+                  key={openAt(li)}
+                  defaultValue={openAt(li)}
+                  placeholder="–"
+                  onFocus={(e) => e.currentTarget.select()}
+                  onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+                  onBlur={(e) => {
+                    // saved when you leave the box; cleared, or the same as the app's pick, it goes back to the app's pick
+                    const open = e.target.value.trim();
+                    if (open === openAt(li)) return;
+                    if (!open) e.target.value = adjacentDoor(levels, li, sys);
+                    write(level, (d) => ({ ...d, open: open === adjacentDoor(levels, li, sys) ? "" : open }));
+                  }}
+                  style={{ height: 40, minWidth: 0, width: "100%", borderRadius: 8, border: "1px dashed var(--border-strong)", background: "transparent", color: "var(--muted)", fontSize: 12.5, fontWeight: 700, textAlign: "center", padding: "0 2px" }}
+                />
+              )}
               {/* each door at a usable width; more than fit scroll sideways, faded at the edge */}
               <span className="door-row" style={{ display: "flex", gap: 6, minWidth: 0, overflowX: "auto", scrollbarWidth: "none", maskImage: of > 3 ? "linear-gradient(90deg, #000 85%, transparent)" : undefined }}>
                 {Array.from({ length: of }, (_, n) => {
@@ -529,7 +550,7 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack
                   {section === "vel" && (
                     <>
                       Open: {levels[cur.li]}
-                      {adjacentDoor(levels, cur.li, sys) ? ` + ${adjacentDoor(levels, cur.li, sys)}` : ""} + discharge
+                      {openAt(cur.li) ? ` + ${openAt(cur.li)}` : ""} + discharge
                       <br />
                     </>
                   )}

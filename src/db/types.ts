@@ -241,6 +241,7 @@ export interface StairDoor {
   vel?: string; // m/s
   force?: string; // N
   latch?: Tick;
+  open?: string; // the other door open for its velocity, typed over the app's pick (kept on the level's first door)
 }
 
 // a stair's once-off readings
