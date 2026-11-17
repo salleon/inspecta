@@ -8,11 +8,12 @@ the technical detail.
 ## 17 November 2026
 
 - **The other open door can be changed.** On the stair velocity screen,
-  the Open box beside each level still starts with the app's pick (the
+  the Open box beside each door still starts with the app's pick (the
   level above, or below for the top level), but you can now tap it and
   type something else when the building is odd, such as "Lobby". The
   keypad line and the report use what you typed; clear the box and the
-  app's pick comes back.
+  app's pick comes back. A level with more than one door shows a line
+  per door, each with its own Open box.
 
 ## 16 November 2026
 

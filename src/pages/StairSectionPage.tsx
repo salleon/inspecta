@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import type { SpfStair, SpfSystem, StairDoor, StairOnce, StairSection, StairTest, Tick } from "../db/types";
 import {
@@ -208,8 +208,20 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack
     });
 
   const curKey = cur === null ? "" : doorKey(levels[cur.li], cur.n);
-  // the other door open for a level's velocity: what's typed in its Open box, else the app's pick
-  const openAt = (li: number) => openWith(levels, li, sys, mine[levels[li]], run > 0 ? runDoors(test, 0)[stair.id]?.[levels[li]] : undefined);
+  const addDoorButton = (level: string, span: number) => (
+    <button
+      aria-label={`Add a door on ${isCustomLevel(level) ? level : `level ${level}`}`}
+      onClick={() => addDoor(level)}
+      style={{ gridRow: `span ${span}`, height: span > 1 ? "100%" : 40, borderRadius: 9, background: "none", border: "1px dashed #3f5a74", color: "var(--muted)", fontSize: 10.5, fontWeight: 800, padding: 0 }}
+    >
+      + Door
+    </button>
+  );
+  // the other door open for a door's velocity: what's typed in its Open box, else the app's pick
+  const openAt = (li: number, n: number) => {
+    const dk = doorKey(levels[li], n);
+    return openWith(levels, li, sys, mine[dk], run > 0 ? runDoors(test, 0)[stair.id]?.[dk] : undefined);
+  };
   function key(k: string) {
     if (cur === null) return;
     if (k === "done") {
@@ -447,87 +459,97 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack
       <div ref={list} style={{ flexGrow: 1, overflowY: "auto", padding: `0 14px ${cur === null ? 90 : 430}px`, display: "flex", flexDirection: "column", gap: 6 }}>
         {levels.map((level, li) => {
           const of = doorsAt(stair, level);
+          const openBox = (n: number) => (
+            <input
+              aria-label={`Other door open with ${level}${of > 1 ? ` ${doorLetter(n)}` : ""}`}
+              key={n + openAt(li, n)}
+              defaultValue={openAt(li, n)}
+              placeholder="–"
+              onFocus={(e) => e.currentTarget.select()}
+              onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+              onBlur={(e) => {
+                // saved when you leave the box; cleared, or the same as the app's pick, it goes back to the app's pick
+                const open = e.target.value.trim();
+                if (open === openAt(li, n)) return;
+                if (!open) e.target.value = adjacentDoor(levels, li, sys);
+                write(doorKey(level, n), (d) => ({ ...d, open: open === adjacentDoor(levels, li, sys) ? "" : open }));
+              }}
+              style={{ height: 40, minWidth: 0, width: "100%", borderRadius: 8, border: "1px dashed var(--border-strong)", background: "transparent", color: "var(--muted)", fontSize: 12.5, fontWeight: 700, textAlign: "center", padding: "0 2px" }}
+            />
+          );
+          const doorButton = (n: number) => {
+            const dk = doorKey(level, n);
+            const d = mine[dk];
+            const v = doorValue(section, d);
+            const bad = doorFails(section, d, sys);
+            const editing = cur?.li === li && cur.n === n;
+            const was = run > 0 ? doorValue(section, latestDoor(test, stair.id, dk, section, run - 1)) : "";
+            const up = v && was && section !== "latch" ? (parseFloat(v.replace("<", "")) >= parseFloat(was.replace("<", "")) ? " ↑" : " ↓") : "";
+            return (
+              <button
+                key={n}
+                aria-label={`${isCustomLevel(level) ? level : `Level ${level}`}${of > 1 ? ` door ${doorLetter(n)}` : ""}`}
+                onClick={() => setCur({ li, n })}
+                data-editing={editing || undefined}
+                style={{
+                  flex: of > 1 ? "1 0 72px" : "1 1 0",
+                  minWidth: 0,
+                  height: 40,
+                  display: "flex",
+                  alignItems: "baseline",
+                  justifyContent: "center",
+                  gap: 5,
+                  padding: "0 4px",
+                  borderRadius: 9,
+                  border: `1px solid ${editing ? "#b18cff" : bad ? "rgba(255,90,74,.55)" : v && doorMarginal(section, d, sys) ? "rgba(247,201,72,.55)" : "var(--border-strong)"}`,
+                  boxShadow: editing ? "0 0 0 3px rgba(177,140,255,.18)" : "none",
+                  background: flash === dk ? "rgba(43,212,122,.25)" : "var(--panel)",
+                  transition: "background 1.2s ease-out",
+                  color: v ? colour(d) : "#6a8098",
+                  lineHeight: "38px",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                }}
+              >
+                {of > 1 && <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 800 }}>{doorLetter(n)}</span>}
+                <b style={{ fontSize: 16 }}>{v || "—"}</b>
+                {of <= 2 &&
+                  (editing ? (
+                    <span style={{ fontSize: 10.5, fontWeight: 800, color: "#1a0d33", background: "#b18cff", borderRadius: 6, padding: "2px 5px", lineHeight: 1.2 }}>Editing</span>
+                  ) : was ? (
+                    <span style={{ fontSize: 11, color: "#6a8098", fontWeight: 700 }}>
+                      {was}
+                      {up}
+                    </span>
+                  ) : v ? (
+                    <span style={{ fontSize: 11, fontWeight: 800 }}>{bad ? "Fail" : "Pass"}</span>
+                  ) : null)}
+              </button>
+            );
+          };
+          // velocity, a level with more doors: a line a door, each with its own Open box
+          if (section === "vel" && of > 1)
+            return (
+              <div key={level} data-i={li} style={{ display: "grid", gridTemplateColumns: `${lead} 1fr 54px`, gridTemplateRows: `repeat(${of}, 40px)`, gap: 6, alignItems: "center", flexShrink: 0 }}>
+                <span style={{ gridRow: `span ${of}`, height: "100%", borderRadius: 8, background: "var(--panel-2)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 14, overflow: "hidden", whiteSpace: "nowrap" }}>{levelChip(level)}</span>
+                {Array.from({ length: of }, (_, n) => (
+                  <Fragment key={n}>
+                    {openBox(n)}
+                    <span className="door-row" style={{ display: "flex", minWidth: 0 }}>{doorButton(n)}</span>
+                    {n === 0 && addDoorButton(level, of)}
+                  </Fragment>
+                ))}
+              </div>
+            );
           return (
             <div key={level} data-i={li} style={{ display: "grid", gridTemplateColumns: `${lead} 1fr 54px`, gap: 6, alignItems: "center", flexShrink: 0 }}>
               <span style={{ height: 40, borderRadius: 8, background: "var(--panel-2)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 14, overflow: "hidden", whiteSpace: "nowrap" }}>{levelChip(level)}</span>
-              {section === "vel" && (
-                <input
-                  aria-label={`Other door open with ${level}`}
-                  key={openAt(li)}
-                  defaultValue={openAt(li)}
-                  placeholder="–"
-                  onFocus={(e) => e.currentTarget.select()}
-                  onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-                  onBlur={(e) => {
-                    // saved when you leave the box; cleared, or the same as the app's pick, it goes back to the app's pick
-                    const open = e.target.value.trim();
-                    if (open === openAt(li)) return;
-                    if (!open) e.target.value = adjacentDoor(levels, li, sys);
-                    write(level, (d) => ({ ...d, open: open === adjacentDoor(levels, li, sys) ? "" : open }));
-                  }}
-                  style={{ height: 40, minWidth: 0, width: "100%", borderRadius: 8, border: "1px dashed var(--border-strong)", background: "transparent", color: "var(--muted)", fontSize: 12.5, fontWeight: 700, textAlign: "center", padding: "0 2px" }}
-                />
-              )}
+              {section === "vel" && openBox(0)}
               {/* each door at a usable width; more than fit scroll sideways, faded at the edge */}
               <span className="door-row" style={{ display: "flex", gap: 6, minWidth: 0, overflowX: "auto", scrollbarWidth: "none", maskImage: of > 3 ? "linear-gradient(90deg, #000 85%, transparent)" : undefined }}>
-                {Array.from({ length: of }, (_, n) => {
-                  const dk = doorKey(level, n);
-                  const d = mine[dk];
-                  const v = doorValue(section, d);
-                  const bad = doorFails(section, d, sys);
-                  const editing = cur?.li === li && cur.n === n;
-                  const was = run > 0 ? doorValue(section, latestDoor(test, stair.id, dk, section, run - 1)) : "";
-                  const up = v && was && section !== "latch" ? (parseFloat(v.replace("<", "")) >= parseFloat(was.replace("<", "")) ? " ↑" : " ↓") : "";
-                  return (
-                    <button
-                      key={n}
-                      aria-label={`${isCustomLevel(level) ? level : `Level ${level}`}${of > 1 ? ` door ${doorLetter(n)}` : ""}`}
-                      onClick={() => setCur({ li, n })}
-                      data-editing={editing || undefined}
-                      style={{
-                        flex: of > 1 ? "1 0 72px" : "1 1 0",
-                        minWidth: 0,
-                        height: 40,
-                        display: "flex",
-                        alignItems: "baseline",
-                        justifyContent: "center",
-                        gap: 5,
-                        padding: "0 4px",
-                        borderRadius: 9,
-                        border: `1px solid ${editing ? "#b18cff" : bad ? "rgba(255,90,74,.55)" : v && doorMarginal(section, d, sys) ? "rgba(247,201,72,.55)" : "var(--border-strong)"}`,
-                        boxShadow: editing ? "0 0 0 3px rgba(177,140,255,.18)" : "none",
-                        background: flash === dk ? "rgba(43,212,122,.25)" : "var(--panel)",
-                        transition: "background 1.2s ease-out",
-                        color: v ? colour(d) : "#6a8098",
-                        lineHeight: "38px",
-                        whiteSpace: "nowrap",
-                        overflow: "hidden",
-                      }}
-                    >
-                      {of > 1 && <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 800 }}>{doorLetter(n)}</span>}
-                      <b style={{ fontSize: 16 }}>{v || "—"}</b>
-                      {of <= 2 &&
-                        (editing ? (
-                          <span style={{ fontSize: 10.5, fontWeight: 800, color: "#1a0d33", background: "#b18cff", borderRadius: 6, padding: "2px 5px", lineHeight: 1.2 }}>Editing</span>
-                        ) : was ? (
-                          <span style={{ fontSize: 11, color: "#6a8098", fontWeight: 700 }}>
-                            {was}
-                            {up}
-                          </span>
-                        ) : v ? (
-                          <span style={{ fontSize: 11, fontWeight: 800 }}>{bad ? "Fail" : "Pass"}</span>
-                        ) : null)}
-                    </button>
-                  );
-                })}
+                {Array.from({ length: of }, (_, n) => doorButton(n))}
               </span>
-              <button
-                aria-label={`Add a door on ${isCustomLevel(level) ? level : `level ${level}`}`}
-                onClick={() => addDoor(level)}
-                style={{ height: 40, borderRadius: 9, background: "none", border: "1px dashed #3f5a74", color: "var(--muted)", fontSize: 10.5, fontWeight: 800, padding: 0 }}
-              >
-                + Door
-              </button>
+              {addDoorButton(level, 1)}
             </div>
           );
         })}
@@ -550,7 +572,7 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack
                   {section === "vel" && (
                     <>
                       Open: {levels[cur.li]}
-                      {openAt(cur.li) ? ` + ${openAt(cur.li)}` : ""} + discharge
+                      {openAt(cur.li, cur.n) ? ` + ${openAt(cur.li, cur.n)}` : ""} + discharge
                       <br />
                     </>
                   )}
