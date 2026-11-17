@@ -22,10 +22,10 @@ before(async () => {
     const now = Date.now();
     const tx = idb.transaction(["sites", "stairTests"], "readwrite");
     tx.objectStore("sites").put({ id: "p1", name: "Harbour Point", address: "", kind: "afss", createdAt: now, updatedAt: now, spf: { edition: "2015", type: "One test", notes: "", stairs: s } });
-    tx.objectStore("stairTests").put({ id: "t1", siteId: "p1", kind: "general", sections: ["vel", "fan"], testedAt: now, doors: {}, once: {}, notes: [], order: 0, createdAt: now, updatedAt: now });
+    tx.objectStore("stairTests").put({ id: "t1", siteId: "p1", kind: "general", sections: ["vel", "force", "fan"], testedAt: now, doors: {}, once: {}, notes: [], order: 0, createdAt: now, updatedAt: now });
     await new Promise((r) => (tx.oncomplete = r));
     idb.close();
-  }, [stair("s1", "SPF-01", "B2", "12"), stair("s2", "SPF-02", "G", "3")]);
+  }, [stair("s1", "SPF-01", "B2", "12"), { ...stair("s2", "SPF-02", "G", "3"), more: { 2: 1 } }]);
   await go(page, app, "/site/p1/spf/t1/vel?stair=s1&run=0", 1500);
   await page.addStyleTag({ content: ":root { --safe-area-inset-bottom: 48px }" });
 });
@@ -53,6 +53,15 @@ test("typing the lowest level: its row shows above the keypad and bar, under the
   const r = await page.locator("[data-i]").last().boundingBox();
   const heads = await page.locator("[data-heads]").boundingBox();
   assert.ok(r.y >= heads.y + heads.height - 1 && r.y + r.height <= (await chinTop()), `row ${r.y}–${r.y + r.height}`);
+});
+
+test("door force: a level with two doors shows a line a door, as velocity does", async () => {
+  for (const sec of ["vel", "force"]) {
+    await go(page, app, `/site/p1/spf/t1/${sec}?stair=s2&run=0`, 1500);
+    const rows = await page.locator('[data-i="1"] .door-row').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().top));
+    assert.equal(rows.length, 2, sec);
+    assert.ok(rows[1] > rows[0] + 20, `${sec}: door B under door A`);
+  }
 });
 
 test("Fan checks: the stair bar sits between the list and Done, overlapping neither", async () => {

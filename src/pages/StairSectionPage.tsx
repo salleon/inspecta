@@ -533,14 +533,14 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack
               </button>
             );
           };
-          // velocity, a level with more doors: a line a door, each with its own Open box
-          if (section === "vel" && of > 1)
+          // a level with more doors: a line a door (on velocity, each with its own Open box)
+          if (of > 1)
             return (
               <div key={level} data-i={li} style={{ display: "grid", gridTemplateColumns: `${lead} 1fr 54px`, gridTemplateRows: `repeat(${of}, 40px)`, gap: 6, alignItems: "center", flexShrink: 0 }}>
                 <span style={{ gridRow: `span ${of}`, height: "100%", borderRadius: 8, background: "var(--panel-2)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 14, overflow: "hidden", whiteSpace: "nowrap" }}>{levelChip(level)}</span>
                 {Array.from({ length: of }, (_, n) => (
                   <Fragment key={n}>
-                    {openBox(n)}
+                    {section === "vel" && openBox(n)}
                     <span className="door-row" style={{ display: "flex", minWidth: 0 }}>{doorButton(n)}</span>
                     {n === 0 && addDoorButton(level, of)}
                   </Fragment>

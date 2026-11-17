@@ -7,6 +7,11 @@ the technical detail.
 
 ## 17 November 2026
 
+- **Door force and door closes & latches lay out doors like velocity.**
+  A level with more than one door shows each door on its own line (A
+  above B), the same on every stair test, so every door is in view
+  instead of scrolling sideways.
+
 - **Fan checks and the other once-a-stair tests: the stair bar no longer
   covers Done.** The bar now sits in the page between the list and the
   Done button instead of floating over them; while a number is typed it
