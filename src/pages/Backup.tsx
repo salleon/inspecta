@@ -249,7 +249,7 @@ export default function Backup() {
         </div>
       </div>
 
-      <div style={{ flexShrink: 0, padding: "10px 16px calc(16px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 10, borderTop: "1px solid var(--border)" }}>
+      <div style={{ flexShrink: 0, padding: "10px 16px calc(16px + var(--sa-bottom))", display: "flex", flexDirection: "column", gap: 10, borderTop: "1px solid var(--border)" }}>
         <button
           type="button"
           disabled={!selected.length}

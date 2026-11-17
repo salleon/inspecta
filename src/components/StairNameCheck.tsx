@@ -40,7 +40,7 @@ export default function StairNameCheck({ stairs, onSave, onSkip, onCancel, go = 
         aria-label="Check the stair names"
         className="sheet-panel"
         onClick={(e) => e.stopPropagation()}
-        style={{ width: "100%", maxHeight: "88%", overflowY: "auto", background: "#0c2236", borderRadius: "20px 20px 0 0", borderTop: "1px solid #1f4566", padding: "18px 16px calc(24px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 10 }}
+        style={{ width: "100%", maxHeight: "88%", overflowY: "auto", background: "#0c2236", borderRadius: "20px 20px 0 0", borderTop: "1px solid #1f4566", padding: "18px 16px calc(24px + var(--sa-bottom))", display: "flex", flexDirection: "column", gap: 10 }}
       >
         <div style={{ width: 40, height: 4, borderRadius: 2, background: "#2a4a66", alignSelf: "center", marginBottom: 4 }} />
         <div style={{ fontSize: 18, fontWeight: 800 }}>Check the stair names</div>

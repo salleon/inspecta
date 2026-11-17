@@ -92,7 +92,7 @@ function Screen({ title, back, children, scroll = true, gap = 12 }: { title: str
         </RoundIconButton>
         <div style={{ fontSize: 20, fontWeight: 800 }}>{title}</div>
       </div>
-      <div style={{ flexGrow: 1, overflowY: scroll ? "auto" : "hidden", padding: "4px 18px calc(24px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap }}>
+      <div style={{ flexGrow: 1, overflowY: scroll ? "auto" : "hidden", padding: "4px 18px calc(24px + var(--sa-bottom))", display: "flex", flexDirection: "column", gap }}>
         {children}
       </div>
     </div>
@@ -474,7 +474,7 @@ function CompanyGroup() {
               setDraft(null);
             }}
             className="sheet-panel"
-            style={{ width: "100%", background: "var(--panel)", borderRadius: "20px 20px 0 0", padding: "22px 20px calc(28px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 14 }}
+            style={{ width: "100%", background: "var(--panel)", borderRadius: "20px 20px 0 0", padding: "22px 20px calc(28px + var(--sa-bottom))", display: "flex", flexDirection: "column", gap: 14 }}
           >
             <div style={{ fontSize: 16, fontWeight: 800 }}>Company name</div>
             <div style={{ fontSize: 13, fontWeight: 500, color: "var(--muted)", lineHeight: 1.5, marginTop: -8 }}>On every report cover.</div>

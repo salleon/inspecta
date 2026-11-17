@@ -183,7 +183,7 @@ export default function CategoriseFlow({
         </div>
       </div>
 
-      <div style={{ flexShrink: 0, padding: "12px 18px calc(26px + env(safe-area-inset-bottom))", display: "flex", gap: 10 }}>
+      <div style={{ flexShrink: 0, padding: "12px 18px calc(26px + var(--sa-bottom))", display: "flex", gap: 10 }}>
         <button type="button" onClick={onExport} style={{ ...barButton, border: "1px solid var(--border)", color: "var(--text)" }}>
           Skip to export
         </button>

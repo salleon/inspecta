@@ -108,7 +108,7 @@ export function TestPhotosSheet({ items, onClose, onOpen, onPhoto, onNote }: { i
         data-testid="spf-photos-sheet"
         className="sheet-panel"
         onClick={(e) => e.stopPropagation()}
-        style={{ width: "100%", maxHeight: "82%", display: "flex", flexDirection: "column", background: "var(--panel)", borderRadius: "20px 20px 0 0", padding: "18px 16px calc(24px + env(safe-area-inset-bottom))", gap: 10, boxSizing: "border-box" }}
+        style={{ width: "100%", maxHeight: "82%", display: "flex", flexDirection: "column", background: "var(--panel)", borderRadius: "20px 20px 0 0", padding: "18px 16px calc(24px + var(--sa-bottom))", gap: 10, boxSizing: "border-box" }}
       >
         <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
           <span style={{ fontSize: 16, fontWeight: 800 }}>Photos &amp; notes</span>

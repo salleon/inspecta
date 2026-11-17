@@ -93,7 +93,7 @@ export function ReportChips({
       </div>
       {menu && (
         <div onClick={() => setMenu(null)} style={{ position: "absolute", inset: 0, zIndex: 50, background: "rgba(3,13,22,.62)", display: "flex", alignItems: "flex-end" }}>
-          <div onClick={(e) => e.stopPropagation()} role="menu" aria-label={`${menu.name} report`} style={{ width: "100%", background: "var(--panel)", borderRadius: "20px 20px 0 0", padding: "18px 20px calc(24px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column" }}>
+          <div onClick={(e) => e.stopPropagation()} role="menu" aria-label={`${menu.name} report`} style={{ width: "100%", background: "var(--panel)", borderRadius: "20px 20px 0 0", padding: "18px 20px calc(24px + var(--sa-bottom))", display: "flex", flexDirection: "column" }}>
             <div style={{ fontSize: 17, fontWeight: 800, paddingBottom: 6 }}>{menu.name}</div>
             <button
               role="menuitem"
@@ -246,7 +246,7 @@ export default function CustomReport({
             })}
           </div>
         </div>
-        <div style={{ flexShrink: 0, padding: "10px 16px calc(24px + env(safe-area-inset-bottom))", borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 8 }}>
+        <div style={{ flexShrink: 0, padding: "10px 16px calc(24px + var(--sa-bottom))", borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 8 }}>
           <div style={label}>Organise by</div>
           <div role="radiogroup" aria-label="Organise by" style={{ display: "flex", gap: 4, padding: 4, borderRadius: 12, background: "var(--bg)", border: "1px solid var(--border)" }}>
             {(
@@ -271,7 +271,7 @@ export default function CustomReport({
   return (
     <div style={{ position: "absolute", inset: 0, zIndex: 45, display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
       <div onClick={onCancel} style={{ position: "absolute", inset: 0, background: "rgba(3,13,22,.62)" }} />
-      <div role="dialog" aria-label="Create Customised Report" style={{ position: "relative", maxHeight: "88%", overflowY: "auto", background: "var(--panel)", borderRadius: "20px 20px 0 0", padding: "22px 20px calc(28px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 12 }}>
+      <div role="dialog" aria-label="Create Customised Report" style={{ position: "relative", maxHeight: "88%", overflowY: "auto", background: "var(--panel)", borderRadius: "20px 20px 0 0", padding: "22px 20px calc(28px + var(--sa-bottom))", display: "flex", flexDirection: "column", gap: 12 }}>
         <div style={{ fontSize: 17, fontWeight: 800 }}>{existing ? "Change report" : "Create Customised Report"}</div>
         <input
           value={name}

@@ -79,7 +79,7 @@ export default function StairReport() {
           </div>
         ))}
       </div>
-      <div style={{ flexShrink: 0, padding: "10px 16px calc(24px + env(safe-area-inset-bottom))", borderTop: "1px solid var(--border)", display: "flex", gap: 8 }}>
+      <div style={{ flexShrink: 0, padding: "10px 16px calc(24px + var(--sa-bottom))", borderTop: "1px solid var(--border)", display: "flex", gap: 8 }}>
         <button disabled={!pages.length || !!busy} onClick={() => void share("xlsx")} style={{ ...btn, flex: 1, border: "1px solid rgba(var(--accent-rgb), .55)", background: "rgba(var(--accent-rgb), .12)", color: "var(--accent)" }}>
           Export Excel
         </button>

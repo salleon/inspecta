@@ -262,7 +262,7 @@ export default function LevelReview({
           </div>
         )}
       </div>
-      <div style={{ flexShrink: 0, padding: "10px 14px calc(24px + env(safe-area-inset-bottom))" }}>
+      <div style={{ flexShrink: 0, padding: "10px 14px calc(24px + var(--sa-bottom))" }}>
         <button onClick={onDone} style={{ width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: "var(--accent)", color: "var(--accent-text)", fontSize: 16, fontWeight: 800 }}>
           Looks right ✓
           {edited && (

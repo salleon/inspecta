@@ -213,7 +213,7 @@ export default function StairTestPage() {
               <span style={{ color: "var(--muted-2)", fontSize: 18 }}>›</span>
             </button>
           </div>
-          <div style={{ flexShrink: 0, padding: "10px 16px calc(24px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ flexShrink: 0, padding: "10px 16px calc(24px + var(--sa-bottom))", display: "flex", flexDirection: "column", gap: 10 }}>
             <StairChin stairs={stairs} i={stairs.indexOf(stair)} onGo={(k) => setParams({ stair: stairs[k].id }, { replace: true })} follow={body} />
             <div style={{ display: "flex", gap: 10 }}>
               <button
@@ -298,7 +298,7 @@ export default function StairTestPage() {
 
       {notesOpen && (
         <div className="sheet-backdrop" onClick={() => setNotesOpen(false)} style={{ position: "absolute", inset: 0, background: "rgba(10,11,13,0.6)", display: "flex", alignItems: "flex-end", zIndex: 5 }}>
-          <div className="sheet-panel" onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxHeight: "80%", overflowY: "auto", background: "var(--panel)", borderRadius: "20px 20px 0 0", padding: "20px 18px calc(24px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 9 }}>
+          <div className="sheet-panel" onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxHeight: "80%", overflowY: "auto", background: "var(--panel)", borderRadius: "20px 20px 0 0", padding: "20px 18px calc(24px + var(--sa-bottom))", display: "flex", flexDirection: "column", gap: 9 }}>
             <div style={{ fontSize: 16, fontWeight: 800 }}>Notes</div>
             {test.notes.map((n, i) => (
               <div key={i} style={{ ...card, background: "var(--panel-2)" }}>

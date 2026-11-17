@@ -593,7 +593,7 @@ export default function Findings() {
           same slot and cross-slide: New finding slides out the bottom as
           reorder mode is entered, Confirm order slides up from below to
           replace it, and it reverses on exit. */}
-      <div style={{ flexShrink: 0, padding: "12px 16px calc(28px + env(safe-area-inset-bottom))", borderTop: "1px solid var(--border)" }}>
+      <div style={{ flexShrink: 0, padding: "12px 16px calc(28px + var(--sa-bottom))", borderTop: "1px solid var(--border)" }}>
         <div style={{ position: "relative", height: 54, overflow: "hidden" }}>
           {/* pen on the left: a finding without a photo; the rest opens the
               camera, as before */}
@@ -683,7 +683,7 @@ export default function Findings() {
             onClick={(e) => e.stopPropagation()}
             onSubmit={handleSaveSite}
             className="sheet-panel"
-            style={{ width: "100%", background: "var(--panel)", borderRadius: "20px 20px 0 0", padding: "22px 20px calc(28px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 14 }}
+            style={{ width: "100%", background: "var(--panel)", borderRadius: "20px 20px 0 0", padding: "22px 20px calc(28px + var(--sa-bottom))", display: "flex", flexDirection: "column", gap: 14 }}
           >
             <div style={{ fontSize: 16, fontWeight: 800 }}>Edit site</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>

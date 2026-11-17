@@ -7,6 +7,18 @@ the technical detail.
 
 ## 17 November 2026
 
+- **Nothing hides behind the phone's gesture bar.** On phones whose
+  WebView doesn't report the gesture bar, the stair bar sat on it and
+  covered the lowest level. The stair bar, bottom buttons and sheets
+  across the app now all sit above it, and the stair list leaves room
+  under its lowest level.
+
+- **Stair readings: the level being typed stays in view.** The
+  requirements, stair cards, runs and test chips now scroll up with the
+  levels instead of staying fixed, so with the keypad open the level
+  you tapped shows above it. The Level / Open / m/s headings stay at the
+  top.
+
 - **Build 9.5, out to coworkers.** The stair bar slides the page from one
   stair to the next; an Open box per door on the stair velocity screen,
   which can be typed over; Plant room as a quick level for a finding.

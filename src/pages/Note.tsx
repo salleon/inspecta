@@ -922,7 +922,7 @@ export default function Note() {
       {/* save bar — "Save & next finding" is the most-used action so it's
           the visually bigger button; the two sit side by side, Save & close
           on the left and Save & next finding on the right */}
-      <div style={{ flexShrink: 0, padding: "12px 18px calc(26px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "row", gap: 10 }}>
+      <div style={{ flexShrink: 0, padding: "12px 18px calc(26px + var(--sa-bottom))", display: "flex", flexDirection: "row", gap: 10 }}>
         <button
           data-tour="save-close"
           onClick={handleBack}
@@ -987,7 +987,7 @@ export default function Note() {
           <div
             onClick={(e) => e.stopPropagation()}
             className="sheet-panel"
-            style={{ width: "100%", background: "var(--panel)", borderRadius: "20px 20px 0 0", padding: "22px 20px calc(28px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 10 }}
+            style={{ width: "100%", background: "var(--panel)", borderRadius: "20px 20px 0 0", padding: "22px 20px calc(28px + var(--sa-bottom))", display: "flex", flexDirection: "column", gap: 10 }}
           >
             <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 4 }}>Defect type</div>
             {DEFECT_TYPES.filter((t) => !t.previousInspection || !isProject).map((t, i, shown) => {

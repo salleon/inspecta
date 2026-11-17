@@ -608,7 +608,7 @@ export default function ExportPreview() {
       )}
 
       {/* share bar */}
-      <div data-tour="share-bar" style={{ flexShrink: 0, padding: "12px 16px calc(28px + env(safe-area-inset-bottom))", borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 10 }}>
+      <div data-tour="share-bar" style={{ flexShrink: 0, padding: "12px 16px calc(28px + var(--sa-bottom))", borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 10 }}>
         {/* every photo at full resolution, stamped, zipped in a folder
             named after the site (see lib/photosZip) */}
         <button

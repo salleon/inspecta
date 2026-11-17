@@ -229,7 +229,7 @@ export function EsrBrowseSheet({ current, onPick, onClose }: { current?: string;
           onChange={(e) => setQuery(e.target.value)}
           style={{ background: "var(--panel-2)", border: "1px solid rgba(var(--accent-rgb), 0.28)", borderRadius: 12, padding: "12px 14px", fontSize: 14, fontWeight: 500, color: "var(--text)", outline: "none" }}
         />
-        <div style={{ overflowY: "auto", display: "flex", flexDirection: "column", gap: 6, paddingBottom: "calc(20px + env(safe-area-inset-bottom))" }}>
+        <div style={{ overflowY: "auto", display: "flex", flexDirection: "column", gap: 6, paddingBottom: "calc(20px + var(--sa-bottom))" }}>
           {q ? (
             results.length ? (
               results.map(({ section, items }) => (

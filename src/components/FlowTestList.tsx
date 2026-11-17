@@ -89,7 +89,7 @@ export default function FlowTestList({ siteId, onCount, onExport, exportLabel = 
         {!!tests?.length && <div style={{ fontSize: 11.5, color: "var(--muted-2)", textAlign: "center" }}>Swipe a test left to delete it.</div>}
       </div>
 
-      <div style={{ flexShrink: 0, padding: "12px 16px calc(28px + env(safe-area-inset-bottom))", borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ flexShrink: 0, padding: "12px 16px calc(28px + var(--sa-bottom))", borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 10 }}>
         {onExport && !!tests?.length && (
           <button
             data-tour="flow-export-only"
@@ -114,7 +114,7 @@ export default function FlowTestList({ siteId, onCount, onExport, exportLabel = 
           <div
             className="sheet-panel"
             onClick={(e) => e.stopPropagation()}
-            style={{ width: "100%", background: "var(--panel)", borderRadius: "20px 20px 0 0", padding: "22px 20px calc(28px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 10 }}
+            style={{ width: "100%", background: "var(--panel)", borderRadius: "20px 20px 0 0", padding: "22px 20px calc(28px + var(--sa-bottom))", display: "flex", flexDirection: "column", gap: 10 }}
           >
             <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 4 }}>New flow test</div>
             {KINDS.map((k) => (

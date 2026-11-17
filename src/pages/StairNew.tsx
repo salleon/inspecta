@@ -168,7 +168,7 @@ export default function StairNew() {
           })}
         </div>
       </div>
-      <div style={{ flexShrink: 0, padding: "10px 16px calc(24px + env(safe-area-inset-bottom))" }}>
+      <div style={{ flexShrink: 0, padding: "10px 16px calc(24px + var(--sa-bottom))" }}>
         <button
           onClick={() => void start()}
           disabled={busy || steps || (ready && kind === "general" && !picked.length)}

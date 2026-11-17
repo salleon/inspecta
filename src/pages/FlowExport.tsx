@@ -143,7 +143,7 @@ export default function FlowExport() {
           ))}
         </div>
       )}
-      <div data-tour="flow-export-buttons" style={{ flexShrink: 0, padding: "10px 16px calc(24px + env(safe-area-inset-bottom))", borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 10 }}>
+      <div data-tour="flow-export-buttons" style={{ flexShrink: 0, padding: "10px 16px calc(24px + var(--sa-bottom))", borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 10 }}>
         <div style={{ fontSize: 11.5, color: "var(--muted-2)", textAlign: "center" }}>Each test is a page in the PDF and a sheet in the Excel; its defects, if any, follow it.</div>
         <button disabled={!tests.length || !!busy} onClick={() => void share("excel")} style={{ ...btn, border: "1px solid rgba(var(--accent-rgb), .55)", background: "rgba(var(--accent-rgb), .12)", color: "var(--accent)" }}>
           Export Excel

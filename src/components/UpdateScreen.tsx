@@ -65,7 +65,7 @@ export default function UpdateScreen({ downloaded, progress }: { downloaded: boo
         <div style={{ fontSize: 14, fontWeight: 600, color: "var(--muted)", minHeight: 20 }}>{STEP_TEXT[step]}</div>
         <ProgressGear pct={pct} />
       </div>
-      <div style={{ position: "absolute", left: 32, right: 32, bottom: "calc(54px + env(safe-area-inset-bottom))", textAlign: "center", fontSize: 13, lineHeight: 1.5, color: "var(--muted-2)" }}>
+      <div style={{ position: "absolute", left: 32, right: 32, bottom: "calc(54px + var(--sa-bottom))", textAlign: "center", fontSize: 13, lineHeight: 1.5, color: "var(--muted-2)" }}>
         Your sites and findings stay exactly as they are.
       </div>
     </div>

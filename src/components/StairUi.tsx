@@ -437,7 +437,7 @@ export function StairChin({
           if (dragged.current) e.stopPropagation();
         }}
         style={{
-          ...(floating ? { position: "absolute", left: 10, right: 10, bottom: bottom ?? "calc(14px + env(safe-area-inset-bottom))", zIndex: 30 } : { position: "relative" }),
+          ...(floating ? { position: "absolute", left: 10, right: 10, bottom: bottom ?? "calc(14px + var(--sa-bottom))", zIndex: 30 } : { position: "relative" }),
           flexShrink: 0,
           height: 58,
           borderRadius: 16,

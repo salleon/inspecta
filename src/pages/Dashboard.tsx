@@ -227,7 +227,7 @@ export default function Dashboard() {
 
       {/* site list */}
       {/* the bottom padding keeps the last site clear of the + button */}
-      <div ref={listRef} style={{ flexGrow: 1, overflowY: "auto", padding: "0 20px calc(100px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 10 }}>
+      <div ref={listRef} style={{ flexGrow: 1, overflowY: "auto", padding: "0 20px calc(100px + var(--sa-bottom))", display: "flex", flexDirection: "column", gap: 10 }}>
         {filtered.length === 0 && (
           <div style={{ padding: "40px 8px", textAlign: "center", color: "var(--muted-2)", fontSize: 14, fontWeight: 500 }}>
             {sites.length === 0 ? "No sites yet — tap New job to start your first inspection." : "No sites match your search."}
@@ -260,7 +260,7 @@ export default function Dashboard() {
       </div>
 
       {/* the list fades out under the New job pill, so it reads as scrolling on */}
-      <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "calc(130px + env(safe-area-inset-bottom))", background: "linear-gradient(rgba(7,27,44,0), var(--bg) 70%)", pointerEvents: "none" }} />
+      <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "calc(130px + var(--sa-bottom))", background: "linear-gradient(rgba(7,27,44,0), var(--bg) 70%)", pointerEvents: "none" }} />
 
       {/* New job: a pill centred at the bottom, clear of the cards' dates and
           counts on the right; a light sweep when the screen opens, a soft glow */}
@@ -273,7 +273,7 @@ export default function Dashboard() {
           position: "absolute",
           left: "50%",
           transform: "translateX(-50%)",
-          bottom: "calc(26px + env(safe-area-inset-bottom))",
+          bottom: "calc(26px + var(--sa-bottom))",
           height: 52,
           padding: "0 26px",
           borderRadius: 26,
@@ -314,7 +314,7 @@ export default function Dashboard() {
               width: "100%",
               background: "var(--panel)",
               borderRadius: "20px 20px 0 0",
-              padding: "22px 20px calc(28px + env(safe-area-inset-bottom))",
+              padding: "22px 20px calc(28px + var(--sa-bottom))",
               display: "flex",
               flexDirection: "column",
               gap: 14,

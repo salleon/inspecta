@@ -171,8 +171,12 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack
     if (!row) return;
     const box = list.current.getBoundingClientRect();
     const r = row.getBoundingClientRect();
-    const visible = box.height - 400; // above the keypad and the chin bar
-    if (r.top < box.top || r.bottom > box.top + visible) list.current.scrollTop += r.top - box.top - Math.max(0, visible - 3 * r.height);
+    // below the column headings, above the keypad and the chin bar on it
+    const head = list.current.querySelector<HTMLElement>("[data-heads]")?.offsetHeight ?? 0;
+    const pad = list.current.parentElement?.querySelector<HTMLElement>(".np")?.offsetHeight ?? 360;
+    const top = box.top + head;
+    const visible = box.height - head - pad - 66;
+    if (r.top < top || r.bottom > top + visible) list.current.scrollTop += r.top - top - Math.max(0, visible - 3 * r.height);
     // and, on a level with more doors than fit, the door being typed
     const door = row.querySelector<HTMLElement>("[data-editing]");
     const strip = door?.parentElement;
@@ -325,7 +329,9 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack
         onBack={onBack}
         right={<CameraButton onClick={() => void takeTestPhoto(navigate, photoOpts())} />}
       />
-      <div style={{ flexShrink: 0, padding: "0 14px", display: "flex", flexDirection: "column", gap: 7 }}>
+      {/* one scroll: the top block goes up with the levels, so the keypad never hides the level being typed */}
+      <div ref={list} style={{ flexGrow: 1, overflowY: "auto", padding: `0 14px calc(${cur === null ? 90 : 430}px + var(--sa-bottom))`, display: "flex", flexDirection: "column", gap: 6 }}>
+      <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", gap: 7 }}>
         {/* the requirements first: reference only, never tapped, so the
             things that are tapped sit lower, nearer the thumb */}
         <div data-testid="spf-rules" style={{ background: `${AMBER}.07)`, border: `1px solid ${AMBER}.45)`, borderRadius: 11, padding: "7px 9px", display: "flex", flexDirection: "column", gap: 4, fontSize: 12, color: "#d8c4a8", lineHeight: 1.4 }}>
@@ -449,14 +455,14 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack
             <span style={{ display: "block", height: "100%", width: `${stats.total ? (100 * stats.done) / stats.total : 0}%`, background: "var(--accent)", transition: "width .3s" }} />
           </span>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: `${lead} 1fr 54px`, gap: 6, padding: "1px 0 4px", fontSize: 10.5, fontWeight: 800, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+      </div>
+      {/* the column headings stay at the top as the levels scroll */}
+      <div data-heads style={{ position: "sticky", top: 0, zIndex: 1, background: "var(--bg)", display: "grid", gridTemplateColumns: `${lead} 1fr 54px`, gap: 6, padding: "1px 0 4px", fontSize: 10.5, fontWeight: 800, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
           <span style={{ textAlign: "center" }}>Level</span>
           {section === "vel" && <span style={{ textAlign: "center" }}>Open</span>}
           <span style={{ textAlign: "center" }}>{info.unit ?? "Latches"}</span>
           <span />
-        </div>
       </div>
-      <div ref={list} style={{ flexGrow: 1, overflowY: "auto", padding: `0 14px ${cur === null ? 90 : 430}px`, display: "flex", flexDirection: "column", gap: 6 }}>
         {levels.map((level, li) => {
           const of = doorsAt(stair, level);
           const openBox = (n: number) => (
@@ -616,7 +622,7 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack
 
       {sheet && (
         <div className="sheet-backdrop" onClick={() => setSheet(null)} style={{ position: "absolute", inset: 0, background: "rgba(10,11,13,0.6)", display: "flex", alignItems: "flex-end", zIndex: 6 }}>
-          <div className="sheet-panel" onClick={(e) => e.stopPropagation()} style={{ width: "100%", background: "var(--panel)", borderRadius: "20px 20px 0 0", padding: "18px 18px calc(24px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 12 }}>
+          <div className="sheet-panel" onClick={(e) => e.stopPropagation()} style={{ width: "100%", background: "var(--panel)", borderRadius: "20px 20px 0 0", padding: "18px 18px calc(24px + var(--sa-bottom))", display: "flex", flexDirection: "column", gap: 12 }}>
             <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
               <b style={{ fontSize: 18 }}>Run {sheet.edit ? run + 1 : runs + 1}</b>
               <span style={{ fontSize: 12.5, color: "var(--muted)", fontWeight: 700 }}>after run {sheet.edit ? run : runs}</span>
@@ -746,7 +752,7 @@ function Once({ section, sys, stair, stairNo, test, setTest, onBack, onStair }: 
         onBack={onBack}
         right={<CameraButton onClick={() => void takeTestPhoto(navigate, { siteId: test.siteId, testId: test.id, back: here.pathname + here.search })} />}
       />
-      <div ref={body} style={{ flexGrow: 1, overflowY: "auto", padding: `4px 14px ${pad ? 430 : 86}px`, display: "flex", flexDirection: "column", gap: 7 }}>
+      <div ref={body} style={{ flexGrow: 1, overflowY: "auto", padding: `4px 14px calc(${pad ? 430 : 86}px + var(--sa-bottom))`, display: "flex", flexDirection: "column", gap: 7 }}>
         {section === "noise" && (
           <>
             <PhoneMeter
@@ -814,7 +820,7 @@ function Once({ section, sys, stair, stairNo, test, setTest, onBack, onStair }: 
           })}
       </div>
       {!pad && (
-        <div style={{ flexShrink: 0, padding: "10px 16px calc(24px + env(safe-area-inset-bottom))" }}>
+        <div style={{ flexShrink: 0, padding: "10px 16px calc(24px + var(--sa-bottom))" }}>
           <button onClick={onBack} style={{ width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: "var(--accent)", color: "var(--accent-text)", fontSize: 16, fontWeight: 800 }}>
             Done ›
           </button>

@@ -371,7 +371,7 @@ export default function FlowTest() {
         {body}
         {footer}
         {/* where it goes: at the end of the page, not a fixed bar */}
-        <div style={{ padding: "6px 8px calc(4px + env(safe-area-inset-bottom))", fontSize: 11.5, fontWeight: 700, color: "var(--muted-2)", textAlign: "center", lineHeight: 1.5 }}>
+        <div style={{ padding: "6px 8px calc(4px + var(--sa-bottom))", fontSize: 11.5, fontWeight: 700, color: "var(--muted-2)", textAlign: "center", lineHeight: 1.5 }}>
           {note}
           <br />
           (Export → Share Excel)
@@ -379,7 +379,7 @@ export default function FlowTest() {
       </div>
       {/* pass / fail at the bottom of the screen, for a quick look */}
       {bottom && (
-        <div style={{ position: "absolute", left: 0, right: 0, bottom: "calc(14px + env(safe-area-inset-bottom))", display: "flex", justifyContent: "center", pointerEvents: "none" }}>
+        <div style={{ position: "absolute", left: 0, right: 0, bottom: "calc(14px + var(--sa-bottom))", display: "flex", justifyContent: "center", pointerEvents: "none" }}>
           <div style={{ borderRadius: 999, background: "var(--bg)", boxShadow: "0 6px 18px rgba(0,0,0,.45)" }}>{bottom}</div>
         </div>
       )}

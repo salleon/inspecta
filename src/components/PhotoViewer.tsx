@@ -326,7 +326,7 @@ export default function PhotoViewer({ urls, fullUrls, startIndex, source, radius
           left: 0,
           right: 0,
           bottom: 0,
-          padding: "48px 18px calc(28px + env(safe-area-inset-bottom))",
+          padding: "48px 18px calc(28px + var(--sa-bottom))",
           display: "flex",
           flexDirection: "column",
           gap: 4,
