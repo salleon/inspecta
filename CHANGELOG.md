@@ -7,6 +7,12 @@ the technical detail.
 
 ## 17 November 2026
 
+- **Build 9.6, out to coworkers.** Nothing hides behind the phone's
+  gesture bar; on the stair readings screen the top scrolls away so the
+  level being typed shows above the keypad; the stair bar no longer
+  covers Done; door force and latches show one line per door, like
+  velocity.
+
 - **Door force and door closes & latches lay out doors like velocity.**
   A level with more than one door shows each door on its own line (A
   above B), the same on every stair test, so every door is in view
