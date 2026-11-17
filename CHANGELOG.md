@@ -7,6 +7,11 @@ the technical detail.
 
 ## 17 November 2026
 
+- **Fan checks and the other once-a-stair tests: the stair bar no longer
+  covers Done.** The bar now sits in the page between the list and the
+  Done button instead of floating over them; while a number is typed it
+  sits on the keypad as before.
+
 - **Nothing hides behind the phone's gesture bar.** On phones whose
   WebView doesn't report the gesture bar, the stair bar sat on it and
   covered the lowest level. The stair bar, bottom buttons and sheets

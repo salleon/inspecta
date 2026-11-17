@@ -752,7 +752,7 @@ function Once({ section, sys, stair, stairNo, test, setTest, onBack, onStair }: 
         onBack={onBack}
         right={<CameraButton onClick={() => void takeTestPhoto(navigate, { siteId: test.siteId, testId: test.id, back: here.pathname + here.search })} />}
       />
-      <div ref={body} style={{ flexGrow: 1, overflowY: "auto", padding: `4px 14px calc(${pad ? 430 : 86}px + var(--sa-bottom))`, display: "flex", flexDirection: "column", gap: 7 }}>
+      <div ref={body} style={{ flexGrow: 1, overflowY: "auto", padding: `4px 14px ${pad ? "calc(430px + var(--sa-bottom))" : "12px"}`, display: "flex", flexDirection: "column", gap: 7 }}>
         {section === "noise" && (
           <>
             <PhoneMeter
@@ -819,6 +819,12 @@ function Once({ section, sys, stair, stairNo, test, setTest, onBack, onStair }: 
             );
           })}
       </div>
+      {/* the stair bar in the page, between the list and Done; on the keypad while typing */}
+      {!pad && (
+        <div style={{ flexShrink: 0, padding: "10px 10px 0" }}>
+          <StairChin stairs={sys.stairs} i={stairNo} onGo={(k) => onStair(sys.stairs[k].id)} follow={body} />
+        </div>
+      )}
       {!pad && (
         <div style={{ flexShrink: 0, padding: "10px 16px calc(24px + var(--sa-bottom))" }}>
           <button onClick={onBack} style={{ width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: "var(--accent)", color: "var(--accent-text)", fontSize: 16, fontWeight: 800 }}>
@@ -826,7 +832,7 @@ function Once({ section, sys, stair, stairNo, test, setTest, onBack, onStair }: 
           </button>
         </div>
       )}
-      <StairChin floating stairs={sys.stairs} i={stairNo} onGo={(k) => onStair(sys.stairs[k].id)} follow={body} />
+      {pad && <StairChin floating stairs={sys.stairs} i={stairNo} onGo={(k) => onStair(sys.stairs[k].id)} follow={body} />}
       {pad && (
         <NumPad
           tint="spf"
