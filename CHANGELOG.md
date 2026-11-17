@@ -7,6 +7,10 @@ the technical detail.
 
 ## 17 November 2026
 
+- **Build 9.5, out to coworkers.** The stair bar slides the page from one
+  stair to the next; an Open box per door on the stair velocity screen,
+  which can be typed over; Plant room as a quick level for a finding.
+
 - **The stair bar at the bottom slides the page with it.** Dragging it
   moves the stair's page along with your finger, and the next stair's
   card slides in behind it, the same way round as the swipe; let go and

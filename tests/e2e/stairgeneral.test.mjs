@@ -174,25 +174,20 @@ test("what's added can be taken away: a Yes / No answer, a door, a run, a test",
   assert.deepEqual(errors, []);
 });
 
-test("many doors on a level: each keeps a usable width, and the row scrolls sideways", async () => {
+test("many doors on a level: velocity gives each door a line of its own, with its own Open box", async () => {
   await page.getByRole("button", { name: /^\S+ Velocity/ }).click();
   await page.getByTestId("spf-stairs").getByRole("button", { name: /SPF 2/ }).click();
   await page.getByText("Velocity · SPF 2").waitFor();
   for (let i = 0; i < 5; i++) await page.getByRole("button", { name: "Add a door on level P1" }).click();
   const doors = page.getByRole("button", { name: /^Level P1 door / });
   assert.equal(await doors.count(), 6);
-  const widths = await doors.evaluateAll((els) => els.map((e) => e.getBoundingClientRect().width));
-  assert.ok(widths.every((w) => w >= 72), `door widths ${widths.map(Math.round)}`);
-  const row = await doors.first().evaluate((e) => ({ scroll: e.parentElement.scrollWidth, shown: e.parentElement.clientWidth }));
-  assert.ok(row.scroll > row.shown, "more than fit: it scrolls");
-  // typing into the last door brings it into view
+  const boxes = await doors.evaluateAll((els) => els.map((e) => e.getBoundingClientRect()).map((r) => ({ w: r.width, top: Math.round(r.top) })));
+  assert.ok(boxes.every((b) => b.w >= 72), `door widths ${boxes.map((b) => Math.round(b.w))}`);
+  assert.equal(new Set(boxes.map((b) => b.top)).size, 6, "a line a door");
+  assert.equal(await page.getByRole("textbox", { name: /^Other door open with P1 / }).count(), 6, "an Open box a door");
+  // typing into the last door: the keypad opens for it
   await doors.last().click();
-  const inView = await doors.last().evaluate((e) => {
-    const d = e.getBoundingClientRect();
-    const r = e.parentElement.getBoundingClientRect();
-    return d.right <= r.right + 1 && d.left >= r.left - 1;
-  });
-  assert.ok(inView);
+  await page.getByTestId("spf-value").waitFor();
   await tap(["Done"]);
 });
 
