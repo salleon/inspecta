@@ -579,6 +579,7 @@ function SiteButton({
   onClose: () => void;
   onDelete: () => void;
 }) {
+  const isTest = site.kind === "flow" || site.kind === "spf" || site.kind === "ffcp";
   // swipe-to-delete: the shared row, the same everywhere (asked first)
   return (
     <SwipeRow index={index} label={`Delete ${site.name}`} swipeOpen={isOpen} onSwipeOpen={onOpen} onSwipeClose={onClose} onOpen={onClick} onDelete={onDelete} rowStyle={{ padding: 14, color: "inherit" }} chevron={false}>
@@ -588,7 +589,9 @@ function SiteButton({
             width: 46,
             height: 46,
             borderRadius: 10,
-            background: "var(--panel-2)",
+            // test sites (flow, stair, FFCP) have no cover photo: a tint of
+            // their kind's colour behind their icon
+            background: isTest && !thumb ? `${KIND_COLOUR[site.kind]}1a` : "var(--panel-2)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -596,9 +599,11 @@ function SiteButton({
           }}
         >
           {/* the site's first finding photo, or the building icon until
-              it has one */}
+              it has one; test sites show their kind's icon */}
           {thumb ? (
             <img src={thumb} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+          ) : isTest ? (
+            <SiteKindIcon kind={site.kind} size={24} />
           ) : (
             <IconBuilding strokeWidth={1.8} />
           )}
