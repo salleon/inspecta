@@ -54,6 +54,8 @@ export async function openPage(app, { tour = false } = {}) {
     if (!sessionStorage.getItem("__tourInit")) {
       sessionStorage.setItem("__tourInit", "1");
       if (!tourOn) localStorage.setItem("inspecta.tourOffered", "1");
+      // and the stair bar's once-per-phone nudge, which slides the next stair's page in for a moment
+      localStorage.setItem("inspecta.stairChinHint", "1");
     }
     window.__pressBack = () => {
       const e = new Event("inspecta:back", { cancelable: true });

@@ -124,12 +124,14 @@ const chip = (on: boolean, dashed = false) =>
 // the list was scrolled.
 let carried: { level: string; li: number; scroll: number } | null = null;
 
-function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack, run, onStair, onRun, onSection }: EveryProps) {
+function EveryDoor(props: EveryProps & { peek?: boolean }) {
+  // peek: only the levels list, drawn beside the page as the stair bar is swiped
+  const { section, sys, stair, stairNo, test, setTest, setSpf, onBack, run, onStair, onRun, onSection, peek } = props;
   const general = test.kind === "general";
   const levels = stairLevels(stair);
   const mine = runDoors(test, run)[stair.id] ?? {};
   const [cur, setCur] = useState<{ li: number; n: number } | null>(() => {
-    if (!carried || carried.li < 0) return null;
+    if (peek || !carried || carried.li < 0) return null;
     const li = levels.indexOf(carried.level);
     return { li: li >= 0 ? li : Math.min(carried.li, levels.length - 1), n: 0 };
   });
@@ -191,7 +193,7 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack
 
   // arriving from another stair with the keypad closed: as far down the list as there
   useLayoutEffect(() => {
-    if (!carried) return;
+    if (peek || !carried) return;
     if (carried.li < 0 && list.current) list.current.scrollTop = carried.scroll;
     carried = null;
   }, []);
@@ -319,17 +321,8 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack
   const missing = GENERAL_SECTIONS.filter((s) => !test.sections.includes(s));
   const lead = section === "vel" ? "44px 64px" : "44px";
 
-  return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
-      <PageHeader title={general ? KIND_LABEL.general : info.name} sub={
-          <>
-            {general ? `${info.name} · ` : ""}
-            <StairName stair={stair} i={stairNo} />
-          </>
-        }
-        onBack={onBack}
-        right={<CameraButton onClick={() => void takeTestPhoto(navigate, photoOpts())} />}
-      />
+  const levelsList = (
+    <>
       {/* one scroll: the top block goes up with the levels, so the keypad never hides the level being typed */}
       <div ref={list} style={{ flexGrow: 1, overflowY: "auto", padding: `0 14px calc(${cur === null ? 90 : 430}px + var(--sa-bottom))`, display: "flex", flexDirection: "column", gap: 6 }}>
       <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", gap: 7 }}>
@@ -574,6 +567,21 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack
           );
         })}
       </div>
+    </>
+  );
+  if (peek) return levelsList;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
+      <PageHeader title={general ? KIND_LABEL.general : info.name} sub={
+          <>
+            {general ? `${info.name} · ` : ""}
+            <StairName stair={stair} i={stairNo} />
+          </>
+        }
+        onBack={onBack}
+        right={<CameraButton onClick={() => void takeTestPhoto(navigate, photoOpts())} />}
+      />
+      {levelsList}
 
       {/* out of the way while a sheet or question is up */}
       {!sheet && !adding && !ask && (
@@ -588,6 +596,7 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack
             return `${s.done} of ${s.total} doors`;
           }}
           follow={list}
+          peek={(k) => <EveryDoor {...props} stair={sys.stairs[k]} stairNo={k} peek />}
         />
       )}
       {cur !== null && (
@@ -711,7 +720,10 @@ function EveryDoor({ section, sys, stair, stairNo, test, setTest, setSpf, onBack
 
 type OnceNum = "noiseStair" | "noiseOcc" | "ambient" | "restTime" | "pa" | "noiseRef" | "noiseOccMax";
 
-function Once({ section, sys, stair, stairNo, test, setTest, onBack, onStair }: Props & { section: StairSection; onStair: (id: string) => void }) {
+type OnceProps = Props & { section: StairSection; onStair: (id: string) => void; peek?: boolean };
+
+function Once(props: OnceProps) {
+  const { section, sys, stair, stairNo, test, setTest, onBack, onStair, peek } = props;
   const once = test.once[stair.id] ?? {};
   const l = limits(sys);
   const body = useRef<HTMLDivElement>(null);
@@ -758,14 +770,7 @@ function Once({ section, sys, stair, stairNo, test, setTest, onBack, onStair }: 
     <NumField label={label} sub={sub} value={once[field]} ok={judge(once[field], max)} active={pad?.field === field} onOpen={() => setPad({ field, label, sub })} />
   );
 
-  return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
-      <PageHeader
-        title={SECTION[section].name}
-        sub={<StairName stair={stair} i={stairNo} />}
-        onBack={onBack}
-        right={<CameraButton onClick={() => void takeTestPhoto(navigate, { siteId: test.siteId, testId: test.id, back: here.pathname + here.search })} />}
-      />
+  const checks = (
       <div ref={body} style={{ flexGrow: 1, overflowY: "auto", padding: `4px 14px ${pad ? "calc(430px + var(--sa-bottom))" : "12px"}`, display: "flex", flexDirection: "column", gap: 7 }}>
         {section === "noise" && (
           <>
@@ -833,10 +838,21 @@ function Once({ section, sys, stair, stairNo, test, setTest, onBack, onStair }: 
             );
           })}
       </div>
+  );
+  if (peek) return checks;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
+      <PageHeader
+        title={SECTION[section].name}
+        sub={<StairName stair={stair} i={stairNo} />}
+        onBack={onBack}
+        right={<CameraButton onClick={() => void takeTestPhoto(navigate, { siteId: test.siteId, testId: test.id, back: here.pathname + here.search })} />}
+      />
+      {checks}
       {/* the stair bar in the page, between the list and Done; on the keypad while typing */}
       {!pad && (
         <div style={{ flexShrink: 0, padding: "10px 10px 0" }}>
-          <StairChin stairs={sys.stairs} i={stairNo} onGo={(k) => onStair(sys.stairs[k].id)} follow={body} />
+          <StairChin stairs={sys.stairs} i={stairNo} onGo={(k) => onStair(sys.stairs[k].id)} follow={body} peek={(k) => <Once {...props} stair={sys.stairs[k]} stairNo={k} peek />} />
         </div>
       )}
       {!pad && (
@@ -846,7 +862,7 @@ function Once({ section, sys, stair, stairNo, test, setTest, onBack, onStair }: 
           </button>
         </div>
       )}
-      {pad && <StairChin floating stairs={sys.stairs} i={stairNo} onGo={(k) => onStair(sys.stairs[k].id)} follow={body} />}
+      {pad && <StairChin floating stairs={sys.stairs} i={stairNo} onGo={(k) => onStair(sys.stairs[k].id)} follow={body} peek={(k) => <Once {...props} stair={sys.stairs[k]} stairNo={k} peek />} />}
       {pad && (
         <NumPad
           tint="spf"

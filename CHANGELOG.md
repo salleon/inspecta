@@ -5,6 +5,13 @@ matches a commit on the `test` branch (called `advanced_controls` until
 29 September 2026) or `main`; the commit itself has
 the technical detail.
 
+## 18 November 2026
+
+- **Swiping between stairs is one smooth slide.** As you drag the stair
+  bar, the next stair's own page (its levels, readings and tests) slides
+  in beside this one, instead of a blank outline that was then replaced.
+  On the readings screens, the once-a-stair tests and the stair overview.
+
 ## 17 November 2026
 
 - **Stair velocity: longer text in the Open box.** The box is a little

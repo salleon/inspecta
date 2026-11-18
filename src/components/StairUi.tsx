@@ -243,6 +243,7 @@ export function StairChin({
   sub,
   subFor,
   follow,
+  peek,
   floating = false,
 }: {
   stairs: SpfStair[];
@@ -253,6 +254,8 @@ export function StairChin({
   subFor?: (k: number) => string;
   // the part of the page that's the stair's own, slid along with the bar
   follow?: RefObject<HTMLElement | null>;
+  // the next stair's own page (that part of it), drawn as it slides in
+  peek?: (k: number) => ReactNode;
   floating?: boolean;
 }) {
   const root = useRef<HTMLDivElement>(null);
@@ -333,8 +336,12 @@ export function StairChin({
     };
   }, [i, n, paint, follow]);
   useLayoutEffect(() => {
-    if (ghostEl.current) paint(pos.current);
-  }, [ghost, paint]);
+    if (!ghostEl.current) return;
+    // the next stair's page scrolled as far as this one, as it will open
+    const sc = ghostEl.current.firstElementChild;
+    if (peek && sc && follow?.current) sc.scrollTop = follow.current.scrollTop;
+    paint(pos.current);
+  }, [ghost, paint, peek, follow]);
   useEffect(() => () => stop.current(), []);
 
   // springs to the stair `to` places along (-1, 0 or 1), then moves to it
@@ -485,18 +492,24 @@ export function StairChin({
           <div
             ref={ghostEl}
             aria-hidden
-            style={{ position: "absolute", left: ghost.box.left, top: ghost.box.top, width: ghost.box.width, height: ghost.box.height, padding: "8px 14px", pointerEvents: "none", zIndex: 1 }}
+            style={{ position: "absolute", left: ghost.box.left, top: ghost.box.top, width: ghost.box.width, height: ghost.box.height, pointerEvents: "none", zIndex: 1, ...(peek ? { display: "flex", flexDirection: "column", overflow: "hidden" } : { padding: "8px 14px" }) }}
           >
-            <div style={{ borderRadius: 14, background: "var(--panel)", border: "1px solid var(--border)", padding: "16px 14px", display: "flex", flexDirection: "column", gap: 4 }}>
-              <b style={{ fontSize: 17 }}>
-                <StairName stair={stairs[ghost.k]} i={ghost.k} />
-              </b>
-              {ghostSub && <span style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)" }}>{ghostSub}</span>}
-            </div>
-            {/* the outline of a page, filled in once the stair has changed */}
-            {[0, 1, 2, 3, 4].map((r) => (
-              <div key={r} style={{ height: 44, marginTop: 7, borderRadius: 12, background: "var(--panel)", border: "1px solid var(--border)", opacity: 0.55 - r * 0.09 }} />
-            ))}
+            {peek ? (
+              peek(ghost.k)
+            ) : (
+              <>
+                <div style={{ borderRadius: 14, background: "var(--panel)", border: "1px solid var(--border)", padding: "16px 14px", display: "flex", flexDirection: "column", gap: 4 }}>
+                <b style={{ fontSize: 17 }}>
+                  <StairName stair={stairs[ghost.k]} i={ghost.k} />
+                </b>
+                {ghostSub && <span style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)" }}>{ghostSub}</span>}
+              </div>
+              {/* the outline of a page, filled in once the stair has changed */}
+              {[0, 1, 2, 3, 4].map((r) => (
+                <div key={r} style={{ height: 44, marginTop: 7, borderRadius: 12, background: "var(--panel)", border: "1px solid var(--border)", opacity: 0.55 - r * 0.09 }} />
+              ))}
+              </>
+            )}
           </div>,
           ghost.host,
         )}

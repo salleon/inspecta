@@ -35,7 +35,7 @@ after(async () => {
 });
 
 const chinTop = () => page.getByRole("button", { name: /^Next stair: / }).evaluate((b) => b.parentElement.getBoundingClientRect().top);
-const list = () => page.locator("[data-heads]").locator("xpath=..");
+const list = () => page.locator("[data-heads]").first().locator("xpath=..");
 
 test("the stair bar sits above the gesture bar, and the lowest level clears it", async () => {
   const bar = await page.getByRole("button", { name: /^Next stair: / }).evaluate((b) => b.parentElement.getBoundingClientRect().bottom);
@@ -77,6 +77,27 @@ test("the Open box: wide across the row while typing, then the whole text on two
   const s = await shown.evaluate((e) => ({ sh: e.firstElementChild.scrollHeight, ch: e.firstElementChild.clientHeight }));
   assert.ok(s.sh <= s.ch + 1, "not cut off");
   assert.ok((await open.boundingBox()).width < 80, "narrow again");
+});
+
+test("swiping the stair bar: the next stair's own page slides in, not a blank outline", async () => {
+  await go(page, app, "/site/p1/spf/t1/vel?stair=s1&run=0", 1500);
+  await page.getByText("Site inspection tool").waitFor({ state: "detached" });
+  const chin = page.getByTestId("stair-chin");
+  const box = await chin.boundingBox();
+  const y = box.y + box.height / 2;
+  await page.mouse.move(box.x + box.width / 2, y);
+  await page.mouse.down();
+  for (let i = 1; i <= 6; i++) await page.mouse.move(box.x + box.width / 2 - i * 15, y);
+  // mid-swipe: the next stair (G to 3) beside this one (B2 to 12), its levels drawn
+  const peek = page.locator("[data-heads]").nth(1).locator("xpath=..");
+  assert.deepEqual(await peek.locator("[data-i] > span:first-child").allInnerTexts(), ["3", "2", "1", "G"]);
+  await page.screenshot({ path: process.env.SHOT ?? "/dev/null" }).catch(() => {});
+  await page.mouse.move(box.x + 10, y);
+  await page.mouse.up();
+  await page.waitForURL(/stair=s2/);
+  await page.waitForTimeout(500);
+  assert.equal(await peek.count(), 0, "gone once the stair has changed");
+  assert.deepEqual(await page.locator("[data-i] > span:first-child").allInnerTexts(), ["3", "2", "1", "G"]);
 });
 
 test("Fan checks: the stair bar sits between the list and Done, overlapping neither", async () => {

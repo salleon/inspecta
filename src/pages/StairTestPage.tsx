@@ -1,6 +1,6 @@
 import { useRef, useState, type CSSProperties } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import type { StairSection } from "../db/types";
+import type { SpfStair, StairSection } from "../db/types";
 import { ALL_SECTIONS, doorStats, KIND_LABEL, onceStatus, runCount, SECTION, stairDoors } from "../lib/stairTest";
 import { useBackHandler } from "../lib/backButton";
 import { card, cardLabel, fieldInput, PageHeader, Pill, StairChin, StairName, useStairTest } from "../components/StairUi";
@@ -79,23 +79,24 @@ export default function StairTestPage() {
   const editSystem = () => navigate(`/site/${siteId}/spf-system?back=${encodeURIComponent(`/site/${siteId}/spf/${testId}`)}`);
   const missing = ALL_SECTIONS.filter((s) => s !== "quick" && !test.sections.includes(s));
 
-  const sectionCard = (s: StairSection) => {
+  // a test's card on a stair's overview (`st`: this stair, or the next one sliding in)
+  const sectionCard = (s: StairSection, st = stair) => {
     const info = SECTION[s];
     let sub = "";
     let right: string;
     let colour: string;
     let pct: number;
     let read = false;
-    if (!sys || !stair) return null;
+    if (!sys || !st) return null;
     if (info.every) {
-      const x = doorStats(test, stair, s as "vel" | "force" | "latch", sys);
+      const x = doorStats(test, st, s as "vel" | "force" | "latch", sys);
       sub = `${x.done} of ${x.total}${test.kind === "general" && runCount(test) > 1 ? ` · ${runCount(test)} runs` : ""}`;
       right = x.fails ? `${x.fails} fail${x.fails === 1 ? "" : "s"}` : x.done ? (x.done === x.total ? "All pass" : "OK so far") : "—";
       colour = x.fails ? "#ff7a6a" : x.marginal ? "#f7c948" : x.done ? "#2bd47a" : "#5f7890";
       pct = x.total ? Math.round((100 * x.done) / x.total) : 0;
       read = stairs.some((st) => doorStats(test, st, s as "vel" | "force" | "latch", sys).done > 0);
     } else {
-      const o = onceStatus(s, test.once[stair.id], sys);
+      const o = onceStatus(s, test.once[st.id], sys);
       right = o.text || "—";
       colour = o.fail ? "#ff7a6a" : o.text ? "#2bd47a" : "#5f7890";
       pct = o.done ? 100 : o.text ? 50 : 0;
@@ -103,7 +104,7 @@ export default function StairTestPage() {
     }
     const open = () => {
       flush();
-      navigate(`/site/${siteId}/spf/${testId}/${s}?stair=${stair.id}`);
+      navigate(`/site/${siteId}/spf/${testId}/${s}?stair=${st.id}`);
     };
     const inner = (
       <>
@@ -148,6 +149,38 @@ export default function StairTestPage() {
     );
   };
 
+  // the stair's page under the header; also drawn for the next stair as the stair bar slides
+  const cards = (st: SpfStair) => (
+    <>
+      {test.sections.map((s) => sectionCard(s, st))}
+      {/* straight after the tests in use, before the ones not added */}
+      <TestPhotosCard items={photos} onOpen={() => setPhotosOpen(true)} />
+      {missing.length > 0 && <div style={{ fontSize: 13, fontWeight: 800, color: "#bfd0de", marginTop: 4 }}>Additional tests</div>}
+      {missing.map((s) => (
+        <div key={s} style={{ display: "flex", alignItems: "center", gap: 11, padding: "10px 12px", borderRadius: 13, border: "1px dashed var(--border-strong)" }}>
+          <span style={{ width: 34, height: 34, borderRadius: 10, background: "rgba(var(--accent-rgb), .1)", color: "#5ff0e0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>+</span>
+          <span style={{ flexGrow: 1, fontSize: 14, fontWeight: 800, color: "#bfd0de" }}>{SECTION[s].name}</span>
+          <Pill onClick={() => setTest((t) => ({ ...t, sections: ALL_SECTIONS.filter((x) => t.sections.includes(x) || x === s) }))}>+ Add</Pill>
+        </div>
+      ))}
+      <button
+        onClick={() => setNotesOpen(true)}
+        style={{ display: "flex", alignItems: "center", gap: 11, width: "100%", textAlign: "left", padding: "10px 12px", borderRadius: 13, background: "var(--panel)", border: "1px solid var(--border)", color: "var(--text)", marginTop: 4 }}
+      >
+        <span style={{ width: 34, height: 34, borderRadius: 10, background: "var(--panel-2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>✎</span>
+        <span style={{ flexGrow: 1 }}>
+          <span style={{ display: "block", fontSize: 14, fontWeight: 800 }}>Notes</span>
+          {test.notes.length > 0 && (
+            <span style={{ display: "block", fontSize: 11.5, color: "var(--muted)", fontWeight: 700 }}>
+              {test.notes.length} note{test.notes.length === 1 ? "" : "s"}
+            </span>
+          )}
+        </span>
+        <span style={{ color: "var(--muted-2)", fontSize: 18 }}>›</span>
+      </button>
+    </>
+  );
+
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
       <PageHeader title="Stair pressurisation" sub={`${site.name} · ${formatDay(test.testedAt)}`} onBack={back} right={<Pill>{KIND_LABEL[test.kind]}</Pill>} />
@@ -186,35 +219,10 @@ export default function StairTestPage() {
           </div>
 
           <div ref={body} style={{ flexGrow: 1, overflowY: "auto", padding: "8px 14px 16px", display: "flex", flexDirection: "column", gap: 7 }}>
-            {test.sections.map(sectionCard)}
-            {/* straight after the tests in use, before the ones not added */}
-            <TestPhotosCard items={photos} onOpen={() => setPhotosOpen(true)} />
-            {missing.length > 0 && <div style={{ fontSize: 13, fontWeight: 800, color: "#bfd0de", marginTop: 4 }}>Additional tests</div>}
-            {missing.map((s) => (
-              <div key={s} style={{ display: "flex", alignItems: "center", gap: 11, padding: "10px 12px", borderRadius: 13, border: "1px dashed var(--border-strong)" }}>
-                <span style={{ width: 34, height: 34, borderRadius: 10, background: "rgba(var(--accent-rgb), .1)", color: "#5ff0e0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>+</span>
-                <span style={{ flexGrow: 1, fontSize: 14, fontWeight: 800, color: "#bfd0de" }}>{SECTION[s].name}</span>
-                <Pill onClick={() => setTest((t) => ({ ...t, sections: ALL_SECTIONS.filter((x) => t.sections.includes(x) || x === s) }))}>+ Add</Pill>
-              </div>
-            ))}
-            <button
-              onClick={() => setNotesOpen(true)}
-              style={{ display: "flex", alignItems: "center", gap: 11, width: "100%", textAlign: "left", padding: "10px 12px", borderRadius: 13, background: "var(--panel)", border: "1px solid var(--border)", color: "var(--text)", marginTop: 4 }}
-            >
-              <span style={{ width: 34, height: 34, borderRadius: 10, background: "var(--panel-2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>✎</span>
-              <span style={{ flexGrow: 1 }}>
-                <span style={{ display: "block", fontSize: 14, fontWeight: 800 }}>Notes</span>
-                {test.notes.length > 0 && (
-                  <span style={{ display: "block", fontSize: 11.5, color: "var(--muted)", fontWeight: 700 }}>
-                    {test.notes.length} note{test.notes.length === 1 ? "" : "s"}
-                  </span>
-                )}
-              </span>
-              <span style={{ color: "var(--muted-2)", fontSize: 18 }}>›</span>
-            </button>
+            {cards(stair)}
           </div>
           <div style={{ flexShrink: 0, padding: "10px 16px calc(24px + var(--sa-bottom))", display: "flex", flexDirection: "column", gap: 10 }}>
-            <StairChin stairs={stairs} i={stairs.indexOf(stair)} onGo={(k) => setParams({ stair: stairs[k].id }, { replace: true })} follow={body} />
+            <StairChin stairs={stairs} i={stairs.indexOf(stair)} onGo={(k) => setParams({ stair: stairs[k].id }, { replace: true })} follow={body} peek={(k) => <div style={{ flexGrow: 1, overflowY: "auto", padding: "8px 14px 16px", display: "flex", flexDirection: "column", gap: 7 }}>{cards(stairs[k])}</div>} />
             <div style={{ display: "flex", gap: 10 }}>
               <button
                 aria-label="Take a photo for this test"
