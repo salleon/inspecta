@@ -70,7 +70,13 @@ test("a retest: named after the fan, Failed to restart fails it; the fan shows i
   const second = page.getByTestId("duct-probe").nth(1);
   await second.getByRole("button", { name: "Detector cleared · start timer" }).click();
   await page.clock.runFor(100_000);
+  // it asks first, so a slip doesn't throw the go away: Cancel leaves the timer running
   await second.getByRole("button", { name: "Failed to restart" }).click();
+  await page.getByText("This stops the timer and fails this go").waitFor();
+  await page.getByRole("button", { name: "Cancel" }).click();
+  assert.equal(await second.getByTestId("probe-result").innerText(), "Timing");
+  await second.getByRole("button", { name: "Failed to restart" }).click();
+  await page.getByRole("button", { name: "Failed to restart" }).last().click();
   assert.equal(await second.getByTestId("probe-result").innerText(), "Fail");
   assert.match(await second.innerText(), /Clock stopped at 100 s/);
   await second.getByLabel("Retest 1 notes").fill("Fan stayed off, reset at the FIP");

@@ -15,7 +15,8 @@ the technical detail.
   anything else fails: 55 to 60 and 90 to 95 s in yellow as marginal,
   the rest in red; the bar runs to 120+ s. The timer keeps going if you lock the
   phone or leave the screen. Tick **Cuts out equipment**, tap the red
-  **Failed to restart** if the fan never comes back (it stops the clock),
+  **Failed to restart** if the fan never comes back (it asks first, then
+  stops the clock),
   and add a note. **Retest duct probe** adds another go; the stair's card
   shows the latest. Every go prints under the fan on the report, PDF and
   Excel.

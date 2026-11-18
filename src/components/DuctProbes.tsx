@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import type { DuctProbe } from "../db/types";
 import { PROBE, probeName, probeResult, probeZone } from "../lib/stairTest";
+import { useBackHandler } from "../lib/backButton";
+import ConfirmDialog from "./ConfirmDialog";
 
 // A stair fan's duct probe (design canvas Duct probes test, version 2,
 // boards 5 to 7): the test, then a card for each retest. Each go has a name
@@ -33,6 +35,13 @@ export default function DuctProbes({ probes, fan, update, peek }: { probes: Duct
     const id = window.setInterval(() => setNow(Date.now()), 100);
     return () => window.clearInterval(id);
   }, [running, peek]);
+  // the go whose Failed to restart is being asked about
+  const [asking, setAsking] = useState<number | null>(null);
+  useBackHandler(() => {
+    if (asking === null) return false;
+    setAsking(null);
+    return true;
+  });
   const edit = (i: number, patch: Partial<DuctProbe>) =>
     update((list) => {
       const next = list.length ? [...list] : [{}];
@@ -147,16 +156,7 @@ export default function DuctProbes({ probes, fan, update, peek }: { probes: Duct
               </label>
               <button
                 aria-pressed={!!p.failed}
-                onClick={() =>
-                  edit(
-                    i,
-                    timing
-                      ? { failed: true, started: undefined, time: undefined, stoppedAt: (Date.now() - p.started!) / 1000 }
-                      : p.failed
-                        ? { failed: false, stoppedAt: undefined }
-                        : { failed: true, time: undefined, stoppedAt: undefined },
-                  )
-                }
+                onClick={() => (p.failed ? edit(i, { failed: false, stoppedAt: undefined }) : setAsking(i))}
                 style={{ flex: 1, minHeight: 44, padding: "0 11px", borderRadius: 11, fontSize: 13, fontWeight: 800, background: p.failed ? "#e5483a" : "rgba(255,90,74,.10)", border: `1px solid ${p.failed ? "#e5483a" : "rgba(255,122,106,.5)"}`, color: p.failed ? "#fff" : FAIL }}
               >
                 Failed to restart{p.failed ? " ✕" : ""}
@@ -174,6 +174,32 @@ export default function DuctProbes({ probes, fan, update, peek }: { probes: Duct
           </div>
         );
       })}
+      {asking !== null && !peek && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 20 }}>
+          <ConfirmDialog
+            title="Failed to restart?"
+            message={
+              shown[asking]?.started
+                ? "This stops the timer and fails this go: the fan didn't come back on."
+                : shown[asking]?.time !== undefined
+                  ? `This fails this go and replaces its restart time of ${Math.round(shown[asking].time!)} s.`
+                  : "This fails this go: the fan didn't come back on."
+            }
+            confirmLabel="Failed to restart"
+            onCancel={() => setAsking(null)}
+            onConfirm={() => {
+              const i = asking;
+              setAsking(null);
+              update((list) => {
+                const next = list.length ? [...list] : [{}];
+                const p = next[i] ?? {};
+                next[i] = { ...p, failed: true, started: undefined, time: undefined, stoppedAt: p.started ? (Date.now() - p.started) / 1000 : undefined };
+                return next;
+              });
+            }}
+          />
+        </div>
+      )}
       <button
         onClick={() => update((list) => [...(list.length ? list : [{}]), {}])}
         disabled={running}
