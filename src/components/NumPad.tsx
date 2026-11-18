@@ -3,7 +3,7 @@ import "./NumPad.css";
 
 // The number pad the tests use instead of the phone's keyboard (design canvas
 // SpfTidy, SpfStairPad, FlowPads): the measuring tool's pad, purple for stair
-// pressurisation and blue for flow tests. Four columns: 7 8 9 · 4 5 6 · 1 2 3
+// pressurisation, blue for flow tests and coral for FFCP. Four columns: 7 8 9 · 4 5 6 · 1 2 3
 // with ⌫ always third row, right; the two keys above it and the one bottom
 // left change with the screen; Done ✓ is bottom right.
 
@@ -22,7 +22,7 @@ export function readingKeys(c: PadKey, d: PadKey | null): PadKey[] {
 }
 export const BLANK = (n: number) => k(`blank${n}`, "", "blank");
 
-export default function NumPad({ tint, head, keys, onKey, testId }: { tint: "spf" | "flow"; head?: ReactNode; keys: PadKey[]; onKey: (key: string) => void; testId?: string }) {
+export default function NumPad({ tint, head, keys, onKey, testId }: { tint: "spf" | "flow" | "ffcp"; head?: ReactNode; keys: PadKey[]; onKey: (key: string) => void; testId?: string }) {
   // each key presses in and springs back, however quickly it's tapped
   function press(e: ReactPointerEvent<HTMLButtonElement>, key: string) {
     e.preventDefault();

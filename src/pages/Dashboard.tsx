@@ -364,7 +364,7 @@ export default function Dashboard() {
                   <IconChevronRight size={20} color="var(--accent)" strokeWidth={2.4} />
                 </button>
                 <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", marginTop: 4 }}>Tests</div>
-                {/* three across: the empty third is kept for FFCP */}
+                {/* three across: flow, stair, FFCP */}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
                   {TEST_TILES.map(([k, label]) => (
                     <button
@@ -396,7 +396,7 @@ export default function Dashboard() {
                   >
                     <IconChevronLeft size={20} strokeWidth={2.4} />
                   </button>
-                  <div style={{ fontSize: 16, fontWeight: 800 }}>{kind === "flow" ? "Flow testing" : kind === "spf" ? "Stair pressurisation" : "New report"}</div>
+                  <div style={{ fontSize: 16, fontWeight: 800 }}>{kind === "flow" ? "Flow testing" : kind === "spf" ? "Stair pressurisation" : kind === "ffcp" ? "Fire fan control panel" : "New report"}</div>
                 </div>
                 {(kind === "afss" || kind === "project") && (
                   <div role="radiogroup" aria-label="Report type" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
@@ -438,7 +438,7 @@ export default function Dashboard() {
                     overflow: "hidden",
                   }}
                 >
-                  {kind === "flow" ? "Start flow testing" : kind === "spf" ? "Start stair testing" : "Start inspection"}
+                  {kind === "flow" ? "Start flow testing" : kind === "spf" ? "Start stair testing" : kind === "ffcp" ? "Start FFCP testing" : "Start inspection"}
                 </button>
               </div>
             )}
@@ -472,19 +472,21 @@ const inputStyle: CSSProperties = {
 };
 
 // Home's chips: Reports covers AFSS and Projects; the tests each have their
-// own. Equal widths, so another test (FFCP) slots in as a fourth.
-type ChipKind = "reports" | "flow" | "spf";
+// own. Equal widths.
+type ChipKind = "reports" | "flow" | "spf" | "ffcp";
 const chipOf = (k: SiteKind): ChipKind => (k === "afss" || k === "project" ? "reports" : k);
 const KIND_CHIPS: [ChipKind, string][] = [
   ["reports", "Reports"],
   ["flow", "Flow"],
   ["spf", "Stair"],
+  ["ffcp", "FFCP"],
 ];
 
 // New job's tests, under Reports
-const TEST_TILES: ["flow" | "spf", string][] = [
+const TEST_TILES: ["flow" | "spf" | "ffcp", string][] = [
   ["flow", "Flow testing"],
   ["spf", "Stair pressurisation"],
+  ["ffcp", "Fire fan control panel"],
 ];
 
 function testTileStyle(kind: SiteKind): CSSProperties {
@@ -638,6 +640,10 @@ function SiteButton({
             ) : site.kind === "spf" ? (
               <>
                 <CountUp value={site.stairTests} /> stair test{site.stairTests === 1 ? "" : "s"}
+              </>
+            ) : site.kind === "ffcp" ? (
+              <>
+                <CountUp value={site.ffcp?.length ?? 0} /> panel test{site.ffcp?.length === 1 ? "" : "s"}
               </>
             ) : (
               <>

@@ -34,6 +34,7 @@ const StairNew = lazy(() => import("./pages/StairNew"));
 const StairTestPage = lazy(() => import("./pages/StairTestPage"));
 const StairSectionPage = lazy(() => import("./pages/StairSectionPage"));
 const StairReport = lazy(() => import("./pages/StairReport"));
+const FfcpTestPage = lazy(() => import("./pages/FfcpTest"));
 
 // How long the splash sits fully visible before it starts fading, and how
 // long the fade itself takes (kept in sync with .splash-leaving's CSS
@@ -172,6 +173,7 @@ function AnimatedRoutes() {
           <Route path="/site/:siteId/spf/:testId" element={<StairTestPage />} />
           <Route path="/site/:siteId/spf/:testId/report" element={<StairReport />} />
           <Route path="/site/:siteId/spf/:testId/:section" element={<StairSectionPage />} />
+          <Route path="/site/:siteId/ffcp/:testId" element={<FfcpTestPage />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/settings/backup" element={<Backup />} />
           <Route path="/admin/*" element={<Admin />} />

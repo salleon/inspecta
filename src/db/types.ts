@@ -1,6 +1,7 @@
 // flow: a site that's only flow testing (no findings or photos); spf: one
-// that's only stair pressurisation testing
-export type SiteKind = "afss" | "project" | "flow" | "spf";
+// that's only stair pressurisation testing; ffcp: fire fan control panel
+// testing (lib/ffcp)
+export type SiteKind = "afss" | "project" | "flow" | "spf" | "ffcp";
 
 // Advanced-controls field — see lib/defectTypes.ts for labels and colours.
 export type DefectType = "critical" | "non-critical" | "non-compliance" | "recommend" | "note-only" | "rectified" | "outstanding";
@@ -22,6 +23,9 @@ export interface Site {
   // site, whose Other tests and report include this job's tests (lib
   // testJobs). Absent = stand-alone.
   attachedTo?: string;
+  // an FFCP job's panel tests (lib/ffcp), kept on the job itself so backup,
+  // restore and merge carry them with its details. Absent until the first.
+  ffcp?: FfcpTest[];
   // set while a restore from backup is adding this site's photos, and
   // cleared once they're all in (lib/backup). Still set means the restore
   // stopped part way: restoring the same backup again finishes the site.
@@ -298,4 +302,32 @@ export interface StairTest {
   order: number;
   createdAt: number;
   updatedAt: number;
+}
+
+// Fire fan control panel testing (lib/ffcp): each fan's indication (run,
+// stop, fault lights) and manual control (on, off), in normal mode and again
+// in fire mode. A check is "y" (pass) or "n" (fail); a fail can carry a
+// note saying why.
+export type FfcpMark = "y" | "n";
+// "normal.run", "fire.off", ...
+export type FfcpMarks = Partial<Record<string, FfcpMark>>;
+export type FfcpNotes = Partial<Record<string, string>>;
+
+export interface FfcpFan {
+  id: string;
+  name: string;
+  marks: FfcpMarks;
+  notes: FfcpNotes;
+  // a quick note on the fan itself, whatever the mode
+  note?: string;
+}
+
+export interface FfcpTest {
+  id: string;
+  // where the panel is, e.g. "Ground floor, fire control room"
+  location: string;
+  testedAt: number;
+  createdAt: number;
+  updatedAt: number;
+  fans: FfcpFan[];
 }

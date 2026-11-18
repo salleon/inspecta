@@ -7,6 +7,19 @@ the technical detail.
 
 ## 18 November 2026
 
+- **New test: fire fan control panel (FFCP).** FFCP is now a job type of
+  its own, next to Flow and Stair: pick it from New job, filter home with
+  its chip, or add it from a site's Other tests. Each panel test starts by
+  adding its fans: tap a type (SPF, SAF, SEF, ZPF, CPEF, KEF), then add one
+  at a time with − and + or a whole batch (from – to) on the number pad.
+  Every fan then gets the same checks, in normal mode and again in fire
+  mode: the run, stop and fault lights, and manual on and off. Fans are
+  tiles you can jump between in any order (All, To do, Fails), and the
+  next unfinished fan comes up by itself. A ✗ asks why it failed, with
+  quick reasons to tap, or the note can wait until later (the fan shows
+  "no note" until it has one). Each fan also has a notes box. Not in the
+  PDF or Excel exports yet.
+
 - **Flow and stair tests have their own job, and can be attached to a
   site.** Every flow test and stair pressurisation test now lives in its
   own job on home, holding all of that building's stairs or flow tests. A

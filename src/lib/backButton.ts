@@ -17,8 +17,8 @@ export function parentRoute(pathname: string): string | null {
   if (spf && spf[2] !== "new") return `/site/${spf[1]}/spf/${spf[2]}`;
   const spfTop = /^\/site\/([^/]+)\/(spf\/[^/]+|spf-system)$/.exec(pathname);
   if (spfTop) return `/site/${spfTop[1]}/findings?tab=flow`;
-  const site = /^\/site\/([^/]+)\/(findings|export|flow-export|finding\/[^/]+\/note|flow\/[^/]+)$/.exec(pathname);
-  if (site) return site[2] === "findings" ? "/" : site[2].startsWith("flow") ? `/site/${site[1]}/findings?tab=flow` : `/site/${site[1]}/findings`;
+  const site = /^\/site\/([^/]+)\/(findings|export|flow-export|finding\/[^/]+\/note|flow\/[^/]+|ffcp\/[^/]+)$/.exec(pathname);
+  if (site) return site[2] === "findings" ? "/" : site[2].startsWith("flow") || site[2].startsWith("ffcp") ? `/site/${site[1]}/findings?tab=flow` : `/site/${site[1]}/findings`;
   // admin: keyword → list → admin menu → settings → dashboard
   if (pathname.startsWith("/admin/")) return pathname.replace(/\/[^/]+$/, "");
   if (pathname === "/admin") return "/settings";

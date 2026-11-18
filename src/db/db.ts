@@ -1,5 +1,5 @@
 import Dexie, { type Table } from "dexie";
-import type { Site, Finding, Photo, Mark, SiteKind, Thumbnail, ExportCopy, StampedPhoto, FlowTest, SiteReport, SpfSystem, StairTest } from "./types";
+import type { Site, Finding, Photo, Mark, SiteKind, Thumbnail, ExportCopy, StampedPhoto, FlowTest, SiteReport, SpfSystem, StairTest, FfcpTest } from "./types";
 import { makeThumbnail } from "../lib/thumbnail";
 import { makeExportCopy } from "../lib/exportCopy";
 import { RENAMED_CODES } from "../lib/esrCategories";
@@ -168,6 +168,11 @@ export async function updateSite(
 // the site's stair pressurisation system (set once; lib/stairTest)
 export async function saveSiteSpf(siteId: string, spf: SpfSystem) {
   await db.sites.update(siteId, { spf, changedAt: Date.now() });
+}
+
+// an FFCP job's panel tests, all at once (lib/ffcp)
+export async function saveSiteFfcp(siteId: string, ffcp: FfcpTest[]) {
+  await db.sites.update(siteId, { ffcp, changedAt: Date.now() });
 }
 
 // the site's customised reports, all at once (not a change to the site
@@ -611,11 +616,11 @@ export async function deleteStairTest(testId: string) {
 }
 
 // ---- test jobs ----
-// Every flow and stair test lives in a flow or stair job (a site of kind
-// "flow" or "spf") on home. A job can be attached to an AFSS or project site:
+// Every flow, stair and FFCP test lives in a flow, stair or FFCP job (a
+// site of kind "flow", "spf" or "ffcp") on home. A job can be attached to an AFSS or project site:
 // its tests then show in that site's Other tests and go into its report.
 
-export type TestJobKind = "flow" | "spf";
+export type TestJobKind = "flow" | "spf" | "ffcp";
 
 export async function listAttachedJobs(siteId: string) {
   const jobs = await db.sites.filter((s) => s.attachedTo === siteId).toArray();

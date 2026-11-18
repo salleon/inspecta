@@ -96,7 +96,8 @@ export const keptCopyId = (testId: string, backupUpdatedAt: number) => `${testId
 
 const later = (phone: { updatedAt: number }, backup: { updatedAt: number }) => backup.updatedAt > phone.updatedAt;
 
-const siteDetails = (s: Site) => ({ name: s.name, address: s.address, kind: s.kind, spf: s.spf });
+// an FFCP job's panel tests ride with its details: the later copy wins
+const siteDetails = (s: Site) => ({ name: s.name, address: s.address, kind: s.kind, spf: s.spf, ffcp: s.ffcp });
 
 function mergeTests<T extends FlowTest | StairTest>(
   phone: T[],
@@ -220,6 +221,7 @@ export function planMerge(phone: SiteRecords, backup: SiteRecords, now = Date.no
   if (content(siteDetails(phone.site)) !== content(siteDetails(backup.site)) && changedAt(backup.site) > changedAt(phone.site)) {
     site = { ...site, ...siteDetails(backup.site) };
     if (backup.site.spf === undefined) delete site.spf;
+    if (backup.site.ffcp === undefined) delete site.ffcp;
     counts.detailsUpdated = true;
   }
   const reports = new Map<string, SiteReport>((phone.site.reports ?? []).map((r) => [r.id, r]));

@@ -10,7 +10,8 @@ import { useBackHandler } from "../lib/backButton";
 import ConfirmDialog from "./ConfirmDialog";
 import SwipeRow from "./SwipeRow";
 import ProgressOverlay from "./ProgressOverlay";
-import SiteKindIcon from "./SiteKindIcon";
+import SiteKindIcon, { KIND_COLOUR } from "./SiteKindIcon";
+import { addFfcpTest } from "./FfcpList";
 import { IconChevronRight } from "./Icons";
 import { Pill } from "./StairUi";
 import { shortDate } from "../lib/dates";
@@ -85,7 +86,7 @@ export default function TestsList({ site, mode, onCount }: { site: Site; mode: "
     let cancelled = false;
     if (mode === "other") {
       void listAttachedJobs(site.id).then(async (list) => {
-        const withCounts = await Promise.all(list.map(async (job) => ({ job, count: await (job.kind === "flow" ? flowTestCount : stairTestCount)(job.id) })));
+        const withCounts = await Promise.all(list.map(async (job) => ({ job, count: job.kind === "ffcp" ? (job.ffcp?.length ?? 0) : await (job.kind === "flow" ? flowTestCount : stairTestCount)(job.id) })));
         if (cancelled) return;
         setJobs(withCounts);
         // their tests, for Export Other Tests Only (one stair job's: a stair
@@ -128,6 +129,18 @@ export default function TestsList({ site, mode, onCount }: { site: Site; mode: "
       const jobId = mode === "other" ? (await testJobFor(site, "flow")).id : site.id;
       const test = await addFlowTest(newFlowTest(jobId, kind));
       navigate(`/site/${jobId}/flow/${test.id}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // an FFCP panel test, in the site's FFCP job
+  async function newFfcp() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const job = await testJobFor(site, "ffcp");
+      navigate(`/site/${job.id}/ffcp/${await addFfcpTest(job.id)}`);
     } finally {
       setBusy(false);
     }
@@ -235,13 +248,13 @@ export default function TestsList({ site, mode, onCount }: { site: Site; mode: "
             onClick={() => navigate(`/site/${job.id}/findings`)}
             style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", padding: 14, borderRadius: 14, background: "var(--panel)", border: "1px solid var(--border)", color: "var(--text)" }}
           >
-            <span style={{ width: 46, height: 46, flexShrink: 0, borderRadius: 10, background: job.kind === "flow" ? "rgba(90,176,255,.1)" : "rgba(177,140,255,.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <span style={{ width: 46, height: 46, flexShrink: 0, borderRadius: 10, background: `${KIND_COLOUR[job.kind]}1a`, display: "flex", alignItems: "center", justifyContent: "center" }}>
               <SiteKindIcon kind={job.kind} size={24} />
             </span>
             <span style={{ flexGrow: 1, minWidth: 0 }}>
-              <b style={{ display: "block", fontSize: 14.5 }}>{job.kind === "flow" ? "Flow testing" : "Stair pressurisation"}</b>
+              <b style={{ display: "block", fontSize: 14.5 }}>{job.kind === "flow" ? "Flow testing" : job.kind === "ffcp" ? "Fire fan control panel" : "Stair pressurisation"}</b>
               <span style={{ fontSize: 12, color: "var(--muted)" }}>
-                {count} {job.kind === "flow" ? "flow" : "stair"} test{count === 1 ? "" : "s"}
+                {count} {job.kind === "flow" ? "flow" : job.kind === "ffcp" ? "panel" : "stair"} test{count === 1 ? "" : "s"}
                 {job.name !== site.name ? ` · ${job.name}` : ""}
               </span>
             </span>
@@ -312,7 +325,15 @@ export default function TestsList({ site, mode, onCount }: { site: Site; mode: "
             </span>
             <span style={{ color: "var(--muted-2)", fontSize: 18 }}>›</span>
           </button>
-          <div style={{ fontSize: 12, color: "var(--muted-2)", textAlign: "center" }}>More tests will be added here.</div>
+          <button style={option} disabled={busy} onClick={() => void newFfcp()}>
+            <span style={{ width: 42, height: 42, borderRadius: 11, background: "rgba(255,122,92,.14)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <SiteKindIcon kind="ffcp" size={22} />
+            </span>
+            <span style={{ flexGrow: 1 }}>
+              <span style={{ display: "block", fontSize: 15, fontWeight: 800 }}>Fire fan control panel (FFCP)</span>
+            </span>
+            <span style={{ color: "var(--muted-2)", fontSize: 18 }}>›</span>
+          </button>
           <button style={cancelBtn} onClick={() => setSheet(null)}>
             Cancel
           </button>

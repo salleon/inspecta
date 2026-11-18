@@ -12,6 +12,7 @@ import FormActions from "../components/FormActions";
 import RoundIconButton from "../components/RoundIconButton";
 import FlowTestList from "../components/FlowTestList";
 import TestsList from "../components/TestsList";
+import FfcpList from "../components/FfcpList";
 import AttachChip from "../components/AttachChip";
 import { KindTag } from "../components/SiteKindIcon";
 
@@ -96,7 +97,8 @@ export default function Findings() {
   // just its stair tests: no Findings tab
   const flowSite = site?.kind === "flow";
   const spfSite = site?.kind === "spf";
-  const testSite = flowSite || spfSite;
+  const ffcpSite = site?.kind === "ffcp";
+  const testSite = flowSite || spfSite || ffcpSite;
   const [flowCount, setFlowCount] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [editingSite, setEditingSite] = useState(false);
@@ -454,13 +456,13 @@ export default function Findings() {
         >
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
             <div style={{ fontSize: 14, fontWeight: 700 }}>{testSite ? site?.name : "Findings"}</div>
-            <div style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)" }}>{flowSite ? "Flow testing" : spfSite ? "Stair pressurisation" : site?.name ?? ""}</div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)" }}>{flowSite ? "Flow testing" : spfSite ? "Stair pressurisation" : ffcpSite ? "Fire fan control panel" : site?.name ?? ""}</div>
           </div>
           <IconEdit size={13} color="var(--muted-2)" />
         </button>
         {testSite ? (
           <div style={{ width: 40, display: "flex", justifyContent: "flex-end" }}>
-            <KindTag kind={spfSite ? "spf" : "flow"} />
+            <KindTag kind={site?.kind ?? "flow"} />
           </div>
         ) : (
           <RoundIconButton ariaLabel="Export PDF" onClick={() => navigate(`/site/${siteId}/export`)}>
@@ -498,6 +500,8 @@ export default function Findings() {
         <FlowTestList siteId={siteId} onCount={setFlowCount} onExport={() => navigate(`/site/${siteId}/flow-export`)} />
       ) : spfSite ? (
         <TestsList site={site} mode="spf" onCount={setFlowCount} />
+      ) : ffcpSite ? (
+        <FfcpList site={site} />
       ) : flowTab ? (
         // the flow and stair tests; Export asks which (canvas SiteTests)
         <TestsList site={site} mode="other" onCount={setFlowCount} />

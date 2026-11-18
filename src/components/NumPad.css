@@ -28,6 +28,12 @@
   --pad-text: #efe8ff;
   --pad-ink: #1a0d33;
 }
+.np.ffcp {
+  --pad: 255, 122, 92;
+  --pad-solid: #ff7a5c;
+  --pad-text: #ffe9e3;
+  --pad-ink: #2a0d05;
+}
 .np.flow {
   --pad: 90, 176, 255;
   --pad-solid: #5ab0ff;
