@@ -13,7 +13,9 @@ the technical detail.
   the row scrolls on its own near either end. Let go and it drops in.
   The new order is the site's, so the stair bar at the bottom, the setup
   page and the reports follow it. A tap still opens a stair and a swipe
-  still scrolls the tabs.
+  still scrolls the tabs. Stairs not yet named keep their suggested names
+  when moved: SPF-2 and Stair 2 stay SPF-2 and Stair 2 wherever they go,
+  and a stair added afterwards takes the next number up.
 
 - **FFCP results in the PDF and Excel.** Each panel test prints as a page
   laid out like the hand-drawn sheet: a small table per mode tested (a

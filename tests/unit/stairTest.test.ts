@@ -1,10 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { levelsRead, renameDoorLevels } from "../../src/lib/stairTest";
+import { fanName, levelsRead, nextStairNo, renameDoorLevels, reorderStairs } from "../../src/lib/stairTest";
 import { doorFails, doorMarginal, fanIsDefault, kindsFor, latestDoor, newRun, stairDoors, stairLabel, wellIsDefault } from "../../src/lib/stairTest";
 import { adjacentDoor, openWith, doorsOpen, doorStats, isCustomLevel, joinLevel, levelChanges, levelChip, levelName, levelsEdited, limits, onceStatus, sectionsFor, splitLevel, stairLevels, stairTestHasData, stairTestSummary, typeFor } from "../../src/lib/stairTest";
 import { stairPages } from "../../src/lib/stairPrint";
-import type { SpfSystem, StairTest } from "../../src/db/types";
+import type { SpfStair, SpfSystem, StairTest } from "../../src/db/types";
 
 const sys = (edition: SpfSystem["edition"], type: SpfSystem["type"] = "Purge"): SpfSystem => ({
   edition,
@@ -217,4 +217,20 @@ test("a renamed level takes its readings with it: every door, every run", () => 
   assert.equal(renameDoorLevels(t, "s1", { P9: "B9" }), null, "nothing to move");
   // a name that already has readings keeps its own
   assert.equal(renameDoorLevels(t, "s1", { P1: "P2" }), null);
+});
+
+test("reordering keeps each stair's placeholder names; a stair added after takes the next number", () => {
+  const st = (id: string, fan = "", name = ""): SpfStair => ({ id, name, from: "G", to: "3", extra: [], fan });
+  const before = [st("a"), st("b", "SPF 7", "North"), st("c")];
+  assert.deepEqual(before.map((s, i) => stairLabel(s, i)), ["SPF-1 · Stair 1", "SPF 7 · North", "SPF-3 · Stair 3"]);
+  const after = reorderStairs(before, ["c", "a", "b"]);
+  assert.deepEqual(after.map((s, i) => stairLabel(s, i)), ["SPF-3 · Stair 3", "SPF-1 · Stair 1", "SPF 7 · North"]);
+  // still placeholders, so still asked for real names
+  assert.equal(fanIsDefault(after[0]), true);
+  // again: numbers already kept stay put
+  assert.deepEqual(reorderStairs(after, ["a", "b", "c"]).map((s, i) => fanName(s, i)), ["SPF-1", "SPF 7", "SPF-3"]);
+  // a removed stair leaves its number unused; the next one goes above the highest
+  const two = after.filter((s) => s.id !== "c");
+  assert.equal(nextStairNo(two), 3);
+  assert.equal(nextStairNo(before), undefined);
 });

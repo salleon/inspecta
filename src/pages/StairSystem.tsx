@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import type { Site, SpfEdition, SpfStair, SpfSystem, SpfType, StairTest } from "../db/types";
 import { getSite, listStairTests, saveSiteSpf, saveStairTest } from "../db/db";
-import { defaultSystem, doorsEach, EDITIONS, joinLevel, LEVEL_TYPES, levelChanges, levelName, levelsEdited, levelsRead, levelType, newStair, fanIsDefault, renameDoorLevels, splitLevel, stairLabel, stairDoors, stairRange, TYPES, typeFor, type LevelType } from "../lib/stairTest";
+import { defaultSystem, doorsEach, EDITIONS, joinLevel, LEVEL_TYPES, levelChanges, levelName, levelsEdited, levelsRead, levelType, newStair, nextStairNo, fanIsDefault, renameDoorLevels, splitLevel, stairLabel, stairDoors, stairRange, TYPES, typeFor, type LevelType } from "../lib/stairTest";
 import { useBackHandler } from "../lib/backButton";
 import SwipeRow from "../components/SwipeRow";
 import { AMBER, card, cardLabel, fieldInput, PageHeader, RulesBox, Seg, StairName } from "../components/StairUi";
@@ -158,7 +158,8 @@ export default function StairSystem() {
     if (st && ready(st) && !st.reviewed) setReview(id);
   };
   const addStair = () => {
-    const s = newStair();
+    const no = nextStairNo(sys.stairs);
+    const s = no ? { ...newStair(), no } : newStair();
     change({ ...sys, stairs: [...sys.stairs, s] });
     setOpen(s.id);
     setPad(null);

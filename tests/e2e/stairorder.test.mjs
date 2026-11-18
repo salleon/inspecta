@@ -1,6 +1,7 @@
 // Moving a stair along the stair test's tabs (components/StairTabs): hold a
 // tab and drag it; the tabs it passes slide aside while dragging, and on
-// letting go the new order is saved on the site. A tap still opens a stair,
+// letting go the new order is saved on the site, each stair keeping its
+// placeholder names (SPF-2 stays SPF-2 wherever it goes). A tap still opens a stair,
 // a quick drag still scrolls, and the open stair stays open after a move.
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
@@ -27,7 +28,7 @@ before(async () => {
       kind: "spf",
       createdAt: now,
       updatedAt: now,
-      spf: { edition: "1998", type: "Purge", notes: "", stairs: [st("a", "SPF 1", "East"), st("b", "SPF 2", "West"), st("c", "SPF 3", "Core A"), st("d", "SPF 4", "Core B")] },
+      spf: { edition: "1998", type: "Purge", notes: "", stairs: [st("a", "SPF 1", "East"), st("b", "", ""), st("c", "SPF 3", "Core A"), st("d", "SPF 4", "Core B")] },
     });
     tx.objectStore("stairTests").put({ id: "t1", siteId: "s1", kind: "annual", sections: ["vel"], doors: {}, once: {}, notes: [], order: 0, createdAt: now, updatedAt: now, testedAt: now });
     await new Promise((r) => (tx.oncomplete = r));
@@ -88,7 +89,9 @@ test("hold and drag: the stairs passed slide aside, and the order is saved on le
   await page.mouse.up();
   await page.waitForTimeout(500);
   assert.equal(await saved(), "bcad");
-  assert.equal(await shown(), "SPF 2,SPF 3,SPF 1,SPF 4");
+  // the unnamed stair keeps its placeholders (SPF-2, Stair 2), now first
+  assert.equal(await shown(), "SPF-2,SPF 3,SPF 1,SPF 4");
+  assert.match(await tab(0).innerText(), /Stair 2/);
   // the stair that was open is still open, and the hold didn't open the one moved
   assert.match(page.url(), /stair=c/);
 });

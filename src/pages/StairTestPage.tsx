@@ -1,7 +1,7 @@
 import { useRef, useState, type CSSProperties } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import type { SpfStair, StairSection } from "../db/types";
-import { ALL_SECTIONS, doorStats, KIND_LABEL, onceStatus, runCount, SECTION, stairDoors } from "../lib/stairTest";
+import { ALL_SECTIONS, doorStats, KIND_LABEL, onceStatus, reorderStairs, runCount, SECTION, stairDoors } from "../lib/stairTest";
 import { useBackHandler } from "../lib/backButton";
 import { card, cardLabel, fieldInput, PageHeader, Pill, StairChin, StairName, useStairTest } from "../components/StairUi";
 import ConfirmDialog from "../components/ConfirmDialog";
@@ -198,7 +198,7 @@ export default function StairTestPage() {
           <StairTabs
             stairs={stairs}
             onOpen={(s) => setParams({ stair: s.id }, { replace: true })}
-            onReorder={(next) => setSpf((spf) => ({ ...spf, stairs: next }))}
+            onReorder={(next) => setSpf((spf) => ({ ...spf, stairs: reorderStairs(spf.stairs, next.map((s) => s.id)) }))}
             render={(s, i) => {
               const on = s.id === stair.id;
               const every = test.sections.find((x) => SECTION[x].every) as "vel" | "force" | "latch" | undefined;

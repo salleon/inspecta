@@ -166,10 +166,22 @@ export function stairDoors(stair: Pick<SpfStair, "from" | "to" | "extra" | "leve
 const stairFan = (stair: SpfStair) => (/^SPF-?\s*$/i.test(stair.fan.trim()) ? "" : stair.fan.trim());
 // Until the fans are identified, a stair goes by placeholders from its place
 // in the list (shown in amber on screen, printed as they are): SPF-1 and
-// Stair 1, SPF-2 and Stair 2… Never stored, so they follow the stairs as
-// they're added, removed or reordered; a typed name replaces them.
-export const fanName = (stair: SpfStair, i: number) => stairFan(stair) || `SPF-${i + 1}`;
-export const wellName = (stair: SpfStair, i: number) => stair.name.trim() || `Stair ${i + 1}`;
+// Stair 1, SPF-2 and Stair 2… They follow the stairs as they're added and
+// removed, but once the stairs are reordered each keeps the number it had
+// (`no`), so moving SPF-2 to the front leaves it SPF-2. A typed name
+// replaces them.
+const placeholderNo = (stair: SpfStair, i: number) => stair.no ?? i + 1;
+export const fanName = (stair: SpfStair, i: number) => stairFan(stair) || `SPF-${placeholderNo(stair, i)}`;
+export const wellName = (stair: SpfStair, i: number) => stair.name.trim() || `Stair ${placeholderNo(stair, i)}`;
+
+// the stairs in a new order, each keeping the placeholder number it had
+export const reorderStairs = (stairs: SpfStair[], ids: string[]): SpfStair[] => {
+  const kept = new Map(stairs.map((st, i) => [st.id, st.no ? st : { ...st, no: i + 1 }]));
+  return ids.map((id) => kept.get(id)).filter((st): st is SpfStair => !!st);
+};
+
+// a stair added after a reorder takes the next number up, not one in use
+export const nextStairNo = (stairs: SpfStair[]) => (stairs.some((st) => st.no) ? Math.max(...stairs.map((st, i) => placeholderNo(st, i))) + 1 : undefined);
 export const fanIsDefault = (stair: SpfStair) => !stairFan(stair);
 export const wellIsDefault = (stair: SpfStair) => !stair.name.trim();
 export const stairLabel = (stair: SpfStair, i: number) => `${fanName(stair, i)} · ${wellName(stair, i)}`;
