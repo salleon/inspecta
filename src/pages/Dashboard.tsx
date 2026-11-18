@@ -356,16 +356,6 @@ export default function Dashboard() {
                 Stair pressurisation
               </button>
             </div>
-            {kind === "flow" && (
-              <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.45, marginTop: -4 }}>
-                Just flow tests: no findings or photos. Exports its flow test results as a PDF or Excel.
-              </div>
-            )}
-            {kind === "spf" && (
-              <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.45, marginTop: -4 }}>
-                Just stair pressurisation tests: no findings or photos. Exports its stair test results as a PDF or Excel.
-              </div>
-            )}
             {/* no autofocus: pick the kind first, then tap here (the keyboard waits) */}
             <input
               value={name}
