@@ -344,9 +344,8 @@ export type ProbeResult = "pass" | "marginal" | "fail" | null;
 // how a go went; null when there's nothing to judge yet (not timed, or timing)
 export function probeResult(p: DuctProbe | undefined): ProbeResult {
   if (!p || p.started) return null;
-  if (p.failed) return "fail";
+  if (p.noStop || p.failed) return "fail";
   if (p.time === undefined) return null;
-  if (!p.cuts) return "fail";
   return probeZone(p.time);
 }
 
@@ -367,14 +366,14 @@ export function probeLatest(probes: DuctProbe[] | undefined): { p: DuctProbe; n:
   return null;
 }
 
-const probeHasData = (p: DuctProbe) => !!(p.cuts || p.failed || p.time !== undefined || p.started || p.notes?.trim() || p.name?.trim());
+const probeHasData = (p: DuctProbe) => !!(p.noStop || p.failed || p.time !== undefined || p.started || p.notes?.trim() || p.name?.trim());
 
-// a go as it prints: "SPF-1 duct probe · cuts out: Yes · restarted after 78 s · Pass · note"
+// a go as it prints: "SPF-1 duct probe · restarted after 78 s · Pass · note"
 export function probeLine(p: DuctProbe, fan: string, n: number): string {
   const result = probeResult(p);
-  const what = p.failed ? "failed to restart" : p.time !== undefined ? `restarted after ${Math.round(p.time)} s` : "not timed";
+  const what = p.failed ? "failed to restart" : p.time !== undefined ? `restarted after ${Math.round(p.time)} s` : p.noStop ? "" : "not timed";
   const verdict = result === "pass" ? "Pass" : result === "marginal" ? "Fail (marginal)" : result === "fail" ? "Fail" : "";
-  return [probeName(p, fan, n), `cuts out: ${p.cuts ? "Yes" : "No"}`, what, verdict, p.notes?.trim()].filter(Boolean).join(" · ");
+  return [probeName(p, fan, n), p.noStop && "failed to stop equipment", what, verdict, p.notes?.trim()].filter(Boolean).join(" · ");
 }
 
 export function sectionsFor(kind: StairTestKind, picked: StairSection[] = []): StairSection[] {
@@ -520,7 +519,7 @@ export function onceStatus(section: StairSection, once: StairOnce | undefined, s
   if (section === "probe") {
     const last = probeLatest(o.probe);
     if (!last) return { done: false, text: "", fail: false };
-    const t = last.p.failed ? "No restart" : `${Math.round(last.p.time ?? 0)} s`;
+    const t = last.p.noStop ? "Didn't stop" : last.p.failed ? "No restart" : `${Math.round(last.p.time ?? 0)} s`;
     return { done: true, text: `${t}${last.result === "marginal" ? " · marginal" : ""} ${last.result === "pass" ? "✓" : "✗"}`, fail: last.result !== "pass", ...(last.result === "marginal" ? { marginal: true } : {}) };
   }
   const checks = section === "fan" ? FAN_CHECKS : QUICK_CHECKS;

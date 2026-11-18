@@ -280,7 +280,7 @@ export interface StairOnce {
 // leaving the screen or locking the phone doesn't stop it.
 export interface DuctProbe {
   name?: string; // as typed; absent = the fan's name ("SPF-1 duct probe", "… · retest 1")
-  cuts?: boolean; // the fan cut out
+  noStop?: boolean; // Failed to stop equipment: smoke at the probe didn't stop the fan
   failed?: boolean; // the fan didn't restart
   time?: number; // s, from clearing the detector to the fan restarting
   started?: number; // the stopwatch's start (ms), while it runs

@@ -7,7 +7,8 @@ import ConfirmDialog from "./ConfirmDialog";
 // A stair fan's duct probe (design canvas Duct probes test, version 2,
 // boards 5 to 7): the test, then a card for each retest. Each go has a name
 // (the fan's, until typed over), a stopwatch run from clearing the detector
-// to the fan restarting, Cuts out equipment, Failed to restart and a note.
+// to the fan restarting, Failed to stop equipment, Failed to restart and a
+// note.
 // 60 to 90 s passes (green); anything else fails: 5 s either side in
 // yellow as marginal, the rest red. The stopwatch keeps its start in the test, so it runs on
 // while the phone is locked or the screen is left.
@@ -143,8 +144,8 @@ export default function DuctProbes({ probes, fan, update, peek }: { probes: Duct
               </div>
               {timing ? (
                 <TimerButton stop what="STOP TIMER" when="when the equipment restarts" onClick={() => edit(i, { time: Math.round((Date.now() - p.started!) / 100) / 10, started: undefined, failed: false, stoppedAt: undefined })} />
-              ) : result === null && !p.failed ? (
-                <TimerButton what="START TIMER" when="when the detector is cleared" disabled={running} onClick={() => edit(i, { started: Date.now(), cuts: true, failed: false, time: undefined, stoppedAt: undefined })} />
+              ) : p.time === undefined && !p.failed ? (
+                <TimerButton what="START TIMER" when="when the detector is cleared" disabled={running} onClick={() => edit(i, { started: Date.now(), failed: false, time: undefined, stoppedAt: undefined })} />
               ) : (
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <span style={{ flexGrow: 1, fontSize: 12.5, fontWeight: 700, color: "var(--muted)" }}>
@@ -162,9 +163,10 @@ export default function DuctProbes({ probes, fan, update, peek }: { probes: Duct
             </div>
 
             <div style={{ display: "flex", gap: 8 }}>
-              <label style={{ flex: 1, display: "flex", alignItems: "center", gap: 9, minHeight: 44, padding: "0 11px", borderRadius: 11, background: p.cuts ? "rgba(43,212,122,.10)" : "var(--panel)", border: "1px solid var(--border)", fontSize: 13, fontWeight: 800 }}>
-                <input type="checkbox" checked={!!p.cuts} onChange={() => edit(i, { cuts: !p.cuts })} style={{ width: 20, height: 20, margin: 0, accentColor: "var(--accent)" }} />
-                Cuts out equipment
+              {/* the fan cutting out is a given when the test runs, so only a fail is ticked */}
+              <label style={{ flex: 1, display: "flex", alignItems: "center", gap: 9, minHeight: 44, padding: "0 11px", borderRadius: 11, background: p.noStop ? "rgba(255,90,74,.15)" : "var(--panel)", border: `1px solid ${p.noStop ? "rgba(255,122,106,.5)" : "var(--border)"}`, color: p.noStop ? FAIL : "var(--text)", fontSize: 13, fontWeight: 800 }}>
+                <input type="checkbox" checked={!!p.noStop} onChange={() => edit(i, { noStop: !p.noStop })} style={{ width: 20, height: 20, margin: 0, accentColor: "#e5483a" }} />
+                Failed to stop equipment
               </label>
               <button
                 aria-pressed={!!p.failed}

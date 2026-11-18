@@ -14,7 +14,8 @@ the technical detail.
   **STOP TIMER** (a stop button) when the fan comes back on. 60 to 90 s passes (green),
   anything else fails: 55 to 60 and 90 to 95 s in yellow as marginal,
   the rest in red; the bar runs to 120+ s. The timer keeps going if you lock the
-  phone or leave the screen. Tick **Cuts out equipment**, tap the red
+  phone or leave the screen. Tick **Failed to stop equipment** if smoke at the probe didn't stop the
+  fan, tap the red
   **Failed to restart** if the fan never comes back (it asks first, then
   stops the clock),
   and add a note. **Retest duct probe** adds another go; the stair's card

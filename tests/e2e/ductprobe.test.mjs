@@ -52,8 +52,8 @@ test("the stopwatch: green in the window, a pass when stopped there", async () =
   // from here the test moves the clock on, for the stopwatch
   await page.clock.install();
   await page.getByRole("button", { name: "START TIMER when the detector is cleared" }).click();
-  // starting it means the fan cut out
-  assert.ok(await page.getByRole("checkbox", { name: "Cuts out equipment" }).isChecked());
+  // the fan cutting out is a given: only a fail is ticked
+  assert.equal(await page.getByRole("checkbox", { name: "Failed to stop equipment" }).isChecked(), false);
   await page.clock.runFor(30_000);
   assert.match(await page.getByTestId("duct-probe").innerText(), /0:30\.\d[\s\S]*Window opens in 30 s/);
   await page.clock.runFor(45_000);
@@ -87,15 +87,19 @@ test("a retest: named after the fan, Failed to restart fails it; the fan shows i
   await page.getByText("No restart ✗").waitFor();
 });
 
-test("each stair's fan has its own probe", async () => {
+test("each stair's fan has its own probe; Failed to stop equipment fails it with no time", async () => {
   await go(page, app, "/site/p1-spf/spf/t1/probe?stair=s2", 1500);
   assert.equal(await page.getByLabel("Test name").inputValue(), "SPF-2 duct probe");
   assert.equal(await page.getByTestId("duct-probe").count(), 1);
+  await page.getByRole("checkbox", { name: "Failed to stop equipment" }).check();
+  assert.equal(await page.getByTestId("probe-result").innerText(), "Fail");
+  await page.clock.runFor(600);
 });
 
 test("the report: a line per go under the fan", async () => {
   await go(page, app, "/site/p1-spf/spf/t1/report", 1500);
   const body = await page.locator("body").innerText();
-  assert.match(body, /Duct probe · fan SPF-1\s*SPF-1 duct probe · cuts out: Yes · restarted after 75 s · Pass\s*SPF-1 duct probe · retest 1 · cuts out: Yes · failed to restart · Fail · Fan stayed off, reset at the FIP/);
+  assert.match(body, /Duct probe · fan SPF-1\s*SPF-1 duct probe · restarted after 75 s · Pass\s*SPF-1 duct probe · retest 1 · failed to restart · Fail · Fan stayed off, reset at the FIP/);
+  assert.match(body, /Duct probe · fan SPF-2\s*SPF-2 duct probe · failed to stop equipment · Fail/);
   assert.deepEqual(errors, []);
 });

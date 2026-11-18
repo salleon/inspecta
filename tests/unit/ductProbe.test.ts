@@ -25,14 +25,14 @@ test("duct probe: 60 to 90 s passes; 5 s either side is a marginal fail, the res
   assert.equal(probeZone(10), "fail");
 });
 
-test("duct probe: a go's result needs a time and the fan cutting out", () => {
+test("duct probe: a go's result needs a time, or a fail ticked", () => {
   assert.equal(probeResult({}), null);
-  assert.equal(probeResult({ cuts: true }), null);
-  assert.equal(probeResult({ cuts: true, started: 1 }), null, "still timing");
-  assert.equal(probeResult({ cuts: true, time: 74 }), "pass");
-  assert.equal(probeResult({ cuts: false, time: 74 }), "fail", "didn't cut out");
-  assert.equal(probeResult({ cuts: true, failed: true }), "fail", "didn't restart");
-  assert.equal(probeResult({ cuts: true, time: 92 }), "marginal");
+  assert.equal(probeResult({ started: 1 }), null, "still timing");
+  assert.equal(probeResult({ time: 74 }), "pass");
+  assert.equal(probeResult({ noStop: true }), "fail", "the equipment didn't stop: no time needed");
+  assert.equal(probeResult({ noStop: true, time: 74 }), "fail");
+  assert.equal(probeResult({ failed: true }), "fail", "didn't restart");
+  assert.equal(probeResult({ time: 92 }), "marginal");
 });
 
 test("duct probe: named after the fan until typed over; a retest stands over the test", () => {
@@ -40,26 +40,28 @@ test("duct probe: named after the fan until typed over; a retest stands over the
   assert.equal(probeName({}, "SPF-1", 2), "SPF-1 duct probe · retest 2");
   assert.equal(probeName({ name: "DP-1 L4" }, "SPF-1", 0), "DP-1 L4");
   assert.equal(probeName({ name: "  " }, "SPF-1", 0), "SPF-1 duct probe");
-  const list = [{ cuts: true, time: 104 }, { cuts: true, time: 78 }, {}];
+  const list = [{ time: 104 }, { time: 78 }, {}];
   assert.equal(probeLatest(list)?.n, 1);
   assert.equal(probeLatest(list)?.result, "pass");
   assert.deepEqual(onceStatus("probe", { probe: list }, sys), { done: true, text: "78 s ✓", fail: false });
-  assert.deepEqual(onceStatus("probe", { probe: [{ cuts: true, failed: true }] }, sys), { done: true, text: "No restart ✗", fail: true });
+  assert.deepEqual(onceStatus("probe", { probe: [{ failed: true }] }, sys), { done: true, text: "No restart ✗", fail: true });
   assert.deepEqual(onceStatus("probe", { probe: [{}] }, sys), { done: false, text: "", fail: false });
   // marginal still fails, flagged so it shows yellow
-  assert.deepEqual(onceStatus("probe", { probe: [{ cuts: true, time: 92 }] }, sys), { done: true, text: "92 s · marginal ✗", fail: true, marginal: true });
-  assert.equal(probeLine({ cuts: true, time: 57 }, "SPF-1", 0), "SPF-1 duct probe · cuts out: Yes · restarted after 57 s · Fail (marginal)");
+  assert.deepEqual(onceStatus("probe", { probe: [{ time: 92 }] }, sys), { done: true, text: "92 s · marginal ✗", fail: true, marginal: true });
+  assert.equal(probeLine({ time: 57 }, "SPF-1", 0), "SPF-1 duct probe · restarted after 57 s · Fail (marginal)");
 });
 
 test("duct probe: counts as data, and prints a line per go under the fan", () => {
   assert.equal(stairTestHasData(test0({ once: { s1: { probe: [{}] } } })), false);
   assert.equal(stairTestHasData(test0({ once: { s1: { probe: [{ notes: "access via plant room" }] } } })), true);
-  const t = test0({ sections: [...sectionsFor("annual"), "probe"], once: { s1: { probe: [{ cuts: true, time: 104 }, { cuts: true, time: 78.4, notes: "reset at FIP" }] } } });
+  const t = test0({ sections: [...sectionsFor("annual"), "probe"], once: { s1: { probe: [{ time: 104 }, { time: 78.4, notes: "reset at FIP" }] } } });
   const page = stairPages(t, sys, { name: "Site", address: "" })[0];
   assert.equal(page.probeLabel, "Duct probe · fan SPF-1");
-  assert.deepEqual(page.probe, ["SPF-1 duct probe · cuts out: Yes · restarted after 104 s · Fail", "SPF-1 duct probe · retest 1 · cuts out: Yes · restarted after 78 s · Pass · reset at FIP"]);
+  assert.deepEqual(page.probe, ["SPF-1 duct probe · restarted after 104 s · Fail", "SPF-1 duct probe · retest 1 · restarted after 78 s · Pass · reset at FIP"]);
   assert.equal(page.probeFail, false);
-  assert.equal(probeLine({ cuts: true, failed: true }, "SPF-2", 0), "SPF-2 duct probe · cuts out: Yes · failed to restart · Fail");
+  assert.equal(probeLine({ failed: true }, "SPF-2", 0), "SPF-2 duct probe · failed to restart · Fail");
+  assert.equal(probeLine({ noStop: true }, "SPF-2", 0), "SPF-2 duct probe · failed to stop equipment · Fail");
+  assert.deepEqual(onceStatus("probe", { probe: [{ noStop: true }] }, sys), { done: true, text: "Didn't stop ✗", fail: true });
   // not on a test that isn't doing it
   assert.equal(stairPages(test0(), sys, { name: "Site", address: "" })[0].probe, null);
 });
