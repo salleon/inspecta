@@ -7,6 +7,13 @@ the technical detail.
 
 ## 18 November 2026
 
+- **Moved tests keep their dates on home.** When this update moves the
+  flow and stair tests out of each AFSS and project site into their own
+  jobs, the new jobs are dated from when the tests were done (or the site,
+  for a stair system with no tests yet), not the day of the update. Home
+  stays in the order it was, rather than every old site's tests jumping to
+  the top. Jobs already moved and dated today are put back the same way.
+
 - **The same level changes on other stairs.** After changing a stair's
   levels in Review level layout (a level added, removed or renamed, car
   parks made basements), a card offers the same changes for the other
