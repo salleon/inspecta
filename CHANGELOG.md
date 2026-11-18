@@ -7,6 +7,13 @@ the technical detail.
 
 ## 18 November 2026
 
+- **Stair pressurisation Excel: nothing cut off.** Each stair sheet now
+  lists the noise, restoration and fan readings a row each, with the
+  reading, its max, where it came from and the ambient on lines of their
+  own, instead of squeezed into narrow boxes. Titles, table headings,
+  runs and notes stretch across the sheet and wrap, and rows are tall
+  enough to show everything. For system testing, the Summary tabs come
+  first, then the run-by-run tabs.
 - **System testing reports open with the summary.** In a stair
   pressurisation general system testing report (PDF, Excel and preview),
   the summary page for each stair now comes first, with each door's latest

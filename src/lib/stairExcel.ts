@@ -10,7 +10,6 @@ import { sheetName } from "./excelSheetName";
 
 const FONT = "Arial";
 const INK = "FF14212E";
-const SOFT = "FF4A6175";
 const NAVY = "FF0B3550";
 const LINE = "FFD5DEE6";
 const FAIL_FILL = "FFFFD9D4";
@@ -35,46 +34,52 @@ export function addStairSheets(wb: Workbook, tests: StairTest[], sys: SpfSystem,
       });
       const across = Math.max(WIDTHS.length, ...(page.tables ?? []).map((t) => t.head.length));
       ws.columns = Array.from({ length: across }, (_, i) => ({ width: page.tables ? (i === 0 ? 12 : 13) : WIDTHS[i] }));
+      const width = (i: number) => ws.getColumn(i).width ?? 10;
+      const wide = Array.from({ length: across }, (_, i) => width(i + 1)).reduce((a, b) => a + b, 0);
+      // wrapped lines a text takes in a width (about a 9 pt character per unit, fewer in bold)
+      const linesIn = (text: string, w: number, perChar = 1.15) => text.split("\n").reduce((n, l) => n + Math.max(1, Math.ceil(l.length / Math.max(4, w * perChar))), 0);
       let r = 1;
+      // a line of text across the whole sheet: merged, wrapped and tall enough, so nothing is cut off
       const put = (text: string, opts: { bold?: boolean; size?: number; color?: string } = {}) => {
         const c = ws.getCell(r, 1);
         c.value = text;
-        c.font = { name: FONT, bold: opts.bold, size: opts.size ?? 10, color: { argb: opts.color ?? INK } };
+        const size = opts.size ?? 10;
+        c.font = { name: FONT, bold: opts.bold, size, color: { argb: opts.color ?? INK } };
+        c.alignment = { wrapText: true, vertical: "top" };
+        ws.mergeCells(r, 1, r, across);
+        ws.getRow(r).height = Math.max(size * 1.45, linesIn(text, wide, (9 / size) * (opts.bold ? 0.9 : 1)) * size * 1.35 + 3);
         r++;
       };
       put(page.title, { bold: true, size: 15 });
       put(page.subtitle, { bold: true, size: 11 });
       r++;
-      for (const d of page.details) {
-        ws.getCell(r, 1).value = d.label;
-        ws.getCell(r, 1).font = { name: FONT, bold: true, size: 9, color: { argb: NAVY } };
-        ws.getCell(r, 2).value = d.value || "–";
-        ws.getCell(r, 2).font = { name: FONT, size: 9, color: { argb: INK } };
-        r++;
-      }
-      r++;
-      // the once-a-stair readings: a label row, then the values
-      if (page.boxes.length) {
-        page.boxes.forEach((b, i) => {
-          const col = i + 2;
-          const lab = ws.getCell(r, col);
-          lab.value = b.label;
-          lab.font = { name: FONT, size: 8, color: { argb: SOFT } };
-          lab.alignment = { wrapText: true, vertical: "top" };
-          const v = ws.getCell(r + 1, col);
-          v.value = b.value + (b.ref ? `  (${b.ref.join(" · ")})` : "");
-          v.font = { name: FONT, bold: true, size: 10, color: { argb: b.fail ? FAIL_INK : INK } };
-          v.alignment = { wrapText: true, vertical: "top" };
-          lab.border = box;
+      // a label in the first two columns, its value across the rest
+      const pair = (label: string, text: string, opts: { bold?: boolean; fail?: boolean; border?: boolean } = {}) => {
+        const l = ws.getCell(r, 1);
+        l.value = label;
+        l.font = { name: FONT, bold: true, size: 9, color: { argb: NAVY } };
+        l.alignment = { wrapText: true, vertical: "top" };
+        ws.mergeCells(r, 1, r, 2);
+        const v = ws.getCell(r, 3);
+        v.value = value(text) ?? "–";
+        v.font = { name: FONT, bold: opts.bold || opts.fail, size: 9, color: { argb: opts.fail ? FAIL_INK : INK } };
+        v.alignment = { wrapText: true, vertical: "top", horizontal: "left" };
+        ws.mergeCells(r, 3, r, across);
+        if (opts.fail) v.fill = { type: "pattern", pattern: "solid", fgColor: { argb: FAIL_FILL } };
+        if (opts.border) {
+          l.border = box;
           v.border = box;
-        });
-        // tall enough for the wrapped label and value (a column holds about
-        // its width in 8 pt characters, fewer at 10 pt bold)
-        const widthAt = (i: number) => ws.getColumn(i + 2).width ?? 10;
-        const lines = (text: string, perChar: number, i: number) => Math.max(1, Math.ceil(text.length / Math.max(4, widthAt(i) * perChar)));
-        ws.getRow(r).height = Math.max(24, ...page.boxes.map((b, i) => lines(b.label, 1.3, i) * 11 + 4));
-        ws.getRow(r + 1).height = Math.max(15, ...page.boxes.map((b, i) => lines(b.value + (b.ref ? `  (${b.ref.join(" · ")})` : ""), 0.9, i) * 13 + 3));
-        r += 3;
+        }
+        const valueW = wide - width(1) - width(2);
+        ws.getRow(r).height = Math.max(linesIn(label, width(1) + width(2), 1), linesIn(text || "–", valueW, opts.bold || opts.fail ? 1 : 1.15)) * 12 + 3;
+        r++;
+      };
+      for (const d of page.details) pair(d.label, d.value);
+      r++;
+      // the once-a-stair readings: a row each, what was read and where from under it
+      if (page.boxes.length) {
+        for (const b of page.boxes) pair(b.label, [b.value, ...(b.ref ?? [])].filter(Boolean).join("\n"), { bold: true, fail: b.fail, border: true });
+        r++;
       }
       // a table: fails in red, a pass that's only just one in yellow
       const table = (heads: string[], rows: StairRow[]) => {
