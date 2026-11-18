@@ -154,7 +154,7 @@ export default function StairNew() {
                             e.stopPropagation();
                             setPicked((p) => (sel ? p.filter((x) => x !== s) : [...p.filter((x) => x !== s), s]));
                           }}
-                          style={{ fontSize: 11, fontWeight: 800, padding: "5px 9px", borderRadius: 999, background: sel ? "rgba(var(--accent-rgb), .16)" : "var(--panel-2)", border: sel ? "1px solid var(--accent)" : "1px solid var(--border-strong)", color: sel ? "#5ff0e0" : "var(--muted)" }}
+                          style={{ fontSize: 11, fontWeight: 800, padding: "5px 9px", borderRadius: 999, background: sel ? "rgba(var(--accent-rgb), .16)" : "var(--panel-2)", border: sel ? "1px solid var(--accent)" : "1px solid var(--border-strong)", color: sel ? "var(--accent-soft)" : "var(--muted)" }}
                         >
                           {sel ? "✓ " : ""}
                           {SECTION[s].name}

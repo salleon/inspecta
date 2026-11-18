@@ -7,6 +7,21 @@ the technical detail.
 
 ## 18 November 2026
 
+- **New stair test: duct probe.** Add Duct probe from Additional tests (or
+  pick it for General system testing). It's per stair, on that stair's
+  fan, and is named after it ("SPF-1 duct probe"; type over it if you
+  like). Smoke the probe, then tap **Detector cleared · start timer** and
+  **Stop timer** when the fan comes back on. 60 to 90 s passes (green),
+  55 to 60 and 90 to 95 s are marginal (yellow), anything else fails
+  (red); the bar runs to 120+ s. The timer keeps going if you lock the
+  phone or leave the screen. Tick **Cuts out equipment**, tap the red
+  **Failed to restart** if the fan never comes back (it stops the clock),
+  and add a note. **Retest duct probe** adds another go; the stair's card
+  shows the latest. Every go prints under the fan on the report, PDF and
+  Excel.
+- **Stair pressurisation in purple.** Its screens now use its own purple
+  (the colour of its home chip and tag) instead of the app's teal.
+
 - **FFCP results in the PDF and Excel.** Each panel test prints as a page
   laid out like the hand-drawn sheet: a small table per mode tested (a
   mode with nothing ticked is left out), fan names down the side, then

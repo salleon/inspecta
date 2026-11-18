@@ -50,7 +50,7 @@ Marked **BETA** in exactly two places: a tag after the Stair pressurisation head
 
 **How it works:** a site's system is set up once (the AS 1668.1 edition and type, the stairs with their highest and lowest levels and fan name, and a reviewed level layout). A stair test is General system testing, Annual Testing, Commissioning, Three-monthly check or Custom (EnFact mode, the Flow testing mode switch, shows only General, Annual and Custom). Sections:
 - At every door: velocity, door force, door closes & latches
-- Once per stair: noise (stair, occupied space, ambient, phone meter reference), pressure restoration, stair pressure with doors closed (`pa`), fan checks
+- Once per stair: noise (stair, occupied space, ambient, phone meter reference), pressure restoration, stair pressure with doors closed (`pa`), fan checks, duct probe (`probe`: `StairOnce.probe`, a list of goes, the test then retests; stopwatch from `started`; 60–90 s pass, 5 s either side marginal; `components/DuctProbes.tsx`, rules in `stairTest.ts` `probeResult`)
 - Three-monthly: ticks only
 
 Limits come from `limits()` in `src/lib/stairTest.ts`. The report is a page per stair (`stairPrint.ts`), laid out like the AS 1851 record sheet, with blank columns where something wasn't tested.

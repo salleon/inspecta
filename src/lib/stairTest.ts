@@ -1,4 +1,4 @@
-import type { StairRun, SpfEdition, SpfStair, SpfSystem, SpfType, StairDoor, StairOnce, StairSection, StairTest, StairTestKind, Tick } from "../db/types";
+import type { DuctProbe, StairRun, SpfEdition, SpfStair, SpfSystem, SpfType, StairDoor, StairOnce, StairSection, StairTest, StairTestKind, Tick } from "../db/types";
 import { reportFileName } from "./dates";
 
 // Stair pressurisation testing (design canvas StairTestSimple, StairTestRules).
@@ -255,14 +255,14 @@ export const KIND_HINT: Record<StairTestKind, string> = {
 // added. Older Custom tests still open and print.)
 export const kindsFor = (mode: "enfact" | "contractor"): StairTestKind[] => (mode === "enfact" ? ["general", "annual", "comm"] : ["general", "annual", "quick", "comm"]);
 // general system testing picks any of these, none to start with
-export const GENERAL_SECTIONS: StairSection[] = ["vel", "force", "latch", "noise", "rest", "pa", "fan"];
+export const GENERAL_SECTIONS: StairSection[] = ["vel", "force", "latch", "noise", "rest", "pa", "fan", "probe"];
 const KIND_SECTIONS: Record<Exclude<StairTestKind, "custom" | "general">, StairSection[]> = {
   quick: ["quick"],
   annual: ["vel", "force", "latch", "noise", "rest", "fan"],
   comm: ["vel", "force", "latch", "noise", "rest", "pa", "fan"],
 };
 // the order sections are listed in
-export const ALL_SECTIONS: StairSection[] = ["vel", "force", "latch", "noise", "rest", "pa", "fan", "quick"];
+export const ALL_SECTIONS: StairSection[] = ["vel", "force", "latch", "noise", "rest", "pa", "fan", "probe", "quick"];
 
 interface SectionInfo {
   name: string;
@@ -279,6 +279,7 @@ export const SECTION: Record<StairSection, SectionInfo> = {
   rest: { name: "Pressure restoration", every: false, once: "the slowest door" },
   pa: { name: "Stair pressure, doors closed", every: false, once: "once" },
   fan: { name: "Fan checks", every: false, once: "per fan" },
+  probe: { name: "Duct probe", every: false, once: "per fan" },
   quick: { name: "Three-monthly check", every: false, once: "ticks only" },
 };
 
@@ -314,6 +315,55 @@ export const QUICK_CHECKS: [string, string][] = [
   ["air", "Air moves out through a selected door (ribbon)"],
   ["normal", "Back to normal afterwards"],
 ];
+
+// ---- the duct probe ----
+
+// A stair fan's supply air duct probe: smoke there cuts the fan out, and
+// once the detector is cleared it restarts by itself 60 to 90 s later. Up
+// to 5 s either side of that is marginal, flagged rather than failed.
+export const PROBE = { min: 60, max: 90, margin: 5, scale: 120 };
+
+// a go's name: as typed, else the fan's ("SPF-1 duct probe"; a retest
+// "SPF-1 duct probe · retest 1"), so it follows the fan's name until typed over
+export const probeName = (p: DuctProbe | undefined, fan: string, n: number) => p?.name?.trim() || `${fan} duct probe${n ? ` · retest ${n}` : ""}`;
+
+export type ProbeResult = "pass" | "marginal" | "fail" | null;
+
+// how a go went; null when there's nothing to judge yet (not timed, or timing)
+export function probeResult(p: DuctProbe | undefined): ProbeResult {
+  if (!p || p.started) return null;
+  if (p.failed) return "fail";
+  if (p.time === undefined) return null;
+  if (!p.cuts) return "fail";
+  return probeZone(p.time);
+}
+
+// where a time sits: the window, the margin either side, or out
+export function probeZone(t: number): "pass" | "marginal" | "fail" {
+  if (t >= PROBE.min && t <= PROBE.max) return "pass";
+  if (t >= PROBE.min - PROBE.margin && t <= PROBE.max + PROBE.margin) return "marginal";
+  return "fail";
+}
+
+// the fan's result: its latest go that has one (a retest stands over the test)
+export function probeLatest(probes: DuctProbe[] | undefined): { p: DuctProbe; n: number; result: Exclude<ProbeResult, null> } | null {
+  const list = probes ?? [];
+  for (let n = list.length - 1; n >= 0; n--) {
+    const result = probeResult(list[n]);
+    if (result) return { p: list[n], n, result };
+  }
+  return null;
+}
+
+const probeHasData = (p: DuctProbe) => !!(p.cuts || p.failed || p.time !== undefined || p.started || p.notes?.trim() || p.name?.trim());
+
+// a go as it prints: "SPF-1 duct probe · cuts out: Yes · restarted after 78 s · Pass · note"
+export function probeLine(p: DuctProbe, fan: string, n: number): string {
+  const result = probeResult(p);
+  const what = p.failed ? "failed to restart" : p.time !== undefined ? `restarted after ${Math.round(p.time)} s` : "not timed";
+  const verdict = result === "pass" ? "Pass" : result === "marginal" ? "Marginal" : result === "fail" ? "Fail" : "";
+  return [probeName(p, fan, n), `cuts out: ${p.cuts ? "Yes" : "No"}`, what, verdict, p.notes?.trim()].filter(Boolean).join(" · ");
+}
 
 export function sectionsFor(kind: StairTestKind, picked: StairSection[] = []): StairSection[] {
   const list = kind === "custom" || kind === "general" ? picked : KIND_SECTIONS[kind];
@@ -455,6 +505,12 @@ export function onceStatus(section: StairSection, once: StairOnce | undefined, s
     const fail = l.pa !== null && p > l.pa;
     return { done: true, text: `${p} Pa${l.pa === null ? "" : fail ? " ✗" : " ✓"}`, fail };
   }
+  if (section === "probe") {
+    const last = probeLatest(o.probe);
+    if (!last) return { done: false, text: "", fail: false };
+    const t = last.p.failed ? "No restart" : `${Math.round(last.p.time ?? 0)} s`;
+    return { done: true, text: `${t} ${last.result === "pass" ? "✓" : last.result === "marginal" ? "· marginal" : "✗"}`, fail: last.result === "fail" };
+  }
   const checks = section === "fan" ? FAN_CHECKS : QUICK_CHECKS;
   const ticks = (section === "fan" ? o.fan : o.quick) ?? {};
   const n = tickCount(ticks);
@@ -493,7 +549,7 @@ export function stairTestSummary(test: StairTest, sys: SpfSystem | undefined): {
 export function stairTestHasData(test: StairTest): boolean {
   const anyDoor = [test.doors, ...(test.runs ?? []).map((r) => r.doors)].some((all) => Object.values(all).some((byDoor) => Object.values(byDoor).some((d) => !!(d.vel?.trim() || d.force?.trim() || d.latch))));
   const anyOnce = Object.values(test.once).some(
-    (o) => !!(o.noiseStair?.trim() || o.noiseOcc?.trim() || o.ambient?.trim() || o.restTime?.trim() || o.pa?.trim() || tickCount(o.fan) || tickCount(o.quick)),
+    (o) => !!(o.noiseStair?.trim() || o.noiseOcc?.trim() || o.ambient?.trim() || o.restTime?.trim() || o.pa?.trim() || tickCount(o.fan) || tickCount(o.quick) || (o.probe ?? []).some(probeHasData)),
   );
   return anyDoor || anyOnce || test.notes.some((n) => n.text.trim());
 }

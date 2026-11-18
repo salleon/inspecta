@@ -466,7 +466,7 @@ function StairCard({
         <span style={{ fontSize: 15, fontWeight: 800, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 }}>
           <StairName stair={stair} i={n - 1} />
         </span>
-        <span style={{ marginLeft: "auto", fontSize: 12, fontWeight: 800, borderRadius: 999, padding: "5px 10px", whiteSpace: "nowrap", color: count ? "#5ff0e0" : "#6a8098", background: count ? "rgba(var(--accent-rgb), .1)" : "var(--panel-2)" }}>
+        <span style={{ marginLeft: "auto", fontSize: 12, fontWeight: 800, borderRadius: 999, padding: "5px 10px", whiteSpace: "nowrap", color: count ? "var(--accent-soft)" : "#6a8098", background: count ? "rgba(var(--accent-rgb), .1)" : "var(--panel-2)" }}>
           {count ? `${count} door${count === 1 ? "" : "s"}` : "— doors"}
         </span>
         <button aria-label="Close the stair" onClick={onClose} style={{ ...editPill, padding: "4px 9px", fontSize: 13, lineHeight: 1 }}>
@@ -520,7 +520,7 @@ function StairCard({
               {t.numbered ? (
                 <button aria-label={label(w)} onClick={() => onPad(w)} style={{ ...inputStyle(pad === w), flex: 1, textAlign: "left" }}>
                   {num}
-                  {pad === w && <span style={{ display: "inline-block", width: 2, height: 18, background: "#5ff0e0", marginLeft: 1, verticalAlign: -3 }} />}
+                  {pad === w && <span style={{ display: "inline-block", width: 2, height: 18, background: "var(--accent-soft)", marginLeft: 1, verticalAlign: -3 }} />}
                 </button>
               ) : (
                 <span style={{ flex: 1, height: 40, boxSizing: "border-box", border: "1px dashed var(--border-strong)", borderRadius: 10, display: "flex", alignItems: "center", padding: "0 12px", fontSize: 12.5, fontWeight: 700, color: "#5f7890" }}>no number</span>
@@ -547,7 +547,7 @@ function StairCard({
         <b data-testid="doors-each" style={{ minWidth: 18, textAlign: "center", fontSize: 15 }}>
           {each}
         </b>
-        <button aria-label="Add a door" disabled={each >= 9} onClick={() => onChange({ doors: each + 1 })} style={{ ...step, color: "#5ff0e0" }}>
+        <button aria-label="Add a door" disabled={each >= 9} onClick={() => onChange({ doors: each + 1 })} style={{ ...step, color: "var(--accent-soft)" }}>
           +
         </button>
       </div>
@@ -597,10 +597,10 @@ function Notes({ value, onChange }: { value: string; onChange: (v: string) => vo
 }
 
 const rowLabel: CSSProperties = { width: 78, flexShrink: 0, fontSize: 12, fontWeight: 700, color: "var(--muted)" };
-const numBadge: CSSProperties = { width: 26, height: 26, borderRadius: "50%", background: "rgba(var(--accent-rgb), .16)", color: "#5ff0e0", fontWeight: 800, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 };
-const addButton: CSSProperties = { border: "1.5px dashed rgba(var(--accent-rgb), .6)", borderRadius: 12, padding: 12, background: "rgba(var(--accent-rgb), .05)", color: "#5ff0e0", fontWeight: 800, fontSize: 14 };
+const numBadge: CSSProperties = { width: 26, height: 26, borderRadius: "50%", background: "rgba(var(--accent-rgb), .16)", color: "var(--accent-soft)", fontWeight: 800, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 };
+const addButton: CSSProperties = { border: "1.5px dashed rgba(var(--accent-rgb), .6)", borderRadius: 12, padding: 12, background: "rgba(var(--accent-rgb), .05)", color: "var(--accent-soft)", fontWeight: 800, fontSize: 14 };
 const addHot: CSSProperties = { ...addButton, background: "rgba(var(--accent-rgb), .14)", border: "1.5px solid rgba(var(--accent-rgb), .6)", fontSize: 15, padding: 15, boxShadow: "0 0 0 3px rgba(var(--accent-rgb), .12)" };
-const editPill: CSSProperties = { flexShrink: 0, fontSize: 11.5, fontWeight: 800, padding: "6px 11px", borderRadius: 999, background: "rgba(var(--accent-rgb), .14)", color: "#5ff0e0", border: "1px solid rgba(var(--accent-rgb), .4)" };
+const editPill: CSSProperties = { flexShrink: 0, fontSize: 11.5, fontWeight: 800, padding: "6px 11px", borderRadius: 999, background: "rgba(var(--accent-rgb), .14)", color: "var(--accent-soft)", border: "1px solid rgba(var(--accent-rgb), .4)" };
 const inputStyle = (focus: boolean): CSSProperties => ({
   height: 40,
   boxSizing: "border-box",

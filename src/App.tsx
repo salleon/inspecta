@@ -158,7 +158,8 @@ function AnimatedRoutes() {
   return (
     // keyed on pathname so each screen remounts (and replays its enter
     // animation) on navigation, without disturbing state within a screen
-    <div key={location.pathname} className={direction === "forward" ? "route-slide-in" : "route-slide-back"}>
+    // stair pressurisation's screens in its own purple (index.css .spf-theme)
+    <div key={location.pathname} className={`${direction === "forward" ? "route-slide-in" : "route-slide-back"}${/^\/site\/[^/]+\/spf(-system|\/|$)/.test(location.pathname) ? " spf-theme" : ""}`}>
       <ErrorBoundary>
       <Suspense fallback={null}>
         <Routes location={location}>

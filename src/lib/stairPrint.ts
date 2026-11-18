@@ -5,6 +5,8 @@ import {
   doorValue,
   FAN_CHECKS,
   KIND_LABEL,
+  probeLine,
+  probeResult,
   latestDoor,
   limits,
   onceStatus,
@@ -62,6 +64,9 @@ export interface StairPage {
   readings?: string[]; // older layouts: once-a-stair readings, a line per stair
   fan: string; // the fan's functionality checks ("" if not tested)
   fanLabel: string;
+  probe: string[] | null; // the duct probe: a line per go, the test then retests (null when not tested)
+  probeLabel: string;
+  probeFail: boolean; // the fan's latest go failed
   quick: string | null; // the three-monthly ticks (only on that test)
   notes: string[];
   siteNotes: string;
@@ -104,6 +109,14 @@ const ticks = (list: [string, string][], got: Record<string, "y" | "n"> | undefi
     .join(" · ");
 
 const clock = clock24;
+
+// the fan's duct probe, if it's being tested: a line per go
+const probePart = (has: boolean, once: StairOnce, fan: string) => {
+  const list = once.probe ?? [];
+  const lines = list.map((p, n) => probeLine(p, fan, n));
+  const last = [...list].reverse().find((p) => probeResult(p));
+  return { probe: has ? (lines.length ? lines : [" "]) : null, probeLabel: `Duct probe · fan ${fan}`, probeFail: !!last && probeResult(last) === "fail" };
+};
 
 
 // General system testing: a page per stair, as the other tests, so a
@@ -184,6 +197,7 @@ function generalPages(test: StairTest, sys: SpfSystem, site: Pick<Site, "name" |
       runs: tables.length ? [...runLines, key] : undefined,
       fan: "",
       fanLabel: "",
+      ...probePart(has("probe"), once, fanName(stair, k)),
       quick: null,
       notes: test.notes.filter((x) => x.text.trim()).map((x, j) => `${j + 1} · ${x.location.trim() ? `${x.location.trim()} · ` : ""}${x.text.trim()}`),
       siteNotes: sys.notes.trim(),
@@ -256,6 +270,7 @@ export function stairPages(test: StairTest, sys: SpfSystem, site: Pick<Site, "na
       rows,
       fan: has("fan") ? ticks(FAN_CHECKS, once.fan) : "",
       fanLabel: `Fan ${fanName(stair, sys.stairs.indexOf(stair))} functionality`,
+      ...probePart(has("probe"), once, fanName(stair, sys.stairs.indexOf(stair))),
       quick: has("quick") ? ticks(QUICK_CHECKS, once.quick) : null,
       notes: test.notes.filter((x) => x.text.trim()).map((x, k) => `${k + 1} · ${x.location.trim() ? `${x.location.trim()} · ` : ""}${x.text.trim()}`),
       siteNotes: sys.notes.trim(),

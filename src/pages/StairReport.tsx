@@ -160,6 +160,7 @@ function Paper({ page }: { page: StairPage }) {
       {!!page.runs?.length && <Block label="Runs" lines={page.runs} />}
       {!!page.readings?.length && <Block label="Other readings" lines={page.readings} />}
       {page.fanLabel && <Block label={page.fanLabel} lines={[page.fan || " "]} />}
+      {page.probe && <Block label={page.probeLabel} lines={page.probe} />}
       {page.quick !== null && <Block label="Three-monthly check (AS 1851-2012 Table 13.4.2.2)" lines={[page.quick || " "]} />}
       {page.siteNotes && <Block label="Site notes" lines={[page.siteNotes]} />}
       {page.notes.length > 0 && <Block label="Notes" lines={page.notes} />}

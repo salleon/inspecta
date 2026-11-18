@@ -398,7 +398,7 @@ export default function LevelReview({
                     {et.numbered ? (
                       <span style={{ ...numBox, borderColor: "var(--accent)", boxShadow: "0 0 0 2px rgba(var(--accent-rgb), .18)" }}>
                         {edit.num}
-                        <span style={{ display: "inline-block", width: 2, height: 18, background: "#5ff0e0", marginLeft: 1 }} />
+                        <span style={{ display: "inline-block", width: 2, height: 18, background: "var(--accent-soft)", marginLeft: 1 }} />
                       </span>
                     ) : (
                       <span style={{ ...numBox, borderStyle: "dashed", color: "#5f7890", fontSize: 12.5 }}>no number</span>

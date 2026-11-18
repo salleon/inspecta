@@ -20,7 +20,7 @@ import { addTestNote, takeTestPhoto, testFindingUrl } from "../lib/testPhotos";
 // left blank on the report. Swipe a section left to take it off the test
 // again, asked first (its readings are kept, and come back if it's added back).
 
-const ICON: Record<StairSection, string> = { vel: "≋", force: "⇥", latch: "⊡", noise: "◖", rest: "↻", pa: "▣", fan: "✻", quick: "✓" };
+const ICON: Record<StairSection, string> = { vel: "≋", force: "⇥", latch: "⊡", noise: "◖", rest: "↻", pa: "▣", fan: "✻", probe: "◎", quick: "✓" };
 const formatDay = shortDate;
 
 export default function StairTestPage() {
@@ -158,7 +158,7 @@ export default function StairTestPage() {
       {missing.length > 0 && <div style={{ fontSize: 13, fontWeight: 800, color: "#bfd0de", marginTop: 4 }}>Additional tests</div>}
       {missing.map((s) => (
         <div key={s} style={{ display: "flex", alignItems: "center", gap: 11, padding: "10px 12px", borderRadius: 13, border: "1px dashed var(--border-strong)" }}>
-          <span style={{ width: 34, height: 34, borderRadius: 10, background: "rgba(var(--accent-rgb), .1)", color: "#5ff0e0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>+</span>
+          <span style={{ width: 34, height: 34, borderRadius: 10, background: "rgba(var(--accent-rgb), .1)", color: "var(--accent-soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>+</span>
           <span style={{ flexGrow: 1, fontSize: 14, fontWeight: 800, color: "#bfd0de" }}>{SECTION[s].name}</span>
           <Pill onClick={() => setTest((t) => ({ ...t, sections: ALL_SECTIONS.filter((x) => t.sections.includes(x) || x === s) }))}>+ Add</Pill>
         </div>
@@ -203,7 +203,7 @@ export default function StairTestPage() {
                 <button
                   key={s.id}
                   onClick={() => setParams({ stair: s.id }, { replace: true })}
-                  style={{ flex: "0 0 auto", textAlign: "left", fontSize: 12, fontWeight: 800, padding: "7px 11px", borderRadius: 9, lineHeight: 1.25, background: on ? "rgba(var(--accent-rgb), .14)" : "var(--panel-2)", border: on ? "1px solid var(--accent)" : "1px solid var(--border-strong)", color: on ? "#5ff0e0" : "var(--muted)" }}
+                  style={{ flex: "0 0 auto", textAlign: "left", fontSize: 12, fontWeight: 800, padding: "7px 11px", borderRadius: 9, lineHeight: 1.25, background: on ? "rgba(var(--accent-rgb), .14)" : "var(--panel-2)", border: on ? "1px solid var(--accent)" : "1px solid var(--border-strong)", color: on ? "var(--accent-soft)" : "var(--muted)" }}
                 >
                   <StairName stair={s} i={stairs.indexOf(s)} part="fan" />
                   <small style={{ display: "block", fontSize: 10.5, fontWeight: 600 }}>
@@ -213,7 +213,7 @@ export default function StairTestPage() {
                 </button>
               );
             })}
-            <button aria-label="Add a stair" onClick={editSystem} style={{ flex: "0 0 auto", padding: "0 14px", borderRadius: 9, background: "var(--panel-2)", border: "1px solid var(--border-strong)", color: "#5ff0e0", fontSize: 18 }}>
+            <button aria-label="Add a stair" onClick={editSystem} style={{ flex: "0 0 auto", padding: "0 14px", borderRadius: 9, background: "var(--panel-2)", border: "1px solid var(--border-strong)", color: "var(--accent-soft)", fontSize: 18 }}>
               +
             </button>
           </div>
@@ -227,7 +227,7 @@ export default function StairTestPage() {
               <button
                 aria-label="Take a photo for this test"
                 onClick={photo}
-                style={{ flex: "0 0 58px", borderRadius: 14, background: "rgba(var(--accent-rgb), .14)", border: "1px solid rgba(var(--accent-rgb), .55)", color: "#5ff0e0", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
+                style={{ flex: "0 0 58px", borderRadius: 14, background: "rgba(var(--accent-rgb), .14)", border: "1px solid rgba(var(--accent-rgb), .55)", color: "var(--accent-soft)", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
               >
                 <IconCamera size={24} strokeWidth={2.2} />
               </button>
@@ -311,7 +311,7 @@ export default function StairTestPage() {
             {test.notes.map((n, i) => (
               <div key={i} style={{ ...card, background: "var(--panel-2)" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ ...cardLabel, color: "#5ff0e0" }}>{i + 1}</span>
+                  <span style={{ ...cardLabel, color: "var(--accent-soft)" }}>{i + 1}</span>
                   <input
                     aria-label={`Note ${i + 1} location`}
                     placeholder="Where"

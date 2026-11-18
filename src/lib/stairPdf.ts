@@ -222,6 +222,7 @@ function drawPage(doc: JsPDF, page: StairPage, logo: Logo) {
   if (page.runs?.length) block("Runs", page.runs);
   if (page.readings?.length) block("Other readings", page.readings);
   if (page.fanLabel) block(page.fanLabel, [page.fan || " "]);
+  if (page.probe) block(page.probeLabel, page.probe);
   if (page.quick !== null) block("Three-monthly check (AS 1851-2012 Table 13.4.2.2)", [page.quick || " "]);
   if (page.siteNotes) block("Site notes", [page.siteNotes]);
   if (page.notes.length) block("Notes", page.notes);
