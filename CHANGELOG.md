@@ -10,8 +10,8 @@ the technical detail.
 - **New stair test: duct probe.** Add Duct probe from Additional tests (or
   pick it for General system testing). It's per stair, on that stair's
   fan, and is named after it ("SPF-1 duct probe"; type over it if you
-  like). Smoke the probe, then tap **Detector cleared · start timer** and
-  **Stop timer** when the fan comes back on. 60 to 90 s passes (green),
+  like). Smoke the probe, then tap **Detector cleared START TIMER** and
+  **Equipment restarted STOP TIMER** when the fan comes back on. 60 to 90 s passes (green),
   anything else fails: 55 to 60 and 90 to 95 s in yellow as marginal,
   the rest in red; the bar runs to 120+ s. The timer keeps going if you lock the
   phone or leave the screen. Tick **Cuts out equipment**, tap the red

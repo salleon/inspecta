@@ -123,7 +123,7 @@ export default function DuctProbes({ probes, fan, update, peek }: { probes: Duct
                   onClick={() => edit(i, { time: Math.round((Date.now() - p.started!) / 100) / 10, started: undefined, failed: false, stoppedAt: undefined })}
                   style={{ minHeight: 46, borderRadius: 12, border: "none", background: "var(--accent)", color: "var(--accent-text)", fontSize: 15, fontWeight: 800 }}
                 >
-                  Stop timer
+                  Equipment restarted <b style={{ fontWeight: 900, letterSpacing: ".04em" }}>STOP TIMER</b>
                 </button>
               ) : result === null && !p.failed ? (
                 <button
@@ -131,7 +131,7 @@ export default function DuctProbes({ probes, fan, update, peek }: { probes: Duct
                   onClick={() => edit(i, { started: Date.now(), cuts: true, failed: false, time: undefined, stoppedAt: undefined })}
                   style={{ minHeight: 46, borderRadius: 12, border: "none", background: "var(--accent)", color: "var(--accent-text)", fontSize: 15, fontWeight: 800, opacity: running ? 0.4 : 1 }}
                 >
-                  Detector cleared · start timer
+                  Detector cleared <b style={{ fontWeight: 900, letterSpacing: ".04em" }}>START TIMER</b>
                 </button>
               ) : (
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
