@@ -25,6 +25,22 @@ const clock = (sec: number) => {
 };
 const pct = (s: number) => (100 * s) / PROBE.scale;
 
+// the stopwatch's button, in two parts: when to tap it, a line, then what it does
+function TimerButton({ when, what, onClick, disabled }: { when: string; what: string; onClick: () => void; disabled?: boolean }) {
+  return (
+    <button
+      aria-label={`${when}: ${what}`}
+      disabled={disabled}
+      onClick={onClick}
+      style={{ display: "flex", alignItems: "stretch", minHeight: 50, padding: 0, borderRadius: 12, border: "none", background: "var(--accent)", color: "var(--accent-text)", opacity: disabled ? 0.4 : 1, overflow: "hidden" }}
+    >
+      <span style={{ flex: "1 1 0", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 10px", fontSize: 13.5, fontWeight: 700 }}>{when}</span>
+      <span aria-hidden="true" style={{ width: 1.5, margin: "9px 0", background: "currentColor", opacity: 0.35 }} />
+      <span style={{ flex: "1 1 0", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 10px", fontSize: 15, fontWeight: 900, letterSpacing: ".04em" }}>{what}</span>
+    </button>
+  );
+}
+
 export default function DuctProbes({ probes, fan, update, peek }: { probes: DuctProbe[]; fan: string; update: (fn: (list: DuctProbe[]) => DuctProbe[]) => void; peek?: boolean }) {
   // the first go is there before anything is typed
   const shown = probes.length ? probes : [{}];
@@ -119,20 +135,9 @@ export default function DuctProbes({ probes, fan, update, peek }: { probes: Duct
                 <span style={{ position: "absolute", right: 0, top: 14, fontSize: 10, fontWeight: 800, color: FAIL }}>120+ s</span>
               </div>
               {timing ? (
-                <button
-                  onClick={() => edit(i, { time: Math.round((Date.now() - p.started!) / 100) / 10, started: undefined, failed: false, stoppedAt: undefined })}
-                  style={{ minHeight: 46, borderRadius: 12, border: "none", background: "var(--accent)", color: "var(--accent-text)", fontSize: 15, fontWeight: 800 }}
-                >
-                  Equipment restarted <b style={{ fontWeight: 900, letterSpacing: ".04em" }}>STOP TIMER</b>
-                </button>
+                <TimerButton when="Equipment restarted" what="STOP TIMER" onClick={() => edit(i, { time: Math.round((Date.now() - p.started!) / 100) / 10, started: undefined, failed: false, stoppedAt: undefined })} />
               ) : result === null && !p.failed ? (
-                <button
-                  disabled={running}
-                  onClick={() => edit(i, { started: Date.now(), cuts: true, failed: false, time: undefined, stoppedAt: undefined })}
-                  style={{ minHeight: 46, borderRadius: 12, border: "none", background: "var(--accent)", color: "var(--accent-text)", fontSize: 15, fontWeight: 800, opacity: running ? 0.4 : 1 }}
-                >
-                  Detector cleared <b style={{ fontWeight: 900, letterSpacing: ".04em" }}>START TIMER</b>
-                </button>
+                <TimerButton when="Detector cleared" what="START TIMER" disabled={running} onClick={() => edit(i, { started: Date.now(), cuts: true, failed: false, time: undefined, stoppedAt: undefined })} />
               ) : (
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <span style={{ flexGrow: 1, fontSize: 12.5, fontWeight: 700, color: "var(--muted)" }}>

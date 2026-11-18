@@ -1,6 +1,6 @@
 // The duct probe in a stair test (design canvas Duct probes test, version
 // 2): an extra test, per stair, on that stair's fan. The name comes from the
-// fan, the stopwatch runs from Detector cleared START TIMER to Equipment restarted STOP TIMER (60 to 90 s
+// fan, the stopwatch runs from Detector cleared | START TIMER to Equipment restarted | STOP TIMER (60 to 90 s
 // passes, 5 s either side marginal), Failed to restart fails it, Retest duct
 // probe adds another go, and each go prints under the fan on the report.
 // Stair pressurisation's screens are in its purple.
@@ -51,7 +51,7 @@ test("added from Additional tests, in the stair's purple", async () => {
 test("the stopwatch: green in the window, a pass when stopped there", async () => {
   // from here the test moves the clock on, for the stopwatch
   await page.clock.install();
-  await page.getByRole("button", { name: "Detector cleared START TIMER" }).click();
+  await page.getByRole("button", { name: "Detector cleared: START TIMER" }).click();
   // starting it means the fan cut out
   assert.ok(await page.getByRole("checkbox", { name: "Cuts out equipment" }).isChecked());
   await page.clock.runFor(30_000);
@@ -59,7 +59,7 @@ test("the stopwatch: green in the window, a pass when stopped there", async () =
   await page.clock.runFor(45_000);
   assert.match(await page.getByTestId("duct-probe").innerText(), /1:15\.\d[\s\S]*In the window · 15 s left/);
   assert.equal(await page.getByTestId("probe-clock").evaluate((e) => getComputedStyle(e).color), "rgb(43, 212, 122)");
-  await page.getByRole("button", { name: "Equipment restarted STOP TIMER" }).click();
+  await page.getByRole("button", { name: "Equipment restarted: STOP TIMER" }).click();
   assert.equal(await page.getByTestId("probe-result").innerText(), "Pass");
   assert.match(await page.getByTestId("duct-probe").innerText(), /Restarted after 75 s/);
 });
@@ -68,7 +68,7 @@ test("a retest: named after the fan, Failed to restart fails it; the fan shows i
   await page.getByRole("button", { name: "Retest duct probe" }).click();
   assert.equal(await page.getByLabel("Retest 1 name").inputValue(), "SPF-1 duct probe · retest 1");
   const second = page.getByTestId("duct-probe").nth(1);
-  await second.getByRole("button", { name: "Detector cleared START TIMER" }).click();
+  await second.getByRole("button", { name: "Detector cleared: START TIMER" }).click();
   await page.clock.runFor(100_000);
   // it asks first, so a slip doesn't throw the go away: Cancel leaves the timer running
   await second.getByRole("button", { name: "Failed to restart" }).click();
