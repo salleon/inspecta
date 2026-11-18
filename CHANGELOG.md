@@ -7,6 +7,14 @@ the technical detail.
 
 ## 18 November 2026
 
+- **Move a stair along the stair tabs.** On a stair test, hold a stair in
+  the tabs at the top for a moment (the phone buzzes) and drag it left or
+  right. The stairs it passes slide aside to show where it will land, and
+  the row scrolls on its own near either end. Let go and it drops in.
+  The new order is the site's, so the stair bar at the bottom, the setup
+  page and the reports follow it. A tap still opens a stair and a swipe
+  still scrolls the tabs.
+
 - **FFCP results in the PDF and Excel.** Each panel test prints as a page
   laid out like the hand-drawn sheet: a small table per mode tested (a
   mode with nothing ticked is left out), fan names down the side, then
