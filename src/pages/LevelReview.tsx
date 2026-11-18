@@ -58,6 +58,8 @@ export default function LevelReview({
   onRename,
   onBack,
   onDone,
+  step,
+  doneLabel,
 }: {
   stair: SpfStair;
   n: number;
@@ -66,6 +68,8 @@ export default function LevelReview({
   onRename?: (names: Record<string, string>) => void; // old name to new: their readings go with them
   onBack: () => void;
   onDone: () => void;
+  step?: string; // "2 of 3", reviewing every stair in turn
+  doneLabel?: string;
 }) {
   const L = stairLevels(stair);
   const suggested = suggestLevels(stair);
@@ -214,6 +218,7 @@ export default function LevelReview({
     <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
       <PageHeader title="Review level layout" sub={
           <>
+            {step ? `${step} · ` : ""}
             <StairName stair={stair} i={n - 1} /> · {L.length} doors
           </>
         } onBack={onBack} />
@@ -264,7 +269,7 @@ export default function LevelReview({
       </div>
       <div style={{ flexShrink: 0, padding: "10px 14px calc(24px + var(--sa-bottom))" }}>
         <button onClick={onDone} style={{ width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: "var(--accent)", color: "var(--accent-text)", fontSize: 16, fontWeight: 800 }}>
-          Looks right ✓
+          {doneLabel ?? "Looks right ✓"}
           {edited && (
             <span
               role="button"

@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import type { Site, SpfEdition, SpfStair, SpfSystem, SpfType, StairTest } from "../db/types";
 import { getSite, listStairTests, saveSiteSpf, saveStairTest } from "../db/db";
-import { defaultSystem, doorsEach, EDITIONS, joinLevel, LEVEL_TYPES, levelChanges, levelName, levelsEdited, levelsRead, levelType, newStair, nextStairNo, fanIsDefault, renameDoorLevels, splitLevel, stairLabel, stairDoors, stairRange, TYPES, typeFor, type LevelType } from "../lib/stairTest";
+import { defaultSystem, doorsEach, EDITIONS, joinLevel, LEVEL_TYPES, levelChanges, levelName, levelsEdited, levelsRead, levelType, newStair, nextStairNo, renameDoorLevels, splitLevel, stairLabel, stairDoors, stairRange, TYPES, typeFor, type LevelType } from "../lib/stairTest";
 import { useBackHandler } from "../lib/backButton";
 import SwipeRow from "../components/SwipeRow";
 import { AMBER, card, cardLabel, fieldInput, PageHeader, RulesBox, Seg, StairName } from "../components/StairUi";
@@ -16,10 +16,11 @@ import "./LevelReview.css";
 // type (the amber requirements: doors open and pass limits follow), then the
 // stairs, added one at a time. The stair being worked on is an open card;
 // the others fold to one line with Edit. Levels are a type (Level, Basement,
-// Ground…) and a number typed on the purple pad. Once the range is set,
-// Review level layout opens (LevelReview) to check and change the suggested
-// levels; Looks right ✓ folds the stair away. Save and continue at the
-// bottom. Kept as it's changed. Every level has one door unless Doors on
+// Ground…) and a number typed on the purple pad. Entering a stair never
+// leaves the page: Review level layout (LevelReview), to check and change
+// the suggested levels, comes after, from Save and continue, one stair
+// after another (or from the stair's own Review row any time). The page
+// holds still while the pad comes and goes. Kept as it's changed. Every level has one door unless Doors on
 // each level says more (the Stair general system testing canvas, board 2).
 
 type Which = "hi" | "lo";
@@ -55,8 +56,10 @@ export default function StairSystem() {
   const latest = useRef<SpfSystem | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
   const focusName = useRef<string | null>(null);
-  // back from reviewing a stair's levels: on to its fan name, if it has none
-  const focusFan = useRef<string | null>(null);
+  // reviewing every stair's levels in turn, on the way out (Save and continue)
+  const [reviewAll, setReviewAll] = useState(false);
+  // where the page was scrolled to before a review, to come back to
+  const scrollBack = useRef(0);
 
   useEffect(() => {
     if (!siteId) return;
@@ -110,9 +113,15 @@ export default function StairSystem() {
     const box = scroller.current.getBoundingClientRect();
     const r = el.getBoundingClientRect();
     const bottom = box.bottom - (padEl?.offsetHeight ?? 330) - 10;
-    if (r.bottom > bottom) scroller.current.scrollTop += Math.min(r.bottom - bottom, r.top - box.top - 6);
-    else if (r.top < box.top) scroller.current.scrollTop += r.top - box.top - 6;
+    const by = r.bottom > bottom ? Math.min(r.bottom - bottom, r.top - box.top - 6) : r.top < box.top ? r.top - box.top - 6 : 0;
+    if (by) scroller.current.scrollBy({ top: by, behavior: "smooth" });
   }, [pad]);
+
+  // back from a review: the page as it was
+  const reviewingNow = review !== null;
+  useLayoutEffect(() => {
+    if (!reviewingNow && scroller.current) scroller.current.scrollTop = scrollBack.current;
+  }, [reviewingNow]);
 
   useEffect(() => {
     if (!focusName.current) return;
@@ -120,13 +129,6 @@ export default function StairSystem() {
     focusName.current = null;
   });
 
-  useEffect(() => {
-    if (!focusFan.current) return;
-    const input = document.querySelector<HTMLInputElement>(`[data-stair="${focusFan.current}"] input[aria-label="Fan name"]`);
-    input?.scrollIntoView({ block: "center" });
-    input?.focus();
-    focusFan.current = null;
-  });
 
   function change(next: SpfSystem) {
     setSys(next);
@@ -152,10 +154,20 @@ export default function StairSystem() {
     setRemoving(null);
   };
   const rangeEdit = (st: SpfStair, then: () => void) => (!asked.current.has(st.id) && (levelsEdited(st) || hasRead(st)) ? setGuard({ id: st.id, go: then }) : then());
-  // the pad or the type list closed: a stair with its range set and not yet reviewed goes to its review
-  const toReview = (id: string) => {
-    const st = (latest.current ?? sys).stairs.find((s) => s.id === id);
-    if (st && ready(st) && !st.reviewed) setReview(id);
+  const openReview = (id: string) => {
+    scrollBack.current = scroller.current?.scrollTop ?? 0;
+    setPad(null);
+    setMenu(null);
+    setReview(id);
+  };
+  // the stairs whose levels haven't been looked over yet
+  const toReview = (system: SpfSystem) => system.stairs.filter((st) => ready(st) && !st.reviewed);
+  // Save and continue: each stair's levels still to look over first, then out
+  const finish = () => {
+    const [first] = toReview(latest.current ?? sys);
+    if (!first) return leave();
+    setReviewAll(true);
+    openReview(first.id);
   };
   const addStair = () => {
     const no = nextStairNo(sys.stairs);
@@ -172,17 +184,12 @@ export default function StairSystem() {
     if (!pad || !padStair) return;
     const f = field(pad.which);
     const { type, num } = splitLevel(padStair[f]);
-    const close = () => {
-      setPad(null);
-      toReview(pad.id);
-    };
+    const close = () => setPad(null);
     if (key === "done") return close();
     if (key === "prev") return setPad({ ...pad, which: "hi" });
     if (key === "next") {
       if (pad.which === "hi" && levelType(splitLevel(padStair.from).type).numbered) return setPad({ ...pad, which: "lo" });
-      close();
-      if (padStair.reviewed) document.querySelector<HTMLInputElement>(`[data-stair="${pad.id}"] input[aria-label="Fan name"]`)?.focus();
-      return;
+      return close();
     }
     if (!levelType(type).numbered) return;
     const next = key === "bs" ? num.slice(0, -1) : num.length >= 3 ? num : num + key;
@@ -195,6 +202,11 @@ export default function StairSystem() {
   const guardStair = sys.stairs.find((s) => s.id === guard?.id) ?? newStair();
   const guardEdited = levelsEdited(guardStair);
   const reviewing = review ? sys.stairs.find((s) => s.id === review) : undefined;
+  // on the way out: the next stair to look over, and how far along
+  const unreviewed = toReview(sys);
+  const reviewNext = reviewing ? unreviewed.find((st) => st.id !== reviewing.id) : undefined;
+  const readyCount = sys.stairs.filter(ready).length;
+  const reviewStep = `${readyCount - unreviewed.length + 1} of ${readyCount}`;
   if (reviewing)
     return (
       <LevelReview
@@ -214,21 +226,25 @@ export default function StairSystem() {
             }),
           );
         }}
-        onBack={() => setReview(null)}
+        step={reviewAll ? reviewStep : undefined}
+        doneLabel={reviewAll && reviewNext ? "Looks right · next stair ›" : undefined}
+        onBack={() => {
+          setReviewAll(false);
+          setReview(null);
+        }}
         onDone={() => {
           setStair(reviewing.id, { reviewed: true });
-          setReview(null);
-          // the levels were the last step only if the fan's named already;
-          // otherwise the stair stays open, on its fan name
-          if (fanIsDefault(reviewing)) focusFan.current = reviewing.id;
-          else setOpen(null);
+          if (!reviewAll) return setReview(null);
+          if (reviewNext) return setReview(reviewNext.id);
+          setReviewAll(false);
+          leave();
         }}
       />
     );
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
       <PageHeader title="The system" sub={site?.name ?? ""} onBack={leave} />
-      <div ref={scroller} onClick={() => menu && setMenu(null)} style={{ flexGrow: 1, overflowY: "auto", padding: `4px 14px ${pad ? 360 : 20}px`, display: "flex", flexDirection: "column", gap: 9 }}>
+      <div ref={scroller} onClick={() => menu && setMenu(null)} style={{ flexGrow: 1, overflowY: "auto", padding: `4px 14px ${pad || open ? 360 : 20}px`, display: "flex", flexDirection: "column", gap: 9 }}>
         <div style={card}>
           <div style={cardLabel}>Built to</div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -293,12 +309,9 @@ export default function StairSystem() {
                     setStair(st.id, { [f]: joinLevel(type, levelType(type).numbered ? num : ""), levels: undefined, reviewed: false });
                     setMenu(null);
                     if (levelType(type).numbered) setPad({ id: st.id, which });
-                    else {
-                      setPad(null);
-                      toReview(st.id);
-                    }
+                    else setPad(null);
                   }}
-                  onReview={() => (setPad(null), setMenu(null), setReview(st.id))}
+                  onReview={() => openReview(st.id)}
                   onClose={() => (setOpen(null), setPad(null), setMenu(null))}
                   onText={() => (setPad(null), setMenu(null))}
                 />
@@ -347,18 +360,17 @@ export default function StairSystem() {
         <Notes value={sys.notes} onChange={(notes) => change({ ...sys, notes })} />
       </div>
 
-      {!pad && (
-        <div style={{ flexShrink: 0, padding: "10px 16px calc(24px + var(--sa-bottom))" }}>
-          <button
-            onClick={leave}
-            disabled={!canSave}
-            className={canSave ? "glow-sweep" : undefined}
-            style={{ position: "relative", overflow: "hidden", width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: canSave ? "var(--accent)" : "var(--panel-2)", color: canSave ? "var(--accent-text)" : "var(--muted)", fontSize: 16, fontWeight: 800 }}
-          >
-            {!hasStairs ? "Add a stair to continue" : "Save and continue ›"}
-          </button>
-        </div>
-      )}
+      {/* kept in place under the pad, so the page doesn't change size */}
+      <div style={{ flexShrink: 0, padding: "10px 16px calc(24px + var(--sa-bottom))", visibility: pad ? "hidden" : undefined }}>
+        <button
+          onClick={finish}
+          disabled={!canSave}
+          className={canSave ? "glow-sweep" : undefined}
+          style={{ position: "relative", overflow: "hidden", width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: canSave ? "var(--accent)" : "var(--panel-2)", color: canSave ? "var(--accent-text)" : "var(--muted)", fontSize: 16, fontWeight: 800 }}
+        >
+          {!hasStairs ? "Add a stair to continue" : unreviewed.length ? "Save and review levels ›" : "Save and continue ›"}
+        </button>
+      </div>
 
       {removing && (
         <>

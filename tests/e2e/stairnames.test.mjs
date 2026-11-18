@@ -109,7 +109,7 @@ test("an AFSS export with stair tests asks too, then exports", async () => {
   assert.deepEqual(await stairsOf("s2-spf"), [["SPF-1", "North"], ["SPF-2", "Stair 2"]]);
 });
 
-test("setting up a new stair: after Looks right on its levels, on to its fan name", async () => {
+test("setting up a new stair: no jump to the review mid-entry; the levels are looked over on Save", async () => {
   await go(page, app, "/site/s2-spf/spf-system", 1200);
   await page.getByRole("button", { name: "+ Add another stair" }).click();
   // the names come first in the stair's card, then its levels
@@ -120,29 +120,42 @@ test("setting up a new stair: after Looks right on its levels, on to its fan nam
   for (const k of ["1", "7"]) await pad.getByRole("button", { name: k, exact: true }).dispatchEvent("pointerdown");
   await pad.getByRole("button", { name: "Next", exact: true }).dispatchEvent("pointerdown");
   await page.getByRole("button", { name: "Lowest level type" }).click();
+  // the page holds still as the pad goes: the save bar keeps its place
+  const bar = await page.getByRole("button", { name: "Save and review levels ›" }).boundingBox();
   await page.getByRole("option", { name: /^Ground/ }).click();
-  await page.getByTestId("level-list").waitFor();
-  await page.getByRole("button", { name: /Looks right/ }).click();
-  // the stair stays open, the cursor in its fan name (started at SPF-)
+  await page.waitForTimeout(400);
+  assert.equal(await page.getByTestId("level-list").count(), 0, "still on the page");
+  assert.deepEqual(await page.getByRole("button", { name: "Save and review levels ›" }).boundingBox(), bar);
+  // and nothing jumps to the fan name on its own
   const fan = page.getByLabel("Fan name");
-  await fan.waitFor();
-  await page.waitForTimeout(300);
-  assert.equal(await fan.evaluate((e) => e === document.activeElement), true);
+  assert.equal(await fan.evaluate((e) => e === document.activeElement), false);
+  await fan.focus();
   assert.equal(await fan.inputValue(), "SPF-");
   await fan.fill("SPF-3");
-  await page.getByRole("button", { name: "Save and continue ›" }).click();
-  await page.waitForTimeout(800);
+  // Save: each stair's levels in turn, then on
+  await page.getByRole("button", { name: "Save and review levels ›" }).click();
+  await page.getByTestId("level-list").waitFor();
+  assert.match(await page.locator("body").innerText(), /Review level layout\s*1 of 3 · SPF-1 · North/);
+  await page.getByRole("button", { name: "Looks right · next stair ›" }).click();
+  assert.match(await page.locator("body").innerText(), /2 of 3 · SPF-2 · Stair 2/);
+  await page.getByRole("button", { name: "Looks right · next stair ›" }).click();
+  assert.match(await page.locator("body").innerText(), /3 of 3 · SPF-3 · Stair 3/);
+  await page.getByRole("button", { name: "Looks right ✓" }).click();
+  await page.waitForURL((u) => !u.href.includes("spf-system"));
   assert.deepEqual((await stairsOf("s2-spf"))[2], ["SPF-3", ""]);
 });
 
-test("a stair whose fan is named folds away after Looks right, as before", async () => {
+test("all looked over: Save and continue goes straight on; a stair's Review row comes back to the page", async () => {
   await go(page, app, "/site/s2-spf/spf-system", 1200);
   await page.locator('[data-stair="a"]').click();
-  await page.getByRole("button", { name: /Review level layout|Review/ }).first().click();
+  await page.getByRole("button", { name: /Review level layout/ }).click();
   await page.getByTestId("level-list").waitFor();
-  await page.getByRole("button", { name: /Looks right/ }).click();
+  assert.doesNotMatch(await page.locator("body").innerText(), /1 of/);
+  await page.getByRole("button", { name: "Looks right ✓" }).click();
   await page.waitForTimeout(300);
-  assert.equal(await page.getByLabel("Fan name").count(), 0);
+  assert.match(page.url(), /spf-system/);
+  await page.getByRole("button", { name: "Save and continue ›" }).click();
+  await page.waitForURL((u) => !u.href.includes("spf-system"));
 });
 
 test("no page errors", () => {

@@ -7,6 +7,15 @@ the technical detail.
 
 ## 18 November 2026
 
+- **Stair setup: the level review comes after, and the screen holds
+  still.** Typing a stair's levels no longer throws you into Review level
+  layout halfway through, and coming back from it no longer jumps to the
+  fan name and pops the keyboard up. Fill in every stair first, then Save
+  and review levels takes you through each stair's levels in turn (1 of 3,
+  2 of 3…) and on. A stair's own Review row still opens its levels any
+  time, and brings you back where you were. The page no longer shifts as
+  the level pad opens and closes.
+
 - **Move a stair along the stair tabs.** On a stair test, hold a stair in
   the tabs at the top for a moment (the phone buzzes) and drag it left or
   right. The stairs it passes slide aside to show where it will land, and
