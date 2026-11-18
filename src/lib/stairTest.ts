@@ -368,12 +368,12 @@ export function probeLatest(probes: DuctProbe[] | undefined): { p: DuctProbe; n:
 
 const probeHasData = (p: DuctProbe) => !!(p.noStop || p.failed || p.time !== undefined || p.started || p.notes?.trim() || p.name?.trim());
 
-// a go as it prints: "SPF-1 duct probe · restarted after 78 s · Pass · note"
+// a go as it prints: "SPF-1 duct probe · equipment shut down · restarted after 78 s · Pass · note"
 export function probeLine(p: DuctProbe, fan: string, n: number): string {
   const result = probeResult(p);
   const what = p.failed ? "failed to restart" : p.time !== undefined ? `restarted after ${Math.round(p.time)} s` : p.noStop ? "" : "not timed";
   const verdict = result === "pass" ? "Pass" : result === "marginal" ? "Fail (marginal)" : result === "fail" ? "Fail" : "";
-  return [probeName(p, fan, n), p.noStop && "failed to stop equipment", what, verdict, p.notes?.trim()].filter(Boolean).join(" · ");
+  return [probeName(p, fan, n), p.noStop ? "failed to stop equipment" : (p.time !== undefined || p.failed) && "equipment shut down", what, verdict, p.notes?.trim()].filter(Boolean).join(" · ");
 }
 
 export function sectionsFor(kind: StairTestKind, picked: StairSection[] = []): StairSection[] {

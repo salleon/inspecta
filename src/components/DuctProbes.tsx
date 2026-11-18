@@ -145,7 +145,7 @@ export default function DuctProbes({ probes, fan, update, peek }: { probes: Duct
               {timing ? (
                 <TimerButton stop what="STOP TIMER" when="when the equipment restarts" onClick={() => edit(i, { time: Math.round((Date.now() - p.started!) / 100) / 10, started: undefined, failed: false, stoppedAt: undefined })} />
               ) : p.time === undefined && !p.failed ? (
-                <TimerButton what="START TIMER" when="when the detector is cleared" disabled={running} onClick={() => edit(i, { started: Date.now(), failed: false, time: undefined, stoppedAt: undefined })} />
+                <TimerButton what="START TIMER" when="when the detector is cleared" disabled={running} onClick={() => edit(i, { started: Date.now(), noStop: false, failed: false, time: undefined, stoppedAt: undefined })} />
               ) : (
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <span style={{ flexGrow: 1, fontSize: 12.5, fontWeight: 700, color: "var(--muted)" }}>
@@ -163,11 +163,21 @@ export default function DuctProbes({ probes, fan, update, peek }: { probes: Duct
             </div>
 
             <div style={{ display: "flex", gap: 8 }}>
-              {/* the fan cutting out is a given when the test runs, so only a fail is ticked */}
-              <label style={{ flex: 1, display: "flex", alignItems: "center", gap: 9, minHeight: 44, padding: "0 11px", borderRadius: 11, background: p.noStop ? "rgba(255,90,74,.15)" : "var(--panel)", border: `1px solid ${p.noStop ? "rgba(255,122,106,.5)" : "var(--border)"}`, color: p.noStop ? FAIL : "var(--text)", fontSize: 13, fontWeight: 800 }}>
-                <input type="checkbox" checked={!!p.noStop} onChange={() => edit(i, { noStop: !p.noStop })} style={{ width: 20, height: 20, margin: 0, accentColor: "#e5483a" }} />
-                Failed to stop equipment
-              </label>
+              {/* as Failed to restart; once the timer has run the equipment did stop,
+                  so it turns green and says so (starting the timer clears a fail) */}
+              {timing || p.time !== undefined || p.failed ? (
+                <span data-testid="probe-stopped" style={{ flex: 1, minHeight: 44, padding: "0 11px", borderRadius: 11, display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", whiteSpace: "nowrap", fontSize: 13, fontWeight: 800, background: "rgba(43,212,122,.14)", border: "1px solid rgba(43,212,122,.55)", color: PASS }}>
+                  ✓ Equipment shut down
+                </span>
+              ) : (
+                <button
+                  aria-pressed={!!p.noStop}
+                  onClick={() => edit(i, { noStop: !p.noStop })}
+                  style={{ flex: 1, minHeight: 44, padding: "0 11px", borderRadius: 11, fontSize: 13, fontWeight: 800, background: p.noStop ? "#e5483a" : "rgba(255,90,74,.10)", border: `1px solid ${p.noStop ? "#e5483a" : "rgba(255,122,106,.5)"}`, color: p.noStop ? "#fff" : FAIL }}
+                >
+                  Failed to stop equipment{p.noStop ? " ✕" : ""}
+                </button>
+              )}
               <button
                 aria-pressed={!!p.failed}
                 onClick={() => (p.failed ? edit(i, { failed: false, stoppedAt: undefined }) : setAsking(i))}
