@@ -25,18 +25,25 @@ const clock = (sec: number) => {
 };
 const pct = (s: number) => (100 * s) / PROBE.scale;
 
-// the stopwatch's button, in two parts: when to tap it, a line, then what it does
-function TimerButton({ when, what, onClick, disabled }: { when: string; what: string; onClick: () => void; disabled?: boolean }) {
+// the stopwatch's button (design canvas board 8, option D): a round play or
+// stop icon, then what it does in capitals and when to tap it under that
+function TimerButton({ what, when, stop, onClick, disabled }: { what: string; when: string; stop?: boolean; onClick: () => void; disabled?: boolean }) {
   return (
     <button
-      aria-label={`${when}: ${what}`}
+      aria-label={`${what} ${when}`}
       disabled={disabled}
       onClick={onClick}
-      style={{ display: "flex", alignItems: "stretch", minHeight: 50, padding: 0, borderRadius: 12, border: "none", background: "var(--accent)", color: "var(--accent-text)", opacity: disabled ? 0.4 : 1, overflow: "hidden" }}
+      style={{ display: "flex", alignItems: "center", gap: 12, minHeight: 58, padding: "0 14px 0 8px", borderRadius: 14, border: "none", background: "var(--accent)", color: "var(--accent-text)", textAlign: "left", opacity: disabled ? 0.4 : 1 }}
     >
-      <span style={{ flex: "1 1 0", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 10px", fontSize: 13.5, fontWeight: 700 }}>{when}</span>
-      <span aria-hidden="true" style={{ width: 1.5, margin: "9px 0", background: "currentColor", opacity: 0.35 }} />
-      <span style={{ flex: "1 1 0", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 10px", fontSize: 15, fontWeight: 900, letterSpacing: ".04em" }}>{what}</span>
+      <span style={{ width: 42, height: 42, borderRadius: 21, background: "var(--accent-text)", color: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+        <svg width={18} height={18} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          {stop ? <rect x="5" y="5" width="14" height="14" rx="2" /> : <path d="M8 5.5v13l11-6.5z" />}
+        </svg>
+      </span>
+      <span style={{ display: "flex", flexDirection: "column" }}>
+        <span style={{ fontSize: 16, fontWeight: 900, letterSpacing: ".04em" }}>{what}</span>
+        <span style={{ fontSize: 11.5, fontWeight: 700, opacity: 0.75 }}>{when}</span>
+      </span>
     </button>
   );
 }
@@ -135,9 +142,9 @@ export default function DuctProbes({ probes, fan, update, peek }: { probes: Duct
                 <span style={{ position: "absolute", right: 0, top: 14, fontSize: 10, fontWeight: 800, color: FAIL }}>120+ s</span>
               </div>
               {timing ? (
-                <TimerButton when="Equipment restarted" what="STOP TIMER" onClick={() => edit(i, { time: Math.round((Date.now() - p.started!) / 100) / 10, started: undefined, failed: false, stoppedAt: undefined })} />
+                <TimerButton stop what="STOP TIMER" when="when the equipment restarts" onClick={() => edit(i, { time: Math.round((Date.now() - p.started!) / 100) / 10, started: undefined, failed: false, stoppedAt: undefined })} />
               ) : result === null && !p.failed ? (
-                <TimerButton when="Detector cleared" what="START TIMER" disabled={running} onClick={() => edit(i, { started: Date.now(), cuts: true, failed: false, time: undefined, stoppedAt: undefined })} />
+                <TimerButton what="START TIMER" when="when the detector is cleared" disabled={running} onClick={() => edit(i, { started: Date.now(), cuts: true, failed: false, time: undefined, stoppedAt: undefined })} />
               ) : (
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <span style={{ flexGrow: 1, fontSize: 12.5, fontWeight: 700, color: "var(--muted)" }}>
