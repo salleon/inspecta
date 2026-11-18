@@ -666,6 +666,26 @@ test("readings are saved straight away, and ones without a flow say why they're 
 });
 
 
+test("exporting tests as both PDF and Excel sends one zip holding the two", async () => {
+  await go(page, app, "/site/s1/findings?tab=flow", 1200);
+  await page.click('button:has-text("Export Other Tests Only")');
+  await page.click('.sheet-panel button:has-text("PDF")');
+  await page.click('.sheet-panel button:has-text("Excel")');
+  const file = await download(page, () => page.locator(".sheet-panel").getByRole("button", { name: /^Export .* tests?$/ }).click());
+  // (headless Chromium reports blob downloads as "download", so the zip's
+  // own name isn't checked here: what's inside is)
+  const zip = await JSZip.loadAsync(fs.readFileSync(file.path));
+  const names = Object.keys(zip.files).sort();
+  assert.equal(names.length, 2, names.join(", "));
+  const base = names[0].replace(/\.pdf$/, "");
+  assert.match(base, /Tests/);
+  assert.deepEqual(names, [`${base}.pdf`, `${base}.xlsx`]);
+  assert.equal((await zip.file(`${base}.pdf`).async("string")).slice(0, 5), "%PDF-");
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.load(await zip.file(`${base}.xlsx`).async("nodebuffer"));
+  assert.ok(wb.worksheets.length >= 1);
+});
+
 test("upright readings: a number cell brings up the blue pad, not the phone's keyboard", async () => {
   await go(page, app, "/site/s1-flow/flow/t1", 1200);
   const cell = page.locator('input[aria-label="Suction"]').first();

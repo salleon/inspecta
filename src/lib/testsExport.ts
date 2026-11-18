@@ -3,12 +3,14 @@ import { Capacitor } from "@capacitor/core";
 import type { FlowTest, Site, SpfSystem, StairTest } from "../db/types";
 import { writeBlobToCache } from "./cacheFile";
 import { numberedExport } from "./exportName";
+import { ZipWriter } from "./zip";
 import { testsFileName } from "./stairTest";
 
 // Exporting a site's other tests (design canvas SiteTests, "Export tests"):
 // the flow and stair tests picked, as one PDF (a page per flow test, a page
-// per stair of each stair test) and / or one Excel (a sheet each), shared
-// together.
+// per stair of each stair test) and / or one Excel (a sheet each). With
+// both picked they go out as one zip holding the two, so they travel as a
+// single attachment.
 
 async function buildTestsPdf(flow: FlowTest[], stair: StairTest[], sys: SpfSystem | undefined, site: Pick<Site, "name" | "address">): Promise<Blob> {
   const { jsPDF } = await import("jspdf");
@@ -45,13 +47,30 @@ export async function exportTests(
   onStep: (percent: number, step: string) => void,
 ): Promise<void> {
   const { flow, stair, site, formats } = opts;
-  const files: { blob: Blob; name: string; shared: () => void }[] = [];
+  const baseName = opts.fileName ?? ((ext: TestsFormat) => testsFileName(site, ext));
+  const built: { blob: Blob; ext: TestsFormat }[] = [];
   for (const [i, f] of formats.entries()) {
     onStep(15 + i * 35, f === "pdf" ? "Drawing the pages…" : "Building the sheets…");
     const blob = f === "pdf" ? await buildTestsPdf(flow, stair, site.spf, site) : await buildTestsWorkbook(flow, stair, site.spf, site);
-    const numbered = numberedExport((opts.fileName ?? ((ext) => testsFileName(site, ext)))(f));
-    files.push({ blob, name: numbered.name, shared: numbered.shared });
+    built.push({ blob, ext: f });
   }
+  const files: { blob: Blob; name: string; shared: () => void }[] = [];
+  if (built.length > 1) {
+    // both formats: one zip, named like the reports, with the files inside
+    // carrying the zip's name (and copy number)
+    onStep(85, "Zipping…");
+    const zipped = numberedExport(withExt(baseName(built[0].ext), "zip"));
+    const chunks: Uint8Array[] = [];
+    const zip = new ZipWriter(async (bytes) => void chunks.push(bytes.slice()));
+    const now = new Date();
+    for (const b of built) await zip.addFile(withExt(zipped.name, b.ext), new Uint8Array(await b.blob.arrayBuffer()), now);
+    await zip.finish();
+    files.push({ blob: new Blob(chunks as BlobPart[], { type: "application/zip" }), name: zipped.name, shared: zipped.shared });
+  } else
+    for (const b of built) {
+      const numbered = numberedExport(baseName(b.ext));
+      files.push({ blob: b.blob, name: numbered.name, shared: numbered.shared });
+    }
   onStep(90, "Opening share menu…");
   const title = `${site.name} tests`;
   if (Capacitor.isNativePlatform()) {
@@ -76,4 +95,9 @@ export async function exportTests(
       }
   }
   files.forEach((f) => f.shared());
+}
+
+function withExt(name: string, ext: string): string {
+  const dot = name.lastIndexOf(".");
+  return `${dot > 0 ? name.slice(0, dot) : name}.${ext}`;
 }
