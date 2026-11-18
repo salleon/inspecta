@@ -206,8 +206,12 @@ test("an AFSS site: Other tests, + Add a test, and the export chooser", async ()
   assert.match(sheet, /Stair pressurisation \(SPF\)/);
   assert.ok(!sheet.includes("Set to Annual Testing"));
   await page.getByRole("button", { name: "Cancel" }).click();
-  // the tests are in the site's own jobs: exported from there, or in the site's report
-  assert.equal(await page.getByRole("button", { name: "Export Other Tests Only" }).count(), 0);
+  // the attached jobs' tests can be sent on their own
+  await page.getByRole("button", { name: "Export Other Tests Only" }).click();
+  assert.match(await page.locator(".sheet-panel").innerText(), /Export tests[\s\S]*All tests[\s\S]*Sprinkler/);
+  await page.getByRole("checkbox", { name: /Sprinkler/ }).click();
+  assert.equal(await page.getByRole("button", { name: "Pick a test to export" }).count(), 1);
+  await page.getByRole("button", { name: "Cancel" }).click();
   // a stair test is made in the site's stair job, named after it and attached
   await page.getByRole("button", { name: "+ Add a test" }).click();
   await page.getByRole("button", { name: "Stair pressurisation (SPF)" }).click();

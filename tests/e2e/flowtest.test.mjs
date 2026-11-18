@@ -121,7 +121,7 @@ test("the Other tests tab lists the site's flow job; it opens with the tests and
   // the site's tests moved into their own flow job, attached to it
   assert.equal(await page.locator("text=Other tests · 1").count(), 1);
   assert.equal(await page.locator("text=2 flow tests").count(), 1);
-  assert.equal(await page.locator("text=Export Other Tests Only").count(), 0);
+  assert.equal(await page.locator("text=Export Other Tests Only").count(), 1);
   await page.click('button:has-text("Flow testing")');
   await page.waitForTimeout(800);
   assert.ok(page.url().endsWith("/site/s1-flow/findings"), page.url());
@@ -684,6 +684,21 @@ test("exporting tests as both PDF and Excel sends one zip holding the two", asyn
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(await zip.file(`${base}.xlsx`).async("nodebuffer"));
   assert.ok(wb.worksheets.length >= 1);
+});
+
+test("an AFSS site's Other tests tab: Export Other Tests Only asks which tests, then exports them (a sheet per test, no findings)", async () => {
+  await go(page, app, "/site/s1/findings?tab=flow", 1200);
+  await page.click('button:has-text("Export Other Tests Only")');
+  assert.match(await page.locator(".sheet-panel").innerText(), /Export tests[\s\S]*All tests/);
+  // no format is preselected: the export button asks for one until Excel is picked
+  assert.equal(await page.getByRole("button", { name: "Pick PDF or Excel" }).count(), 1);
+  await page.click('.sheet-panel button:has-text("Excel")');
+  const file = await download(page, () => page.getByRole("button", { name: /^Export .* · Excel$/ }).click());
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.load(fs.readFileSync(file.path));
+  const names = wb.worksheets.map((w) => w.name);
+  assert.ok(names.length >= 1 && !names.some((n) => /finding/i.test(n)), names.join(", "));
+  assert.ok(page.url().endsWith("/site/s1/findings?tab=flow"), page.url());
 });
 
 test("upright readings: a number cell brings up the blue pad, not the phone's keyboard", async () => {

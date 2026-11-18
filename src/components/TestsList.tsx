@@ -1,8 +1,8 @@
 import { say } from "./Message";
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import type { FlowKind, FlowTest, Site, StairTest } from "../db/types";
-import { addFlowTest, deleteFlowTest, deleteStairTest, flowTestCount, listAttachedJobs, listStairTests, stairTestCount, testJobFor } from "../db/db";
+import type { FlowKind, FlowTest, Site, SpfSystem, StairTest } from "../db/types";
+import { addFlowTest, deleteFlowTest, deleteStairTest, flowTestCount, listAttachedJobs, listFlowTests, listStairTests, stairTestCount, testJobFor } from "../db/db";
 import { blankThumbSvg, chartSvg, KIND_HINT, KIND_LABEL, newFlowTest, readingCount, summary } from "../lib/flowTest";
 import { KIND_LABEL as STAIR_KIND, stairTestSummary, systemLine } from "../lib/stairTest";
 import { exportTests, type TestsFormat } from "../lib/testsExport";
@@ -69,6 +69,8 @@ export default function TestsList({ site, mode, onCount }: { site: Site; mode: "
   const [items, setItems] = useState<Item[] | null>(null);
   // Other tests: the site's attached flow and stair jobs
   const [jobs, setJobs] = useState<Job[] | null>(null);
+  // Other tests: the stair system of the attached stair job, for Export
+  const [stairSys, setStairSys] = useState<SpfSystem | undefined>(undefined);
   const [sheet, setSheet] = useState<null | "add" | "flow" | "export">(null);
   const [openSwipeId, setOpenSwipeId] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<Item | null>(null);
@@ -86,6 +88,16 @@ export default function TestsList({ site, mode, onCount }: { site: Site; mode: "
         const withCounts = await Promise.all(list.map(async (job) => ({ job, count: await (job.kind === "flow" ? flowTestCount : stairTestCount)(job.id) })));
         if (cancelled) return;
         setJobs(withCounts);
+        // their tests, for Export Other Tests Only (one stair job's: a stair
+        // export goes with its system)
+        const stairJob = list.find((j) => j.kind === "spf");
+        const [flow, stair] = await Promise.all([
+          Promise.all(list.filter((j) => j.kind === "flow").map((j) => listFlowTests(j.id))).then((all) => all.flat()),
+          stairJob ? listStairTests(stairJob.id) : Promise.resolve([]),
+        ]);
+        if (cancelled) return;
+        setStairSys(stairJob?.spf);
+        setItems([...flow.map((test) => ({ kind: "flow" as const, test })), ...stair.map((test) => ({ kind: "stair" as const, test }))]);
         onCount(withCounts.length);
       });
       return () => {
@@ -168,6 +180,7 @@ export default function TestsList({ site, mode, onCount }: { site: Site; mode: "
           flow: chosen.flatMap((i) => (i.kind === "flow" ? [i.test] : [])),
           stair: chosen.flatMap((i) => (i.kind === "stair" ? [i.test] : [])),
           site,
+          sys: mode === "other" ? stairSys : site.spf,
           formats: (["pdf", "xlsx"] as TestsFormat[]).filter((f) => formats.has(f)),
         },
         (percent, step) => setExporting({ percent, step }),
@@ -240,7 +253,7 @@ export default function TestsList({ site, mode, onCount }: { site: Site; mode: "
             No stair tests on this site yet.
           </div>
         )}
-        {items?.map((item, i) => (
+        {mode === "spf" && items?.map((item, i) => (
           <SwipeRow
             key={item.test.id}
             index={i}
@@ -254,7 +267,7 @@ export default function TestsList({ site, mode, onCount }: { site: Site; mode: "
             {item.kind === "flow" ? <FlowCard test={item.test} /> : <StairCard test={item.test} site={site} />}
           </SwipeRow>
         ))}
-        {!!items?.length && <div style={{ fontSize: 11.5, color: "var(--muted-2)", textAlign: "center" }}>Swipe a test left to delete it.</div>}
+        {mode === "spf" && !!items?.length && <div style={{ fontSize: 11.5, color: "var(--muted-2)", textAlign: "center" }}>Swipe a test left to delete it.</div>}
       </div>
 
       <div style={{ flexShrink: 0, padding: "12px 16px calc(28px + var(--sa-bottom))", borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 10 }}>
@@ -264,7 +277,7 @@ export default function TestsList({ site, mode, onCount }: { site: Site; mode: "
             onClick={openExport}
             style={{ width: "100%", padding: "13px 0", borderRadius: 12, border: "1px solid rgba(90,176,255,.55)", background: "rgba(90,176,255,.1)", color: "#5ab0ff", fontSize: 14.5, fontWeight: 800 }}
           >
-            Export
+            {mode === "spf" ? "Export" : "Export Other Tests Only"}
           </button>
         )}
         <button

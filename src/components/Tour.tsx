@@ -129,11 +129,13 @@ const STEPS: Step[] = [
   {
     chapter: 3,
     route: (ids) => `${site(ids)}/findings?tab=flow`,
-    targets: t('[data-tour="new-flow-test"]'),
+    targets: () => ['[data-tour="flow-export-only"]', '[data-tour="new-flow-test"]'],
     title: "In the site's report",
     body: (
       <>
         {b("+ Add a test")} adds one: a flow test or a stair test. It's kept in its own job on home, attached to this site. The site's PDF then ends with a page per test, and its Excel gets a tab per test, each with its graph.
+        <br />
+        {b("Export Other Tests Only")} sends just the tests you pick, as PDF and / or Excel.
       </>
     ),
   },

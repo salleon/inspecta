@@ -43,7 +43,8 @@ export type TestsFormat = "pdf" | "xlsx";
 
 // builds the chosen formats and opens the share menu with them all
 export async function exportTests(
-  opts: { flow: FlowTest[]; stair: StairTest[]; site: Site; formats: TestsFormat[]; fileName?: (ext: TestsFormat) => string },
+  // sys: the stair tests' system (the site's own, unless given)
+  opts: { flow: FlowTest[]; stair: StairTest[]; site: Site; sys?: SpfSystem; formats: TestsFormat[]; fileName?: (ext: TestsFormat) => string },
   onStep: (percent: number, step: string) => void,
 ): Promise<void> {
   const { flow, stair, site, formats } = opts;
@@ -51,7 +52,8 @@ export async function exportTests(
   const built: { blob: Blob; ext: TestsFormat }[] = [];
   for (const [i, f] of formats.entries()) {
     onStep(15 + i * 35, f === "pdf" ? "Drawing the pages…" : "Building the sheets…");
-    const blob = f === "pdf" ? await buildTestsPdf(flow, stair, site.spf, site) : await buildTestsWorkbook(flow, stair, site.spf, site);
+    const sys = opts.sys ?? site.spf;
+    const blob = f === "pdf" ? await buildTestsPdf(flow, stair, sys, site) : await buildTestsWorkbook(flow, stair, sys, site);
     built.push({ blob, ext: f });
   }
   const files: { blob: Blob; name: string; shared: () => void }[] = [];

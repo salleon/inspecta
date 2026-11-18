@@ -13,7 +13,8 @@ the technical detail.
   job's **Attach to site** chip (under its name) links it to an AFSS or
   project site, picked from a list you can search. Its tests then show in
   that site's Other tests and go at the end of the site's PDF and Excel,
-  while the job can still be exported on its own. Adding a test from a
+  while the job can still be exported on its own, or from the site with
+  Export Other Tests Only. Adding a test from a
   site's Other tests makes the site's job (named after the site, already
   attached) or adds to it. Tests already inside sites move into their own
   attached jobs the first time the app opens. Deleting a site keeps its
