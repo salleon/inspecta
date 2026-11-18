@@ -7,6 +7,46 @@ the technical detail.
 
 ## 18 November 2026
 
+- **Moved tests keep their dates on home.** When this update moves the
+  flow and stair tests out of each AFSS and project site into their own
+  jobs, the new jobs are dated from when the tests were done (or the site,
+  for a stair system with no tests yet), not the day of the update. Home
+  stays in the order it was, rather than every old site's tests jumping to
+  the top. Jobs already moved and dated today are put back the same way.
+
+- **The same level changes on other stairs.** After changing a stair's
+  levels in Review level layout (a level added, removed or renamed, car
+  parks made basements), a card offers the same changes for the other
+  stairs. Apply to all makes them straight away on every stair they fit,
+  and the card turns into Undo. Choose stairs… lists each stair with how
+  many of the changes fit it (in orange, with why, when only some do) to
+  tick and apply. A change that doesn't fit a stair is skipped, a level
+  with readings isn't removed, and readings go with a renamed level. A
+  stair that took every change counts as reviewed. Nothing changes on the
+  other stairs until you tap.
+- **Review level layout: a group no longer folds shut under you.** Adding
+  a level to a group that then passed six levels closed it and hid the
+  new level; a group with a level picked now stays open.
+
+- **Stair setup: the level review comes after, and the screen holds
+  still.** Typing a stair's levels no longer throws you into Review level
+  layout halfway through, and coming back from it no longer jumps to the
+  fan name and pops the keyboard up. Fill in every stair first, then Save
+  and review levels takes you through each stair's levels in turn (1 of 3,
+  2 of 3…) and on. A stair's own Review row still opens its levels any
+  time, and brings you back where you were. The page no longer shifts as
+  the level pad opens and closes.
+
+- **Move a stair along the stair tabs.** On a stair test, hold a stair in
+  the tabs at the top for a moment (the phone buzzes) and drag it left or
+  right. The stairs it passes slide aside to show where it will land, and
+  the row scrolls on its own near either end. Let go and it drops in.
+  The new order is the site's, so the stair bar at the bottom, the setup
+  page and the reports follow it. A tap still opens a stair and a swipe
+  still scrolls the tabs. Stairs not yet named keep their suggested names
+  when moved: SPF-2 and Stair 2 stay SPF-2 and Stair 2 wherever they go,
+  and a stair added afterwards takes the next number up.
+
 - **FFCP results in the PDF and Excel.** Each panel test prints as a page
   laid out like the hand-drawn sheet: a small table per mode tested (a
   mode with nothing ticked is left out), fan names down the side, then

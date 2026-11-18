@@ -1,13 +1,14 @@
 import { useRef, useState, type CSSProperties } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import type { SpfStair, StairSection } from "../db/types";
-import { ALL_SECTIONS, doorStats, KIND_LABEL, onceStatus, runCount, SECTION, stairDoors } from "../lib/stairTest";
+import { ALL_SECTIONS, doorStats, KIND_LABEL, onceStatus, reorderStairs, runCount, SECTION, stairDoors } from "../lib/stairTest";
 import { useBackHandler } from "../lib/backButton";
 import { card, cardLabel, fieldInput, PageHeader, Pill, StairChin, StairName, useStairTest } from "../components/StairUi";
 import ConfirmDialog from "../components/ConfirmDialog";
 import SwipeRow from "../components/SwipeRow";
 import { saveSiteSpf } from "../db/db";
 import { IconCamera } from "../components/Icons";
+import StairTabs from "../components/StairTabs";
 import StairNameCheck, { stairsToName } from "../components/StairNameCheck";
 import { shortDate } from "../lib/dates";
 import { TestPhotosCard, TestPhotosSheet, useTestPhotos } from "../components/TestPhotos";
@@ -27,7 +28,7 @@ export default function StairTestPage() {
   const { siteId, testId } = useParams<{ siteId: string; testId: string }>();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
-  const { site, test, setTest, flush } = useStairTest(siteId, testId);
+  const { site, test, setTest, setSpf, flush } = useStairTest(siteId, testId);
   // the check before the report, while any stair still has placeholder names
   const [checkingNames, setCheckingNames] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
@@ -193,30 +194,34 @@ export default function StairTestPage() {
         </div>
       ) : (
         <>
-          {/* a tab per stair, sideways for any number of them */}
-          <div style={{ flexShrink: 0, display: "flex", gap: 5, overflowX: "auto", padding: "4px 14px 2px", scrollbarWidth: "none" }}>
-            {stairs.map((s) => {
+          {/* a tab per stair, sideways for any number of them; hold one to move it */}
+          <StairTabs
+            stairs={stairs}
+            onOpen={(s) => setParams({ stair: s.id }, { replace: true })}
+            onReorder={(next) => setSpf((spf) => ({ ...spf, stairs: reorderStairs(spf.stairs, next.map((s) => s.id)) }))}
+            render={(s, i) => {
               const on = s.id === stair.id;
               const every = test.sections.find((x) => SECTION[x].every) as "vel" | "force" | "latch" | undefined;
               const done = every && sys ? doorStats(test, s, every, sys).done : 0;
-              return (
-                <button
-                  key={s.id}
-                  onClick={() => setParams({ stair: s.id }, { replace: true })}
-                  style={{ flex: "0 0 auto", textAlign: "left", fontSize: 12, fontWeight: 800, padding: "7px 11px", borderRadius: 9, lineHeight: 1.25, background: on ? "rgba(var(--accent-rgb), .14)" : "var(--panel-2)", border: on ? "1px solid var(--accent)" : "1px solid var(--border-strong)", color: on ? "#5ff0e0" : "var(--muted)" }}
-                >
-                  <StairName stair={s} i={stairs.indexOf(s)} part="fan" />
-                  <small style={{ display: "block", fontSize: 10.5, fontWeight: 600 }}>
-                    <StairName stair={s} i={stairs.indexOf(s)} part="well" />
-                  </small>
-                  <small style={{ display: "block", fontSize: 10.5, fontWeight: 700 }}>{every ? `${done} of ${stairDoors(s).length}` : `${stairDoors(s).length} doors`}</small>
-                </button>
-              );
-            })}
-            <button aria-label="Add a stair" onClick={editSystem} style={{ flex: "0 0 auto", padding: "0 14px", borderRadius: 9, background: "var(--panel-2)", border: "1px solid var(--border-strong)", color: "#5ff0e0", fontSize: 18 }}>
-              +
-            </button>
-          </div>
+              return {
+                style: { flex: "0 0 auto", textAlign: "left", fontSize: 12, fontWeight: 800, padding: "7px 11px", borderRadius: 9, lineHeight: 1.25, background: on ? "#0d333f" : "var(--panel-2)", border: on ? "1px solid var(--accent)" : "1px solid var(--border-strong)", color: on ? "#5ff0e0" : "var(--muted)" },
+                body: (
+                  <>
+                    <StairName stair={s} i={i} part="fan" />
+                    <small style={{ display: "block", fontSize: 10.5, fontWeight: 600 }}>
+                      <StairName stair={s} i={i} part="well" />
+                    </small>
+                    <small style={{ display: "block", fontSize: 10.5, fontWeight: 700 }}>{every ? `${done} of ${stairDoors(s).length}` : `${stairDoors(s).length} doors`}</small>
+                  </>
+                ),
+              };
+            }}
+            after={
+              <button aria-label="Add a stair" onClick={editSystem} style={{ flex: "0 0 auto", padding: "0 14px", borderRadius: 9, background: "var(--panel-2)", border: "1px solid var(--border-strong)", color: "#5ff0e0", fontSize: 18 }}>
+                +
+              </button>
+            }
+          />
 
           <div ref={body} style={{ flexGrow: 1, overflowY: "auto", padding: "8px 14px 16px", display: "flex", flexDirection: "column", gap: 7 }}>
             {cards(stair)}

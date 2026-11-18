@@ -166,10 +166,22 @@ export function stairDoors(stair: Pick<SpfStair, "from" | "to" | "extra" | "leve
 const stairFan = (stair: SpfStair) => (/^SPF-?\s*$/i.test(stair.fan.trim()) ? "" : stair.fan.trim());
 // Until the fans are identified, a stair goes by placeholders from its place
 // in the list (shown in amber on screen, printed as they are): SPF-1 and
-// Stair 1, SPF-2 and Stair 2… Never stored, so they follow the stairs as
-// they're added, removed or reordered; a typed name replaces them.
-export const fanName = (stair: SpfStair, i: number) => stairFan(stair) || `SPF-${i + 1}`;
-export const wellName = (stair: SpfStair, i: number) => stair.name.trim() || `Stair ${i + 1}`;
+// Stair 1, SPF-2 and Stair 2… They follow the stairs as they're added and
+// removed, but once the stairs are reordered each keeps the number it had
+// (`no`), so moving SPF-2 to the front leaves it SPF-2. A typed name
+// replaces them.
+const placeholderNo = (stair: SpfStair, i: number) => stair.no ?? i + 1;
+export const fanName = (stair: SpfStair, i: number) => stairFan(stair) || `SPF-${placeholderNo(stair, i)}`;
+export const wellName = (stair: SpfStair, i: number) => stair.name.trim() || `Stair ${placeholderNo(stair, i)}`;
+
+// the stairs in a new order, each keeping the placeholder number it had
+export const reorderStairs = (stairs: SpfStair[], ids: string[]): SpfStair[] => {
+  const kept = new Map(stairs.map((st, i) => [st.id, st.no ? st : { ...st, no: i + 1 }]));
+  return ids.map((id) => kept.get(id)).filter((st): st is SpfStair => !!st);
+};
+
+// a stair added after a reorder takes the next number up, not one in use
+export const nextStairNo = (stairs: SpfStair[]) => (stairs.some((st) => st.no) ? Math.max(...stairs.map((st, i) => placeholderNo(st, i))) + 1 : undefined);
 export const fanIsDefault = (stair: SpfStair) => !stairFan(stair);
 export const wellIsDefault = (stair: SpfStair) => !stair.name.trim();
 export const stairLabel = (stair: SpfStair, i: number) => `${fanName(stair, i)} · ${wellName(stair, i)}`;
@@ -503,3 +515,121 @@ export const stairFileName = (site: { name: string }, ext: "pdf" | "xlsx", at = 
 
 export const testsFileName = (site: { name: string }, ext: "pdf" | "xlsx", at = Date.now()) =>
   reportFileName(site.name, "Tests", ext, at);
+
+// ---- the same level changes on other stairs (design canvas "Copy level
+// changes to other stairs", revised row) ----
+
+// One change made in Review level layout: a rename (car parks made basements
+// together count as one), a level removed, or one added above (or, at the
+// bottom, below) a level that was already there.
+export type LevelEdit =
+  | { kind: "rename"; names: Record<string, string> }
+  | { kind: "remove"; level: string }
+  | { kind: "add"; level: string; above?: string; below?: string };
+
+// what changed between the list a review opened on and the list now, given
+// the renames made along the way (each a map of old name to new, in order)
+export function levelEdits(start: string[], now: string[], renames: Record<string, string>[]): LevelEdit[] {
+  const has = new Set(now);
+  // each starting level's name now, and the rename that last moved it
+  const final = new Map<string, string>();
+  for (const s of start) {
+    let f = s;
+    for (const r of renames) if (r[f] !== undefined) f = r[f];
+    // renamed away and then gone (or reset): not a rename
+    final.set(s, has.has(f) ? f : s);
+  }
+  const groups = new Map<string, Record<string, string>>();
+  for (const [s, f] of final) {
+    if (s === f) continue;
+    // a car park made a basement (or back) goes with the others that did
+    const a = isCustomLevel(s) ? "" : splitLevel(s).type;
+    const b = isCustomLevel(f) ? "" : splitLevel(f).type;
+    const key = (a === "P" || a === "B") && (b === "P" || b === "B") && a !== b ? `${a}>${b}` : s;
+    groups.set(key, { ...groups.get(key), [s]: f });
+  }
+  const kept = new Set(final.values());
+  const out: LevelEdit[] = [...groups.values()].map((names) => ({ kind: "rename" as const, names }));
+  for (const [s, f] of final) if (!has.has(f)) out.push({ kind: "remove", level: s });
+  now.forEach((c, i) => {
+    if (kept.has(c)) return;
+    const above = now.slice(i + 1).find((x) => kept.has(x));
+    const below = above ? undefined : now.slice(0, i).reverse().find((x) => kept.has(x));
+    out.push({ kind: "add", level: c, above, below });
+  });
+  return out;
+}
+
+const span = (a: string[]) => (a.length === 1 ? a[0] : `${a[0]}–${a[a.length - 1]}`);
+// "Plant room above 26", "No level 13", "P1–P3 as B1–B3"
+export function levelEditLabel(e: LevelEdit): string {
+  if (e.kind === "rename") return `${span(Object.keys(e.names))} as ${span(Object.values(e.names))}`;
+  if (e.kind === "remove") return `No ${isCustomLevel(e.level) ? e.level : levelName(e.level).toLowerCase()}`;
+  return `${levelName(e.level)} ${e.above ? `above ${e.above}` : e.below ? `below ${e.below}` : ""}`.trim();
+}
+
+export type LevelEditsFit = {
+  levels: string[]; // the stair's levels with the changes that fit
+  names: Record<string, string>; // its levels renamed: readings go with them
+  done: number; // changes made
+  fits: number; // changes made, or already so
+  total: number;
+  why?: string; // the first that didn't fit: "no P1", "readings at 13"
+};
+
+// the changes on another stair's levels: each one that fits it is made, the
+// rest left; a level with readings isn't removed
+export function applyLevelEdits(levels: string[], edits: LevelEdit[], read: Set<string> = new Set()): LevelEditsFit {
+  const L = [...levels];
+  const names: Record<string, string> = {};
+  let done = 0;
+  let fits = 0;
+  let why: string | undefined;
+  const skip = (w: string) => (why ??= w);
+  for (const e of edits) {
+    if (e.kind === "rename") {
+      let hit = false;
+      for (const [o, n] of Object.entries(e.names)) {
+        const i = L.indexOf(o);
+        if (i >= 0 && !L.includes(n)) {
+          L[i] = n;
+          names[o] = n;
+          hit = true;
+        }
+      }
+      if (hit) {
+        done++;
+        fits++;
+      } else if (Object.entries(e.names).every(([o, n]) => L.includes(n) && !L.includes(o))) fits++;
+      else skip(`no ${Object.keys(e.names)[0]}`);
+    } else if (e.kind === "remove") {
+      if (!L.includes(e.level)) fits++;
+      else if (read.has(e.level)) skip(`readings at ${e.level}`);
+      else {
+        L.splice(L.indexOf(e.level), 1);
+        done++;
+        fits++;
+      }
+    } else if (L.includes(e.level)) fits++;
+    else {
+      const a = e.above ? L.indexOf(e.above) : -1;
+      const b = e.below ? L.indexOf(e.below) : -1;
+      if (a >= 0) L.splice(a, 0, e.level);
+      else if (b >= 0) L.splice(b + 1, 0, e.level);
+      else {
+        skip(`no ${e.above ?? e.below ?? e.level}`);
+        continue;
+      }
+      done++;
+      fits++;
+    }
+  }
+  return { levels: L, names, done, fits, total: edits.length, why };
+}
+
+// how a stair takes the changes: "All 3", "2 of 3 · no P1", "Already the same"
+export function levelEditsFitLabel(f: LevelEditsFit): string {
+  if (!f.done) return f.fits === f.total ? "Already the same" : `Nothing fits · ${f.why}`;
+  if (f.fits === f.total) return f.total === 1 ? "Fits" : `All ${f.total}`;
+  return `${f.fits} of ${f.total} · ${f.why}`;
+}
