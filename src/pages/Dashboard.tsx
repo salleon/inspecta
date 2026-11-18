@@ -9,6 +9,7 @@ import ConfirmDialog from "../components/ConfirmDialog";
 import SwipeRow from "../components/SwipeRow";
 import { SITES_CHANGED, useTourScene } from "../lib/tour";
 import { useEdgeBump } from "../lib/edgeBump";
+import { useBackHandler } from "../lib/backButton";
 import logo from "../assets/logo.png";
 import { useFlowMode } from "../lib/settings";
 import { CompanyLogo } from "../components/CompanySetup";
@@ -37,6 +38,16 @@ export default function Dashboard() {
     setStepBack(false);
     setAdding(true);
   }
+  // Android back: a step back in New job (details → the kinds → closed),
+  // never out of the app while it's open
+  useBackHandler(() => {
+    if (!adding) return false;
+    if (step === "details") {
+      setStepBack(true);
+      setStep("pick");
+    } else setAdding(false);
+    return true;
+  });
   // the tour opens the New job sheet to show the kinds of site
   useTourScene("new-site", openNewJob, () => setAdding(false));
   const [name, setName] = useState("");
@@ -359,7 +370,7 @@ export default function Dashboard() {
                   </span>
                   <span style={{ flexGrow: 1, display: "flex", flexDirection: "column", gap: 2 }}>
                     <span style={{ fontSize: 17, fontWeight: 800 }}>Reports</span>
-                    <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--muted)" }}>AFSS · Projects</span>
+                    <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--muted)" }}>AFSS · Project</span>
                   </span>
                   <IconChevronRight size={20} color="var(--accent)" strokeWidth={2.4} />
                 </button>
@@ -403,7 +414,7 @@ export default function Dashboard() {
                     {(["afss", "project"] as const).map((k) => (
                       <button key={k} type="button" role="radio" aria-checked={kind === k} onClick={() => setKind(k)} style={reportTypeStyle(kind === k, k)}>
                         <SiteKindIcon kind={k} size={26} color="currentColor" />
-                        {k === "afss" ? "AFSS" : "Projects"}
+                        {k === "afss" ? "AFSS" : "Project"}
                       </button>
                     ))}
                   </div>

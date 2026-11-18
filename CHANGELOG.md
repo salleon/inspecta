@@ -7,6 +7,12 @@ the technical detail.
 
 ## 18 November 2026
 
+- **Back button in New job.** The phone's back button now steps back
+  through New job (from a report's details to the list of kinds, then
+  closed) instead of closing the app.
+- **"Project", not "Projects".** The report type in New job reads AFSS ·
+  Project.
+
 - **Moved tests keep their dates on home.** When this update moves the
   flow and stair tests out of each AFSS and project site into their own
   jobs, the new jobs are dated from when the tests were done (or the site,
