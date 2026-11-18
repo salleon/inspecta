@@ -1,29 +1,35 @@
 import { Share } from "@capacitor/share";
 import { Capacitor } from "@capacitor/core";
-import type { FlowTest, Site, SpfSystem, StairTest } from "../db/types";
+import type { FfcpTest, FlowTest, Site, SpfSystem, StairTest } from "../db/types";
 import { writeBlobToCache } from "./cacheFile";
 import { numberedExport } from "./exportName";
 import { ZipWriter } from "./zip";
 import { testsFileName } from "./stairTest";
 
 // Exporting a site's other tests (design canvas SiteTests, "Export tests"):
-// the flow and stair tests picked, as one PDF (a page per flow test, a page
-// per stair of each stair test) and / or one Excel (a sheet each). With
+// the flow, stair and FFCP tests picked, as one PDF (a page per flow test,
+// a page per stair of each stair test, a page per FFCP test) and / or one
+// Excel (a sheet each; the FFCP tests share one). With
 // both picked they go out as one zip holding the two, so they travel as a
 // single attachment.
 
-async function buildTestsPdf(flow: FlowTest[], stair: StairTest[], sys: SpfSystem | undefined, site: Pick<Site, "name" | "address">): Promise<Blob> {
+async function buildTestsPdf(flow: FlowTest[], stair: StairTest[], sys: SpfSystem | undefined, site: Pick<Site, "name" | "address">, ffcp: FfcpTest[]): Promise<Blob> {
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   if (flow.length) {
     await (await import("./flowPdf")).appendFlowPages(doc, flow, site);
     doc.deletePage(1); // appendFlowPages starts each test on a new page
   }
-  if (stair.length && sys) await (await import("./stairPdf")).appendStairPages(doc, stair, sys, site, !flow.length);
+  const stairs = !!(stair.length && sys);
+  if (stairs) await (await import("./stairPdf")).appendStairPages(doc, stair, sys!, site, !flow.length);
+  if (ffcp.length) {
+    const { logoImage } = await import("./flowPdf");
+    (await import("./ffcpPdf")).appendFfcpPages(doc, ffcp, site, !flow.length && !stairs, await logoImage().catch(() => null));
+  }
   return doc.output("blob");
 }
 
-async function buildTestsWorkbook(flow: FlowTest[], stair: StairTest[], sys: SpfSystem | undefined, site: Pick<Site, "name" | "address">): Promise<Blob> {
+async function buildTestsWorkbook(flow: FlowTest[], stair: StairTest[], sys: SpfSystem | undefined, site: Pick<Site, "name" | "address">, ffcp: FfcpTest[]): Promise<Blob> {
   const ExcelJS = (await import("exceljs")).default;
   const { addFlowSheets, addFlowCharts } = await import("./flowExcel");
   const wb = new ExcelJS.Workbook();
@@ -34,6 +40,7 @@ async function buildTestsWorkbook(flow: FlowTest[], stair: StairTest[], sys: Spf
     addStairSheets(wb, stair, sys, site);
     await addStairPhotoSheets(wb, stair);
   }
+  if (ffcp.length) (await import("./ffcpExcel")).addFfcpSheet(wb, ffcp, site);
   const buffer = await wb.xlsx.writeBuffer({ zip: { compression: "STORE" } } as never);
   const bytes = await addFlowCharts(new Uint8Array(buffer as ArrayBuffer), charts);
   return new Blob([bytes as BlobPart], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
@@ -44,7 +51,7 @@ export type TestsFormat = "pdf" | "xlsx";
 // builds the chosen formats and opens the share menu with them all
 export async function exportTests(
   // sys: the stair tests' system (the site's own, unless given)
-  opts: { flow: FlowTest[]; stair: StairTest[]; site: Site; sys?: SpfSystem; formats: TestsFormat[]; fileName?: (ext: TestsFormat) => string },
+  opts: { flow: FlowTest[]; stair: StairTest[]; ffcp?: FfcpTest[]; site: Site; sys?: SpfSystem; formats: TestsFormat[]; fileName?: (ext: TestsFormat) => string },
   onStep: (percent: number, step: string) => void,
 ): Promise<void> {
   const { flow, stair, site, formats } = opts;
@@ -53,7 +60,8 @@ export async function exportTests(
   for (const [i, f] of formats.entries()) {
     onStep(15 + i * 35, f === "pdf" ? "Drawing the pages…" : "Building the sheets…");
     const sys = opts.sys ?? site.spf;
-    const blob = f === "pdf" ? await buildTestsPdf(flow, stair, sys, site) : await buildTestsWorkbook(flow, stair, sys, site);
+    const ffcp = opts.ffcp ?? [];
+    const blob = f === "pdf" ? await buildTestsPdf(flow, stair, sys, site, ffcp) : await buildTestsWorkbook(flow, stair, sys, site, ffcp);
     built.push({ blob, ext: f });
   }
   const files: { blob: Blob; name: string; shared: () => void }[] = [];

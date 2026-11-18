@@ -1,8 +1,9 @@
 import { say } from "./Message";
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import type { FlowKind, FlowTest, Site, SpfSystem, StairTest } from "../db/types";
-import { addFlowTest, deleteFlowTest, deleteStairTest, flowTestCount, listAttachedJobs, listFlowTests, listStairTests, stairTestCount, testJobFor } from "../db/db";
+import type { FfcpTest, FlowKind, FlowTest, Site, SpfSystem, StairTest } from "../db/types";
+import { modesTested } from "../lib/ffcp";
+import { addFfcpTest, addFlowTest, deleteFlowTest, deleteStairTest, flowTestCount, listAttachedJobs, listFlowTests, listStairTests, stairTestCount, testJobFor } from "../db/db";
 import { blankThumbSvg, chartSvg, KIND_HINT, KIND_LABEL, newFlowTest, readingCount, summary } from "../lib/flowTest";
 import { KIND_LABEL as STAIR_KIND, stairTestSummary, systemLine } from "../lib/stairTest";
 import { exportTests, type TestsFormat } from "../lib/testsExport";
@@ -11,7 +12,6 @@ import ConfirmDialog from "./ConfirmDialog";
 import SwipeRow from "./SwipeRow";
 import ProgressOverlay from "./ProgressOverlay";
 import SiteKindIcon, { KIND_COLOUR } from "./SiteKindIcon";
-import { addFfcpTest } from "./FfcpList";
 import { IconChevronRight } from "./Icons";
 import { Pill } from "./StairUi";
 import { shortDate } from "../lib/dates";
@@ -27,7 +27,7 @@ import { shortDate } from "../lib/dates";
 const FLOW_KINDS: FlowKind[] = ["sprinkler", "hydrant", "combined", "blank"];
 const MIN_LOADER_MS = 3000;
 
-type Item = { kind: "flow"; test: FlowTest } | { kind: "stair"; test: StairTest };
+type Item = { kind: "flow"; test: FlowTest } | { kind: "stair"; test: StairTest } | { kind: "ffcp"; test: FfcpTest };
 type Job = { job: Site; count: number };
 
 const formatDay = shortDate;
@@ -98,7 +98,9 @@ export default function TestsList({ site, mode, onCount }: { site: Site; mode: "
         ]);
         if (cancelled) return;
         setStairSys(stairJob?.spf);
-        setItems([...flow.map((test) => ({ kind: "flow" as const, test })), ...stair.map((test) => ({ kind: "stair" as const, test }))]);
+        // and the FFCP jobs' panel tests with anything ticked
+        const ffcp = list.flatMap((j) => (j.kind === "ffcp" ? (j.ffcp ?? []).filter((t) => modesTested(t).length) : []));
+        setItems([...flow.map((test) => ({ kind: "flow" as const, test })), ...stair.map((test) => ({ kind: "stair" as const, test })), ...ffcp.map((test) => ({ kind: "ffcp" as const, test }))]);
         onCount(withCounts.length);
       });
       return () => {
@@ -164,7 +166,7 @@ export default function TestsList({ site, mode, onCount }: { site: Site; mode: "
     setBusy(true);
     try {
       if (item.kind === "flow") await deleteFlowTest(item.test.id);
-      else await deleteStairTest(item.test.id);
+      else if (item.kind === "stair") await deleteStairTest(item.test.id);
       const left = (items ?? []).filter((i) => i.test.id !== item.test.id);
       setItems(left);
       onCount(left.length);
@@ -192,6 +194,7 @@ export default function TestsList({ site, mode, onCount }: { site: Site; mode: "
         {
           flow: chosen.flatMap((i) => (i.kind === "flow" ? [i.test] : [])),
           stair: chosen.flatMap((i) => (i.kind === "stair" ? [i.test] : [])),
+          ffcp: chosen.flatMap((i) => (i.kind === "ffcp" ? [i.test] : [])),
           site,
           sys: mode === "other" ? stairSys : site.spf,
           formats: (["pdf", "xlsx"] as TestsFormat[]).filter((f) => formats.has(f)),
@@ -277,7 +280,7 @@ export default function TestsList({ site, mode, onCount }: { site: Site; mode: "
             onOpen={() => navigate(item.kind === "flow" ? `/site/${site.id}/flow/${item.test.id}` : `/site/${site.id}/spf/${item.test.id}`)}
             onDelete={() => setConfirming(item)}
           >
-            {item.kind === "flow" ? <FlowCard test={item.test} /> : <StairCard test={item.test} site={site} />}
+            {item.kind === "flow" ? <FlowCard test={item.test} /> : item.kind === "stair" ? <StairCard test={item.test} site={site} /> : null}
           </SwipeRow>
         ))}
         {mode === "spf" && !!items?.length && <div style={{ fontSize: 11.5, color: "var(--muted-2)", textAlign: "center" }}>Swipe a test left to delete it.</div>}
@@ -368,11 +371,11 @@ export default function TestsList({ site, mode, onCount }: { site: Site; mode: "
             {items.map((i) => (
               <CheckRow key={i.test.id} on={picked.has(i.test.id)} onClick={() => toggle(i.test.id)}>
                 <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <SiteKindIcon kind={i.kind === "flow" ? "flow" : "spf"} size={16} />
+                  <SiteKindIcon kind={i.kind === "stair" ? "spf" : i.kind} size={16} />
                   <span>
-                    <b style={{ display: "block", fontSize: 14.5 }}>{i.kind === "flow" ? i.test.name || "Untitled" : STAIR_KIND[i.test.kind]}</b>
+                    <b style={{ display: "block", fontSize: 14.5 }}>{i.kind === "flow" ? i.test.name || "Untitled" : i.kind === "stair" ? STAIR_KIND[i.test.kind] : i.test.location || "Fire fan control panel"}</b>
                     <span style={{ fontSize: 11.5, color: "var(--muted)", fontWeight: 600 }}>
-                      {i.kind === "flow" ? "Flow test" : "Stair pressurisation"} · {formatDay(i.test.testedAt)}{i.test.fromBackup ? " · From backup" : ""}
+                      {i.kind === "flow" ? "Flow test" : i.kind === "stair" ? "Stair pressurisation" : "FFCP"} · {formatDay(i.test.testedAt)}{i.kind !== "ffcp" && i.test.fromBackup ? " · From backup" : ""}
                     </span>
                   </span>
                 </span>
@@ -417,7 +420,7 @@ export default function TestsList({ site, mode, onCount }: { site: Site; mode: "
       {confirming && (
         <ConfirmDialog
           title={confirming.kind === "flow" ? "Delete this flow test?" : "Delete this stair test?"}
-          message={`"${confirming.kind === "flow" ? confirming.test.name || "Untitled" : STAIR_KIND[confirming.test.kind]}" and its readings will be permanently deleted. This can't be undone.`}
+          message={`"${confirming.kind === "flow" ? confirming.test.name || "Untitled" : confirming.kind === "stair" ? STAIR_KIND[confirming.test.kind] : "FFCP test"}" and its readings will be permanently deleted. This can't be undone.`}
           busy={busy}
           onCancel={() => setConfirming(null)}
           onConfirm={handleDelete}

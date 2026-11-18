@@ -1,5 +1,7 @@
 import Dexie, { type Table } from "dexie";
 import type { Site, Finding, Photo, Mark, SiteKind, Thumbnail, ExportCopy, StampedPhoto, FlowTest, SiteReport, SpfSystem, StairTest, FfcpTest } from "./types";
+import { newFfcpTest } from "../lib/ffcp";
+import { getInspectorName } from "../lib/profile";
 import { makeThumbnail } from "../lib/thumbnail";
 import { makeExportCopy } from "../lib/exportCopy";
 import { RENAMED_CODES } from "../lib/esrCategories";
@@ -173,6 +175,14 @@ export async function saveSiteSpf(siteId: string, spf: SpfSystem) {
 // an FFCP job's panel tests, all at once (lib/ffcp)
 export async function saveSiteFfcp(siteId: string, ffcp: FfcpTest[]) {
   await db.sites.update(siteId, { ffcp, changedAt: Date.now() });
+}
+
+// a new panel test in an FFCP job, with the inspector's name; returns its id
+export async function addFfcpTest(jobId: string) {
+  const job = await db.sites.get(jobId);
+  const test = { ...newFfcpTest(), testedBy: getInspectorName().trim() };
+  await saveSiteFfcp(jobId, [...(job?.ffcp ?? []), test]);
+  return test.id;
 }
 
 // the site's customised reports, all at once (not a change to the site

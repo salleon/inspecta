@@ -1,4 +1,4 @@
-import type { Finding, FlowTest, Photo, Site, SpfSystem, StairTest } from "../db/types";
+import type { FfcpTest, Finding, FlowTest, Photo, Site, SpfSystem, StairTest } from "../db/types";
 import { brandWording } from "./branding";
 import { fitPhotos } from "./excelPhotoFit";
 import { defectTypeStyle } from "./defectTypes";
@@ -15,6 +15,8 @@ interface FlowExport {
   // the site's stair tests (a set per attached stair job, each with its
   // system), sheets after the flow tests
   stairs?: { tests: StairTest[]; sys: SpfSystem }[];
+  // the attached FFCP jobs' panel tests, one sheet after them
+  ffcp?: FfcpTest[];
 }
 
 // A photo stamped for the Excel: made once from its export copy, then
@@ -407,6 +409,7 @@ async function writeWorkbook(wb: import("exceljs").Workbook, flow?: FlowExport):
     addStairSheets(wb, stair.tests, stair.sys, flow!.site);
     await addStairPhotoSheets(wb, stair.tests);
   }
+  if (flow?.ffcp?.length) (await import("./ffcpExcel")).addFfcpSheet(wb, flow.ffcp, flow.site);
   const buffer = await wb.xlsx.writeBuffer({ zip: { compression: "STORE" } } as never);
   const bytes = await addFlowCharts(new Uint8Array(buffer as ArrayBuffer), charts);
   return new Blob([bytes as BlobPart], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });

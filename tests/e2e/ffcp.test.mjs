@@ -4,7 +4,8 @@
 // crossed, a cross asking why (or later), in normal and fire mode.
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { startApp, openPage, go, seed } from "./helpers.mjs";
+import { readFileSync } from "node:fs";
+import { startApp, openPage, go, seed, download } from "./helpers.mjs";
 
 let app;
 let page;
@@ -84,5 +85,21 @@ test("it's kept: back on the job, the test's summary", async () => {
   await page.click('button:has-text("Done")');
   await page.waitForTimeout(800);
   assert.equal(await page.getByText(/5 fans · 2 fails/).count(), 1);
+});
+
+test("Export: the job's panel tests as a PDF, and as one Excel sheet", async () => {
+  await page.click('button:has-text("Export")');
+  await page.click('button[aria-pressed]:has-text("PDF")');
+  const pdf = await download(page, () => page.click('.sheet-panel button:has-text("Export")'));
+  const text = readFileSync(pdf.path, "latin1");
+  assert.match(text, /^%PDF/);
+  assert.match(text, /Fire fan control panel/);
+  assert.match(text, /Normal mode/);
+  assert.doesNotMatch(text, /Fire mode/, "fire mode had nothing ticked: no table");
+  await page.waitForTimeout(800);
+  await page.click('button:has-text("Export")');
+  await page.click('button[aria-pressed]:has-text("Excel")');
+  const xlsx = await download(page, () => page.click('.sheet-panel button:has-text("Export")'));
+  assert.equal(readFileSync(xlsx.path).subarray(0, 2).toString(), "PK", "an Excel file");
   assert.deepEqual(errors, []);
 });

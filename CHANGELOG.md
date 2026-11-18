@@ -7,6 +7,17 @@ the technical detail.
 
 ## 18 November 2026
 
+- **FFCP results in the PDF and Excel.** Each panel test prints as a page
+  laid out like the hand-drawn sheet: a small table per mode tested (a
+  mode with nothing ticked is left out), fan names down the side, then
+  the run, stop and fault lights and manual run and stop, with ✓, ✗ (shaded
+  red) and a dash for anything not checked. The fail notes and fan notes
+  follow, then a one-line summary. Excel puts every FFCP test on one
+  sheet. They come out with a site's report when the FFCP job is attached,
+  with Export Other Tests Only, and from the FFCP job's own Export.
+- **A bigger logo on the test results pages.** The logo in the header of
+  the stair pressurisation and FFCP results is about twice the size.
+
 - **New test: fire fan control panel (FFCP).** FFCP is now a job type of
   its own, next to Flow and Stair: pick it from New job, filter home with
   its chip, or add it from a site's Other tests. Each panel test starts by
@@ -17,8 +28,7 @@ the technical detail.
   tiles you can jump between in any order (All, To do, Fails), and the
   next unfinished fan comes up by itself. A ✗ asks why it failed, with
   quick reasons to tap, or the note can wait until later (the fan shows
-  "no note" until it has one). Each fan also has a notes box. Not in the
-  PDF or Excel exports yet.
+  "no note" until it has one). Each fan also has a notes box.
 
 - **Flow and stair tests have their own job, and can be attached to a
   site.** Every flow test and stair pressurisation test now lives in its

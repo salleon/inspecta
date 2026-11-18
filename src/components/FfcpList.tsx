@@ -1,25 +1,23 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Site } from "../db/types";
-import { getSite, saveSiteFfcp } from "../db/db";
-import { newFfcpTest, testSummary } from "../lib/ffcp";
+import { addFfcpTest, saveSiteFfcp } from "../db/db";
+import { modesTested, testSummary } from "../lib/ffcp";
+import { exportTests, type TestsFormat } from "../lib/testsExport";
+import { useBackHandler } from "../lib/backButton";
+import { say } from "./Message";
+import ProgressOverlay from "./ProgressOverlay";
+import { Sheet } from "./TestsList";
 import { shortDate } from "../lib/dates";
 import ConfirmDialog from "./ConfirmDialog";
 import SwipeRow from "./SwipeRow";
 import SiteKindIcon from "./SiteKindIcon";
 
 // An FFCP job's page: its panel tests, newest first; swipe left to delete.
-// + New panel test opens a test, which asks for its fans first.
+// + New panel test opens a test, which asks for its fans first. Export: the
+// tests with anything ticked, as PDF and / or Excel (lib/testsExport).
 
 const TONE = { pass: "#2bd47a", fail: "#ff7a6a", todo: "var(--muted)" };
-
-// a new panel test in this job, saved; returns its id
-export async function addFfcpTest(jobId: string) {
-  const job = await getSite(jobId);
-  const test = newFfcpTest();
-  await saveSiteFfcp(jobId, [...(job?.ffcp ?? []), test]);
-  return test.id;
-}
 
 export default function FfcpList({ site }: { site: Site }) {
   const navigate = useNavigate();
@@ -27,6 +25,31 @@ export default function FfcpList({ site }: { site: Site }) {
   const [openSwipeId, setOpenSwipeId] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [formats, setFormats] = useState<Set<TestsFormat> | null>(null);
+  const [exporting, setExporting] = useState<{ percent: number; step: string } | null>(null);
+  useBackHandler(() => {
+    if (!formats) return false;
+    setFormats(null);
+    return true;
+  });
+  const done = tests.filter((t) => modesTested(t).length);
+
+  async function runExport() {
+    if (!formats?.size || exporting) return;
+    const picked = (["pdf", "xlsx"] as TestsFormat[]).filter((f) => formats.has(f));
+    setFormats(null);
+    setExporting({ percent: 5, step: "Getting ready…" });
+    try {
+      await exportTests({ flow: [], stair: [], ffcp: done, site, formats: picked }, (percent, step) => setExporting({ percent, step }));
+    } catch (err) {
+      if (!(err instanceof Error) || !/cancell?ed/i.test(err.message)) {
+        console.error("FFCP export failed", err);
+        say("Couldn't export the tests");
+      }
+    } finally {
+      setExporting(null);
+    }
+  }
 
   async function add() {
     if (busy) return;
@@ -83,7 +106,15 @@ export default function FfcpList({ site }: { site: Site }) {
         })}
         {!!tests.length && <div style={{ fontSize: 11.5, color: "var(--muted-2)", textAlign: "center" }}>Swipe a test left to delete it.</div>}
       </div>
-      <div style={{ flexShrink: 0, padding: "12px 16px calc(28px + var(--sa-bottom))", borderTop: "1px solid var(--border)" }}>
+      <div style={{ flexShrink: 0, padding: "12px 16px calc(28px + var(--sa-bottom))", borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 10 }}>
+        {!!done.length && (
+          <button
+            onClick={() => setFormats(new Set())}
+            style={{ width: "100%", padding: "13px 0", borderRadius: 12, border: "1px solid rgba(255,122,92,.55)", background: "rgba(255,122,92,.1)", color: "#ff7a5c", fontSize: 14.5, fontWeight: 800 }}
+          >
+            Export
+          </button>
+        )}
         <button
           onClick={() => void add()}
           disabled={busy}
@@ -93,6 +124,43 @@ export default function FfcpList({ site }: { site: Site }) {
           + New panel test
         </button>
       </div>
+      {formats && (
+        <Sheet onClose={() => setFormats(null)}>
+          <div style={{ fontSize: 16, fontWeight: 800 }}>Export {done.length === 1 ? "the panel test" : `${done.length} panel tests`}</div>
+          <div style={{ display: "flex", gap: 8 }}>
+            {(["pdf", "xlsx"] as TestsFormat[]).map((f) => {
+              const on = formats.has(f);
+              return (
+                <button
+                  key={f}
+                  aria-pressed={on}
+                  onClick={() =>
+                    setFormats((s) => {
+                      const next = new Set(s);
+                      if (next.has(f)) next.delete(f);
+                      else next.add(f);
+                      return next;
+                    })
+                  }
+                  style={{ flex: 1, padding: "12px 0", borderRadius: 10, border: on ? "1px solid rgba(255,122,92,.6)" : "1px solid var(--border-strong)", background: on ? "rgba(255,122,92,.12)" : "none", color: on ? "#ff7a5c" : "var(--muted)", fontSize: 14, fontWeight: 800 }}
+                >
+                  {f === "pdf" ? "PDF" : "Excel"}
+                </button>
+              );
+            })}
+          </div>
+          <button
+            onClick={() => void runExport()}
+            disabled={!formats.size}
+            style={{ width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: "var(--accent)", color: "var(--accent-text)", fontSize: 16, fontWeight: 800, opacity: formats.size ? 1 : 0.4 }}
+          >
+            {formats.size ? "Export" : "Pick PDF or Excel"}
+          </button>
+        </Sheet>
+      )}
+
+      {exporting && <ProgressOverlay percent={exporting.percent} title="Preparing export" step={exporting.step} art="conveyor" />}
+
       {confirming && (
         <ConfirmDialog
           title="Delete this panel test?"

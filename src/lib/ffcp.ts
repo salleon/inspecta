@@ -83,3 +83,37 @@ export function newFfcpTest(location = ""): FfcpTest {
 }
 
 export const newFan = (name: string): FfcpFan => ({ id: crypto.randomUUID(), name, marks: {}, notes: {} });
+
+// ---- the report (lib/ffcpPdf, lib/ffcpExcel) ----
+
+// what each check is called in the notes, where the table's headings aren't there to say
+// the table's column headings (manual control: run and stop, as the drawn sheet)
+export const HEADS = ["RUN", "STOP", "FAULT", "RUN", "STOP"];
+const NOTE_LABEL: Record<string, string> = { run: "Run light", stop: "Stop light", fault: "Fault light", on: "Manual run", off: "Manual stop" };
+
+// the modes with anything ticked: a mode not tested gets no table
+export const modesTested = (test: FfcpTest): FfcpMode[] => (["normal", "fire"] as FfcpMode[]).filter((m) => test.fans.some((f) => FAN_CHECKS.some(([k]) => f.marks[`${m}.${k}`])));
+
+// each fail's why, then each fan's own note
+export function reportNotes(test: FfcpTest): { head: string; text: string; fail: boolean }[] {
+  const notes: { head: string; text: string; fail: boolean }[] = [];
+  for (const fan of test.fans) {
+    for (const mode of ["normal", "fire"] as FfcpMode[])
+      for (const [k] of FAN_CHECKS) {
+        if (fan.marks[`${mode}.${k}`] !== "n") continue;
+        notes.push({ head: `${fan.name} · ${mode === "normal" ? "Normal" : "Fire"} · ${NOTE_LABEL[k]} FAIL`, text: fan.notes[`${mode}.${k}`]?.trim() || "No note", fail: true });
+      }
+    if (fan.note?.trim()) notes.push({ head: fan.name, text: fan.note.trim(), fail: false });
+  }
+  return notes;
+}
+
+// "7 fans · 3 fails on 2 fans · 3 not checked" (the modes tested only)
+export function reportSummary(test: FfcpTest): { text: string; fails: number } {
+  const all = test.fans.flatMap((f) => modesTested(test).flatMap((m) => FAN_CHECKS.map(([k]) => f.marks[`${m}.${k}`])));
+  const fails = all.filter((x) => x === "n").length;
+  const left = all.filter((x) => !x).length;
+  const failedFans = test.fans.filter((f) => Object.values(f.marks).includes("n")).length;
+  const n = (k: number, w: string) => `${k} ${w}${k === 1 ? "" : "s"}`;
+  return { text: [n(test.fans.length, "fan"), fails ? `${n(fails, "fail")} on ${n(failedFans, "fan")}` : "all passed", left ? `${left} not checked` : ""].filter(Boolean).join(" · "), fails };
+}

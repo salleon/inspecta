@@ -6,6 +6,7 @@ import { Share } from "@capacitor/share";
 import { Capacitor } from "@capacitor/core";
 import type { Finding, FlowTest, Photo, Site, SiteReport, SpfSystem, StairTest } from "../db/types";
 import { countExportCopies, getExportCopy, getSite, listAttachedJobs, listFindings, listFlowTests, listPhotos, listStairTests, saveSiteReports, saveSiteSpf, updateFinding } from "../db/db";
+import { modesTested } from "../lib/ffcp";
 import StairNameCheck, { stairsToName } from "../components/StairNameCheck";
 import { stairTestHasData } from "../lib/stairTest";
 import { IconChevronLeft, IconShare } from "../components/Icons";
@@ -374,14 +375,16 @@ export default function ExportPreview() {
     const jobs = id ? await listAttachedJobs(id) : [];
     const flowTests: FlowTest[] = [];
     const stairs: { job: Site; tests: StairTest[]; sys: SpfSystem }[] = [];
+    // FFCP tests with anything ticked
+    const ffcp = jobs.flatMap((j) => (j.kind === "ffcp" ? (j.ffcp ?? []).filter((t) => modesTested(t).length) : []));
     for (const job of jobs) {
       if (job.kind === "flow") flowTests.push(...(await listFlowTests(job.id)).filter(flowTestHasData));
-      else if (job.spf?.stairs.length) {
+      else if (job.kind === "spf" && job.spf?.stairs.length) {
         const tests = (await listStairTests(job.id)).filter(stairTestHasData);
         if (tests.length) stairs.push({ job, tests, sys: job.spf });
       }
     }
-    return { flowTests, stairs };
+    return { flowTests, stairs, ffcp };
   }
 
   async function buildPdf(onPhoto: (done: number, total: number) => void): Promise<Blob> {
@@ -391,7 +394,7 @@ export default function ExportPreview() {
     await drawFindings(doc, items, onPhoto);
 
     // the attached jobs' flow tests, a page each, at the end (as the Excel's tabs)
-    const { flowTests, stairs } = await attachedTests();
+    const { flowTests, stairs, ffcp } = await attachedTests();
     if (site && flowTests.length) {
       setExportProgress({ percent: 86, step: "Adding flow tests…" });
       await (await import("../lib/flowPdf")).appendFlowPages(doc, flowTests, site);
@@ -399,6 +402,11 @@ export default function ExportPreview() {
     // and their stair tests, a page per stair
     if (site && stairs.length) setExportProgress({ percent: 87, step: "Adding stair tests…" });
     for (const stair of stairs) if (site) await (await import("../lib/stairPdf")).appendStairPages(doc, stair.tests, stair.sys, site, false);
+    // and their FFCP tests, a page each
+    if (site && ffcp.length) {
+      const { logoImage } = await import("../lib/flowPdf");
+      (await import("../lib/ffcpPdf")).appendFfcpPages(doc, ffcp, site, false, await logoImage().catch(() => null));
+    }
 
     setExportProgress({ percent: 88, step: "Building PDF…" });
     // let the "Building PDF…" step paint before jsPDF's synchronous output
@@ -479,8 +487,8 @@ export default function ExportPreview() {
             p.stage === "photos" ? photoProgress(p.done, p.total) : setExportProgress({ percent: 88, step: "Building spreadsheet…" });
           // the site's flow tests go in as tabs after the findings, the
           // ones with readings only
-          const { flowTests, stairs } = await attachedTests();
-          const flow = site && (flowTests.length || stairs.length) ? { tests: flowTests, site, stairs } : undefined;
+          const { flowTests, stairs, ffcp } = await attachedTests();
+          const flow = site && (flowTests.length || stairs.length || ffcp.length) ? { tests: flowTests, site, stairs, ffcp } : undefined;
           blob = site?.kind === "project" ? await buildProjectWorkbook(items, onProgress, flow) : await buildFindingsWorkbook(items, inspectionMs, onProgress, flow);
         }
         timer.mark("building");

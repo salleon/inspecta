@@ -8,20 +8,20 @@ import { PHOTOS_SUBTITLE, testPhotoItems, type StairPhotoItem } from "./stairPho
 // page per stair, laid out as lib/stairPrint (the preview draws the same).
 // A tall stair runs on to more pages, the table's heading repeated.
 
-const PAGE = { w: 595.28, h: 841.89, m: 40 };
-const INK = "#14212e";
-const SOFT = "#4a6175";
-const NAVY = "#0b3550";
-const LINE = "#d5dee6";
-const FAIL_FILL = "#ffd9d4";
-const FAIL_INK = "#b3261e";
+export const PAGE = { w: 595.28, h: 841.89, m: 40 };
+export const INK = "#14212e";
+export const SOFT = "#4a6175";
+export const NAVY = "#0b3550";
+export const LINE = "#d5dee6";
+export const FAIL_FILL = "#ffd9d4";
+export const FAIL_INK = "#b3261e";
 const WARN_FILL = "#fff0b8";
 const WARN_INK = "#6b4a00";
 
 // the PDF's own font has no ✓ / ✗
 const plain = (s: string) => s.replace(/ ✓/g, " OK").replace(/ ✗/g, " FAIL").replace(/✓/g, "OK").replace(/✗/g, "FAIL");
 
-type Logo = { data: string; w: number; h: number } | null;
+export type Logo = { data: string; w: number; h: number } | null;
 
 export async function appendStairPages(doc: JsPDF, tests: StairTest[], sys: SpfSystem, site: Pick<Site, "name" | "address">, first: boolean): Promise<void> {
   const logo = await logoImage().catch(() => null);
@@ -44,7 +44,7 @@ export async function appendStairPages(doc: JsPDF, tests: StairTest[], sys: SpfS
 }
 
 // the heading every page has: title, logo, rule, subtitle; returns where the page goes on from
-function heading(doc: JsPDF, title: string, subtitle: string, logo: Logo) {
+export function heading(doc: JsPDF, title: string, subtitle: string, logo: Logo) {
   const { w: W, m: M } = PAGE;
   let y = M + 6;
   doc.setTextColor(INK);
@@ -52,8 +52,9 @@ function heading(doc: JsPDF, title: string, subtitle: string, logo: Logo) {
   doc.setFontSize(15);
   doc.text(title, M, y + 8);
   if (logo) {
-    const lh = Math.min(26, (120 * logo.h) / logo.w); // a wide company logo: 120 pt across at most
-    doc.addImage(logo.data, "PNG", W - M - (logo.w / logo.h) * lh, y - 8, (logo.w / logo.h) * lh, lh);
+    // big enough to read at a glance; a wide company logo: 240 pt across at most
+    const lh = Math.min(58, (240 * logo.h) / logo.w);
+    doc.addImage(logo.data, "PNG", W - M - (logo.w / logo.h) * lh, y - 22, (logo.w / logo.h) * lh, lh);
   }
   doc.setFillColor("#1f6fb2");
   doc.rect(M, y + 15, 46, 2.5, "F");

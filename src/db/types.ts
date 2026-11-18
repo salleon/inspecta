@@ -327,6 +327,8 @@ export interface FfcpTest {
   // where the panel is, e.g. "Ground floor, fire control room"
   location: string;
   testedAt: number;
+  // the inspector's name when the test was made (Settings)
+  testedBy?: string;
   createdAt: number;
   updatedAt: number;
   fans: FfcpFan[];
