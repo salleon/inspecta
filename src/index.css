@@ -18,9 +18,18 @@
   --accent: #2ec4b6;
   --accent-text: #04140f;
   --accent-rgb: 46, 196, 182; /* --accent as r, g, b, for rgba() */
+  --accent-soft: #5ff0e0; /* the accent's light tint, for text on dark */
   --paper: #f7f3ea;
   --paper-border: #e2ddd0;
   --paper-text: #1c2530;
+}
+
+/* stair pressurisation's screens: its purple in place of the teal */
+.spf-theme {
+  --accent: #b18cff;
+  --accent-text: #160a2e;
+  --accent-rgb: 177, 140, 255;
+  --accent-soft: #d7c2ff;
 }
 
 * {

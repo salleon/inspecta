@@ -15,6 +15,7 @@ import {
   doorValue,
   FAN_CHECKS,
   FAN_SOURCE,
+  fanName,
   GENERAL_SECTIONS,
   isCustomLevel,
   KIND_LABEL,
@@ -36,6 +37,7 @@ import { useBackHandler } from "../lib/backButton";
 import { AMBER, PageHeader, StairChin, StairName, useStairTest } from "../components/StairUi";
 import NumPad, { BLANK, k, numberKeys, PadTag, readingKeys } from "../components/NumPad";
 import ConfirmDialog from "../components/ConfirmDialog";
+import DuctProbes from "../components/DuctProbes";
 import { CameraButton, TestPhotosSheet, useTestPhotos } from "../components/TestPhotos";
 import { IconCamera } from "../components/Icons";
 import { addTestNote, findingLevel, takeTestPhoto, testFindingUrl } from "../lib/testPhotos";
@@ -392,11 +394,11 @@ function EveryDoor(props: EveryProps & { peek?: boolean }) {
               <button
                 disabled={run === 0}
                 onClick={() => setSheet({ edit: true, text: runChange(test, run) })}
-                style={{ flex: "1 1 0", minWidth: 0, textAlign: "left", border: "none", background: "none", padding: "6px 2px", fontSize: 11.5, fontWeight: 700, color: "#9eeee5", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
+                style={{ flex: "1 1 0", minWidth: 0, textAlign: "left", border: "none", background: "none", padding: "6px 2px", fontSize: 11.5, fontWeight: 700, color: "var(--accent-soft)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
               >
                 {runChange(test, run) || "What changed?"}
               </button>
-              <button onClick={() => setSheet({ edit: false, text: "" })} style={{ flex: "0 0 auto", padding: "8px 12px", borderRadius: 10, background: "none", border: "1px dashed var(--accent)", color: "#5ff0e0", fontSize: 13, fontWeight: 800 }}>
+              <button onClick={() => setSheet({ edit: false, text: "" })} style={{ flex: "0 0 auto", padding: "8px 12px", borderRadius: 10, background: "none", border: "1px dashed var(--accent)", color: "var(--accent-soft)", fontSize: 13, fontWeight: 800 }}>
                 + Run
               </button>
             </div>
@@ -407,11 +409,11 @@ function EveryDoor(props: EveryProps & { peek?: boolean }) {
                 </button>
               ))}
               {/* the whole test's photos and notes, after the tests in use */}
-              <button data-testid="spf-photos-chip" onClick={() => setPhotosOpen(true)} style={{ ...chip(false), display: "flex", alignItems: "center", gap: 6, color: "#5ff0e0", border: "1px solid rgba(var(--accent-rgb), .55)", background: "rgba(var(--accent-rgb), .1)" }}>
+              <button data-testid="spf-photos-chip" onClick={() => setPhotosOpen(true)} style={{ ...chip(false), display: "flex", alignItems: "center", gap: 6, color: "var(--accent-soft)", border: "1px solid rgba(var(--accent-rgb), .55)", background: "rgba(var(--accent-rgb), .1)" }}>
                 <IconCamera size={15} strokeWidth={2.2} />
                 Photos &amp; notes
                 {photos.length > 0 && (
-                  <span style={{ minWidth: 18, height: 18, padding: "0 5px", boxSizing: "border-box", borderRadius: 9, background: "#5ff0e0", color: "#04140f", fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center" }}>{photos.length}</span>
+                  <span style={{ minWidth: 18, height: 18, padding: "0 5px", boxSizing: "border-box", borderRadius: 9, background: "var(--accent-soft)", color: "var(--accent-text)", fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center" }}>{photos.length}</span>
                 )}
               </button>
               {missing.length > 0 && (
@@ -811,6 +813,19 @@ function Once(props: OnceProps) {
             {numField("restTime", "Time to restore", `s · ≤ ${l.rest}`, l.rest)}
           </>
         )}
+        {section === "probe" && (
+          <>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", lineHeight: 1.4, padding: "2px 2px 4px" }}>
+              Smoke at the supply air duct probe cuts the fan out. Clear the detector and time {fanName(stair, stairNo)} back on: <b style={{ color: "var(--text)" }}>60–90 s</b>
+            </div>
+            <DuctProbes
+              probes={once.probe ?? []}
+              fan={fanName(stair, stairNo)}
+              peek={peek}
+              update={(fn) => setTest((t) => ({ ...t, once: { ...t.once, [stair.id]: { ...t.once[stair.id], probe: fn(t.once[stair.id]?.probe ?? []) } } }))}
+            />
+          </>
+        )}
         {section === "pa" && numField("pa", "Stair pressure, doors closed", l.pa === null ? "Pa · recorded" : `Pa · ≤ ${l.pa}`, l.pa)}
         {(section === "fan" || section === "quick") &&
           (section === "fan" ? FAN_CHECKS : QUICK_CHECKS).map(([k, label]) => {
@@ -1076,7 +1091,7 @@ function MeterButton({ children, onClick, on, small, label }: { children: ReactN
     <button
       aria-label={label}
       onClick={onClick}
-      style={{ flex: small ? "0 0 64px" : 1, padding: "8px 4px", borderRadius: 9, background: "var(--panel-2)", border: on ? "1px solid var(--accent)" : "1px solid var(--border-strong)", color: on ? "#5ff0e0" : "#bfd0de", fontSize: 11.5, fontWeight: 800, lineHeight: 1.2 }}
+      style={{ flex: small ? "0 0 64px" : 1, padding: "8px 4px", borderRadius: 9, background: "var(--panel-2)", border: on ? "1px solid var(--accent)" : "1px solid var(--border-strong)", color: on ? "var(--accent-soft)" : "#bfd0de", fontSize: 11.5, fontWeight: 800, lineHeight: 1.2 }}
     >
       {children}
     </button>

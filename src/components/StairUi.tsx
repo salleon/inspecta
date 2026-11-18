@@ -52,7 +52,7 @@ export function Pill({ children, onClick }: { children: ReactNode; onClick?: () 
     <button
       onClick={onClick}
       disabled={!onClick}
-      style={{ flexShrink: 0, fontSize: 11.5, fontWeight: 800, padding: "6px 11px", borderRadius: 999, background: "rgba(var(--accent-rgb), .14)", color: "#5ff0e0", border: "1px solid rgba(var(--accent-rgb), .4)", whiteSpace: "nowrap" }}
+      style={{ flexShrink: 0, fontSize: 11.5, fontWeight: 800, padding: "6px 11px", borderRadius: 999, background: "rgba(var(--accent-rgb), .14)", color: "var(--accent-soft)", border: "1px solid rgba(var(--accent-rgb), .4)", whiteSpace: "nowrap" }}
     >
       {children}
     </button>
@@ -308,7 +308,7 @@ export function StairChin({
       r.querySelectorAll<HTMLElement>("[data-dot]").forEach((el) => {
         const near = Math.max(0, 1 - Math.abs(Number(el.dataset.dot) - at - x));
         el.style.width = `${5 + 11 * near}px`;
-        el.style.background = near > 0.5 ? "#5ff0e0" : "#3f5a74";
+        el.style.background = near > 0.5 ? "var(--accent-soft)" : "#3f5a74";
       });
       const l = r.querySelector<HTMLElement>("[data-chev=l]");
       const rt = r.querySelector<HTMLElement>("[data-chev=r]");
@@ -391,7 +391,7 @@ export function StairChin({
       aria-label={side === "l" ? "Previous stair" : "Next stair"}
       disabled={side === "l" ? i === 0 : i === n - 1}
       onClick={() => settle(side === "l" ? -1 : 1)}
-      style={{ position: "absolute", top: 0, bottom: 0, [side === "l" ? "left" : "right"]: 0, width: 32, border: "none", background: "none", padding: 0, color: "#5ff0e0", fontSize: 24, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2 }}
+      style={{ position: "absolute", top: 0, bottom: 0, [side === "l" ? "left" : "right"]: 0, width: 32, border: "none", background: "none", padding: 0, color: "var(--accent-soft)", fontSize: 24, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2 }}
     >
       {side === "l" ? "‹" : "›"}
     </button>

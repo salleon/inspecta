@@ -54,7 +54,7 @@ export function CameraButton({ onClick, size = 44 }: { onClick: () => void; size
     <button
       aria-label="Take a photo for this test"
       onClick={onClick}
-      style={{ flexShrink: 0, width: size, height: size, borderRadius: size / 2, background: "rgba(var(--accent-rgb), .14)", border: "1px solid rgba(var(--accent-rgb), .55)", color: "#5ff0e0", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
+      style={{ flexShrink: 0, width: size, height: size, borderRadius: size / 2, background: "rgba(var(--accent-rgb), .14)", border: "1px solid rgba(var(--accent-rgb), .55)", color: "var(--accent-soft)", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
     >
       <IconCamera size={size * 0.48} strokeWidth={2.2} />
     </button>
@@ -161,7 +161,7 @@ export function FlowDefectsRow({ items, onNote, onPhoto, onOpen }: { items: Test
         <button aria-label="Add a defect note" onClick={onNote} style={{ ...pill, border: "1px solid var(--border-strong)", background: "none", color: "#bfd0de" }}>
           <IconPen size={14} /> Note
         </button>
-        <button aria-label="Take a defect photo" onClick={onPhoto} style={{ ...pill, border: "1px solid rgba(var(--accent-rgb), .55)", background: "rgba(var(--accent-rgb), .1)", color: "#5ff0e0" }}>
+        <button aria-label="Take a defect photo" onClick={onPhoto} style={{ ...pill, border: "1px solid rgba(var(--accent-rgb), .55)", background: "rgba(var(--accent-rgb), .1)", color: "var(--accent-soft)" }}>
           <IconCamera size={15} strokeWidth={2.2} /> Photo
         </button>
       </div>

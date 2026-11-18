@@ -1,4 +1,4 @@
-import type { StairRun, SpfEdition, SpfStair, SpfSystem, SpfType, StairDoor, StairOnce, StairSection, StairTest, StairTestKind, Tick } from "../db/types";
+import type { DuctProbe, StairRun, SpfEdition, SpfStair, SpfSystem, SpfType, StairDoor, StairOnce, StairSection, StairTest, StairTestKind, Tick } from "../db/types";
 import { reportFileName } from "./dates";
 
 // Stair pressurisation testing (design canvas StairTestSimple, StairTestRules).
@@ -166,10 +166,22 @@ export function stairDoors(stair: Pick<SpfStair, "from" | "to" | "extra" | "leve
 const stairFan = (stair: SpfStair) => (/^SPF-?\s*$/i.test(stair.fan.trim()) ? "" : stair.fan.trim());
 // Until the fans are identified, a stair goes by placeholders from its place
 // in the list (shown in amber on screen, printed as they are): SPF-1 and
-// Stair 1, SPF-2 and Stair 2… Never stored, so they follow the stairs as
-// they're added, removed or reordered; a typed name replaces them.
-export const fanName = (stair: SpfStair, i: number) => stairFan(stair) || `SPF-${i + 1}`;
-export const wellName = (stair: SpfStair, i: number) => stair.name.trim() || `Stair ${i + 1}`;
+// Stair 1, SPF-2 and Stair 2… They follow the stairs as they're added and
+// removed, but once the stairs are reordered each keeps the number it had
+// (`no`), so moving SPF-2 to the front leaves it SPF-2. A typed name
+// replaces them.
+const placeholderNo = (stair: SpfStair, i: number) => stair.no ?? i + 1;
+export const fanName = (stair: SpfStair, i: number) => stairFan(stair) || `SPF-${placeholderNo(stair, i)}`;
+export const wellName = (stair: SpfStair, i: number) => stair.name.trim() || `Stair ${placeholderNo(stair, i)}`;
+
+// the stairs in a new order, each keeping the placeholder number it had
+export const reorderStairs = (stairs: SpfStair[], ids: string[]): SpfStair[] => {
+  const kept = new Map(stairs.map((st, i) => [st.id, st.no ? st : { ...st, no: i + 1 }]));
+  return ids.map((id) => kept.get(id)).filter((st): st is SpfStair => !!st);
+};
+
+// a stair added after a reorder takes the next number up, not one in use
+export const nextStairNo = (stairs: SpfStair[]) => (stairs.some((st) => st.no) ? Math.max(...stairs.map((st, i) => placeholderNo(st, i))) + 1 : undefined);
 export const fanIsDefault = (stair: SpfStair) => !stairFan(stair);
 export const wellIsDefault = (stair: SpfStair) => !stair.name.trim();
 export const stairLabel = (stair: SpfStair, i: number) => `${fanName(stair, i)} · ${wellName(stair, i)}`;
@@ -255,14 +267,14 @@ export const KIND_HINT: Record<StairTestKind, string> = {
 // added. Older Custom tests still open and print.)
 export const kindsFor = (mode: "enfact" | "contractor"): StairTestKind[] => (mode === "enfact" ? ["general", "annual", "comm"] : ["general", "annual", "quick", "comm"]);
 // general system testing picks any of these, none to start with
-export const GENERAL_SECTIONS: StairSection[] = ["vel", "force", "latch", "noise", "rest", "pa", "fan"];
+export const GENERAL_SECTIONS: StairSection[] = ["vel", "force", "latch", "noise", "rest", "pa", "fan", "probe"];
 const KIND_SECTIONS: Record<Exclude<StairTestKind, "custom" | "general">, StairSection[]> = {
   quick: ["quick"],
   annual: ["vel", "force", "latch", "noise", "rest", "fan"],
   comm: ["vel", "force", "latch", "noise", "rest", "pa", "fan"],
 };
 // the order sections are listed in
-export const ALL_SECTIONS: StairSection[] = ["vel", "force", "latch", "noise", "rest", "pa", "fan", "quick"];
+export const ALL_SECTIONS: StairSection[] = ["vel", "force", "latch", "noise", "rest", "pa", "fan", "probe", "quick"];
 
 interface SectionInfo {
   name: string;
@@ -279,6 +291,7 @@ export const SECTION: Record<StairSection, SectionInfo> = {
   rest: { name: "Pressure restoration", every: false, once: "the slowest door" },
   pa: { name: "Stair pressure, doors closed", every: false, once: "once" },
   fan: { name: "Fan checks", every: false, once: "per fan" },
+  probe: { name: "Duct probe", every: false, once: "per fan" },
   quick: { name: "Three-monthly check", every: false, once: "ticks only" },
 };
 
@@ -314,6 +327,54 @@ export const QUICK_CHECKS: [string, string][] = [
   ["air", "Air moves out through a selected door (ribbon)"],
   ["normal", "Back to normal afterwards"],
 ];
+
+// ---- the duct probe ----
+
+// A stair fan's supply air duct probe: smoke there cuts the fan out, and
+// once the detector is cleared it restarts by itself 60 to 90 s later. Up
+// to 5 s either side of that still fails, shown yellow as marginal.
+export const PROBE = { min: 60, max: 90, margin: 5, scale: 120 };
+
+// a go's name: as typed, else the fan's ("SPF-1 duct probe"; a retest
+// "SPF-1 duct probe · retest 1"), so it follows the fan's name until typed over
+export const probeName = (p: DuctProbe | undefined, fan: string, n: number) => p?.name?.trim() || `${fan} duct probe${n ? ` · retest ${n}` : ""}`;
+
+export type ProbeResult = "pass" | "marginal" | "fail" | null;
+
+// how a go went; null when there's nothing to judge yet (not timed, or timing)
+export function probeResult(p: DuctProbe | undefined): ProbeResult {
+  if (!p || p.started) return null;
+  if (p.noStop || p.failed) return "fail";
+  if (p.time === undefined) return null;
+  return probeZone(p.time);
+}
+
+// where a time sits: the window, the margin either side, or out
+export function probeZone(t: number): "pass" | "marginal" | "fail" {
+  if (t >= PROBE.min && t <= PROBE.max) return "pass";
+  if (t >= PROBE.min - PROBE.margin && t <= PROBE.max + PROBE.margin) return "marginal";
+  return "fail";
+}
+
+// the fan's result: its latest go that has one (a retest stands over the test)
+export function probeLatest(probes: DuctProbe[] | undefined): { p: DuctProbe; n: number; result: Exclude<ProbeResult, null> } | null {
+  const list = probes ?? [];
+  for (let n = list.length - 1; n >= 0; n--) {
+    const result = probeResult(list[n]);
+    if (result) return { p: list[n], n, result };
+  }
+  return null;
+}
+
+const probeHasData = (p: DuctProbe) => !!(p.noStop || p.failed || p.time !== undefined || p.started || p.notes?.trim() || p.name?.trim());
+
+// a go as it prints: "SPF-1 duct probe · equipment shut down · restarted after 78 s · Pass · note"
+export function probeLine(p: DuctProbe, fan: string, n: number): string {
+  const result = probeResult(p);
+  const what = p.failed ? "failed to restart" : p.time !== undefined ? `restarted after ${Math.round(p.time)} s` : p.noStop ? "" : "not timed";
+  const verdict = result === "pass" ? "Pass" : result === "marginal" ? "Fail (marginal)" : result === "fail" ? "Fail" : "";
+  return [probeName(p, fan, n), p.noStop ? "failed to stop equipment" : (p.time !== undefined || p.failed) && "equipment shut down", what, verdict, p.notes?.trim()].filter(Boolean).join(" · ");
+}
 
 export function sectionsFor(kind: StairTestKind, picked: StairSection[] = []): StairSection[] {
   const list = kind === "custom" || kind === "general" ? picked : KIND_SECTIONS[kind];
@@ -434,7 +495,7 @@ export function doorStats(test: StairTest, stair: SpfStair, section: Every, sys:
 const tickCount = (ticks: Record<string, Tick> | undefined) => Object.values(ticks ?? {}).filter(Boolean).length;
 
 // a stair's once-off section: done, and its result in a few words
-export function onceStatus(section: StairSection, once: StairOnce | undefined, sys: Pick<SpfSystem, "edition">): { done: boolean; text: string; fail: boolean } {
+export function onceStatus(section: StairSection, once: StairOnce | undefined, sys: Pick<SpfSystem, "edition">): { done: boolean; text: string; fail: boolean; marginal?: boolean } {
   const l = limits(sys);
   const o = once ?? {};
   if (section === "noise") {
@@ -454,6 +515,12 @@ export function onceStatus(section: StairSection, once: StairOnce | undefined, s
     if (p === null) return { done: false, text: "", fail: false };
     const fail = l.pa !== null && p > l.pa;
     return { done: true, text: `${p} Pa${l.pa === null ? "" : fail ? " ✗" : " ✓"}`, fail };
+  }
+  if (section === "probe") {
+    const last = probeLatest(o.probe);
+    if (!last) return { done: false, text: "", fail: false };
+    const t = last.p.noStop ? "Didn't stop" : last.p.failed ? "No restart" : `${Math.round(last.p.time ?? 0)} s`;
+    return { done: true, text: `${t}${last.result === "marginal" ? " · marginal" : ""} ${last.result === "pass" ? "✓" : "✗"}`, fail: last.result !== "pass", ...(last.result === "marginal" ? { marginal: true } : {}) };
   }
   const checks = section === "fan" ? FAN_CHECKS : QUICK_CHECKS;
   const ticks = (section === "fan" ? o.fan : o.quick) ?? {};
@@ -493,7 +560,7 @@ export function stairTestSummary(test: StairTest, sys: SpfSystem | undefined): {
 export function stairTestHasData(test: StairTest): boolean {
   const anyDoor = [test.doors, ...(test.runs ?? []).map((r) => r.doors)].some((all) => Object.values(all).some((byDoor) => Object.values(byDoor).some((d) => !!(d.vel?.trim() || d.force?.trim() || d.latch))));
   const anyOnce = Object.values(test.once).some(
-    (o) => !!(o.noiseStair?.trim() || o.noiseOcc?.trim() || o.ambient?.trim() || o.restTime?.trim() || o.pa?.trim() || tickCount(o.fan) || tickCount(o.quick)),
+    (o) => !!(o.noiseStair?.trim() || o.noiseOcc?.trim() || o.ambient?.trim() || o.restTime?.trim() || o.pa?.trim() || tickCount(o.fan) || tickCount(o.quick) || (o.probe ?? []).some(probeHasData)),
   );
   return anyDoor || anyOnce || test.notes.some((n) => n.text.trim());
 }
@@ -503,3 +570,121 @@ export const stairFileName = (site: { name: string }, ext: "pdf" | "xlsx", at = 
 
 export const testsFileName = (site: { name: string }, ext: "pdf" | "xlsx", at = Date.now()) =>
   reportFileName(site.name, "Tests", ext, at);
+
+// ---- the same level changes on other stairs (design canvas "Copy level
+// changes to other stairs", revised row) ----
+
+// One change made in Review level layout: a rename (car parks made basements
+// together count as one), a level removed, or one added above (or, at the
+// bottom, below) a level that was already there.
+export type LevelEdit =
+  | { kind: "rename"; names: Record<string, string> }
+  | { kind: "remove"; level: string }
+  | { kind: "add"; level: string; above?: string; below?: string };
+
+// what changed between the list a review opened on and the list now, given
+// the renames made along the way (each a map of old name to new, in order)
+export function levelEdits(start: string[], now: string[], renames: Record<string, string>[]): LevelEdit[] {
+  const has = new Set(now);
+  // each starting level's name now, and the rename that last moved it
+  const final = new Map<string, string>();
+  for (const s of start) {
+    let f = s;
+    for (const r of renames) if (r[f] !== undefined) f = r[f];
+    // renamed away and then gone (or reset): not a rename
+    final.set(s, has.has(f) ? f : s);
+  }
+  const groups = new Map<string, Record<string, string>>();
+  for (const [s, f] of final) {
+    if (s === f) continue;
+    // a car park made a basement (or back) goes with the others that did
+    const a = isCustomLevel(s) ? "" : splitLevel(s).type;
+    const b = isCustomLevel(f) ? "" : splitLevel(f).type;
+    const key = (a === "P" || a === "B") && (b === "P" || b === "B") && a !== b ? `${a}>${b}` : s;
+    groups.set(key, { ...groups.get(key), [s]: f });
+  }
+  const kept = new Set(final.values());
+  const out: LevelEdit[] = [...groups.values()].map((names) => ({ kind: "rename" as const, names }));
+  for (const [s, f] of final) if (!has.has(f)) out.push({ kind: "remove", level: s });
+  now.forEach((c, i) => {
+    if (kept.has(c)) return;
+    const above = now.slice(i + 1).find((x) => kept.has(x));
+    const below = above ? undefined : now.slice(0, i).reverse().find((x) => kept.has(x));
+    out.push({ kind: "add", level: c, above, below });
+  });
+  return out;
+}
+
+const span = (a: string[]) => (a.length === 1 ? a[0] : `${a[0]}–${a[a.length - 1]}`);
+// "Plant room above 26", "No level 13", "P1–P3 as B1–B3"
+export function levelEditLabel(e: LevelEdit): string {
+  if (e.kind === "rename") return `${span(Object.keys(e.names))} as ${span(Object.values(e.names))}`;
+  if (e.kind === "remove") return `No ${isCustomLevel(e.level) ? e.level : levelName(e.level).toLowerCase()}`;
+  return `${levelName(e.level)} ${e.above ? `above ${e.above}` : e.below ? `below ${e.below}` : ""}`.trim();
+}
+
+export type LevelEditsFit = {
+  levels: string[]; // the stair's levels with the changes that fit
+  names: Record<string, string>; // its levels renamed: readings go with them
+  done: number; // changes made
+  fits: number; // changes made, or already so
+  total: number;
+  why?: string; // the first that didn't fit: "no P1", "readings at 13"
+};
+
+// the changes on another stair's levels: each one that fits it is made, the
+// rest left; a level with readings isn't removed
+export function applyLevelEdits(levels: string[], edits: LevelEdit[], read: Set<string> = new Set()): LevelEditsFit {
+  const L = [...levels];
+  const names: Record<string, string> = {};
+  let done = 0;
+  let fits = 0;
+  let why: string | undefined;
+  const skip = (w: string) => (why ??= w);
+  for (const e of edits) {
+    if (e.kind === "rename") {
+      let hit = false;
+      for (const [o, n] of Object.entries(e.names)) {
+        const i = L.indexOf(o);
+        if (i >= 0 && !L.includes(n)) {
+          L[i] = n;
+          names[o] = n;
+          hit = true;
+        }
+      }
+      if (hit) {
+        done++;
+        fits++;
+      } else if (Object.entries(e.names).every(([o, n]) => L.includes(n) && !L.includes(o))) fits++;
+      else skip(`no ${Object.keys(e.names)[0]}`);
+    } else if (e.kind === "remove") {
+      if (!L.includes(e.level)) fits++;
+      else if (read.has(e.level)) skip(`readings at ${e.level}`);
+      else {
+        L.splice(L.indexOf(e.level), 1);
+        done++;
+        fits++;
+      }
+    } else if (L.includes(e.level)) fits++;
+    else {
+      const a = e.above ? L.indexOf(e.above) : -1;
+      const b = e.below ? L.indexOf(e.below) : -1;
+      if (a >= 0) L.splice(a, 0, e.level);
+      else if (b >= 0) L.splice(b + 1, 0, e.level);
+      else {
+        skip(`no ${e.above ?? e.below ?? e.level}`);
+        continue;
+      }
+      done++;
+      fits++;
+    }
+  }
+  return { levels: L, names, done, fits, total: edits.length, why };
+}
+
+// how a stair takes the changes: "All 3", "2 of 3 · no P1", "Already the same"
+export function levelEditsFitLabel(f: LevelEditsFit): string {
+  if (!f.done) return f.fits === f.total ? "Already the same" : `Nothing fits · ${f.why}`;
+  if (f.fits === f.total) return f.total === 1 ? "Fits" : `All ${f.total}`;
+  return `${f.fits} of ${f.total} · ${f.why}`;
+}
