@@ -99,7 +99,7 @@ export default function StairTestPage() {
     } else {
       const o = onceStatus(s, test.once[st.id], sys);
       right = o.text || "—";
-      colour = o.fail ? "#ff7a6a" : o.text ? "#2bd47a" : "#5f7890";
+      colour = o.marginal ? "#f7c948" : o.fail ? "#ff7a6a" : o.text ? "#2bd47a" : "#5f7890";
       pct = o.done ? 100 : o.text ? 50 : 0;
       read = stairs.some((st) => !!onceStatus(s, test.once[st.id], sys).text);
     }

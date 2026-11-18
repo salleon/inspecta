@@ -14,7 +14,7 @@ test("duct probe: an extra test for General and Annual, not a default", () => {
   assert.ok(!sectionsFor("comm").includes("probe"));
 });
 
-test("duct probe: 60 to 90 s passes, 5 s either side is marginal, the rest fails", () => {
+test("duct probe: 60 to 90 s passes; 5 s either side is a marginal fail, the rest a plain fail", () => {
   assert.equal(probeZone(60), "pass");
   assert.equal(probeZone(90), "pass");
   assert.equal(probeZone(55), "marginal");
@@ -46,6 +46,9 @@ test("duct probe: named after the fan until typed over; a retest stands over the
   assert.deepEqual(onceStatus("probe", { probe: list }, sys), { done: true, text: "78 s ✓", fail: false });
   assert.deepEqual(onceStatus("probe", { probe: [{ cuts: true, failed: true }] }, sys), { done: true, text: "No restart ✗", fail: true });
   assert.deepEqual(onceStatus("probe", { probe: [{}] }, sys), { done: false, text: "", fail: false });
+  // marginal still fails, flagged so it shows yellow
+  assert.deepEqual(onceStatus("probe", { probe: [{ cuts: true, time: 92 }] }, sys), { done: true, text: "92 s · marginal ✗", fail: true, marginal: true });
+  assert.equal(probeLine({ cuts: true, time: 57 }, "SPF-1", 0), "SPF-1 duct probe · cuts out: Yes · restarted after 57 s · Fail (marginal)");
 });
 
 test("duct probe: counts as data, and prints a line per go under the fan", () => {

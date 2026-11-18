@@ -115,7 +115,7 @@ const probePart = (has: boolean, once: StairOnce, fan: string) => {
   const list = once.probe ?? [];
   const lines = list.map((p, n) => probeLine(p, fan, n));
   const last = [...list].reverse().find((p) => probeResult(p));
-  return { probe: has ? (lines.length ? lines : [" "]) : null, probeLabel: `Duct probe · fan ${fan}`, probeFail: !!last && probeResult(last) === "fail" };
+  return { probe: has ? (lines.length ? lines : [" "]) : null, probeLabel: `Duct probe · fan ${fan}`, probeFail: !!last && probeResult(last) !== "pass" };
 };
 
 

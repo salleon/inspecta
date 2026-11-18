@@ -332,7 +332,7 @@ export const QUICK_CHECKS: [string, string][] = [
 
 // A stair fan's supply air duct probe: smoke there cuts the fan out, and
 // once the detector is cleared it restarts by itself 60 to 90 s later. Up
-// to 5 s either side of that is marginal, flagged rather than failed.
+// to 5 s either side of that still fails, shown yellow as marginal.
 export const PROBE = { min: 60, max: 90, margin: 5, scale: 120 };
 
 // a go's name: as typed, else the fan's ("SPF-1 duct probe"; a retest
@@ -373,7 +373,7 @@ const probeHasData = (p: DuctProbe) => !!(p.cuts || p.failed || p.time !== undef
 export function probeLine(p: DuctProbe, fan: string, n: number): string {
   const result = probeResult(p);
   const what = p.failed ? "failed to restart" : p.time !== undefined ? `restarted after ${Math.round(p.time)} s` : "not timed";
-  const verdict = result === "pass" ? "Pass" : result === "marginal" ? "Marginal" : result === "fail" ? "Fail" : "";
+  const verdict = result === "pass" ? "Pass" : result === "marginal" ? "Fail (marginal)" : result === "fail" ? "Fail" : "";
   return [probeName(p, fan, n), `cuts out: ${p.cuts ? "Yes" : "No"}`, what, verdict, p.notes?.trim()].filter(Boolean).join(" · ");
 }
 
@@ -496,7 +496,7 @@ export function doorStats(test: StairTest, stair: SpfStair, section: Every, sys:
 const tickCount = (ticks: Record<string, Tick> | undefined) => Object.values(ticks ?? {}).filter(Boolean).length;
 
 // a stair's once-off section: done, and its result in a few words
-export function onceStatus(section: StairSection, once: StairOnce | undefined, sys: Pick<SpfSystem, "edition">): { done: boolean; text: string; fail: boolean } {
+export function onceStatus(section: StairSection, once: StairOnce | undefined, sys: Pick<SpfSystem, "edition">): { done: boolean; text: string; fail: boolean; marginal?: boolean } {
   const l = limits(sys);
   const o = once ?? {};
   if (section === "noise") {
@@ -521,7 +521,7 @@ export function onceStatus(section: StairSection, once: StairOnce | undefined, s
     const last = probeLatest(o.probe);
     if (!last) return { done: false, text: "", fail: false };
     const t = last.p.failed ? "No restart" : `${Math.round(last.p.time ?? 0)} s`;
-    return { done: true, text: `${t} ${last.result === "pass" ? "✓" : last.result === "marginal" ? "· marginal" : "✗"}`, fail: last.result === "fail" };
+    return { done: true, text: `${t}${last.result === "marginal" ? " · marginal" : ""} ${last.result === "pass" ? "✓" : "✗"}`, fail: last.result !== "pass", ...(last.result === "marginal" ? { marginal: true } : {}) };
   }
   const checks = section === "fan" ? FAN_CHECKS : QUICK_CHECKS;
   const ticks = (section === "fan" ? o.fan : o.quick) ?? {};

@@ -6,8 +6,8 @@ import { PROBE, probeName, probeResult, probeZone } from "../lib/stairTest";
 // boards 5 to 7): the test, then a card for each retest. Each go has a name
 // (the fan's, until typed over), a stopwatch run from clearing the detector
 // to the fan restarting, Cuts out equipment, Failed to restart and a note.
-// 60 to 90 s passes (green), 5 s either side is marginal (yellow), anything
-// else fails (red). The stopwatch keeps its start in the test, so it runs on
+// 60 to 90 s passes (green); anything else fails: 5 s either side in
+// yellow as marginal, the rest red. The stopwatch keeps its start in the test, so it runs on
 // while the phone is locked or the screen is left.
 
 const PASS = "#2bd47a";
@@ -71,7 +71,7 @@ export default function DuctProbes({ probes, fan, update, peek }: { probes: Duct
                     ? "Too soon: before 60 s"
                     : "Too slow: over 90 s"
               : "Tap to start";
-        const verdict = timing ? ["Timing", "rgba(var(--accent-rgb), .16)", "var(--accent-soft)"] : result === "pass" ? ["Pass", "rgba(43,212,122,.16)", PASS] : result === "marginal" ? ["Marginal", "rgba(247,201,72,.16)", WARN] : result === "fail" ? ["Fail", "rgba(255,90,74,.15)", FAIL] : ["Not tested", "var(--panel-2)", "var(--muted)"];
+        const verdict = timing ? ["Timing", "rgba(var(--accent-rgb), .16)", "var(--accent-soft)"] : result === "pass" ? ["Pass", "rgba(43,212,122,.16)", PASS] : result === "marginal" ? ["Fail · marginal", "rgba(247,201,72,.16)", WARN] : result === "fail" ? ["Fail", "rgba(255,90,74,.15)", FAIL] : ["Not tested", "var(--panel-2)", "var(--muted)"];
         const label = i === 0 ? "Test" : `Retest ${i}`;
         return (
           <div key={i} data-testid="duct-probe" style={{ background: "var(--panel)", border: `1px solid ${timing ? "var(--accent)" : "var(--border)"}`, borderRadius: 14, padding: "11px 12px", display: "flex", flexDirection: "column", gap: 10 }}>
