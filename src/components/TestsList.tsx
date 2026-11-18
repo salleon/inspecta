@@ -70,7 +70,7 @@ export default function TestsList({ site, mode, onCount }: { site: Site; mode: "
   const [busy, setBusy] = useState(false);
   // export: the tests picked, and the formats
   const [picked, setPicked] = useState<Set<string>>(new Set());
-  const [formats, setFormats] = useState<Set<TestsFormat>>(new Set(["pdf", "xlsx"]));
+  const [formats, setFormats] = useState<Set<TestsFormat>>(new Set());
   const [exporting, setExporting] = useState<{ percent: number; step: string } | null>(null);
   const started = useRef(0);
 
@@ -124,6 +124,7 @@ export default function TestsList({ site, mode, onCount }: { site: Site; mode: "
 
   function openExport() {
     setPicked(new Set((items ?? []).map((i) => i.test.id)));
+    setFormats(new Set()); // nothing preselected: pick PDF, Excel or both each time
     setSheet("export");
   }
 
@@ -158,9 +159,11 @@ export default function TestsList({ site, mode, onCount }: { site: Site; mode: "
   const n = picked.size;
   const all = !!items && n === items.length;
   const exportLabel =
-    n === 0 || !formats.size
+    n === 0
       ? "Pick a test to export"
-      : `Export ${all && n > 1 ? (n === 2 ? "both tests" : `all ${n} tests`) : `${n} test${n === 1 ? "" : "s"}`}${formats.size === 1 ? (formats.has("pdf") ? " · PDF" : " · Excel") : ""}`;
+      : !formats.size
+        ? "Pick PDF or Excel"
+        : `Export ${all && n > 1 ? (n === 2 ? "both tests" : `all ${n} tests`) : `${n} test${n === 1 ? "" : "s"}`}${formats.size === 1 ? (formats.has("pdf") ? " · PDF" : " · Excel") : ""}`;
   const toggle = (id: string) =>
     setPicked((p) => {
       const next = new Set(p);

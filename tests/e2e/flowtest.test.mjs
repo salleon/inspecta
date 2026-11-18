@@ -650,8 +650,9 @@ test("an AFSS site's Other tests tab: Export Other Tests Only asks which tests, 
   await go(page, app, "/site/s1/findings?tab=flow", 1200);
   await page.click('button:has-text("Export Other Tests Only")');
   assert.match(await page.locator(".sheet-panel").innerText(), /Export tests[\s\S]*All tests/);
-  // Excel only
-  await page.click('.sheet-panel button:has-text("PDF")');
+  // no format is preselected: the export button asks for one until Excel is picked
+  assert.equal(await page.getByRole("button", { name: "Pick PDF or Excel" }).count(), 1);
+  await page.click('.sheet-panel button:has-text("Excel")');
   const file = await download(page, () => page.getByRole("button", { name: /^Export .* · Excel$/ }).click());
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(fs.readFileSync(file.path));
