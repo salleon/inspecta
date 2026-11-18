@@ -228,6 +228,7 @@ export interface SpfStair {
   reviewed?: boolean; // its level layout has been looked over (Looks right ✓)
   doors?: number; // doors on each level (1 unless set)
   more?: Record<string, number>; // doors added at a level, on top of that
+  no?: number; // its placeholder number (SPF-2, Stair 2), kept once the stairs are reordered
 }
 
 export interface SpfSystem {
