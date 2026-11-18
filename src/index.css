@@ -127,6 +127,15 @@ button:active:not(:disabled) {
   }
 }
 
+/* New job's steps: Reports or a test, then the details, and back */
+.sheet-step {
+  animation: routeSlideIn 280ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sheet-step-back {
+  animation: routeSlideBack 280ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 .route-slide-back {
   animation: routeSlideBack 320ms cubic-bezier(0.16, 1, 0.3, 1);
 }

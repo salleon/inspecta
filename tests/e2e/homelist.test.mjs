@@ -51,11 +51,12 @@ test("chips show only the types picked; tapping again drops one", async () => {
   await chip("Stair").click();
   assert.deepEqual(await order(), ["new-stair"]);
   assert.equal(await chip("Stair").getAttribute("aria-pressed"), "true");
-  await chip("AFSS").click();
-  assert.deepEqual(await order(), ["afss", "new-stair", "old-afss"]);
+  // Reports covers AFSS and Projects
+  await chip("Reports").click();
+  assert.deepEqual(await order(), ["proj", "afss", "new-stair", "old-afss"]);
   await chip("Stair").click();
-  assert.deepEqual(await order(), ["afss", "old-afss"]);
-  await chip("AFSS").click();
+  assert.deepEqual(await order(), ["proj", "afss", "old-afss"]);
+  await chip("Reports").click();
   assert.equal((await order()).length, 5, "none picked: every job");
 });
 
@@ -70,12 +71,12 @@ test("chips work with the search, with a way back when nothing's left", async ()
 });
 
 test("the chips reset to the whole list when the app opens", async () => {
-  await chip("Projects").click();
-  assert.deepEqual(await order(), ["proj"]);
+  await chip("Reports").click();
+  assert.deepEqual(await order(), ["proj", "afss", "old-afss"]);
   await page.reload();
   await page.locator("[data-site-id]").first().waitFor();
   assert.equal((await order()).length, 5);
-  assert.equal(await chip("Projects").getAttribute("aria-pressed"), "false");
+  assert.equal(await chip("Reports").getAttribute("aria-pressed"), "false");
 });
 
 test("no page errors", () => {

@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, type FormEvent, type CSSProperties } from 
 import { useNavigate } from "react-router-dom";
 import type { Site, SiteKind } from "../db/types";
 import { createSite, deleteSite, findingCount, firstSitePhoto, flowTestCount, getThumbnail, listSites, stairTestCount } from "../db/db";
-import { IconSearch, IconBuilding, IconLink, IconPlus, IconSettings } from "../components/Icons";
+import { IconSearch, IconBuilding, IconLink, IconPlus, IconSettings, IconChevronLeft, IconChevronRight } from "../components/Icons";
 import CountUp from "../components/CountUp";
 import ConfirmDialog from "../components/ConfirmDialog";
 import SwipeRow from "../components/SwipeRow";
@@ -12,7 +12,7 @@ import { useEdgeBump } from "../lib/edgeBump";
 import logo from "../assets/logo.png";
 import { useFlowMode } from "../lib/settings";
 import { CompanyLogo } from "../components/CompanySetup";
-import SiteKindIcon, { KIND_COLOUR, KindTag } from "../components/SiteKindIcon";
+import SiteKindIcon, { KIND_COLOUR, KindTag, ReportsIcon } from "../components/SiteKindIcon";
 
 interface SiteRow extends Site {
   findings: number;
@@ -25,11 +25,20 @@ export default function Dashboard() {
   const contractor = useFlowMode() === "contractor";
   const [sites, setSites] = useState<SiteRow[]>([]);
   const [query, setQuery] = useState("");
-  // the kinds picked in the chip row; none picked shows every kind
-  const [kinds, setKinds] = useState<SiteKind[]>([]);
+  // the chips picked under the search; none picked shows every kind
+  const [kinds, setKinds] = useState<ChipKind[]>([]);
   const [adding, setAdding] = useState(false);
+  // New job: first Reports or a test, then the site's details (canvas
+  // Reports tile, option C); back slides the other way
+  const [step, setStep] = useState<"pick" | "details">("pick");
+  const [stepBack, setStepBack] = useState(false);
+  function openNewJob() {
+    setStep("pick");
+    setStepBack(false);
+    setAdding(true);
+  }
   // the tour opens the New job sheet to show the kinds of site
-  useTourScene("new-site", () => setAdding(true), () => setAdding(false));
+  useTourScene("new-site", openNewJob, () => setAdding(false));
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
   const [kind, setKind] = useState<SiteKind>("afss");
@@ -105,8 +114,8 @@ export default function Dashboard() {
       s.address.toLowerCase().includes(query.toLowerCase()),
   );
   // one list, newest first (see refresh), narrowed by the chips
-  const shown = kinds.length ? filtered.filter((s) => kinds.includes(s.kind)) : filtered;
-  const toggleKind = (k: SiteKind) => setKinds((ks) => (ks.includes(k) ? ks.filter((x) => x !== k) : [...ks, k]));
+  const shown = kinds.length ? filtered.filter((s) => kinds.includes(chipOf(s.kind))) : filtered;
+  const toggleKind = (k: ChipKind) => setKinds((ks) => (ks.includes(k) ? ks.filter((x) => x !== k) : [...ks, k]));
 
   async function handleDeleteSite() {
     if (!confirmDeleteSite || deleting) return;
@@ -129,6 +138,7 @@ export default function Dashboard() {
     setName("");
     setAddress("");
     setKind("afss");
+    setStep("pick");
     navigate(`/site/${site.id}/findings`);
   }
 
@@ -218,7 +228,7 @@ export default function Dashboard() {
           const on = kinds.includes(k);
           return (
             <button key={k} type="button" aria-pressed={on} onClick={() => toggleKind(k)} style={kindChipStyle(on, k)}>
-              <SiteKindIcon kind={k} size={13} color="currentColor" />
+              {k === "reports" ? <ReportsIcon size={13} color="currentColor" /> : <SiteKindIcon kind={k} size={13} color="currentColor" />}
               {label}
             </button>
           );
@@ -268,7 +278,7 @@ export default function Dashboard() {
       <button
         aria-label="New job"
         data-tour="new-site"
-        onClick={() => setAdding(true)}
+        onClick={openNewJob}
         className="glow-sweep fab-pulse"
         style={{
           position: "absolute",
@@ -321,74 +331,117 @@ export default function Dashboard() {
               gap: 14,
             }}
           >
-            <div style={{ fontSize: 16, fontWeight: 800 }}>New job</div>
-            {/* two by two, so all four kinds fit (canvas SiteTests) */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }} data-tour="site-kinds">
-              <button
-                type="button"
-                onClick={() => setKind("afss")}
-                style={kindToggleStyle(kind === "afss", "afss")}
-              >
-                <SiteKindIcon kind="afss" size={13} color="currentColor" />
-                AFSS
-              </button>
-              <button
-                type="button"
-                onClick={() => setKind("project")}
-                style={kindToggleStyle(kind === "project", "project")}
-              >
-                <SiteKindIcon kind="project" size={13} color="currentColor" />
-                Projects
-              </button>
-              <button
-                type="button"
-                onClick={() => setKind("flow")}
-                style={kindToggleStyle(kind === "flow", "flow")}
-              >
-                <SiteKindIcon kind="flow" size={13} color="currentColor" />
-                Flow testing
-              </button>
-              <button
-                type="button"
-                onClick={() => setKind("spf")}
-                style={kindToggleStyle(kind === "spf", "spf")}
-              >
-                <SiteKindIcon kind="spf" size={13} color="currentColor" />
-                Stair pressurisation
-              </button>
-            </div>
-            {/* no autofocus: pick the kind first, then tap here (the keyboard waits) */}
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Site name"
-              style={inputStyle}
-            />
-            <input
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              placeholder="Address (optional)"
-              style={inputStyle}
-            />
-            <button
-              type="submit"
-              className="glow-sweep"
-              style={{
-                position: "relative",
-                display: "block",
-                textAlign: "center",
-                padding: "16px 0",
-                borderRadius: 14,
-                background: "var(--accent)",
-                border: "none",
-                fontSize: 15,
-                fontWeight: 800,
-                color: "var(--accent-text)",
-                overflow: "hidden",
-              }}
-            >
-              {kind === "flow" ? "Start flow testing" : kind === "spf" ? "Start stair testing" : "Start inspection"}
-            </button>
+            {step === "pick" ? (
+              <div key="pick" className={stepBack ? "sheet-step-back" : undefined} style={{ display: "flex", flexDirection: "column", gap: 14 }} data-tour="site-kinds">
+                <div style={{ fontSize: 16, fontWeight: 800 }}>New job</div>
+                {/* Reports first and largest: AFSS or Projects is picked on the next step */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (kind !== "afss" && kind !== "project") setKind("afss");
+                    setStep("details");
+                  }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 14,
+                    minHeight: 78,
+                    padding: "14px 14px 14px 16px",
+                    borderRadius: 16,
+                    border: `1px solid ${KIND_COLOUR.afss}99`,
+                    background: `${KIND_COLOUR.afss}24`,
+                    color: "var(--text)",
+                    textAlign: "left",
+                  }}
+                >
+                  <span style={{ width: 46, height: 46, borderRadius: 12, background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <ReportsIcon size={24} color="var(--accent-text)" />
+                  </span>
+                  <span style={{ flexGrow: 1, display: "flex", flexDirection: "column", gap: 2 }}>
+                    <span style={{ fontSize: 17, fontWeight: 800 }}>Reports</span>
+                    <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--muted)" }}>AFSS · Projects</span>
+                  </span>
+                  <IconChevronRight size={20} color="var(--accent)" strokeWidth={2.4} />
+                </button>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", marginTop: 4 }}>Tests</div>
+                {/* three across: the empty third is kept for FFCP */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
+                  {TEST_TILES.map(([k, label]) => (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => {
+                        setKind(k);
+                        setStep("details");
+                      }}
+                      style={testTileStyle(k)}
+                    >
+                      <SiteKindIcon kind={k} size={17} />
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div key="details" className="sheet-step" style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: -8 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 4, marginLeft: -12 }}>
+                  <button
+                    type="button"
+                    aria-label="Back"
+                    onClick={() => {
+                      setStepBack(true);
+                      setStep("pick");
+                    }}
+                    style={{ width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", padding: 0, color: "var(--text)" }}
+                  >
+                    <IconChevronLeft size={20} strokeWidth={2.4} />
+                  </button>
+                  <div style={{ fontSize: 16, fontWeight: 800 }}>{kind === "flow" ? "Flow testing" : kind === "spf" ? "Stair pressurisation" : "New report"}</div>
+                </div>
+                {(kind === "afss" || kind === "project") && (
+                  <div role="radiogroup" aria-label="Report type" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                    {(["afss", "project"] as const).map((k) => (
+                      <button key={k} type="button" role="radio" aria-checked={kind === k} onClick={() => setKind(k)} style={reportTypeStyle(kind === k, k)}>
+                        <SiteKindIcon kind={k} size={26} color="currentColor" />
+                        {k === "afss" ? "AFSS" : "Projects"}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {/* no autofocus: pick the kind first, then tap here (the keyboard waits) */}
+                <input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Site name"
+                  style={inputStyle}
+                />
+                <input
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder="Address (optional)"
+                  style={inputStyle}
+                />
+                <button
+                  type="submit"
+                  className="glow-sweep"
+                  style={{
+                    position: "relative",
+                    display: "block",
+                    textAlign: "center",
+                    padding: "16px 0",
+                    borderRadius: 14,
+                    background: "var(--accent)",
+                    border: "none",
+                    fontSize: 15,
+                    fontWeight: 800,
+                    color: "var(--accent-text)",
+                    overflow: "hidden",
+                  }}
+                >
+                  {kind === "flow" ? "Start flow testing" : kind === "spf" ? "Start stair testing" : "Start inspection"}
+                </button>
+              </div>
+            )}
           </form>
         </div>
       )}
@@ -418,16 +471,50 @@ const inputStyle: CSSProperties = {
   outline: "none",
 };
 
-const KIND_CHIPS: [SiteKind, string][] = [
-  ["afss", "AFSS"],
-  ["project", "Projects"],
+// Home's chips: Reports covers AFSS and Projects; the tests each have their
+// own. Equal widths, so another test (FFCP) slots in as a fourth.
+type ChipKind = "reports" | "flow" | "spf";
+const chipOf = (k: SiteKind): ChipKind => (k === "afss" || k === "project" ? "reports" : k);
+const KIND_CHIPS: [ChipKind, string][] = [
+  ["reports", "Reports"],
   ["flow", "Flow"],
   ["spf", "Stair"],
 ];
 
+// New job's tests, under Reports
+const TEST_TILES: ["flow" | "spf", string][] = [
+  ["flow", "Flow testing"],
+  ["spf", "Stair pressurisation"],
+];
+
+function testTileStyle(kind: SiteKind): CSSProperties {
+  return {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 5,
+    minHeight: 62,
+    padding: "8px 4px",
+    borderRadius: 12,
+    border: `1px solid ${KIND_COLOUR[kind]}55`,
+    background: "none",
+    color: "var(--text)",
+    fontSize: 12,
+    fontWeight: 800,
+    textAlign: "center",
+    lineHeight: 1.2,
+  };
+}
+
+function reportTypeStyle(active: boolean, kind: SiteKind): CSSProperties {
+  return { ...kindToggleStyle(active, kind), flexDirection: "column", gap: 8, height: 96, borderRadius: 14, fontSize: 15 };
+}
+
 // a chip in the row under the search: its kind's colour when picked
-function kindChipStyle(on: boolean, kind: SiteKind): CSSProperties {
-  const c = KIND_COLOUR[kind];
+function kindChipStyle(on: boolean, kind: ChipKind): CSSProperties {
+  const c = kind === "reports" ? KIND_COLOUR.afss : KIND_COLOUR[kind];
+
   return {
     flex: "1 1 0",
     minWidth: 0,

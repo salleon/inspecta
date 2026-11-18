@@ -41,3 +41,14 @@ export function KindTag({ kind }: { kind: SiteKind }) {
     </span>
   );
 }
+
+// Reports (AFSS and Projects together, on home and in New job): a page with lines
+export function ReportsIcon({ size = 14, color = KIND_COLOUR.afss }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
+      <path d="M6 3h8l4 4v14H6z" />
+      <path d="M14 3v4h4" />
+      <path d="M9 12h6M9 16h6" />
+    </svg>
+  );
+}

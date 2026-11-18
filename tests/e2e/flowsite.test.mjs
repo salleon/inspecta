@@ -53,12 +53,20 @@ test("New job offers Flow testing; the home page tags flow testing sites", async
   await page.waitForTimeout(300);
   // the keyboard waits: nothing is focused until Site name is tapped
   assert.notEqual(await page.evaluate(() => document.activeElement?.tagName), "INPUT");
-  await page.click('button:not([type=submit]):has-text("Flow testing")');
-  // the picked kind in its own colour: flow testing blue (AFSS teal, Projects orange)
-  assert.equal(await page.locator('button:not([type=submit]):has-text("Flow testing")').evaluate((e) => getComputedStyle(e).color), "rgb(90, 176, 255)");
-  await page.click('form button:has-text("Projects")');
-  assert.equal(await page.locator('form button:has-text("Projects")').evaluate((e) => getComputedStyle(e).color), "rgb(245, 165, 92)");
-  await page.click('button:not([type=submit]):has-text("Flow testing")');
+  // Reports first, the tests under it; Reports asks AFSS or Projects next
+  await page.click('form button:has-text("Reports")');
+  await page.waitForTimeout(350);
+  assert.equal(await page.locator('[role="radio"][aria-checked="true"]').innerText(), "AFSS");
+  await page.click('[role="radio"]:has-text("Projects")');
+  // the picked kind in its own colour: Projects orange (AFSS teal)
+  assert.equal(await page.locator('[role="radio"]:has-text("Projects")').evaluate((e) => getComputedStyle(e).color), "rgb(245, 165, 92)");
+  assert.equal(await page.locator('form button[type="submit"]').innerText(), "Start inspection");
+  await page.click('[aria-label="Back"]');
+  await page.waitForTimeout(350);
+  await page.click('form button:has-text("Flow testing")');
+  await page.waitForTimeout(350);
+  assert.equal(await page.locator('[role="radiogroup"][aria-label="Report type"]').count(), 0, "no AFSS / Projects for a test");
+  assert.equal(await page.locator('form button[type="submit"]').innerText(), "Start flow testing");
   assert.equal(await page.getByText("Just flow tests", { exact: false }).count(), 0); // no tip text under the kinds
   await page.fill('input[placeholder="Site name"]', "Aldi Gordon");
   await page.click('button[type="submit"]');
