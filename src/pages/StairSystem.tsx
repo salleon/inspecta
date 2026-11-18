@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import type { Site, SpfEdition, SpfStair, SpfSystem, SpfType, StairTest } from "../db/types";
 import { getSite, listStairTests, saveSiteSpf, saveStairTest } from "../db/db";
-import { defaultSystem, doorsEach, EDITIONS, joinLevel, LEVEL_TYPES, levelChanges, levelName, levelsEdited, levelsRead, levelType, newStair, nextStairNo, renameDoorLevels, splitLevel, stairLabel, stairDoors, stairRange, TYPES, typeFor, type LevelType } from "../lib/stairTest";
+import { defaultSystem, doorsEach, EDITIONS, joinLevel, LEVEL_TYPES, levelChanges, levelName, levelsEdited, levelsRead, levelType, newStair, nextStairNo, applyLevelEdits, stairLevels, suggestLevels, type LevelEdit, renameDoorLevels, splitLevel, stairLabel, stairDoors, stairRange, TYPES, typeFor, type LevelType } from "../lib/stairTest";
 import { useBackHandler } from "../lib/backButton";
 import SwipeRow from "../components/SwipeRow";
 import { AMBER, card, cardLabel, fieldInput, PageHeader, RulesBox, Seg, StairName } from "../components/StairUi";
@@ -60,6 +60,8 @@ export default function StairSystem() {
   const [reviewAll, setReviewAll] = useState(false);
   // where the page was scrolled to before a review, to come back to
   const scrollBack = useRef(0);
+  // the stairs and tests as they were before the last Apply, for Undo
+  const copyUndo = useRef<{ stairs: SpfStair[]; tests: StairTest[] } | null>(null);
 
   useEffect(() => {
     if (!siteId) return;
@@ -207,9 +209,55 @@ export default function StairSystem() {
   const reviewNext = reviewing ? unreviewed.find((st) => st.id !== reviewing.id) : undefined;
   const readyCount = sys.stairs.filter(ready).length;
   const reviewStep = `${readyCount - unreviewed.length + 1} of ${readyCount}`;
+  // the changes made in a review, on the other stairs that have levels
+  const copyTargets = (fromId: string, edits: LevelEdit[]) =>
+    sys.stairs
+      .map((st, i) => ({ st, i }))
+      .filter(({ st }) => st.id !== fromId && ready(st))
+      .map(({ st, i }) => ({ id: st.id, name: stairLabel(st, i), fit: applyLevelEdits(stairLevels(st), edits, levelsRead(tests, st.id)) }));
+  const copyApply = (edits: LevelEdit[], ids: string[]) => {
+    const base = latest.current ?? sys;
+    const was = { stairs: base.stairs.filter((st) => ids.includes(st.id)), tests: [] as StairTest[] };
+    let nextTests = tests;
+    const stairs = base.stairs.map((st) => {
+      if (!ids.includes(st.id)) return st;
+      const f = applyLevelEdits(stairLevels(st), edits, levelsRead(tests, st.id));
+      if (!f.done) return st;
+      const renamed = Object.keys(f.names).length > 0;
+      // readings, and doors added at a level, go with a renamed level
+      if (renamed)
+        nextTests = nextTests.map((t) => {
+          const moved = renameDoorLevels(t, st.id, f.names);
+          if (!moved) return t;
+          if (!was.tests.some((x) => x.id === t.id)) was.tests.push(tests.find((x) => x.id === t.id) ?? t);
+          return moved;
+        });
+      const more = renamed && st.more ? Object.fromEntries(Object.entries(st.more).map(([level, v]) => [f.names[level] ?? level, v])) : st.more;
+      const levels = f.levels.join("\n") === suggestLevels(st).join("\n") ? undefined : f.levels;
+      // looked over only if every change fitted it
+      return { ...st, levels, more, reviewed: f.fits === f.total ? true : st.reviewed };
+    });
+    copyUndo.current = was;
+    change({ ...base, stairs });
+    if (nextTests !== tests) {
+      for (const t of nextTests) if (was.tests.some((x) => x.id === t.id)) void saveStairTest(t);
+      setTests(nextTests);
+    }
+  };
+  const copyUndoNow = () => {
+    const was = copyUndo.current;
+    copyUndo.current = null;
+    if (!was) return;
+    const base = latest.current ?? sys;
+    change({ ...base, stairs: base.stairs.map((st) => was.stairs.find((x) => x.id === st.id) ?? st) });
+    for (const t of was.tests) void saveStairTest(t);
+    if (was.tests.length) setTests((all) => all.map((t) => was.tests.find((x) => x.id === t.id) ?? t));
+  };
   if (reviewing)
     return (
       <LevelReview
+        key={reviewing.id}
+        copy={{ targets: (edits) => copyTargets(reviewing.id, edits), apply: copyApply, undo: copyUndoNow }}
         stair={reviewing}
         n={sys.stairs.indexOf(reviewing) + 1}
         read={levelsRead(tests, reviewing.id)}

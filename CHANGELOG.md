@@ -7,6 +7,20 @@ the technical detail.
 
 ## 18 November 2026
 
+- **The same level changes on other stairs.** After changing a stair's
+  levels in Review level layout (a level added, removed or renamed, car
+  parks made basements), a card offers the same changes for the other
+  stairs. Apply to all makes them straight away on every stair they fit,
+  and the card turns into Undo. Choose stairs… lists each stair with how
+  many of the changes fit it (in orange, with why, when only some do) to
+  tick and apply. A change that doesn't fit a stair is skipped, a level
+  with readings isn't removed, and readings go with a renamed level. A
+  stair that took every change counts as reviewed. Nothing changes on the
+  other stairs until you tap.
+- **Review level layout: a group no longer folds shut under you.** Adding
+  a level to a group that then passed six levels closed it and hid the
+  new level; a group with a level picked now stays open.
+
 - **Stair setup: the level review comes after, and the screen holds
   still.** Typing a stair's levels no longer throws you into Review level
   layout halfway through, and coming back from it no longer jumps to the
