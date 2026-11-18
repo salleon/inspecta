@@ -665,6 +665,8 @@ export async function testJobFor(site: Site, kind: TestJobKind): Promise<Site> {
 // system with no tests yet), not the day of the move, so it sits on home
 // where the work was done rather than at the top; and no job is ever dated
 // after its oldest test (which puts right the jobs moved before this was so).
+// A job also takes its site's last backup: what's in it was in that backup,
+// so it isn't "never backed up" (which, dated back, set off the backup nudge).
 export async function splitSiteTests() {
   const sites = await db.sites.filter((s) => (s.kind === "afss" || s.kind === "project") && !s.restoreIncomplete).toArray();
   for (const site of sites) {
@@ -702,10 +704,20 @@ export async function splitSiteTests() {
       });
     }
   }
-  // every attached job: no newer than its oldest test
-  for (const job of await db.sites.filter((s) => !!s.attachedTo).toArray()) {
-    const dates = [...(await db.flowTests.where("siteId").equals(job.id).toArray()), ...(await db.stairTests.where("siteId").equals(job.id).toArray())].map((t) => t.createdAt);
-    if (dates.length) await dateJobBack(job.id, Math.min(...dates));
+  // every attached job: no newer than its oldest test, and backed up when its site was
+  const all = await db.sites.toArray();
+  const backedUp = new Map(all.map((s) => [s.id, s.backedUpAt]));
+  for (const job of all.filter((s) => !!s.attachedTo)) {
+    const tests = [...(await db.flowTests.where("siteId").equals(job.id).toArray()), ...(await db.stairTests.where("siteId").equals(job.id).toArray())];
+    if (tests.length) await dateJobBack(job.id, Math.min(...tests.map((t) => t.createdAt)));
+    const siteBackup = backedUp.get(job.attachedTo!);
+    // only when nothing in it has changed since that backup (so it's all in
+    // it): then it counts as saved, not changed by the move
+    if (!job.backedUpAt && siteBackup && tests.every((t) => t.updatedAt <= siteBackup))
+      await db.sites.where("id").equals(job.id).modify((j) => {
+        j.backedUpAt ??= siteBackup;
+        j.changedAt = siteBackup;
+      });
   }
 }
 

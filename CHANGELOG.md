@@ -13,6 +13,8 @@ the technical detail.
   for a stair system with no tests yet), not the day of the update. Home
   stays in the order it was, rather than every old site's tests jumping to
   the top. Jobs already moved and dated today are put back the same way.
+  They also count as backed up when their site was (what's in them was in
+  that backup), so the move no longer turns the backup reminder amber.
 
 - **The same level changes on other stairs.** After changing a stair's
   levels in Review level layout (a level added, removed or renamed, car
