@@ -71,7 +71,8 @@ test("Show me around walks through all 8 topics on example sites, then removes t
   await reopen();
   await page.getByRole("button", { name: "Show me around" }).click();
   assert.equal(await tipTitle(), "Start a job");
-  assert.deepEqual(await sites(), ["Example pump room", "Example site", "Harbour Tower"]);
+  // the example site, and its flow job (holding its sprinkler test), named after it
+  assert.deepEqual(await sites(), ["Example pump room", "Example site", "Example site", "Harbour Tower"]);
   assert.equal(await topic(), "SITES · 1 OF 2");
   assert.match(new URL(page.url()).hash, /^(#\/)?$/, "on the sites screen");
   await page.mouse.click(341, 787); // the lit-up + : does nothing during the tour
@@ -129,7 +130,7 @@ test("closed mid-tour: the example sites are cleared away on the next opening", 
   await page.click('button[aria-label="Settings"]');
   await page.click('button:has-text("Replay tour")');
   await tipTitle();
-  assert.deepEqual(await sites(), ["Example pump room", "Example site", "Harbour Tower"]);
+  assert.deepEqual(await sites(), ["Example pump room", "Example site", "Example site", "Harbour Tower"]);
   await reopen(); // as if the app had been closed
   assert.deepEqual(await sites(), ["Harbour Tower"]);
   assert.equal(await page.locator("text=Example site").count(), 0);

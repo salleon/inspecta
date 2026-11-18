@@ -134,10 +134,10 @@ const db = new InspectaDB();
 
 const uid = () => crypto.randomUUID();
 
-export async function createSite(name: string, address: string, kind: SiteKind) {
+export async function createSite(name: string, address: string, kind: SiteKind, id: string = uid()) {
   const now = Date.now();
   const site: Site = {
-    id: uid(),
+    id,
     name,
     address,
     kind,
@@ -192,6 +192,10 @@ async function findingSite(findingId: string) {
 }
 
 export async function deleteSite(siteId: string) {
+  // its attached test jobs stay on home, stand-alone again
+  await db.sites.filter((s) => s.attachedTo === siteId).modify((s) => {
+    delete s.attachedTo;
+  });
   // keys only — no need to read every photo just to delete it
   await db.thumbnails.where("siteId").equals(siteId).delete();
   await db.exportCopies.where("siteId").equals(siteId).delete();
@@ -606,15 +610,90 @@ export async function deleteStairTest(testId: string) {
   if (test) await touchSite(test.siteId);
 }
 
+// ---- test jobs ----
+// Every flow and stair test lives in a flow or stair job (a site of kind
+// "flow" or "spf") on home. A job can be attached to an AFSS or project site:
+// its tests then show in that site's Other tests and go into its report.
+
+export type TestJobKind = "flow" | "spf";
+
+export async function listAttachedJobs(siteId: string) {
+  const jobs = await db.sites.filter((s) => s.attachedTo === siteId).toArray();
+  return jobs.sort((a, b) => a.createdAt - b.createdAt);
+}
+
+// attach a job to a site, or detach it (no siteId)
+export async function attachJob(jobId: string, siteId?: string) {
+  await db.sites.where("id").equals(jobId).modify((s) => {
+    if (siteId) s.attachedTo = siteId;
+    else delete s.attachedTo;
+    s.changedAt = Date.now();
+  });
+}
+
+// the site's attached job of this kind, made (named after the site and
+// attached to it) if it has none yet
+export async function testJobFor(site: Site, kind: TestJobKind): Promise<Site> {
+  const found = (await listAttachedJobs(site.id)).find((j) => j.kind === kind);
+  if (found) return found;
+  // "<site id>-flow" / "-spf" while free, so a site's job is easy to find
+  const id = `${site.id}-${kind}`;
+  const job = await createSite(site.name, site.address, kind, (await db.sites.get(id)) ? uid() : id);
+  await attachJob(job.id, site.id);
+  return { ...job, attachedTo: site.id };
+}
+
+// Moves the flow and stair tests of AFSS and project sites, with their
+// photos and notes and the stair system, into the sites' attached jobs.
+// Safe to run any time: a site with no tests of its own is left alone.
+export async function splitSiteTests() {
+  const sites = await db.sites.filter((s) => (s.kind === "afss" || s.kind === "project") && !s.restoreIncomplete).toArray();
+  for (const site of sites) {
+    for (const kind of ["flow", "spf"] as const) {
+      const table = (kind === "flow" ? db.flowTests : db.stairTests) as unknown as Table<{ id: string; siteId: string }, string>;
+      const ids = (await table.where("siteId").equals(site.id).primaryKeys()) as string[];
+      if (!ids.length && !(kind === "spf" && site.spf)) continue;
+      const job = await testJobFor(site, kind);
+      await db.transaction("rw", [db.sites, db.findings, db.photos, db.thumbnails, db.exportCopies, db.flowTests, db.stairTests], async () => {
+        await table.where("siteId").equals(site.id).modify({ siteId: job.id });
+        const idSet = new Set(ids);
+        const findingIds = (await db.findings
+          .where("siteId")
+          .equals(site.id)
+          .filter((f) => idSet.has((kind === "flow" ? f.flowTestId : f.stairTestId) ?? ""))
+          .primaryKeys()) as string[];
+        if (findingIds.length) {
+          await db.findings.where("id").anyOf(findingIds).modify({ siteId: job.id });
+          const photoIds = (await db.photos.where("findingId").anyOf(findingIds).primaryKeys()) as string[];
+          await db.photos.where("id").anyOf(photoIds).modify({ siteId: job.id });
+          await db.thumbnails.where("photoId").anyOf(photoIds).modify({ siteId: job.id });
+          await db.exportCopies.where("photoId").anyOf(photoIds).modify({ siteId: job.id });
+        }
+        if (kind === "spf" && site.spf) {
+          const spf = site.spf;
+          await db.sites.where("id").equals(job.id).modify((j) => {
+            j.spf ??= spf;
+          });
+          await db.sites.where("id").equals(site.id).modify((s) => {
+            delete s.spf;
+          });
+        }
+      });
+    }
+  }
+}
+
 // ---- backup / restore (see lib/backup.ts) ----
 
 // The records of the given sites (all of them if none are given), without
 // the photo files themselves, which are read one at a time with
 // photoBlob() so a backup never holds them all in memory.
 export async function backupRecords(siteIds?: string[]) {
-  const only = siteIds ? new Set(siteIds) : null;
+  const all = await db.sites.toArray();
+  // a chosen site brings the flow and stair jobs attached to it
+  const only = siteIds ? new Set([...siteIds, ...all.filter((s) => s.attachedTo && siteIds.includes(s.attachedTo)).map((s) => s.id)]) : null;
   const keep = <T extends { siteId: string }>(rows: T[]) => (only ? rows.filter((r) => only.has(r.siteId)) : rows);
-  const sites = (await db.sites.toArray()).filter((s) => !only || only.has(s.id));
+  const sites = all.filter((s) => !only || only.has(s.id));
   const findings = keep(await db.findings.toArray());
   const flowTests = keep(await db.flowTests.toArray());
   const stairTests = keep(await db.stairTests.toArray());
@@ -668,15 +747,18 @@ export async function restoreSiteRecords(site: Site, findings: Finding[], flowTe
 export async function siteRecords(siteId: string) {
   const site = await db.sites.get(siteId);
   if (!site) return undefined;
+  // with its attached jobs' records: a backup from before test jobs has
+  // their tests in the site itself (moved into the jobs once restored)
+  const ids = [siteId, ...(await listAttachedJobs(siteId)).map((j) => j.id)];
   const [findings, flowTests, stairTests] = await Promise.all([
-    db.findings.where("siteId").equals(siteId).toArray(),
-    db.flowTests.where("siteId").equals(siteId).toArray(),
-    db.stairTests.where("siteId").equals(siteId).toArray(),
+    db.findings.where("siteId").anyOf(ids).toArray(),
+    db.flowTests.where("siteId").anyOf(ids).toArray(),
+    db.stairTests.where("siteId").anyOf(ids).toArray(),
   ]);
   const photos: Omit<Photo, "blob" | "marked">[] = [];
   await db.photos
     .where("siteId")
-    .equals(siteId)
+    .anyOf(ids)
     .each(({ blob: _blob, marked: _marked, ...meta }) => {
       photos.push(meta);
     });
@@ -723,6 +805,7 @@ export async function finishSiteRestore(siteId: string) {
     if (site.restoreIncomplete !== "merge") site.backedUpAt = Date.now();
     delete site.restoreIncomplete;
   });
+  await splitSiteTests();
 }
 
 // ---- factory reset (Admin → Wipe app) ----

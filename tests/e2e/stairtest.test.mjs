@@ -30,7 +30,7 @@ after(async () => {
 test("a Stair pressurisation site from + New job", async () => {
   await page.getByRole("button", { name: /new job/i }).first().click();
   await page.getByRole("button", { name: "Stair pressurisation" }).click();
-  assert.match(await page.locator("form").innerText(), /Just stair pressurisation tests/);
+  assert.doesNotMatch(await page.locator("form").innerText(), /Just stair pressurisation tests/); // no tip text under the kinds
   await page.getByPlaceholder("Site name").fill("Harbour Tower");
   await page.getByRole("button", { name: "Start stair testing" }).click();
   await page.getByText("No stair tests on this site yet.").waitFor();
@@ -206,10 +206,17 @@ test("an AFSS site: Other tests, + Add a test, and the export chooser", async ()
   assert.match(sheet, /Stair pressurisation \(SPF\)/);
   assert.ok(!sheet.includes("Set to Annual Testing"));
   await page.getByRole("button", { name: "Cancel" }).click();
-  await page.getByRole("button", { name: "Export Other Tests Only" }).click();
-  assert.match(await page.locator(".sheet-panel").innerText(), /Export tests[\s\S]*All tests[\s\S]*Sprinkler/);
-  await page.getByRole("checkbox", { name: /Sprinkler/ }).click();
-  assert.equal(await page.getByRole("button", { name: "Pick a test to export" }).count(), 1);
+  // the tests are in the site's own jobs: exported from there, or in the site's report
+  assert.equal(await page.getByRole("button", { name: "Export Other Tests Only" }).count(), 0);
+  // a stair test is made in the site's stair job, named after it and attached
+  await page.getByRole("button", { name: "+ Add a test" }).click();
+  await page.getByRole("button", { name: "Stair pressurisation (SPF)" }).click();
+  await page.waitForURL(/\/site\/a1-spf\/spf\/new/);
+  await go(page, app, "/site/a1/findings?tab=flow", 1200);
+  await page.getByRole("button", { name: /Other tests · 2/ }).waitFor();
+  await page.getByRole("button", { name: /Stair pressurisation/ }).click();
+  await page.waitForURL(/\/site\/a1-spf\/findings/);
+  assert.equal(await page.getByTestId("attach-chip").innerText(), "155 Kent St");
   assert.deepEqual(errors, []);
 });
 

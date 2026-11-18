@@ -59,7 +59,7 @@ test("New job offers Flow testing; the home page tags flow testing sites", async
   await page.click('form button:has-text("Projects")');
   assert.equal(await page.locator('form button:has-text("Projects")').evaluate((e) => getComputedStyle(e).color), "rgb(245, 165, 92)");
   await page.click('button:not([type=submit]):has-text("Flow testing")');
-  assert.equal(await page.getByText("Just flow tests: no findings or photos.", { exact: false }).count(), 1);
+  assert.equal(await page.getByText("Just flow tests", { exact: false }).count(), 0); // no tip text under the kinds
   await page.fill('input[placeholder="Site name"]', "Aldi Gordon");
   await page.click('button[type="submit"]');
   await page.waitForTimeout(800);

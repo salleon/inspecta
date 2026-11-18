@@ -250,13 +250,14 @@ test("a site on both: Leave changes nothing, Merge keeps everything on the phone
   H = Date.now();
   // the coworker's copy: a later note on f2, a finding and photo of their
   // own, and readings in a flow test
-  await dbEdit(async (_tx, get, put) => {
-    put("findings", { ...(await get("findings", "f2")), note: "Coworker note", updatedAt: Date.now() + 10 });
-    put("flowTests", { id: "ft", siteId: "s2", kind: "sprinkler", name: "Coworker readings", testedAt: 1, k: 0, sections: [], demand: [], order: 0, createdAt: 1, updatedAt: Date.now() + 20 });
-  });
   await seed(page, {
     findings: [{ id: "cw", siteId: "s2", note: "Coworker finding", order: 5, updatedAt: Date.now() + 15 }],
     photos: [{ id: "cwp", findingId: "cw", siteId: "s2", color: "#a3a" }],
+  });
+  // the flow test in the site itself, as an app from before test jobs kept it
+  await dbEdit(async (_tx, get, put) => {
+    put("findings", { ...(await get("findings", "f2")), note: "Coworker note", updatedAt: Date.now() + 10 });
+    put("flowTests", { id: "ft", siteId: "s2", kind: "sprinkler", name: "Coworker readings", testedAt: 1, k: 0, sections: [], demand: [], order: 0, createdAt: 1, updatedAt: Date.now() + 20 });
   });
   await backUp("Choose sites");
   await page.getByRole("checkbox", { name: /Riverside Plaza/ }).check();
@@ -303,8 +304,9 @@ test("a site on both: Leave changes nothing, Merge keeps everything on the phone
   // the coworker's finding and photo came in
   assert.equal(await findingNote("cw"), "Coworker finding");
   assert.deepEqual((await rows("photos")).filter((p) => p.siteId === "s2").map((p) => p.id).sort(), ["cwp", "p2"]);
-  // the test changed on both: both kept, the backup's marked
-  const tests = (await rows("flowTests")).filter((t) => t.siteId === "s2").map((t) => [t.name, !!t.fromBackup]).sort();
+  // the test changed on both: both kept, the backup's marked, and moved into
+  // the site's own flow job
+  const tests = (await rows("flowTests")).filter((t) => t.siteId === "s2-flow").map((t) => [t.name, !!t.fromBackup]).sort();
   assert.deepEqual(tests, [["Coworker readings", true], ["My readings", false]]);
   const s2 = (await rows("sites")).find((x) => x.id === "s2");
   assert.equal(s2.restoreIncomplete, undefined);
@@ -317,7 +319,7 @@ test("merging the same backup again adds nothing", async () => {
   assert.equal(await page.locator("text=Every site in this backup is already on this phone").count(), 1);
   await page.getByRole("button", { name: "OK", exact: true }).click();
   assert.equal(await snapshot(), before);
-  assert.equal((await rows("flowTests")).filter((t) => t.siteId === "s2").length, 2);
+  assert.equal((await rows("flowTests")).filter((t) => t.siteId === "s2-flow").length, 2);
 });
 
 test("a merge that stopped part way is finished by restoring again", async () => {
@@ -361,7 +363,10 @@ test("Keep both: the backup's copy as a separate site, the phone's untouched", a
   assert.deepEqual(notes, ["Coworker finding", "Coworker note"]);
   assert.equal((await rows("photos")).filter((p) => p.siteId === copy.id).length, 2);
   await go(page, app, "/");
-  assert.equal(await page.getByText("Riverside Plaza (from backup)").count(), 1);
+  // the copy, and its flow job (the backup's test, moved out of the site),
+  // named after it and showing it's attached to it
+  assert.equal(await page.getByText("Riverside Plaza (from backup)").count(), 3);
+  assert.equal((await rows("sites")).filter((x) => x.attachedTo === copy.id && x.kind === "flow").length, 1);
 
   // stopped part way (a photo missing, still marked): restoring again finishes the copy
   const done = await snapshot();

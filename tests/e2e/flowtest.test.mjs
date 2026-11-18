@@ -92,6 +92,16 @@ after(async () => {
   await app?.close();
 });
 
+// how many flow tests a site (or job) has
+const flowCount = (siteId) =>
+  page.evaluate(async (siteId) => {
+    const req = indexedDB.open("inspecta");
+    const idb = await new Promise((r) => (req.onsuccess = () => r(req.result)));
+    const all = await new Promise((r) => (idb.transaction("flowTests").objectStore("flowTests").getAll().onsuccess = (e) => r(e.target.result)));
+    idb.close();
+    return all.filter((t) => t.siteId === siteId).length;
+  }, siteId);
+
 async function exportExcel(siteId) {
   await go(page, app, `/site/${siteId}/export`, 1500);
   const file = await download(page, async () => {
@@ -103,11 +113,19 @@ async function exportExcel(siteId) {
   return fs.readFileSync(file.path);
 }
 
-test("the Other tests tab lists the site's tests with their results", async () => {
+test("the Other tests tab lists the site's flow job; it opens with the tests and their results", async () => {
   await go(page, app, "/site/s1/findings");
   await page.click('button:has-text("Other tests")');
   await page.waitForTimeout(500);
   assert.ok(page.url().endsWith("?tab=flow"));
+  // the site's tests moved into their own flow job, attached to it
+  assert.equal(await page.locator("text=Other tests · 1").count(), 1);
+  assert.equal(await page.locator("text=2 flow tests").count(), 1);
+  assert.equal(await page.locator("text=Export Other Tests Only").count(), 0);
+  await page.click('button:has-text("Flow testing")');
+  await page.waitForTimeout(800);
+  assert.ok(page.url().endsWith("/site/s1-flow/findings"), page.url());
+  assert.equal(await page.getByTestId("attach-chip").innerText(), "Coles Turramurra");
   assert.equal(await page.locator("text=ALPHA TEST").count(), 0);
   // the town main is only a reference, so the line is the electric pump's
   assert.equal(await page.locator("text=Electric pump above all demand points").count(), 1);
@@ -122,7 +140,8 @@ test("a new sprinkler test: flows are typed (never worked out from \" Hg), the r
   await page.click('.sheet-panel button:has-text("Flow test")');
   await page.click("text=Sprinkler >> nth=-1");
   await page.waitForTimeout(800);
-  assert.match(page.url(), /\/site\/s1\/flow\//);
+  // made in the site's flow job
+  assert.match(page.url(), /\/site\/s1-flow\/flow\//);
   // rows start empty: nothing suggested
   const hg = page.locator('[aria-label=\'" Hg\']');
   assert.equal(await hg.count(), 6);
@@ -173,8 +192,8 @@ test("a new sprinkler test: flows are typed (never worked out from \" Hg), the r
   await page.waitForTimeout(700);
   await pressBack(page);
   await page.waitForTimeout(600);
-  assert.ok(page.url().endsWith("/site/s1/findings?tab=flow"), page.url());
-  assert.equal(await page.locator("text=Other tests · 3").count(), 1);
+  assert.ok(page.url().endsWith("/site/s1-flow/findings?tab=flow"), page.url());
+  assert.equal(await flowCount("s1-flow"), 3);
   const saved = await page.evaluate(async () => {
     const req = indexedDB.open("inspecta");
     const idb = await new Promise((r) => (req.onsuccess = () => r(req.result)));
@@ -346,7 +365,7 @@ test("a new hydrant test: flows in L/s, PASS / FAIL at the bottom, RPM for a die
 });
 
 test("EnFact mode (the default): always discharge and town main, no line options, three supply types plus custom", async () => {
-  await go(page, app, "/site/s1/findings?tab=flow");
+  await go(page, app, "/site/s1-flow/findings");
   await page.click("text=Sprinkler >> nth=0");
   await page.waitForTimeout(800);
   assert.equal(await page.locator('[stroke-dasharray="2 3"]').count(), 0, "no suction");
@@ -363,7 +382,7 @@ test("EnFact mode (the default): always discharge and town main, no line options
 
 test("the graph's line chips and More list (Contractor mode): suction off until ticked, kept with the test", async () => {
   await page.evaluate(() => localStorage.setItem("inspecta.flowMode", "contractor"));
-  await go(page, app, "/site/s1/findings?tab=flow");
+  await go(page, app, "/site/s1-flow/findings");
   await page.reload();
   await page.waitForTimeout(600);
   await page.click("text=Sprinkler >> nth=0");
@@ -398,13 +417,13 @@ test("the graph's line chips and More list (Contractor mode): suction off until 
 });
 
 test("deleting a flow test asks first", async () => {
-  await go(page, app, "/site/s1/findings?tab=flow");
+  await go(page, app, "/site/s1-flow/findings");
   await page.click("text=Sprinkler >> nth=-1");
   await page.waitForTimeout(700);
   await page.click("text=Delete flow test");
   await page.click("button:has-text('Delete') >> nth=-1");
   await page.waitForTimeout(700);
-  assert.equal(await page.locator("text=Other tests · 2").count(), 1);
+  assert.equal(await flowCount("s1-flow"), 2);
 });
 
 // where a value is on a sheet, as [row, col], or null
@@ -522,7 +541,7 @@ test("every supply gets its own table, as on the preview", async () => {
 });
 
 test("a combined system: pump duty with its own unit, Tank / Town main per pump; Contractor adds year installed, cut-in, temp and oil", async () => {
-  await go(page, app, "/site/s3/flow/t5", 900);
+  await go(page, app, "/site/s3-flow/flow/t5", 900);
   // the duty card: the first point is the pump duty; L/s to start, like hydrants
   assert.equal(await page.getByText("System pump duty").count(), 1);
   assert.equal(await page.getByText("Pump duty", { exact: true }).count(), 1);
@@ -583,7 +602,7 @@ test("a combined system goes on a Combined System tab, as on the preview", async
 
 test("the Excel's tables are the preview's tables, cell for cell", async () => {
   for (const site of ["s1", "s3"]) {
-    await go(page, app, `/site/${site}/flow-export`, 1500);
+    await go(page, app, `/site/${site}-flow/flow-export`, 1500);
     const previews = await page.locator('[data-testid="flow-page"]').evaluateAll((pages) =>
       pages.map((p) => [...p.querySelectorAll("table")].map((t) => [...t.querySelectorAll("tr")].map((tr) => [...tr.children].map((c) => c.textContent.trim())))),
     );
@@ -606,7 +625,7 @@ test("the Excel's tables are the preview's tables, cell for cell", async () => {
 });
 
 test("Save & close, above Delete flow test, saves and goes back to the flow tests list", async () => {
-  await go(page, app, "/site/s2/flow/t3", 1500);
+  await go(page, app, "/site/s2-flow/flow/t3", 1500);
   const buttons = await page.evaluate(() => [...document.querySelectorAll("button")].map((b) => b.textContent.trim()).filter((t) => t === "Save & close" || t === "Delete flow test"));
   assert.deepEqual(buttons, ["Save & close", "Delete flow test"]);
   // the Comments box can't be dragged smaller than about three lines
@@ -616,7 +635,7 @@ test("Save & close, above Delete flow test, saves and goes back to the flow test
   await page.fill('[aria-label="Comments"]', "Saved with Save & close");
   await page.click('button:has-text("Save & close")');
   await page.waitForTimeout(600);
-  assert.ok(page.url().endsWith("/site/s2/findings?tab=flow"), page.url());
+  assert.ok(page.url().endsWith("/site/s2-flow/findings?tab=flow"), page.url());
   const comment = await page.evaluate(async () => {
     const req = indexedDB.open("inspecta");
     const idb = await new Promise((r) => (req.onsuccess = () => r(req.result)));
@@ -631,7 +650,7 @@ test("Save & close, above Delete flow test, saves and goes back to the flow test
 });
 
 test("readings are saved straight away, and ones without a flow say why they're not on the graph", async () => {
-  await go(page, app, "/site/s2/flow/t3", 1500);
+  await go(page, app, "/site/s2-flow/flow/t3", 1500);
   const dis = page.locator('[aria-label="Discharge"]').first();
   await dis.fill("777");
   // the app closed straight after typing (no back, no Save & close)
@@ -646,23 +665,9 @@ test("readings are saved straight away, and ones without a flow say why they're 
   assert.match(await page.getByText(/no flow, so it isn't on the graph/).innerText(), /Type the flow for each reading/);
 });
 
-test("an AFSS site's Other tests tab: Export Other Tests Only asks which tests, then exports them (a sheet per test, no findings)", async () => {
-  await go(page, app, "/site/s1/findings?tab=flow", 1200);
-  await page.click('button:has-text("Export Other Tests Only")');
-  assert.match(await page.locator(".sheet-panel").innerText(), /Export tests[\s\S]*All tests/);
-  // no format is preselected: the export button asks for one until Excel is picked
-  assert.equal(await page.getByRole("button", { name: "Pick PDF or Excel" }).count(), 1);
-  await page.click('.sheet-panel button:has-text("Excel")');
-  const file = await download(page, () => page.getByRole("button", { name: /^Export .* · Excel$/ }).click());
-  const wb = new ExcelJS.Workbook();
-  await wb.xlsx.load(fs.readFileSync(file.path));
-  const names = wb.worksheets.map((w) => w.name);
-  assert.ok(names.length >= 1 && !names.some((n) => /finding/i.test(n)), names.join(", "));
-  assert.ok(page.url().endsWith("/site/s1/findings?tab=flow"), page.url());
-});
 
 test("upright readings: a number cell brings up the blue pad, not the phone's keyboard", async () => {
-  await go(page, app, "/site/s1/flow/t1", 1200);
+  await go(page, app, "/site/s1-flow/flow/t1", 1200);
   const cell = page.locator('input[aria-label="Suction"]').first();
   assert.equal(await cell.evaluate((e) => e.inputMode), "none", "the phone's keyboard stays away");
   await cell.click();

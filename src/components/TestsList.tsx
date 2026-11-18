@@ -2,7 +2,7 @@ import { say } from "./Message";
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import type { FlowKind, FlowTest, Site, StairTest } from "../db/types";
-import { addFlowTest, deleteFlowTest, deleteStairTest, listFlowTests, listStairTests } from "../db/db";
+import { addFlowTest, deleteFlowTest, deleteStairTest, flowTestCount, listAttachedJobs, listStairTests, stairTestCount, testJobFor } from "../db/db";
 import { blankThumbSvg, chartSvg, KIND_HINT, KIND_LABEL, newFlowTest, readingCount, summary } from "../lib/flowTest";
 import { KIND_LABEL as STAIR_KIND, stairTestSummary, systemLine } from "../lib/stairTest";
 import { exportTests, type TestsFormat } from "../lib/testsExport";
@@ -11,13 +11,15 @@ import ConfirmDialog from "./ConfirmDialog";
 import SwipeRow from "./SwipeRow";
 import ProgressOverlay from "./ProgressOverlay";
 import SiteKindIcon from "./SiteKindIcon";
+import { IconChevronRight } from "./Icons";
 import { Pill } from "./StairUi";
 import { shortDate } from "../lib/dates";
 
 // The Other tests tab of an AFSS or project site, and a stair pressurisation
-// site's list (design canvas SiteTests): every test on the site, flow and
-// stair, each with its icon; swipe left to delete. + Add a test asks which
-// kind (more kinds join that list later); Export asks which tests, as PDF
+// site's list (design canvas SiteTests). Other tests: a row per flow or
+// stair job attached to the site (db testJobs); + Add a test adds the test
+// in the site's job of that kind, made and attached if it has none. A stair
+// job: its tests, swipe left to delete; Export asks which tests, as PDF
 // and / or Excel. Once a site's stair pressurisation system is set up, it
 // sits at the top with Edit, so it can be changed any time.
 
@@ -25,6 +27,7 @@ const FLOW_KINDS: FlowKind[] = ["sprinkler", "hydrant", "combined", "blank"];
 const MIN_LOADER_MS = 3000;
 
 type Item = { kind: "flow"; test: FlowTest } | { kind: "stair"; test: StairTest };
+type Job = { job: Site; count: number };
 
 const formatDay = shortDate;
 
@@ -51,7 +54,7 @@ const option: CSSProperties = {
 };
 const cancelBtn: CSSProperties = { width: "100%", padding: "13px 0", borderRadius: 12, border: "1px solid var(--border-strong)", background: "none", color: "var(--text)", fontSize: 14.5, fontWeight: 800 };
 
-function Sheet({ onClose, children }: { onClose: () => void; children: ReactNode }) {
+export function Sheet({ onClose, children }: { onClose: () => void; children: ReactNode }) {
   return (
     <div className="sheet-backdrop" onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(10,11,13,0.6)", display: "flex", alignItems: "flex-end", zIndex: 5 }}>
       <div className="sheet-panel" onClick={(e) => e.stopPropagation()} style={sheetPanel}>
@@ -64,6 +67,8 @@ function Sheet({ onClose, children }: { onClose: () => void; children: ReactNode
 export default function TestsList({ site, mode, onCount }: { site: Site; mode: "other" | "spf"; onCount: (n: number) => void }) {
   const navigate = useNavigate();
   const [items, setItems] = useState<Item[] | null>(null);
+  // Other tests: the site's attached flow and stair jobs
+  const [jobs, setJobs] = useState<Job[] | null>(null);
   const [sheet, setSheet] = useState<null | "add" | "flow" | "export">(null);
   const [openSwipeId, setOpenSwipeId] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<Item | null>(null);
@@ -76,10 +81,20 @@ export default function TestsList({ site, mode, onCount }: { site: Site; mode: "
 
   useEffect(() => {
     let cancelled = false;
-    void Promise.all([mode === "other" ? listFlowTests(site.id) : Promise.resolve([]), listStairTests(site.id)]).then(([flow, stair]) => {
+    if (mode === "other") {
+      void listAttachedJobs(site.id).then(async (list) => {
+        const withCounts = await Promise.all(list.map(async (job) => ({ job, count: await (job.kind === "flow" ? flowTestCount : stairTestCount)(job.id) })));
+        if (cancelled) return;
+        setJobs(withCounts);
+        onCount(withCounts.length);
+      });
+      return () => {
+        cancelled = true;
+      };
+    }
+    void listStairTests(site.id).then((stair) => {
       if (cancelled) return;
-      const all: Item[] = [...flow.map((test) => ({ kind: "flow" as const, test })), ...stair.map((test) => ({ kind: "stair" as const, test }))];
-      all.sort((a, b) => a.test.order - b.test.order);
+      const all: Item[] = stair.map((test) => ({ kind: "stair" as const, test }));
       setItems(all);
       onCount(all.length);
     });
@@ -98,8 +113,21 @@ export default function TestsList({ site, mode, onCount }: { site: Site; mode: "
     if (busy) return;
     setBusy(true);
     try {
-      const test = await addFlowTest(newFlowTest(site.id, kind));
-      navigate(`/site/${site.id}/flow/${test.id}`);
+      const jobId = mode === "other" ? (await testJobFor(site, "flow")).id : site.id;
+      const test = await addFlowTest(newFlowTest(jobId, kind));
+      navigate(`/site/${jobId}/flow/${test.id}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // a stair test: in the site's stair job when this is an AFSS or project site
+  async function newStairTest() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const jobId = mode === "other" ? (await testJobFor(site, "spf")).id : site.id;
+      navigate(`/site/${jobId}/spf/new`);
     } finally {
       setBusy(false);
     }
@@ -185,9 +213,31 @@ export default function TestsList({ site, mode, onCount }: { site: Site; mode: "
             <Pill onClick={() => navigate(`/site/${site.id}/spf-system?back=${encodeURIComponent(`/site/${site.id}/findings?tab=flow`)}`)}>Edit</Pill>
           </div>
         )}
-        {items?.length === 0 && (
+        {jobs?.length === 0 && (
+          <div style={{ padding: "40px 8px", textAlign: "center", color: "var(--muted-2)", fontSize: 14, fontWeight: 500 }}>No other tests on this site yet: tap + Add a test.</div>
+        )}
+        {jobs?.map(({ job, count }) => (
+          <button
+            key={job.id}
+            onClick={() => navigate(`/site/${job.id}/findings`)}
+            style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", padding: 14, borderRadius: 14, background: "var(--panel)", border: "1px solid var(--border)", color: "var(--text)" }}
+          >
+            <span style={{ width: 46, height: 46, flexShrink: 0, borderRadius: 10, background: job.kind === "flow" ? "rgba(90,176,255,.1)" : "rgba(177,140,255,.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <SiteKindIcon kind={job.kind} size={24} />
+            </span>
+            <span style={{ flexGrow: 1, minWidth: 0 }}>
+              <b style={{ display: "block", fontSize: 14.5 }}>{job.kind === "flow" ? "Flow testing" : "Stair pressurisation"}</b>
+              <span style={{ fontSize: 12, color: "var(--muted)" }}>
+                {count} {job.kind === "flow" ? "flow" : "stair"} test{count === 1 ? "" : "s"}
+                {job.name !== site.name ? ` · ${job.name}` : ""}
+              </span>
+            </span>
+            <IconChevronRight size={16} color="var(--muted-2)" />
+          </button>
+        ))}
+        {mode === "spf" && items?.length === 0 && (
           <div style={{ padding: "40px 8px", textAlign: "center", color: "var(--muted-2)", fontSize: 14, fontWeight: 500 }}>
-            {mode === "spf" ? "No stair tests on this site yet." : "No other tests on this site yet: tap + Add a test."}
+            No stair tests on this site yet.
           </div>
         )}
         {items?.map((item, i) => (
@@ -214,7 +264,7 @@ export default function TestsList({ site, mode, onCount }: { site: Site; mode: "
             onClick={openExport}
             style={{ width: "100%", padding: "13px 0", borderRadius: 12, border: "1px solid rgba(90,176,255,.55)", background: "rgba(90,176,255,.1)", color: "#5ab0ff", fontSize: 14.5, fontWeight: 800 }}
           >
-            {mode === "spf" ? "Export" : "Export Other Tests Only"}
+            Export
           </button>
         )}
         <button
@@ -240,7 +290,7 @@ export default function TestsList({ site, mode, onCount }: { site: Site; mode: "
             </span>
             <span style={{ color: "var(--muted-2)", fontSize: 18 }}>›</span>
           </button>
-          <button style={option} onClick={() => navigate(`/site/${site.id}/spf/new`)}>
+          <button style={option} disabled={busy} onClick={() => void newStairTest()}>
             <span style={{ width: 42, height: 42, borderRadius: 11, background: "rgba(177,140,255,.14)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               <SiteKindIcon kind="spf" size={22} />
             </span>

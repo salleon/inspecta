@@ -117,6 +117,10 @@ export async function seed(page, { sites = [], findings = [], photos = [], flowT
     },
     { sites, findings, photos, flowTests },
   );
+  // as the app opening on this data: tests in AFSS and project sites move
+  // into their own attached jobs ("<site id>-flow", db splitSiteTests)
+  await page.reload();
+  await page.waitForTimeout(600);
 }
 
 // finding id -> ESR category ("-" for none)

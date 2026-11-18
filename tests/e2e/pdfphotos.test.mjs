@@ -30,6 +30,7 @@ test("12 photos on one finding run onto the next page, none past the page edge",
   await go(page, app, "/site/s1/export", 2500);
   const pdf = await download(page, async () => {
     await page.click("text=Share PDF");
+    await page.waitForTimeout(600);
     if (await page.locator("text=Export anyway").count()) await page.click("text=Export anyway");
   });
   const text = (await readFile(pdf.path)).toString("latin1");

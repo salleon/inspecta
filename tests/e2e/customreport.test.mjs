@@ -75,6 +75,7 @@ test("Create Customised Report: name, bulk refine (Skip in orange, groups from t
 test("its PDF is named after it and has only its findings; Whole site still has all", async () => {
   const pdf = await download(page, async () => {
     await page.click("text=Share PDF");
+    await page.waitForTimeout(600);
     if (await page.locator("text=Export anyway").count()) await page.click("text=Export anyway");
   });
   assert.match(pdf.name, /^harbour-tower-level-1/);
@@ -88,6 +89,7 @@ test("its PDF is named after it and has only its findings; Whole site still has 
 test("the Excel has no flow test tab when the site's flow tests have nothing read", async () => {
   const xl = await download(page, async () => {
     await page.click("text=Share Excel");
+    await page.waitForTimeout(600);
     if (await page.locator("text=Export anyway").count()) await page.click("text=Export anyway");
   });
   const wb = new ExcelJS.Workbook();

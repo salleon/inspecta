@@ -26,7 +26,10 @@ before(async () => {
     await new Promise((r) => (tx.oncomplete = r));
     idb.close();
   }, [stair("s1", "SPF-01", "B2", "12"), { ...stair("s2", "SPF-02", "G", "3"), more: { 2: 1 } }]);
-  await go(page, app, "/site/p1/spf/t1/vel?stair=s1&run=0", 1500);
+  // as the app opening on it: the stairs and test move into the site's stair job "p1-spf"
+  await page.reload();
+  await page.waitForTimeout(600);
+  await go(page, app, "/site/p1-spf/spf/t1/vel?stair=s1&run=0", 1500);
   await page.addStyleTag({ content: ":root { --safe-area-inset-bottom: 48px }" });
 });
 
@@ -57,7 +60,7 @@ test("typing the lowest level: its row shows above the keypad and bar, under the
 
 test("door force: a level with two doors shows a line a door, as velocity does", async () => {
   for (const sec of ["vel", "force"]) {
-    await go(page, app, `/site/p1/spf/t1/${sec}?stair=s2&run=0`, 1500);
+    await go(page, app, `/site/p1-spf/spf/t1/${sec}?stair=s2&run=0`, 1500);
     const rows = await page.locator('[data-i="1"] .door-row').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().top));
     assert.equal(rows.length, 2, sec);
     assert.ok(rows[1] > rows[0] + 20, `${sec}: door B under door A`);
@@ -65,7 +68,7 @@ test("door force: a level with two doors shows a line a door, as velocity does",
 });
 
 test("the Open box: wide across the row while typing, then the whole text on two lines", async () => {
-  await go(page, app, "/site/p1/spf/t1/vel?stair=s1&run=0", 1500);
+  await go(page, app, "/site/p1-spf/spf/t1/vel?stair=s1&run=0", 1500);
   const open = page.getByLabel("Other door open with 5", { exact: true });
   await open.click();
   const box = await open.boundingBox();
@@ -80,7 +83,7 @@ test("the Open box: wide across the row while typing, then the whole text on two
 });
 
 test("swiping the stair bar: the next stair's own page slides in, not a blank outline", async () => {
-  await go(page, app, "/site/p1/spf/t1/vel?stair=s1&run=0", 1500);
+  await go(page, app, "/site/p1-spf/spf/t1/vel?stair=s1&run=0", 1500);
   await page.getByText("Site inspection tool").waitFor({ state: "detached" });
   const chin = page.getByTestId("stair-chin");
   const box = await chin.boundingBox();
@@ -101,7 +104,7 @@ test("swiping the stair bar: the next stair's own page slides in, not a blank ou
 });
 
 test("Fan checks: the stair bar sits between the list and Done, overlapping neither", async () => {
-  await go(page, app, "/site/p1/spf/t1/fan?stair=s1&run=0", 1500);
+  await go(page, app, "/site/p1-spf/spf/t1/fan?stair=s1&run=0", 1500);
   await page.addStyleTag({ content: ":root { --safe-area-inset-bottom: 48px }" });
   const done = await page.getByRole("button", { name: "Done ›" }).boundingBox();
   const bar = await page.getByRole("button", { name: /^Next stair: / }).evaluate((b) => b.parentElement.getBoundingClientRect().toJSON());

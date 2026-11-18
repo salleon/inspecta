@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, type FormEvent, type CSSProperties } from 
 import { useNavigate } from "react-router-dom";
 import type { Site, SiteKind } from "../db/types";
 import { createSite, deleteSite, findingCount, firstSitePhoto, flowTestCount, getThumbnail, listSites, stairTestCount } from "../db/db";
-import { IconSearch, IconBuilding, IconPlus, IconSettings } from "../components/Icons";
+import { IconSearch, IconBuilding, IconLink, IconPlus, IconSettings } from "../components/Icons";
 import CountUp from "../components/CountUp";
 import ConfirmDialog from "../components/ConfirmDialog";
 import SwipeRow from "../components/SwipeRow";
@@ -248,6 +248,7 @@ export default function Dashboard() {
             <SiteButton
               site={site}
               thumb={thumbs[site.id]}
+              attachedName={site.attachedTo ? sites.find((x) => x.id === site.attachedTo)?.name : undefined}
               index={i}
               onClick={() => navigate(`/site/${site.id}/findings`)}
               isOpen={openSwipeId === site.id}
@@ -470,6 +471,7 @@ function kindToggleStyle(active: boolean, kind: SiteKind): CSSProperties {
 function SiteButton({
   site,
   thumb,
+  attachedName,
   index,
   onClick,
   isOpen,
@@ -479,6 +481,8 @@ function SiteButton({
 }: {
   site: SiteRow;
   thumb?: string;
+  // the AFSS or project site a flow or stair job is attached to
+  attachedName?: string;
   index: number;
   onClick: () => void;
   isOpen: boolean;
@@ -524,6 +528,12 @@ function SiteButton({
           >
             {site.address || "No address set"}
           </div>
+          {attachedName && (
+            <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, fontWeight: 700, color: "var(--accent)", minWidth: 0 }}>
+              <IconLink size={12} style={{ flexShrink: 0 }} />
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{attachedName}</span>
+            </div>
+          )}
           {site.restoreIncomplete && (
             <div style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)" }}>Restore didn't finish: restore the backup again</div>
           )}

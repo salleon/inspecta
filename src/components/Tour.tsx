@@ -35,6 +35,8 @@ const TOPICS: { name: string; hint: string; time: string }[] = [
 ];
 
 const site = (ids: TourIds) => `/site/${ids.siteId}`;
+// the example site's flow job, which holds its sprinkler test
+const flowJob = (ids: TourIds) => `/site/${ids.flowJobId ?? `${ids.siteId}-flow`}`;
 
 // canvas TourFull: 8 topics, 24 steps
 const STEPS: Step[] = [
@@ -127,30 +129,28 @@ const STEPS: Step[] = [
   {
     chapter: 3,
     route: (ids) => `${site(ids)}/findings?tab=flow`,
-    targets: () => ['[data-tour="flow-export-only"]', '[data-tour="new-flow-test"]'],
+    targets: t('[data-tour="new-flow-test"]'),
     title: "In the site's report",
     body: (
       <>
-        {b("+ Add a test")} adds one: a flow test or a stair test. The site's PDF then ends with a page per test, and its Excel gets a tab per test, each with its graph.
-        <br />
-        {b("Export Other Tests Only")} sends just the tests you pick, as PDF and / or Excel.
+        {b("+ Add a test")} adds one: a flow test or a stair test. It's kept in its own job on home, attached to this site. The site's PDF then ends with a page per test, and its Excel gets a tab per test, each with its graph.
       </>
     ),
   },
-  { chapter: 3, route: () => "/", targets: (ids) => [`[data-site-id="${ids.flowSiteId}"]`], title: "Or on its own", body: <>For a site that's only flow testing or stair pressurisation, make a {b("Flow testing")} or {b("Stair pressurisation")} site from {b("+")}: just its tests, no findings.</> },
+  { chapter: 3, route: () => "/", targets: (ids) => [`[data-site-id="${ids.flowSiteId}"]`], title: "Or on its own", body: <>For a site that's only flow testing or stair pressurisation, make a {b("Flow testing")} or {b("Stair pressurisation")} site from {b("+")}: just its tests, no findings. {b("Attach to site")} adds its tests to an AFSS or project site's report.</> },
   { chapter: 3, route: (ids) => `/site/${ids.flowSiteId}/flow-export`, targets: t('[data-tour="flow-export-buttons"]'), title: "Its report", body: <>A preview of each test as it prints. {b("Export PDF")}: a page per test. {b("Export Excel")}: a sheet per test, laid out the same, each A4.</> },
   // 5. entering a flow test
   {
     chapter: 4,
-    route: (ids) => `${site(ids)}/flow/${ids.testId}`,
+    route: (ids) => `${flowJob(ids)}/flow/${ids.testId}`,
     targets: () => ['[data-tour="flow-demand"]', '[data-tour="flow-details"]'],
     title: "Details and demand",
     body: <>Fill in the date, equipment and who tested it. Add the system's {b("demand points")} (flow and pressure); every supply is checked against them.</>,
   },
-  { chapter: 4, route: (ids) => `${site(ids)}/flow/${ids.testId}`, targets: t('[data-tour="flow-graph"]'), title: "Graph and pass / fail", body: <>The graph draws each supply's curve with the demand points as diamonds, and says straight away whether each supply passes.</> },
+  { chapter: 4, route: (ids) => `${flowJob(ids)}/flow/${ids.testId}`, targets: t('[data-tour="flow-graph"]'), title: "Graph and pass / fail", body: <>The graph draws each supply's curve with the demand points as diamonds, and says straight away whether each supply passes.</> },
   {
     chapter: 4,
-    route: (ids) => `${site(ids)}/flow/${ids.testId}`,
+    route: (ids) => `${flowJob(ids)}/flow/${ids.testId}`,
     targets: t('[data-tour="flow-supplies"]'),
     title: "A tab per supply",
     body: (
@@ -161,7 +161,7 @@ const STEPS: Step[] = [
   },
   {
     chapter: 4,
-    route: (ids) => `${site(ids)}/flow/${ids.testId}`,
+    route: (ids) => `${flowJob(ids)}/flow/${ids.testId}`,
     targets: t(".wide-pad"),
     scene: "wide-keypad",
     sideways: true,
@@ -170,7 +170,7 @@ const STEPS: Step[] = [
   },
   {
     chapter: 4,
-    route: (ids) => `${site(ids)}/flow/${ids.testId}`,
+    route: (ids) => `${flowJob(ids)}/flow/${ids.testId}`,
     targets: () => [".wide-ghost", ".wide-x", '[aria-label="Add a column"]'],
     scene: "wide",
     sideways: true,

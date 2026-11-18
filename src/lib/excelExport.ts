@@ -12,8 +12,9 @@ import { addFlowCharts, addFlowDefectSheets, addFlowSheets } from "./flowExcel";
 interface FlowExport {
   tests: FlowTest[];
   site: Pick<Site, "name" | "address">;
-  // the site's stair tests, sheets after the flow tests
-  stair?: { tests: StairTest[]; sys: SpfSystem };
+  // the site's stair tests (a set per attached stair job, each with its
+  // system), sheets after the flow tests
+  stairs?: { tests: StairTest[]; sys: SpfSystem }[];
 }
 
 // A photo stamped for the Excel: made once from its export copy, then
@@ -400,10 +401,11 @@ async function fillFindingsSheet(wb: import("exceljs").Workbook, ws: import("exc
 async function writeWorkbook(wb: import("exceljs").Workbook, flow?: FlowExport): Promise<Blob> {
   const charts = flow?.tests.length ? await addFlowSheets(wb, flow.tests, flow.site) : [];
   if (flow?.tests.length) await addFlowDefectSheets(wb, flow.tests);
-  if (flow?.stair?.tests.length) {
+  for (const stair of flow?.stairs ?? []) {
+    if (!stair.tests.length) continue;
     const { addStairSheets, addStairPhotoSheets } = await import("./stairExcel");
-    addStairSheets(wb, flow.stair.tests, flow.stair.sys, flow.site);
-    await addStairPhotoSheets(wb, flow.stair.tests);
+    addStairSheets(wb, stair.tests, stair.sys, flow!.site);
+    await addStairPhotoSheets(wb, stair.tests);
   }
   const buffer = await wb.xlsx.writeBuffer({ zip: { compression: "STORE" } } as never);
   const bytes = await addFlowCharts(new Uint8Array(buffer as ArrayBuffer), charts);

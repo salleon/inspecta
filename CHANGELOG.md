@@ -7,6 +7,22 @@ the technical detail.
 
 ## 18 November 2026
 
+- **Flow and stair tests have their own job, and can be attached to a
+  site.** Every flow test and stair pressurisation test now lives in its
+  own job on home, holding all of that building's stairs or flow tests. A
+  job's **Attach to site** chip (under its name) links it to an AFSS or
+  project site, picked from a list you can search. Its tests then show in
+  that site's Other tests and go at the end of the site's PDF and Excel,
+  while the job can still be exported on its own. Adding a test from a
+  site's Other tests makes the site's job (named after the site, already
+  attached) or adds to it. Tests already inside sites move into their own
+  attached jobs the first time the app opens. Deleting a site keeps its
+  jobs, no longer attached, and backing up a site brings its jobs.
+
+- **No tip text under New job's kinds.** Flow testing and Stair
+  pressurisation no longer show a line of explanation when picked, the
+  same as AFSS and Projects.
+
 - **Swiping between stairs is one smooth slide.** As you drag the stair
   bar, the next stair's own page (its levels, readings and tests) slides
   in beside this one, instead of a blank outline that was then replaced.

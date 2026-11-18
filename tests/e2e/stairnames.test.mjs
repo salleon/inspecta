@@ -39,6 +39,9 @@ before(async () => {
     await new Promise((r) => (tx.oncomplete = r));
     idb.close();
   });
+  // as the app opening on it: Kent St's stairs and test move into its stair job "s2-spf"
+  await page.reload();
+  await page.waitForTimeout(600);
 });
 
 after(async () => {
@@ -103,11 +106,11 @@ test("an AFSS export with stair tests asks too, then exports", async () => {
   assert.equal(await page.getByRole("button", { name: "Save names and export ›" }).count(), 1);
   const file = await download(page, () => page.getByRole("button", { name: "Save names and export ›" }).click());
   assert.match(file.name, /\.pdf$/);
-  assert.deepEqual(await stairsOf("s2"), [["SPF-1", "North"], ["SPF-2", "Stair 2"]]);
+  assert.deepEqual(await stairsOf("s2-spf"), [["SPF-1", "North"], ["SPF-2", "Stair 2"]]);
 });
 
 test("setting up a new stair: after Looks right on its levels, on to its fan name", async () => {
-  await go(page, app, "/site/s2/spf-system", 1200);
+  await go(page, app, "/site/s2-spf/spf-system", 1200);
   await page.getByRole("button", { name: "+ Add another stair" }).click();
   // the names come first in the stair's card, then its levels
   const order = await page.locator("[data-stair] input[aria-label], [data-stair] button[aria-label$='level type']").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label")));
@@ -129,11 +132,11 @@ test("setting up a new stair: after Looks right on its levels, on to its fan nam
   await fan.fill("SPF-3");
   await page.getByRole("button", { name: "Save and continue ›" }).click();
   await page.waitForTimeout(800);
-  assert.deepEqual((await stairsOf("s2"))[2], ["SPF-3", ""]);
+  assert.deepEqual((await stairsOf("s2-spf"))[2], ["SPF-3", ""]);
 });
 
 test("a stair whose fan is named folds away after Looks right, as before", async () => {
-  await go(page, app, "/site/s2/spf-system", 1200);
+  await go(page, app, "/site/s2-spf/spf-system", 1200);
   await page.locator('[data-stair="a"]').click();
   await page.getByRole("button", { name: /Review level layout|Review/ }).first().click();
   await page.getByTestId("level-list").waitFor();

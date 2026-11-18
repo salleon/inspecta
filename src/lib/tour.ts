@@ -1,5 +1,5 @@
 import { useEffect, useSyncExternalStore } from "react";
-import { addFlowTest, addPhoto, createFinding, createSite, deleteSite, getSite, saveSiteReports, updateFinding } from "../db/db";
+import { addFlowTest, addPhoto, createFinding, createSite, deleteSite, getSite, listAttachedJobs, saveSiteReports, testJobFor, updateFinding } from "../db/db";
 import type { FlowReading } from "../db/types";
 
 // The tour (canvas TourFull): once per phone, a welcome offers a walk
@@ -21,6 +21,7 @@ export interface TourIds {
   findingId: string; // with a photo, categorised
   noteId: string; // no photo, no category yet
   testId: string; // the AFSS site's sprinkler test
+  flowJobId?: string; // the AFSS site's flow job, which holds that test (db testJobs)
   flowSiteId: string; // the Flow testing site
 }
 
@@ -66,7 +67,7 @@ export async function initTour() {
   const leftover = leftoverIds();
   if (leftover.length && !state.active) {
     storage()?.removeItem(SITE_KEY);
-    for (const id of leftover) if (await getSite(id)) await deleteSite(id);
+    for (const id of leftover) if (await getSite(id)) await removeExample(id);
     window.dispatchEvent(new Event(SITES_CHANGED));
   }
   if (storage() && storage()?.getItem(OFFERED_KEY) !== "1") set({ welcome: true });
@@ -110,12 +111,13 @@ export async function startTour(opts: { topics?: boolean } = {}) {
   if (photo) await addPhoto(finding.id, site.id, photo);
   const note = await createFinding(site.id, { level: "Basement 1" });
   await updateFinding(note.id, { note: "Hose reel cupboard used for storage", location: "Car park" });
-  const test = await addFlowTest(sampleTest(site.id));
+  const flowJob = await testJobFor(site, "flow");
+  const test = await addFlowTest(sampleTest(flowJob.id));
   await addFlowTest(sampleTest(flowSite.id));
   const now = Date.now();
   await saveSiteReports(site.id, [{ id: crypto.randomUUID(), name: "Fire doors", findingIds: [finding.id], order: "esr", createdAt: now, updatedAt: now }]);
   window.dispatchEvent(new Event(SITES_CHANGED));
-  set({ welcome: false, active: true, step: 0, topics: !!opts.topics, single: false, scene: null, ids: { siteId: site.id, findingId: finding.id, noteId: note.id, testId: test.id, flowSiteId: flowSite.id } });
+  set({ welcome: false, active: true, step: 0, topics: !!opts.topics, single: false, scene: null, ids: { siteId: site.id, findingId: finding.id, noteId: note.id, testId: test.id, flowJobId: flowJob.id, flowSiteId: flowSite.id } });
 }
 
 export function setTourStep(step: number, single = state.single) {
@@ -130,12 +132,18 @@ export function setTourScene(scene: string | null) {
   if (state.scene !== scene) set({ scene });
 }
 
+// an example site and the test jobs attached to it
+async function removeExample(id: string) {
+  for (const job of await listAttachedJobs(id)) await deleteSite(job.id);
+  await deleteSite(id);
+}
+
 // Done, Skip tour or back: remove the example sites
 export async function endTour() {
   const ids = state.ids;
   set({ active: false, welcome: false, step: 0, topics: false, single: false, scene: null, ids: undefined });
   storage()?.removeItem(SITE_KEY);
-  if (ids) for (const id of [ids.siteId, ids.flowSiteId]) await deleteSite(id);
+  if (ids) for (const id of [ids.siteId, ids.flowSiteId]) await removeExample(id);
   window.dispatchEvent(new Event(SITES_CHANGED));
 }
 

@@ -11,7 +11,7 @@ import App from './App.tsx'
 import { setUpOfflineCache } from './lib/offlineCache'
 import { Capacitor } from '@capacitor/core'
 import { clearOldExports } from './lib/cacheFile'
-import { tidyPhotoStorage } from './db/db'
+import { splitSiteTests, tidyPhotoStorage } from './db/db'
 import { settleMode } from './lib/settings'
 import { applyTheme, repairLogo } from './lib/company'
 
@@ -39,8 +39,14 @@ setTimeout(() => void tidyPhotoStorage().catch(() => {}), 5000)
 // (everything lives only on the phone until it's backed up)
 void navigator.storage?.persist?.().catch(() => {})
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-)
+// tests made inside AFSS and project sites before test jobs move into their
+// own attached jobs (db testJobs), before the first screen reads them
+void splitSiteTests()
+  .catch((err) => console.error('splitting site tests failed', err))
+  .finally(() =>
+    createRoot(document.getElementById('root')!).render(
+      <StrictMode>
+        <App />
+      </StrictMode>,
+    ),
+  )

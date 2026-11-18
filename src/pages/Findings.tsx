@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import type { Finding, Site } from "../db/types";
-import { addPhoto, createFinding, deleteFinding, deleteSite, flowTestCount, getSite, getThumbnail, listFindingRows, reorderFinding, stairTestCount, updateSite } from "../db/db";
+import { addPhoto, createFinding, deleteFinding, deleteSite, flowTestCount, getSite, getThumbnail, listAttachedJobs, listFindingRows, reorderFinding, stairTestCount, updateSite } from "../db/db";
 import { capturePhoto } from "../lib/capture";
 import { warmCamera } from "../lib/cameraStream";
 import { IconChevronLeft, IconShare, IconEdit, IconGrip, IconCheck, IconTrash, IconPen, IconCamera } from "../components/Icons";
@@ -12,6 +12,7 @@ import FormActions from "../components/FormActions";
 import RoundIconButton from "../components/RoundIconButton";
 import FlowTestList from "../components/FlowTestList";
 import TestsList from "../components/TestsList";
+import AttachChip from "../components/AttachChip";
 import { KindTag } from "../components/SiteKindIcon";
 
 interface Row {
@@ -140,8 +141,9 @@ export default function Findings() {
     let cancelled = false;
 
     async function load() {
-      // flow and stair tests together (the Other tests tab)
-      Promise.all([flowTestCount(siteId!), stairTestCount(siteId!)]).then(([f, s]) => !cancelled && setFlowCount(f + s));
+      // the Other tests tab: an AFSS or project site's attached flow and stair
+      // jobs; a flow or stair job's own tests
+      Promise.all([flowTestCount(siteId!), stairTestCount(siteId!), listAttachedJobs(siteId!)]).then(([f, s, jobs]) => !cancelled && setFlowCount(jobs.length || f + s));
       // three reads for the whole list, however big the site
       const [s, { findings, first, counts, thumbs }] = await Promise.all([getSite(siteId!), listFindingRows(siteId!)]);
       if (cancelled) return;
@@ -466,6 +468,8 @@ export default function Findings() {
           </RoundIconButton>
         )}
       </div>
+
+      {testSite && site && <AttachChip job={site} onChange={(attachedTo) => setSite({ ...site, attachedTo })} />}
 
       {/* Findings / Other tests (canvas option E1, SiteTests): Findings
           takes most of the bar; the other tests (flow, stair) are a smaller

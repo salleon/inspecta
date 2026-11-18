@@ -18,6 +18,10 @@ export interface Site {
   // the site's stair pressurisation system, set once (lib/stairTest);
   // absent until it's set up
   spf?: SpfSystem;
+  // a flow or stair job attached to an AFSS or project site: the id of that
+  // site, whose Other tests and report include this job's tests (lib
+  // testJobs). Absent = stand-alone.
+  attachedTo?: string;
   // set while a restore from backup is adding this site's photos, and
   // cleared once they're all in (lib/backup). Still set means the restore
   // stopped part way: restoring the same backup again finishes the site.

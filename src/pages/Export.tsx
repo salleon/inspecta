@@ -4,8 +4,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import { jsPDF } from "jspdf";
 import { Share } from "@capacitor/share";
 import { Capacitor } from "@capacitor/core";
-import type { Finding, Photo, Site, SiteReport } from "../db/types";
-import { countExportCopies, getExportCopy, getSite, listFindings, listFlowTests, listPhotos, listStairTests, saveSiteReports, saveSiteSpf, updateFinding } from "../db/db";
+import type { Finding, FlowTest, Photo, Site, SiteReport, SpfSystem, StairTest } from "../db/types";
+import { countExportCopies, getExportCopy, getSite, listAttachedJobs, listFindings, listFlowTests, listPhotos, listStairTests, saveSiteReports, saveSiteSpf, updateFinding } from "../db/db";
 import StairNameCheck, { stairsToName } from "../components/StairNameCheck";
 import { stairTestHasData } from "../lib/stairTest";
 import { IconChevronLeft, IconShare } from "../components/Icons";
@@ -179,7 +179,8 @@ export default function ExportPreview() {
   const [pendingShare, setPendingShare] = useState<ShareKind | null>(null);
   // the stair name check before an export with stair tests in it, and the
   // export to carry on with once the names are in `site`
-  const [nameCheck, setNameCheck] = useState<ShareKind | null>(null);
+  const [nameCheck, setNameCheck] = useState<{ kind: ShareKind; job: Site } | null>(null);
+  const [unnamedJob, setUnnamedJob] = useState<Site | null>(null);
   const [afterNames, setAfterNames] = useState<ShareKind | null>(null);
 
   useEffect(() => {
@@ -215,7 +216,10 @@ export default function ExportPreview() {
       const findings = await listFindings(siteId!);
       const built: FindingImages[] = [];
       for (const finding of findings) built.push({ finding, photos: await listPhotos(finding.id) });
+      // an attached stair job still on placeholder stair names (asked before an export)
+      const unnamed = (await attachedTests(siteId)).stairs.find((x) => stairsToName(x.sys.stairs).length);
       if (cancelled) return;
+      setUnnamedJob(unnamed?.job ?? null);
       setSite(s ?? null);
       // Projects sites: no ESR sections, in the order the photos were taken
       const ordered = s?.kind === "project" ? forProjectReport(built) : built;
@@ -364,24 +368,37 @@ export default function ExportPreview() {
     }
   }
 
+  // the tests of the flow and stair jobs attached to the site (db testJobs),
+  // the ones with readings only; stair tests with their job's system
+  async function attachedTests(id = site?.id) {
+    const jobs = id ? await listAttachedJobs(id) : [];
+    const flowTests: FlowTest[] = [];
+    const stairs: { job: Site; tests: StairTest[]; sys: SpfSystem }[] = [];
+    for (const job of jobs) {
+      if (job.kind === "flow") flowTests.push(...(await listFlowTests(job.id)).filter(flowTestHasData));
+      else if (job.spf?.stairs.length) {
+        const tests = (await listStairTests(job.id)).filter(stairTestHasData);
+        if (tests.length) stairs.push({ job, tests, sys: job.spf });
+      }
+    }
+    return { flowTests, stairs };
+  }
+
   async function buildPdf(onPhoto: (done: number, total: number) => void): Promise<Blob> {
     const doc = new jsPDF({ unit: "pt", format: "a4" });
     await drawCoverPage(doc, items.length);
     doc.addPage();
     await drawFindings(doc, items, onPhoto);
 
-    // the site's flow tests, a page each, at the end (as the Excel's tabs)
-    const flowTests = site ? (await listFlowTests(site.id)).filter(flowTestHasData) : [];
+    // the attached jobs' flow tests, a page each, at the end (as the Excel's tabs)
+    const { flowTests, stairs } = await attachedTests();
     if (site && flowTests.length) {
       setExportProgress({ percent: 86, step: "Adding flow tests…" });
       await (await import("../lib/flowPdf")).appendFlowPages(doc, flowTests, site);
     }
-    // and its stair tests, a page per stair
-    const stairTests = site?.spf?.stairs.length ? (await listStairTests(site.id)).filter(stairTestHasData) : [];
-    if (site?.spf && stairTests.length) {
-      setExportProgress({ percent: 87, step: "Adding stair tests…" });
-      await (await import("../lib/stairPdf")).appendStairPages(doc, stairTests, site.spf, site, false);
-    }
+    // and their stair tests, a page per stair
+    if (site && stairs.length) setExportProgress({ percent: 87, step: "Adding stair tests…" });
+    for (const stair of stairs) if (site) await (await import("../lib/stairPdf")).appendStairPages(doc, stair.tests, stair.sys, site, false);
 
     setExportProgress({ percent: 88, step: "Building PDF…" });
     // let the "Building PDF…" step paint before jsPDF's synchronous output
@@ -391,9 +408,9 @@ export default function ExportPreview() {
 
   // Share button: first offers to categorise any Uncategorised findings
   // (PDF and Excel only — the photos zip isn't grouped).
-  async function requestShare(kind: ShareKind, namesChecked = false) {
+  function requestShare(kind: ShareKind, namesChecked = false) {
     // stair tests go in the PDF and Excel: first, any stairs still on placeholder names
-    if (kind !== "photos" && !namesChecked && site?.spf && stairsToName(site.spf.stairs).length && (await listStairTests(site.id)).some(stairTestHasData)) return setNameCheck(kind);
+    if (kind !== "photos" && !namesChecked && unnamedJob) return setNameCheck({ kind, job: unnamedJob });
     const uncategorised = items.some((i) => !esrItem(i.finding.esrCategory));
     if (kind !== "photos" && site?.kind !== "project" && !categoriseAsked && uncategorised) setAskCategorise(kind);
     else void handleShare(kind);
@@ -462,10 +479,8 @@ export default function ExportPreview() {
             p.stage === "photos" ? photoProgress(p.done, p.total) : setExportProgress({ percent: 88, step: "Building spreadsheet…" });
           // the site's flow tests go in as tabs after the findings, the
           // ones with readings only
-          const flowTests = site ? (await listFlowTests(site.id)).filter(flowTestHasData) : [];
-          const stairTests = site?.spf?.stairs.length ? (await listStairTests(site.id)).filter(stairTestHasData) : [];
-          const stair = site?.spf && stairTests.length ? { tests: stairTests, sys: site.spf } : undefined;
-          const flow = site && (flowTests.length || stair) ? { tests: flowTests, site, stair } : undefined;
+          const { flowTests, stairs } = await attachedTests();
+          const flow = site && (flowTests.length || stairs.length) ? { tests: flowTests, site, stairs } : undefined;
           blob = site?.kind === "project" ? await buildProjectWorkbook(items, onProgress, flow) : await buildFindingsWorkbook(items, inspectionMs, onProgress, flow);
         }
         timer.mark("building");
@@ -641,20 +656,19 @@ export default function ExportPreview() {
         </div>
       </div>
 
-      {nameCheck && site?.spf && (
+      {nameCheck?.job.spf && (
         <StairNameCheck
           go="export"
-          stairs={site.spf.stairs}
+          stairs={nameCheck.job.spf.stairs}
           onCancel={() => setNameCheck(null)}
           onSkip={() => {
-            setAfterNames(nameCheck);
+            setAfterNames(nameCheck.kind);
             setNameCheck(null);
           }}
           onSave={async (named) => {
-            const spf = { ...site.spf!, stairs: named };
-            await saveSiteSpf(site.id, spf);
-            setSite({ ...site, spf });
-            setAfterNames(nameCheck);
+            await saveSiteSpf(nameCheck.job.id, { ...nameCheck.job.spf!, stairs: named });
+            setUnnamedJob(null);
+            setAfterNames(nameCheck.kind);
             setNameCheck(null);
           }}
         />

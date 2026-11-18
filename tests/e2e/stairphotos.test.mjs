@@ -40,6 +40,9 @@ before(async () => {
     await new Promise((r) => (tx.oncomplete = r));
     idb.close();
   }, [stair("s1", "SPF-01", "G", "3"), stair("s2", "SPF-02", "G", "3")]);
+  // as the app opening on it: the stairs and test move into the site's stair job "p1-spf"
+  await page.reload();
+  await page.waitForTimeout(600);
 });
 
 after(async () => {
@@ -47,7 +50,7 @@ after(async () => {
 });
 
 test("the overview: Photos & notes after the tests in use; a note comes back to the overview", async () => {
-  await go(page, app, "/site/p1/spf/t1?stair=s1", 1500);
+  await go(page, app, "/site/p1-spf/spf/t1?stair=s1", 1500);
   const card = page.getByTestId("spf-photos");
   assert.match(await card.innerText(), /Photos & notes\s*Whole test · None yet/);
   // straight after the tests in use, before the ones not added
@@ -74,7 +77,7 @@ test("the overview: Photos & notes after the tests in use; a note comes back to 
 });
 
 test("a reading screen: the camera takes the level being read; back on the same screen", async () => {
-  await go(page, app, "/site/p1/spf/t1/vel?stair=s2&run=0", 1500);
+  await go(page, app, "/site/p1-spf/spf/t1/vel?stair=s2&run=0", 1500);
   assert.match(await page.getByTestId("spf-photos-chip").innerText(), /Photos & notes\s*1/);
   await page.getByRole("button", { name: "Level 2", exact: true }).click();
   await page.getByRole("button", { name: "Take a photo for this test" }).click();
@@ -100,7 +103,7 @@ test("a reading screen: the camera takes the level being read; back on the same 
 test("kept out of the site's findings; their own page in the report", async () => {
   await go(page, app, "/site/p1/findings", 1500);
   assert.equal(await page.getByText("Door closer arm loose").count(), 0, "not in the site's findings list");
-  await go(page, app, "/site/p1/spf/t1/report", 2500);
+  await go(page, app, "/site/p1-spf/spf/t1/report", 2500);
   const photosPage = page.getByTestId("spf-photos-page");
   await photosPage.waitFor({ state: "attached" });
   const text = await photosPage.innerText();
