@@ -99,7 +99,7 @@ function PhotosPaper({ first, items, thumbs }: { first: StairPage; items: StairP
     <div data-testid="spf-photos-page" style={{ background: "#fff", color: "#14212e", borderRadius: 6, padding: "16px 14px", display: "flex", flexDirection: "column", gap: 7, boxShadow: "0 8px 24px rgba(0,0,0,.35)", fontFamily: "Helvetica, Arial, sans-serif", fontSize: 10 }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
         <div>
-          <div style={{ fontSize: 13.5, fontWeight: 800, color: "#0b3550" }}>{first.title}</div>
+          <div style={{ fontSize: 13.5, fontWeight: 800, color: "#0b3550" }}>{first.title.replace(/ · Summary$/, "")}</div>
           <div style={{ width: 40, height: 2.5, background: "#1f6fb2", marginTop: 4 }} />
           <div style={{ fontSize: 11, fontWeight: 700, marginTop: 4 }}>{PHOTOS_SUBTITLE}</div>
         </div>

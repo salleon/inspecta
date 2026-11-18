@@ -111,8 +111,10 @@ const clock = clock24;
 // reading, a table with a row per door and a column per run ("–" where a
 // door wasn't read in that run: a spot check, or not re-read). What changed
 // before each run is listed under the tables, with a key to the colours.
-// After them, a summary page per stair in the other tests' record layout,
-// each door's latest reading side by side.
+// Before them, a summary page per stair in the other tests' record layout,
+// each door's latest reading side by side. Headed "System testing" (the
+// full name crowds the logo).
+const GENERAL_TITLE = "Stair pressurisation · System testing";
 const RUN_COLS = 6; // run columns across before the table carries on below
 
 function generalPages(test: StairTest, sys: SpfSystem, site: Pick<Site, "name" | "address">): StairPage[] {
@@ -167,7 +169,7 @@ function generalPages(test: StairTest, sys: SpfSystem, site: Pick<Site, "name" |
       boxes.push({ label: "Fan checks", value: fan.text, fail: fan.fail, ref: failed.length ? failed : undefined });
     }
     return {
-      title: `Stair pressurisation · ${KIND_LABEL.general}`,
+      title: GENERAL_TITLE,
       subtitle: stairLabel(stair, k),
       details: [
         { label: "Site", value: [site.name, site.address].filter((x) => x?.trim()).join(", ") },
@@ -189,7 +191,7 @@ function generalPages(test: StairTest, sys: SpfSystem, site: Pick<Site, "name" |
       siteNotes: sys.notes.trim(),
     };
   });
-  // then a summary page per stair, in the record layout: a row per door with
+  // and a summary page per stair, first, in the record layout: a row per door with
   // its readings side by side, each the latest from any run
   const latest: StairTest["doors"] = Object.fromEntries(
     sys.stairs.map((st) => [
@@ -202,11 +204,11 @@ function generalPages(test: StairTest, sys: SpfSystem, site: Pick<Site, "name" |
   const summary = stairPages({ ...test, kind: "custom", doors: latest, runs: undefined }, sys, site).map((page) => ({
     ...page,
     sheet: `Summary ${page.subtitle}`,
-    title: `Stair pressurisation · ${KIND_LABEL.general} · Summary`,
+    title: `${GENERAL_TITLE} · Summary`,
     subtitle: `${page.subtitle} · latest reading at each door`,
     details: page.details.map((d) => (d.label === "Test" ? { label: "Test", value: `${KIND_LABEL.general}: each door's latest reading of ${runs} run${runs === 1 ? "" : "s"}` } : d)),
   }));
-  return [...runPages, ...summary];
+  return [...summary, ...runPages];
 }
 
 export function stairPages(test: StairTest, sys: SpfSystem, site: Pick<Site, "name" | "address">): StairPage[] {

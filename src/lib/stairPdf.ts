@@ -38,7 +38,7 @@ export async function appendStairPages(doc: JsPDF, tests: StairTest[], sys: SpfS
     if (items.length && pages[0]) {
       if (!fresh) doc.addPage();
       fresh = false;
-      await drawPhotos(doc, pages[0], items, logo);
+      await drawPhotos(doc, { ...pages[0], title: pages[0].title.replace(/ · Summary$/, "") }, items, logo);
     }
   }
 }
@@ -49,13 +49,16 @@ export function heading(doc: JsPDF, title: string, subtitle: string, logo: Logo)
   let y = M + 6;
   doc.setTextColor(INK);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(15);
+  // big enough to read at a glance; a wide company logo: 240 pt across at most
+  const lh = logo ? Math.min(58, (240 * logo.h) / logo.w) : 0;
+  const lw = logo ? (logo.w / logo.h) * lh : 0;
+  // the title stays clear of the logo: smaller type if it would run under it
+  const room = W - 2 * M - lw - 12;
+  let size = 15;
+  doc.setFontSize(size);
+  while (size > 10 && doc.getTextWidth(title) > room) doc.setFontSize((size -= 0.5));
   doc.text(title, M, y + 8);
-  if (logo) {
-    // big enough to read at a glance; a wide company logo: 240 pt across at most
-    const lh = Math.min(58, (240 * logo.h) / logo.w);
-    doc.addImage(logo.data, "PNG", W - M - (logo.w / logo.h) * lh, y - 22, (logo.w / logo.h) * lh, lh);
-  }
+  if (logo) doc.addImage(logo.data, "PNG", W - M - lw, y - 22, lw, lh);
   doc.setFillColor("#1f6fb2");
   doc.rect(M, y + 15, 46, 2.5, "F");
   y += 30;

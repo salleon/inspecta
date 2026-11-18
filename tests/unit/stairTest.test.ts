@@ -163,8 +163,9 @@ test("general system testing: any tests, none forced; runs, and each door's late
   assert.deepEqual(doorStats(t, s.stairs[0], "vel", s), { done: 2, fails: 0, marginal: 0, total: 4 });
   assert.equal(stairTestSummary(t, s).text, "2 of 4 doors · all pass");
   assert.ok(stairTestHasData(test0({ kind: "general", runs: [{ at: 0, change: "", doors: { s1: { "1": { vel: "1" } } } }] })));
-  // the report: a page per stair, a table per door reading with its runs across
-  const [page] = stairPages(t, s, { name: "Site", address: "" });
+  // the report: a summary page per stair first, then a page per stair, a table per door reading with its runs across
+  const [summary, page] = stairPages(t, s, { name: "Site", address: "" });
+  assert.equal(page.title, "Stair pressurisation · System testing");
   assert.equal(page.subtitle, "SPF-1 · Front");
   assert.deepEqual(page.tables!.map((x) => x.title), ["Average velocity m/s (min 1), run by run"]);
   const table = page.tables![0];
@@ -175,9 +176,8 @@ test("general system testing: any tests, none forced; runs, and each door's late
   assert.deepEqual([two.cells[0], two.cells[2], two.cells[3]], ["2", "1.5", "–"], "not re-read in run 2: a dash");
   assert.deepEqual(page.runs!.slice(0, 2).map((x) => x.replace(/\d\d:\d\d/, "T")), ["Run 1 · T · As found", "Run 2 · T · damper shut"]);
   assert.match(page.runs![2], /– not read in that run · red: fail · yellow/);
-  // then a summary page per stair: each door's latest reading, in the record layout
-  const summary = stairPages(t, s, { name: "Site", address: "" })[1];
-  assert.equal(summary.title, "Stair pressurisation · General system testing · Summary");
+  // the summary: each door's latest reading, in the record layout
+  assert.equal(summary.title, "Stair pressurisation · System testing · Summary");
   assert.deepEqual(summary.rows.slice(0, 2).map((x) => [x.cells[0], x.cells[2]]), [["3", "1.2"], ["2", "1.5"]]);
 });
 
@@ -189,7 +189,7 @@ test("general system testing's report: door force under velocity, and the fan ch
     doors: { s1: { "3": { vel: "1.4", force: "120" } } },
     once: { s1: { fan: { off: "y", reset: "n" } } },
   });
-  const [page] = stairPages(t, s, { name: "Site", address: "" });
+  const page = stairPages(t, s, { name: "Site", address: "" }).find((p) => p.tables)!;
   assert.deepEqual(page.tables!.map((x) => x.title), ["Average velocity m/s (min 1), run by run", "Door opening force N (max 110), run by run"]);
   assert.deepEqual(page.tables![1].head.slice(0, 2), ["Level", "Run 1\n" + page.tables![1].head[1].split("\n")[1]], "no adjacent door column for force");
   assert.deepEqual(page.tables![1].rows[0].cells, ["3", "120"]);

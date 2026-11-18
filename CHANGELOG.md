@@ -7,6 +7,13 @@ the technical detail.
 
 ## 18 November 2026
 
+- **System testing reports open with the summary.** In a stair
+  pressurisation general system testing report (PDF, Excel and preview),
+  the summary page for each stair now comes first, with each door's latest
+  reading, and the run-by-run pages follow. The pages are headed "System
+  testing" rather than the full name, so the word Summary is no longer
+  hidden under the logo, and any report title too long for the space
+  beside the logo now prints a little smaller instead of running under it.
 - **FFCP results in the PDF and Excel.** Each panel test prints as a page
   laid out like the hand-drawn sheet: a small table per mode tested (a
   mode with nothing ticked is left out), fan names down the side, then
