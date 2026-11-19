@@ -106,10 +106,13 @@ Limits come from `limits()` in `src/lib/stairTest.ts`. The report is a page per 
 - Likes seeing mock-ups (on a Claude design canvas) before building visual changes; picks from options.
 - Decides what goes to `main` and when; asked once for only part of `test` to be merged.
 - Gets frustrated by slow, opaque progress; say what's happening and why.
+- Report layouts (stair, AFSS / Project, flow test PDFs and Excel) are reviewed piece by piece on a design page before building; the approved designs are the Links below.
+- The in-app export previews (flow tests, AFSS / Project) are meant to look different from the exported files: the owner likes the previews as they are (visual, for the phone) and the exports as clean, professional tables. Don't change a preview to match its export unless asked.
 
 ## Links
 
 - Mock-up canvas for the Beta marking: https://claude.ai/artifact/BBAmhXo4u3mvATQsxEYLUa
 - Mock-up canvas for general system testing, doors, groups and the level review: https://claude.ai/artifact/WWJ6jKYhTJA7AjVGJayQ9M
 - Mock-up canvas for the backup options and the folder per site: https://claude.ai/artifact/VJz9KTwP39Uohvp6jUrbfh
+- Approved report designs (19-20 Nov 2026): stair report https://claude.ai/artifact/85hDmhgveRNwsbBZHaBbnc, AFSS / Project report https://claude.ai/artifact/WyUjcLSc1BnYXCA585Jv3z, flow test report https://claude.ai/artifact/UfAj76SCx3YKyzSJPHDpiX
 - Repo: https://github.com/salleon/inspecta
