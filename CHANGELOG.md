@@ -7,7 +7,7 @@ the technical detail.
 
 ## 19 November 2026
 
-- **[EnFact] Build 9.9, out to coworkers.** The new app icon: the
+- **[EnFact] New app icon, out to coworkers (still Build 9.8).** The
   towers and tick redrawn flat, with the EnFact swoosh behind them.
 
 - **[EnFact] Build 9.8, out to coworkers.** The new stair and AFSS /
