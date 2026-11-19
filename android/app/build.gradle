@@ -111,7 +111,7 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
             // signed by the app's own key (its flavor, above)
         }
-        // Test builds ("EnFact Test", "Inspecta Test"): the same app with
+        // Test builds ("EnFact Inspecta Test", "Inspecta - Site Inspections Test"): the same app with
         // its own ID (.test), so it installs beside the real one instead of
         // over it, and keeps its own sites and findings. The orange icon
         // background comes from src/staging/res, the name from

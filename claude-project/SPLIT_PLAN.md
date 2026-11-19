@@ -5,7 +5,7 @@ Agreed with the owner on 19 November 2026. One codebase, two apps:
 | | **Inspecta - EnFact** | **Inspecta - Site Inspections** |
 |---|---|---|
 | Who | EnFact's own staff | Other contractors, public |
-| Name under the icon | EnFact | Inspecta |
+| Name under the icon | EnFact Inspecta | Inspecta - Site Inspections |
 | Android | Private, Play internal testing (as today) | Public, Play production |
 | iPhone / iPad | iPhone only, TestFlight, for the owner to check things at home. Never the App Store | iPhone and iPad, App Store |
 | App ID | `au.com.inspecta.app` (unchanged, so phones update in place and keep their data) | New, e.g. `au.com.inspecta.site` (Android and iOS) |

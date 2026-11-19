@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
     <!-- Inspecta - EnFact: shown under the icon and in the app switcher -->
-    <string name="app_name">EnFact</string>
-    <string name="title_activity_main">EnFact</string>
+    <string name="app_name">EnFact Inspecta</string>
+    <string name="title_activity_main">EnFact Inspecta</string>
 </resources>

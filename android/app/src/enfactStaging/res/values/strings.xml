@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
     <!-- EnFact's test build -->
-    <string name="app_name">EnFact Test</string>
-    <string name="title_activity_main">EnFact Test</string>
+    <string name="app_name">EnFact Inspecta Test</string>
+    <string name="title_activity_main">EnFact Inspecta Test</string>
 </resources>
