@@ -109,7 +109,15 @@ The same web app in an iOS shell (`ios/`, Capacitor), like `android/`:
 - `ios/App/App/Plugins/` has the Swift side of the app's own plugins, matching the Android ones call for call: `NativeCameraPlugin.swift` (the in-app camera, `src/lib/nativeCamera.ts`) and `GalleryPlugin.swift` (copies photos to the photo library). They're registered in `MainViewController.swift`.
 - Permissions wording, portrait lock and status bar are in `ios/App/App/Info.plist`.
 - `npx cap sync ios` copies the built web app in (`ios/App/App/public` isn't tracked).
-- `.github/workflows/build-ios.yml` checks it compiles on every push that touches it.
+- `.github/workflows/build-ios.yml` checks it compiles (as the Contractor app) on every push that touches it.
+- **Two iPhone apps from one project:** `scripts/ios-app.sh enfact|contractor` sets the checked-out project up as either app, after its web build: bundle ID (`au.com.inspecta.app` / `au.com.inspecta.site`), the name under the icon ("EnFact" / "Inspecta") and the version (`BUILD_LABEL_ENFACT` / `BUILD_LABEL_CONTRACTOR`). Codemagic (`codemagic.yaml`) has a workflow for each: **Inspecta - EnFact (iOS) to TestFlight** on every push to `main`, and **Inspecta - Site Inspections (iOS) to TestFlight**, only when started by hand. iPhone only for now.
+
+Setting up the Contractor app's TestFlight, once:
+
+1. **Bundle ID:** developer.apple.com → Certificates, Identifiers & Profiles → Identifiers → + → App IDs → App → description "Inspecta Site Inspections", explicit bundle ID `au.com.inspecta.site`. No capabilities needed.
+2. **App record:** App Store Connect → Apps → + → New App: iOS, name "Inspecta - Site Inspections" (it has to be free on the App Store; change it if taken), primary language English (Australia), bundle ID `au.com.inspecta.site`, SKU e.g. `inspecta-site`.
+3. **Signing:** Codemagic → Team settings → codemagic.yaml settings → Code signing identities → iOS provisioning profiles → Fetch profiles, and get (or make) an App Store profile for `au.com.inspecta.site`, using the same distribution certificate as the EnFact app.
+4. **Build:** Codemagic → Start new build → branch → **Inspecta - Site Inspections (iOS) to TestFlight**. Once Apple has processed it, add yourself to an internal testing group on the new app in TestFlight.
 
 Differences from Android: the back camera zooms out to the ultra-wide by itself (no lens change), the volume-button shutter needs iOS 17.2+, each site's photos go in an album inside an "Inspecta" folder in Photos (`DCIM/Inspecta/<site>` on Android), and updates come through TestFlight / the App Store instead of the in-app prompt.
 

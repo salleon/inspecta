@@ -37,6 +37,12 @@ the technical detail.
 
 ## 19 November 2026
 
+- **[Both] Two iPhone apps on TestFlight.** The iPhone project now builds
+  either app: EnFact (as before, to TestFlight with every release, now
+  called "EnFact" under its icon) or Inspecta (Site Inspections), sent to
+  TestFlight only when started by hand. iPhone only for now; iPad comes
+  later.
+
 - **[Contractor] A test app on Play, like EnFact Test.** Contractor
   builds now also make the test app's Play bundle, and builds of `test`
   publish it to "Inspecta - Site Inspections Test" (its own Play app,

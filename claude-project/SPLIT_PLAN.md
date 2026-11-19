@@ -20,7 +20,7 @@ Every change states which app it is for: **EnFact**, **Contractor** or **Both**.
 
 ## Steps
 
-Done: 1, 2 and 3's code (19 November 2026, on `test`). Step 3 waits on the owner for the Contractor Play app (README, "Two Android apps"). Next: 4.
+Done: 1, 2 and 3's code (19 November 2026, on `test`). Step 3 waits on the owner for the Contractor Play app (README, "Two Android apps"). Step 4's code is done for iPhone (TestFlight for both); it waits on the owner for the Contractor app's App Store Connect record (README, "The iPhone app"). iPad is left for later (owner, 19 November), with step 5.
 
 1. **Pick the app when it's built, not on the phone.** `src/lib/edition.ts` holds a fixed `EDITION` (`IS_ENFACT`, `IS_CONTRACTOR`) from `vite build --mode enfact|contractor` (or `VITE_EDITION`), in place of the old mode checks. Remove switching on the phone: Admin → Mode, five taps on the splash, switching through the master code, `settleMode`. A setup file from the other app is refused. Arrange imports so EnFact-only artwork (logo, splash letters, AFSS covers) is left out of the Contractor build (`src/edition/`), and the tests fail if any of it is in the Contractor build (`scripts/check-edition.mjs`; the word "EnFact" itself stays, in EnFact's lists, which ship in both). Add `src/lib/features.ts` (what this phone's plan allows), with everything unlocked for now. Drop the PWA (service worker and manifest), keeping the clean-up that removes an old service worker. No change on screen.
 2. **Tests for both.** CI builds `dist-enfact` and `dist-contractor` and runs the browser tests on each. Each test file says which app(s) it covers. Retire the mode-switching and secret-corner tests.

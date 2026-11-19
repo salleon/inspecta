@@ -1,11 +1,44 @@
-# Builds the iPhone app and sends it to TestFlight on every push to main,
-# the same pushes that build the Android app (build-apk.yml). Pushes to
-# test or any other branch never start a Codemagic build, so trying out
+# The iPhone apps (claude-project/SPLIT_PLAN.md, step 4). There's one Xcode
+# project; scripts/ios-app.sh sets the checked-out copy up as either app
+# (bundle ID, name under the icon, version from its build label) after the
+# web app is built for it. iPhone only for now (no iPad).
+#
+# - Inspecta - EnFact (au.com.inspecta.app): to TestFlight on every push to
+#   main, the same pushes that build the Android app (build-apk.yml), for
+#   the owner to check things at home. Never the App Store.
+# - Inspecta - Site Inspections (au.com.inspecta.site): to TestFlight only
+#   when started by hand (Codemagic → Start new build → this workflow).
+#
+# Pushes to test or any other branch never start a build, so trying out
 # features costs no Codemagic minutes; a one-off build of another branch
-# can still be started by hand in Codemagic.
+# can still be started by hand.
+
+definitions:
+  # the App Store Connect key in Codemagic (Team integrations > Developer Portal)
+  integrations: &integrations
+    app_store_connect: Scemo
+  ipa_artifacts: &artifacts
+    - build/ios/ipa/*.ipa
+    - /tmp/xcodebuild_logs/*.log
+  to_testflight: &to_testflight
+    app_store_connect:
+      auth: integration
+      submit_to_testflight: true
+  # signing, the build number and the build, the same for both apps
+  scripts:
+    - &use_profiles
+      name: Set up signing
+      script: xcode-project use-profiles
+    - &build_number
+      name: Set the build number
+      script: cd ios/App && agvtool new-version -all $BUILD_NUMBER
+    - &build_ipa
+      name: Build the app
+      script: xcode-project build-ipa --project ios/App/App.xcodeproj --scheme App
+
 workflows:
   ios-testflight:
-    name: Inspecta iOS to TestFlight
+    name: Inspecta - EnFact (iOS) to TestFlight
     max_build_duration: 60
     triggering:
       events:
@@ -14,9 +47,7 @@ workflows:
         - pattern: main
           include: true
           source: true
-    integrations:
-      # the name of the App Store Connect key in Codemagic (Team integrations > Developer Portal)
-      app_store_connect: Scemo
+    integrations: *integrations
     environment:
       ios_signing:
         distribution_type: app_store
@@ -24,35 +55,39 @@ workflows:
       node: 22
       xcode: latest
     scripts:
-      - name: Build the web app
+      - name: Build the web app (EnFact) and set the project up as EnFact
         script: |
           npm ci
-          # Inspecta - EnFact (TestFlight only); the Contractor app gets its
-          # own iOS app in step 4 of claude-project/SPLIT_PLAN.md
           npm run build:enfact
           npx cap sync ios
-      - name: Set up signing
-        script: xcode-project use-profiles
-      - name: Set the build number
-        script: cd ios/App && agvtool new-version -all $BUILD_NUMBER
-      # the version people see (Settings, App Store) is BUILD_LABEL_ENFACT, the
-      # same as the Android app's versionName; Apple only takes numbers and
-      # dots (like 9.2), so anything else stops the build here
-      - name: Set the version from BUILD_LABEL_ENFACT
+          scripts/ios-app.sh enfact
+      - *use_profiles
+      - *build_number
+      - *build_ipa
+    artifacts: *artifacts
+    publishing: *to_testflight
+
+  ios-contractor-testflight:
+    name: Inspecta - Site Inspections (iOS) to TestFlight
+    max_build_duration: 60
+    # no triggering: started by hand only
+    integrations: *integrations
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: au.com.inspecta.site
+      node: 22
+      xcode: latest
+    scripts:
+      # before signing, so the profile for au.com.inspecta.site matches
+      - name: Build the web app (Contractor) and set the project up as Contractor
         script: |
-          VERSION=$(tr -d '[:space:]' < BUILD_LABEL_ENFACT)
-          if ! printf '%s' "$VERSION" | grep -Eq '^[0-9]+(\.[0-9]+){0,2}$'; then
-            echo "BUILD_LABEL_ENFACT is '$VERSION': the App Store needs numbers and dots, like 9.2 or 1.0.1"
-            exit 1
-          fi
-          sed -i '' "s/MARKETING_VERSION = [^;]*;/MARKETING_VERSION = $VERSION;/" ios/App/App.xcodeproj/project.pbxproj
-          grep -c "MARKETING_VERSION = $VERSION;" ios/App/App.xcodeproj/project.pbxproj
-      - name: Build the app
-        script: xcode-project build-ipa --project ios/App/App.xcodeproj --scheme App
-    artifacts:
-      - build/ios/ipa/*.ipa
-      - /tmp/xcodebuild_logs/*.log
-    publishing:
-      app_store_connect:
-        auth: integration
-        submit_to_testflight: true
+          npm ci
+          npm run build:contractor
+          npx cap sync ios
+          scripts/ios-app.sh contractor
+      - *use_profiles
+      - *build_number
+      - *build_ipa
+    artifacts: *artifacts
+    publishing: *to_testflight
