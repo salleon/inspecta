@@ -11,7 +11,7 @@ import { lastNativeError } from "../lib/nativeCamera";
 import { startTour } from "../lib/tour";
 import { useBackHandler } from "../lib/backButton";
 import { IS_TEST_BUILD } from "../lib/buildInfo";
-import { useFlowMode } from "../lib/settings";
+import { IS_CONTRACTOR } from "../lib/edition";
 import buildLabel from "../../BUILD_LABEL?raw";
 
 // Settings (canvas SettingsTidy): its own page, the gear on the home page
@@ -38,7 +38,7 @@ export default function Settings() {
   const [name, setName] = useState(() => getInspectorName());
   const [draft, setDraft] = useState<string | null>(null);
   // the company's name, logo and colours are in Admin (behind the PIN)
-  const contractor = useFlowMode() === "contractor";
+  const contractor = IS_CONTRACTOR;
 
   useBackHandler(() => {
     if (draft === null) return false;

@@ -1,5 +1,5 @@
 // General system testing (the Stair general system testing canvas): the test
-// kinds by mode and in their order, velocities run against run, a door added
+// kinds in each app and in their order, velocities run against run, a door added
 // at a level, a pass that's only just one in
 // yellow, the report run by run, and in Review level layout the groups and
 // the pop-up that changes the other car parks to basements.
@@ -17,11 +17,7 @@ const tap = async (keys) => {
   for (const k of keys) await page.getByRole("button", { name: k, exact: true }).dispatchEvent("pointerdown");
 };
 
-before(async () => {
-  app = await startApp(import.meta.url);
-  ({ page, errors } = await openPage(app));
-  await go(page, app, "/", 1500);
-  await seed(page, {
+const SITE = {
     sites: [
       {
         id: "g1",
@@ -30,7 +26,13 @@ before(async () => {
         spf: { edition: "2015", type: "Zone", notes: "", stairs: [stair("s1", "SPF 1", "P3", "P1"), stair("s2", "SPF 2", "P3", "P1"), stair("s3", "SPF 3", "G", "12")] },
       },
     ],
-  });
+  };
+
+before(async () => {
+  app = await startApp(import.meta.url);
+  ({ page, errors } = await openPage(app));
+  await go(page, app, "/", 1500);
+  await seed(page, SITE);
 });
 
 after(async () => {
@@ -42,11 +44,18 @@ test("the kinds: General first and picked, Commissioning last; Contractor adds t
   const kinds = async () => (await page.getByRole("radio").allInnerTexts()).map((t) => t.split("\n")[0].replace(/\s*Contractor$/, ""));
   assert.deepEqual(await kinds(), ["General system testing", "Annual Testing", "Commissioning"]);
   assert.equal(await page.getByRole("radio", { name: /General system testing/ }).getAttribute("aria-checked"), "true");
-  await page.evaluate(() => localStorage.setItem("inspecta.flowMode", "contractor"));
-  await go(page, app, "/site/g1/spf/new", 1200);
-  assert.deepEqual(await kinds(), ["General system testing", "Annual Testing", "Three-monthly check", "Commissioning"]);
-  await page.evaluate(() => localStorage.removeItem("inspecta.flowMode"));
-  await go(page, app, "/site/g1/spf/new", 1200);
+  // the Contractor app
+  const cApp = await startApp(import.meta.url, { edition: "contractor" });
+  try {
+    const { page: cPage } = await openPage(cApp);
+    await cPage.evaluate(() => localStorage.setItem("inspecta.company", JSON.stringify({ name: "Coastline Fire", logo: null, plate: false, logoColours: [], schemeId: "default", custom: { primary: "#071b2c", secondary: "#2ec4b6", light: "#f4f7f9" }, setUp: true })));
+    await seed(cPage, SITE);
+    await go(cPage, cApp, "/site/g1/spf/new", 1200);
+    const cKinds = (await cPage.getByRole("radio").allInnerTexts()).map((t) => t.split("\n")[0].replace(/\s*Contractor$/, ""));
+    assert.deepEqual(cKinds, ["General system testing", "Annual Testing", "Three-monthly check", "Commissioning"]);
+  } finally {
+    await cApp.close();
+  }
 });
 
 test("General system testing: any tests, none ticked to start; Start opens the overview", async () => {

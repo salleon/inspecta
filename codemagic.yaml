@@ -27,7 +27,9 @@ workflows:
       - name: Build the web app
         script: |
           npm ci
-          npm run build
+          # Inspecta - EnFact (TestFlight only); the Contractor app gets its
+          # own iOS app in step 4 of claude-project/SPLIT_PLAN.md
+          npm run build:enfact
           npx cap sync ios
       - name: Set up signing
         script: xcode-project use-profiles

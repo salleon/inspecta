@@ -34,7 +34,7 @@ import ConfirmDialog from "../components/ConfirmDialog";
 import { confirmFirst } from "../components/Message";
 import { useBackHandler } from "../lib/backButton";
 import { applyEquipment, deviceFor, deviceLabel, matchDevices, overLimit, type FlowDevice } from "../lib/flowEquipment";
-import { useFlowMode } from "../lib/settings";
+import { IS_ENFACT } from "../lib/edition";
 import { useTourScene } from "../lib/tour";
 import CellPad from "../components/CellPad";
 import { isoDay } from "../lib/dates";
@@ -156,7 +156,7 @@ export default function FlowTest() {
   const [test, setTest] = useState<FlowTestRecord | null>(null);
   const [sel, setSel] = useState(0); // the supply / pump being looked at
   // EnFact mode (Admin): the graph has no line options (see lineShown)
-  const enfact = useFlowMode() === "enfact";
+  const enfact = IS_ENFACT;
   const [wide, setWide] = useState(false); // readings full screen, sideways
   // the tour opens the full screen (with the keypad out, then away)
   useTourScene("wide-keypad", () => setWide(true), () => setWide(false));

@@ -1,5 +1,5 @@
 import type { DemandPoint, FlowKind, FlowReading, FlowTest, FlowUnit } from "../db/types";
-import { getFlowMode } from "./settings";
+import { IS_ENFACT } from "./edition";
 
 // Flow tests, as mocked up on the design canvas (FlowTest board): readings
 // of " Hg, flow, discharge and suction per supply or pump, the demand
@@ -241,7 +241,7 @@ export const nameKinds = (test: Pick<FlowTest, "kind">) => (test.kind === "combi
 // what a supply tab's list offers: in EnFact mode (Admin) just these three
 // (Custom… covers anything else); numbering still goes by every kind
 const ENFACT_SUPPLY_KINDS = ["Town main", "Electric pump", "Diesel pump"];
-const offeredKinds = (test: Pick<FlowTest, "kind">) => (test.kind !== "combined" && getFlowMode() === "enfact" ? ENFACT_SUPPLY_KINDS : nameKinds(test));
+const offeredKinds = (test: Pick<FlowTest, "kind">) => (test.kind !== "combined" && IS_ENFACT ? ENFACT_SUPPLY_KINDS : nameKinds(test));
 
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const ofKind = (name: string, base: string) => name === base || new RegExp(`^${escapeRe(base)} \\d+$`).test(name);
@@ -291,7 +291,7 @@ export type LineKind = "dis" | "suc";
 // the inspector can change either per line (FlowTest.graph). In EnFact mode
 // it's always discharge and town main, never suction.
 export function lineShown(test: Pick<FlowTest, "graph">, kind: LineKind, index: number): boolean {
-  if (getFlowMode() === "enfact") return kind === "dis";
+  if (IS_ENFACT) return kind === "dis";
   return test.graph?.[`${kind}:${index}`] ?? kind === "dis";
 }
 

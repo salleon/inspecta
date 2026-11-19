@@ -14,7 +14,6 @@ import PhotoToolsHost from "./components/PhotoToolsHost";
 import { hasInspectorName } from "./lib/profile";
 import CompanySetup from "./components/CompanySetup";
 import { applyTheme, needsCompanySetup, useCompany } from "./lib/company";
-import { useFlowMode } from "./lib/settings";
 import { useKeepFocusedFieldVisible } from "./lib/keepFocusedVisible";
 import { BACK_EVENT, parentRoute } from "./lib/backButton";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -50,14 +49,12 @@ function App() {
   // so this is the only way we know who's using this install. Checked once
   // at startup; flips to false the moment Onboarding saves a name.
   const [needsOnboarding, setNeedsOnboarding] = useState(() => !hasInspectorName());
-  // Contractor mode: the company setup comes first on a new phone (one
-  // switched to Contractor later sets it up in Admin → Company)
+  // Contractor app: the company setup comes first on a new phone
   const [needsCompany, setNeedsCompany] = useState(() => needsCompanySetup() && !hasInspectorName());
 
-  // the company's colours in Contractor mode (lib/company), kept up to date
-  const mode = useFlowMode();
+  // the company's colours in the Contractor app (lib/company), kept up to date
   const company = useCompany();
-  useEffect(() => applyTheme(), [mode, company]);
+  useEffect(() => applyTheme(), [company]);
 
   // whatever field you're typing in stays visible above the keyboard
   useKeepFocusedFieldVisible();

@@ -7,6 +7,16 @@ the technical detail.
 
 ## 19 November 2026
 
+- **[Both] Two apps from one: EnFact and Site Inspections.** Inspecta is
+  being split into Inspecta - EnFact, for EnFact's own staff, and Inspecta -
+  Site Inspections, for other companies through the app stores. This first
+  step changes nothing on screen: which app a phone has is now fixed by
+  the app itself, so the Mode switch in Admin is gone (and the hidden
+  switch on the opening screen). A setup file only loads in the app that
+  made it, and says which app it's for if not. The Site Inspections app
+  carries none of EnFact's logos or artwork. The web version, which nobody
+  used, is gone.
+
 - **FFCP testing: tick and cross freely, reasons when you like.** Ticks
   and crosses now stay where you tap them, and the screen no longer jumps
   to the next fan by itself (tap a fan, or Next to do). A ✗ just marks the

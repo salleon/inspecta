@@ -10,8 +10,8 @@ import SwipeRow from "../components/SwipeRow";
 import { SITES_CHANGED, useTourScene } from "../lib/tour";
 import { useEdgeBump } from "../lib/edgeBump";
 import { useBackHandler } from "../lib/backButton";
-import logo from "../assets/logo.png";
-import { useFlowMode } from "../lib/settings";
+import art from "virtual:edition-art";
+import { IS_CONTRACTOR } from "../lib/edition";
 import { CompanyLogo } from "../components/CompanySetup";
 import SiteKindIcon, { KIND_COLOUR, KindTag, ReportsIcon } from "../components/SiteKindIcon";
 
@@ -23,7 +23,7 @@ interface SiteRow extends Site {
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const contractor = useFlowMode() === "contractor";
+  const contractor = IS_CONTRACTOR;
   const [sites, setSites] = useState<SiteRow[]>([]);
   const [query, setQuery] = useState("");
   // the chips picked under the search; none picked shows every kind
@@ -158,7 +158,7 @@ export default function Dashboard() {
       {/* top bar */}
       <div style={{ flexShrink: 0, padding: "20px 20px 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          {contractor ? <CompanyLogo height={34} maxWidth={110} /> : <img src={logo} alt="Inspecta by EnFact" style={{ width: 34, height: 34, borderRadius: 9, display: "block" }} />}
+          {contractor ? <CompanyLogo height={34} maxWidth={110} /> : <img src={art.homeLogo ?? undefined} alt="Inspecta by EnFact" style={{ width: 34, height: 34, borderRadius: 9, display: "block" }} />}
           {/* "Inspecta" sized so its letters (top of the I to the bottom of
               the p: 0.96em in the bundled Manrope) are as tall as the 34 px
               icon. Positioned so the main body of the word (the capital-

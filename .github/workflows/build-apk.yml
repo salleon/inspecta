@@ -51,8 +51,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build web app
-        run: npm run build
+      # Inspecta - EnFact for now; the Contractor app gets its own Android
+      # app in step 3 of claude-project/SPLIT_PLAN.md
+      - name: Build web app (EnFact)
+        run: npm run build:enfact
 
       - name: Sync Capacitor Android project
         run: npx cap sync android

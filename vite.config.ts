@@ -1,51 +1,30 @@
+import path from "node:path";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
-import { VitePWA } from "vite-plugin-pwa";
 
 // https://vite.dev/config/
-export default defineConfig({
-  plugins: [
-    react(),
-    VitePWA({
-      registerType: "autoUpdate",
-      // registered by lib/offlineCache, on the web only (not in the app)
-      injectRegister: false,
-      includeAssets: ["favicon.svg", "apple-touch-icon.png"],
-      manifest: {
-        name: "Inspecta",
-        short_name: "Inspecta",
-        description: "Fast on-site fire safety inspection capture",
-        theme_color: "#14161a",
-        background_color: "#14161a",
-        display: "standalone",
-        orientation: "portrait",
-        start_url: "/",
-        icons: [
-          { src: "icon-192.png", sizes: "192x192", type: "image/png" },
-          { src: "icon-512.png", sizes: "512x512", type: "image/png" },
-          { src: "icon-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
-        ],
-      },
-      workbox: {
-        // woff2: the bundled Manrope font, so it's there offline
-        globPatterns: ["**/*.{js,css,html,png,svg,ico,woff2}"],
-        // removes the worker again inside the Android app (see the file)
-        importScripts: ["sw-native-cleanup.js"],
-        // a new version takes over straight away (as with the automatic
-        // registration this replaced)
-        skipWaiting: true,
-        clientsClaim: true,
-      },
-    }),
-  ],
-  // the Excel export's company template (inlined into the export chunk)
-  assetsInclude: ["**/*.xlsx"],
-  // the branch a GitHub Actions build was made from (empty for local
-  // builds), so builds from anything but main say "Test version" (lib/buildInfo)
-  define: {
-    __BUILD_BRANCH__: JSON.stringify(process.env.GITHUB_REF_NAME ?? ""),
-  },
-  server: {
-    host: true,
-  },
+export default defineConfig(({ mode }) => {
+  // Which app to build (lib/edition, claude-project/SPLIT_PLAN.md):
+  // `vite build --mode contractor` / `--mode enfact`, or VITE_EDITION.
+  // EnFact unless told otherwise; the store builds always say.
+  const edition = mode === "contractor" || mode === "enfact" ? mode : (process.env.VITE_EDITION ?? "enfact");
+  if (edition !== "enfact" && edition !== "contractor") throw new Error(`VITE_EDITION is "${edition}": it must be enfact or contractor`);
+  return {
+    plugins: [react()],
+    resolve: {
+      // EnFact's artwork, or none in the Contractor build (edition/art.ts)
+      alias: { "virtual:edition-art": path.resolve(__dirname, `src/edition/${edition}.ts`) },
+    },
+    // the Excel export's company template (inlined into the export chunk)
+    assetsInclude: ["**/*.xlsx"],
+    define: {
+      __EDITION__: JSON.stringify(edition),
+      // the branch a GitHub Actions build was made from (empty for local
+      // builds), so builds from anything but main say "Test version" (lib/buildInfo)
+      __BUILD_BRANCH__: JSON.stringify(process.env.GITHUB_REF_NAME ?? ""),
+    },
+    server: {
+      host: true,
+    },
+  };
 });

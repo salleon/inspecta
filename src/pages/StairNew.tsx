@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import type { Site, StairSection, StairTestKind } from "../db/types";
 import { addStairTest, getSite } from "../db/db";
 import { GENERAL_SECTIONS, KIND_HINT, KIND_LABEL, kindsFor, newStairTest, SECTION, systemLine } from "../lib/stairTest";
-import { useFlowMode } from "../lib/settings";
+import { EDITION } from "../lib/edition";
 import { getInspectorName } from "../lib/profile";
 import { PageHeader, Pill } from "../components/StairUi";
 
@@ -56,7 +56,7 @@ export default function StairNew() {
   const [kind, setKind] = useState<StairTestKind>("general");
   const [picked, setPicked] = useState<StairSection[]>([]);
   const [busy, setBusy] = useState(false);
-  const kinds = kindsFor(useFlowMode());
+  const kinds = kindsFor(EDITION);
 
   useEffect(() => {
     if (siteId) void getSite(siteId).then((s) => setSite(s ?? null));

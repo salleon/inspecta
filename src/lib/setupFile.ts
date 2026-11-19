@@ -1,11 +1,11 @@
 import { companyName, getCompany, logoFromFile, setCompany, type Company } from "./company";
 import { currentPinPrint, pinMatchesPrint, setPin, setPinPrint } from "./adminPin";
 import { applyKeywordFile, currentKeywordEdits, keywordEditsFrom } from "./esrKeywords";
-import { getFlowMode, setFlowMode, type FlowMode } from "./settings";
+import { EDITION, type Edition } from "./edition";
 
 // The company setup file (Admin → Share setup file): what a new phone
 // needs to match the company's, made once and kept by whoever sets up
-// phones (e.g. HR). It holds the mode, the company's name, logo and
+// phones (e.g. HR). It holds which app made it, the company's name, logo and
 // colours, the ESR keyword changes and the admin PIN, which comes across
 // too. Nothing about sites, findings or the person.
 //
@@ -22,7 +22,7 @@ export type SetupFile = {
   type: typeof FILE_TYPE;
   version: 1;
   exportedAt: string;
-  mode: FlowMode;
+  mode: Edition; // the app it's for: the other app refuses it
   company: Omit<Company, "setUp">;
   keywords: Record<string, unknown>;
   pin: { salt: string; hash: string };
@@ -34,7 +34,7 @@ export async function makeSetupFile(): Promise<Blob> {
     type: FILE_TYPE,
     version: 1,
     exportedAt: new Date().toISOString(),
-    mode: getFlowMode(),
+    mode: EDITION,
     company,
     keywords: currentKeywordEdits(),
     pin: await currentPinPrint(),
@@ -43,16 +43,21 @@ export async function makeSetupFile(): Promise<Blob> {
 }
 
 export function setupFileName(): string {
-  const who = getFlowMode() === "enfact" ? "EnFact" : companyName() || "Company";
+  const who = EDITION === "enfact" ? "EnFact" : companyName() || "Company";
   return `${who.replace(/[\\/:*?"<>|]/g, "")} setup.inspecta`;
 }
 
-// throws if it isn't a setup file
+// a setup file made by the other app (EnFact's in the Contractor app, or
+// the reverse): its message says which app it's for
+export class OtherAppFile extends Error {}
+
+// throws if it isn't a setup file, or OtherAppFile if it's the other app's
 export function readSetupFile(text: string): SetupFile {
   const f = JSON.parse(text) as Partial<SetupFile>;
   if (f?.type !== FILE_TYPE || (f.mode !== "enfact" && f.mode !== "contractor") || !f.pin?.salt || !f.pin?.hash || typeof f.company !== "object") {
     throw new Error("Not an Inspecta setup file");
   }
+  if (f.mode !== EDITION) throw new OtherAppFile(f.mode === "enfact" ? "This setup file is for Inspecta - EnFact." : "This setup file is for Inspecta - Site Inspections.");
   return f as SetupFile;
 }
 
@@ -96,5 +101,4 @@ export function applySetupFile(file: SetupFile, pin?: string) {
   applyKeywordFile(keywordEditsFrom(file.keywords));
   if (pin !== undefined) setPin(pin);
   else setPinPrint(file.pin);
-  setFlowMode(file.mode);
 }

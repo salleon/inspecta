@@ -5,7 +5,7 @@ import { Share } from "@capacitor/share";
 import { Capacitor } from "@capacitor/core";
 import RoundIconButton from "../components/RoundIconButton";
 import { describeTimings, lastExportTimings } from "../lib/exportTimings";
-import { useFlowMode, type FlowMode } from "../lib/settings";
+import { IS_CONTRACTOR } from "../lib/edition";
 import { makeSetupFile, setupFileName } from "../lib/setupFile";
 import SetupFileLoader from "../components/SetupFileLoader";
 import ConfirmDialog from "../components/ConfirmDialog";
@@ -27,20 +27,19 @@ import {
   type KeywordKind,
 } from "../lib/esrKeywords";
 import { explainCategories, forgetAllLearned, forgetLearned, learnedKeywords } from "../lib/esrSuggest";
-import { checkPin, checkRecoveryCode, hasPin, isAdminUnlocked, isOwnerUnlocked, recoveryCode, setPin, switchMode, unlockAdmin } from "../lib/adminPin";
+import { checkPin, checkRecoveryCode, hasPin, isAdminUnlocked, recoveryCode, setPin, unlockAdmin } from "../lib/adminPin";
 import { writeBlobToCache } from "../lib/cacheFile";
 import { numberedExport } from "../lib/exportName";
 import { useBackHandler } from "../lib/backButton";
 import { wipeApp } from "../lib/factoryReset";
-import { BLUE, GREY, Group, ORANGE, RED, RowIcon, groupHintStyle, groupRowStyle } from "../components/SettingsList";
+import { GREY, Group, ORANGE, RED, RowIcon, groupHintStyle, groupRowStyle } from "../components/SettingsList";
 import { companyName, companyScheme, setCompany, useCompany } from "../lib/company";
 import { CompanyLogo } from "../components/CompanySetup";
 import FormActions from "../components/FormActions";
 import { ColoursPage, LogoPage } from "./CompanySettings";
 
 // Settings → Admin: PIN-protected tools for the person who looks after the
-// app: the mode (EnFact / Contractor; on EnFact phones, or a Contractor
-// phone opened with the owner's master code), the ESR keywords that drive the category
+// app: the company (Contractor app), the ESR keywords that drive the category
 // suggestions (see lib/esrKeywords), export timings and the PIN. Routes:
 //   /admin                     PIN, then the admin menu
 //   /admin/keywords            the keyword menu
@@ -62,8 +61,8 @@ export default function Admin() {
       <PinScreen
         start={first ? { kind: "new" } : { kind: "enter" }}
         intro={first ? "Choose a 4-digit PIN for Admin on this phone. It keeps the admin tools away from staff." : undefined}
-        onUnlock={(as) => {
-          unlockAdmin(as);
+        onUnlock={() => {
+          unlockAdmin();
           setUnlocked(true);
         }}
       />
@@ -147,8 +146,7 @@ const cancelled = (err: unknown) => err instanceof Error && /cancell?ed/i.test(e
 type PinStep = { kind: "enter" } | { kind: "recovery" } | { kind: "new"; first?: string };
 
 // Also used to choose the first PIN and to change it (starting at "new").
-// onUnlock says how: "owner" when it was the owner's master code.
-function PinScreen({ onUnlock, start = { kind: "enter" }, onDone, back = "/settings", intro }: { onUnlock?: (as: "pin" | "owner") => void; start?: PinStep; onDone?: () => void; back?: string; intro?: string }) {
+function PinScreen({ onUnlock, start = { kind: "enter" }, onDone, back = "/settings", intro }: { onUnlock?: () => void; start?: PinStep; onDone?: () => void; back?: string; intro?: string }) {
   const [step, setStep] = useState<PinStep>(start);
   const [pin, setPinDigits] = useState("");
   const [message, setMessage] = useState("");
@@ -163,7 +161,7 @@ function PinScreen({ onUnlock, start = { kind: "enter" }, onDone, back = "/setti
     }
     setPinDigits("");
     if (step.kind === "enter") {
-      if (await checkPin(next)) onUnlock?.("pin");
+      if (await checkPin(next)) onUnlock?.();
       else setMessage("Wrong PIN");
     } else if (step.kind === "new") {
       if (!step.first) {
@@ -171,7 +169,7 @@ function PinScreen({ onUnlock, start = { kind: "enter" }, onDone, back = "/setti
       } else if (step.first === next) {
         setPin(next);
         if (onDone) onDone();
-        else onUnlock?.("pin");
+        else onUnlock?.();
       } else {
         setStep({ kind: "new" });
         setMessage("PINs didn't match. Try again.");
@@ -207,7 +205,7 @@ function PinScreen({ onUnlock, start = { kind: "enter" }, onDone, back = "/setti
                 setRecovery("");
                 // the owner's master code opens Admin as it is (the
                 // company's PIN stays); this phone's own code sets a new PIN
-                if (how === "owner") onUnlock?.("owner");
+                if (how === "owner") onUnlock?.();
                 else if (how === "phone") setStep({ kind: "new" });
                 else setMessage("That code isn't right.");
               }}
@@ -251,10 +249,6 @@ function PinScreen({ onUnlock, start = { kind: "enter" }, onDone, back = "/setti
 
 function AdminHome() {
   const navigate = useNavigate();
-  const flowMode = useFlowMode();
-  // the mode switch is for EnFact (the office) and the owner only, never a
-  // contractor company; settled on opening, so it stays while switching
-  const [showMode] = useState(() => flowMode === "enfact" || isOwnerUnlocked());
   const [changingPin, setChangingPin] = useState(false);
   const [notice, setNotice] = useState("");
   const setupInput = useRef<HTMLInputElement>(null);
@@ -311,43 +305,8 @@ function AdminHome() {
     <Screen title="Admin" back="/settings" gap={4}>
       {notice && <div style={{ fontSize: 13, fontWeight: 700, color: "var(--accent)" }}>{notice}</div>}
       {/* grouped as on the canvas (SettingsTidy) */}
-      {showMode && (
-        <Group heading="Features">
-          <div className="settings-row" style={{ ...groupRowStyle, alignItems: "flex-start" }}>
-            <RowIcon name="drop" colour={BLUE} />
-            <span style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 8 }}>
-              <span style={{ fontSize: 14.5, fontWeight: 700 }}>Mode</span>
-              <div role="radiogroup" aria-label="Mode" style={{ display: "flex", gap: 4, padding: 3, borderRadius: 10, background: "var(--bg)", border: "1px solid var(--border)" }}>
-                {(
-                  [
-                    ["enfact", "EnFact"],
-                    ["contractor", "Contractor"],
-                  ] as [FlowMode, string][]
-                ).map(([mode, label]) => {
-                  const on = flowMode === mode;
-                  return (
-                    <button
-                      key={mode}
-                      type="button"
-                      role="radio"
-                      aria-checked={on}
-                      onClick={() => {
-                        switchMode(mode);
-                      }}
-                      style={{ flex: 1, padding: "7px 0", borderRadius: 8, border: `1px solid ${on ? "rgba(var(--accent-rgb), .6)" : "transparent"}`, background: on ? "rgba(var(--accent-rgb), .14)" : "none", color: on ? "var(--accent)" : "var(--muted)", fontSize: 13, fontWeight: 800 }}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-              <span style={groupHintStyle}>Contractor: your company's name, logo and colours, and every flow test option. Contractor phones don't show this switch. Switching to EnFact puts the admin PIN back to 2021.</span>
-            </span>
-          </div>
-        </Group>
-      )}
-      {flowMode === "contractor" && <CompanyGroup />}
-      <Group heading="New phones" foot="The setup file brings the mode, company, keywords and PIN to another phone. Keep it safe; loading it asks for the PIN.">
+      {IS_CONTRACTOR && <CompanyGroup />}
+      <Group heading="New phones" foot="The setup file brings the company, keywords and PIN to another phone. Keep it safe; loading it asks for the PIN.">
         <GroupRow icon={<RowIcon name="share" />} title="Share setup file" hint="To set up a new phone like this one" onClick={shareSetup} />
         <GroupRow icon={<RowIcon name="down" />} title="Load setup file" hint="Set this phone up from a setup file" onClick={() => setupInput.current?.click()} />
         <input
@@ -389,7 +348,7 @@ function AdminHome() {
         <ConfirmDialog
           redTint
           title="Wipe the whole app?"
-          message="Everything on this phone will be permanently deleted: all jobs, findings, photos, flow and stair tests, your name, mode, company, settings, keyword changes and the admin PIN. The app restarts as if just installed. This can't be undone — back up first if you need anything."
+          message="Everything on this phone will be permanently deleted: all jobs, findings, photos, flow and stair tests, your name, company, settings, keyword changes and the admin PIN. The app restarts as if just installed. This can't be undone — back up first if you need anything."
           confirmLabel="Wipe everything"
           confirmingLabel="Wiping…"
           busy={wiping}

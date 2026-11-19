@@ -30,9 +30,8 @@ import CustomReport, { ReportChips } from "../components/CustomReport";
 import { esrItem } from "../lib/esrCategories";
 import { learnCategory, unlearnCategory } from "../lib/esrSuggest";
 import { useBackHandler } from "../lib/backButton";
-import coverBgAfss from "../assets/cover-bg-afss.jpg";
-import coverBgProjects from "../assets/cover-bg-projects.jpg";
-import { isContractor } from "../lib/settings";
+import art from "virtual:edition-art";
+import { IS_CONTRACTOR } from "../lib/edition";
 import { coverBackground, coverColours, drawCoverLogo } from "../lib/contractorCover";
 import { getCompany } from "../lib/company";
 import { useTourScene } from "../lib/tour";
@@ -273,13 +272,13 @@ export default function ExportPreview() {
     const contentW = pageW - margin * 2;
 
     // Contractor mode: the company's own cover (lib/contractorCover)
-    const contractor = isContractor();
+    const contractor = IS_CONTRACTOR;
     const colours = contractor ? coverColours() : { accent: [46, 196, 182] as [number, number, number], onAccent: [4, 20, 15] as [number, number, number], address: [195, 211, 224] as [number, number, number], pill: [35, 50, 60] as [number, number, number] };
     if (contractor) {
       doc.addImage(await coverBackground(pageW, pageH, site?.kind === "project" ? "project" : "afss"), "JPEG", 0, 0, pageW, pageH);
       await drawCoverLogo(doc, margin, 44);
     } else {
-      const bg = await loadAssetAsDataUrl(site?.kind === "project" ? coverBgProjects : coverBgAfss);
+      const bg = await loadAssetAsDataUrl((site?.kind === "project" ? art.coverProjects : art.coverAfss)!);
       doc.addImage(bg.dataUrl, "JPEG", 0, 0, pageW, pageH);
     }
 

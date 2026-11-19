@@ -12,6 +12,10 @@ import { startApp, openPage, go, seed, download, pressBack } from "./helpers.mjs
 let app;
 let page;
 let errors;
+// the Contractor app, with the same sites and tests, for what only it has
+let cApp;
+let cPage;
+let cErrors;
 
 const rows = (list) => list.map(([hg, dis, suc = "", rpm = "", amps = "", flow = "", flowUnit]) => ({ hg: String(hg), flow: String(flow), flowUnit, dis: String(dis), suc: String(suc), rpm: String(rpm), amps: String(amps) }));
 // flows are typed, never worked out from " Hg: these are what the inspector
@@ -83,13 +87,17 @@ export const FLOW_TESTS = [
 for (const t of FLOW_TESTS) if (t.k) for (const sec of t.sections) sec.rows = typedFlows(t.k, sec.rows);
 
 before(async () => {
-  app = await startApp(import.meta.url);
+  [app, cApp] = await Promise.all([startApp(import.meta.url), startApp(import.meta.url, { edition: "contractor" })]);
+  const data = { sites: SITES, findings: SITES.map((s, i) => ({ id: `f${i}`, siteId: s.id, note: "Exit sign not illuminated", esrCategory: "3.1" })), flowTests: FLOW_TESTS };
   ({ page, errors } = await openPage(app));
-  await seed(page, { sites: SITES, findings: SITES.map((s, i) => ({ id: `f${i}`, siteId: s.id, note: "Exit sign not illuminated", esrCategory: "3.1" })), flowTests: FLOW_TESTS });
+  await seed(page, data);
+  ({ page: cPage, errors: cErrors } = await openPage(cApp));
+  await cPage.evaluate(() => localStorage.setItem("inspecta.company", JSON.stringify({ name: "Coastline Fire", logo: null, plate: false, logoColours: [], schemeId: "default", custom: { primary: "#071b2c", secondary: "#2ec4b6", light: "#f4f7f9" }, setUp: true })));
+  await seed(cPage, data);
 });
 
 after(async () => {
-  await app?.close();
+  await Promise.all([app?.close(), cApp?.close()]);
 });
 
 // how many flow tests a site (or job) has
@@ -102,8 +110,9 @@ const flowCount = (siteId) =>
     return all.filter((t) => t.siteId === siteId).length;
   }, siteId);
 
-async function exportExcel(siteId) {
-  await go(page, app, `/site/${siteId}/export`, 1500);
+async function exportExcel(siteId, page_ = page, app_ = app) {
+  const page = page_;
+  await go(page, app_, `/site/${siteId}/export`, 1500);
   const file = await download(page, async () => {
     await page.click("text=Share Excel");
     await page.waitForTimeout(600);
@@ -380,40 +389,38 @@ test("EnFact mode (the default): always discharge and town main, no line options
   await pressBack(page);
 });
 
-test("the graph's line chips and More list (Contractor mode): suction off until ticked, kept with the test", async () => {
-  await page.evaluate(() => localStorage.setItem("inspecta.flowMode", "contractor"));
-  await go(page, app, "/site/s1-flow/findings");
-  await page.reload();
-  await page.waitForTimeout(600);
-  await page.click("text=Sprinkler >> nth=0");
-  await page.waitForTimeout(800);
-  const dotted = () => page.locator('[stroke-dasharray="2 3"]').count();
-  const dashed = () => page.locator('polyline[stroke-dasharray="5 4"]').count();
+test("the graph's line chips and More list (Contractor app): suction off until ticked, kept with the test", async () => {
+  await go(cPage, cApp, "/site/s1-flow/findings");
+  await cPage.reload();
+  await cPage.waitForTimeout(600);
+  await cPage.click("text=Sprinkler >> nth=0");
+  await cPage.waitForTimeout(800);
+  const dotted = () => cPage.locator('[stroke-dasharray="2 3"]').count();
+  const dashed = () => cPage.locator('polyline[stroke-dasharray="5 4"]').count();
   assert.equal(await dotted(), 0, "suction starts hidden");
   assert.equal(await dashed(), 1, "town main shown");
-  await page.click('button[aria-pressed]:has-text("Suction")');
+  await cPage.click('button[aria-pressed]:has-text("Suction")');
   assert.equal(await dotted(), 1, "the electric pump's suction");
-  await page.click('button[aria-pressed]:has-text("Town main")');
+  await cPage.click('button[aria-pressed]:has-text("Town main")');
   assert.equal(await dashed(), 0);
   // More: single lines, then Reset
-  await page.click('button[aria-expanded]:has-text("More")');
-  assert.equal(await page.locator('[role="menuitemcheckbox"]').count(), 3);
-  await page.click('[role="menuitemcheckbox"]:has-text("Electric pump") >> nth=0');
-  assert.equal(await page.locator("polyline[stroke-width]:not([stroke-dasharray])").count(), 0, "electric discharge hidden");
-  await page.click('[role="menu"] button:has-text("Reset")');
+  await cPage.click('button[aria-expanded]:has-text("More")');
+  assert.equal(await cPage.locator('[role="menuitemcheckbox"]').count(), 3);
+  await cPage.click('[role="menuitemcheckbox"]:has-text("Electric pump") >> nth=0');
+  assert.equal(await cPage.locator("polyline[stroke-width]:not([stroke-dasharray])").count(), 0, "electric discharge hidden");
+  await cPage.click('[role="menu"] button:has-text("Reset")');
   assert.equal(await dotted(), 0);
   assert.equal(await dashed(), 1);
-  await page.click('[role="menuitemcheckbox"]:has-text("Electric pump") >> nth=1');
-  await page.click('[role="menu"] button:has-text("Done")');
-  await page.waitForTimeout(600);
-  await pressBack(page);
-  await page.waitForTimeout(500);
-  await page.click("text=Sprinkler >> nth=0");
-  await page.waitForTimeout(800);
+  await cPage.click('[role="menuitemcheckbox"]:has-text("Electric pump") >> nth=1');
+  await cPage.click('[role="menu"] button:has-text("Done")');
+  await cPage.waitForTimeout(600);
+  await pressBack(cPage);
+  await cPage.waitForTimeout(500);
+  await cPage.click("text=Sprinkler >> nth=0");
+  await cPage.waitForTimeout(800);
   assert.equal(await dotted(), 1, "kept with the test");
-  await pressBack(page);
-  await page.waitForTimeout(500);
-  await page.evaluate(() => localStorage.setItem("inspecta.flowMode", "enfact"));
+  await pressBack(cPage);
+  await cPage.waitForTimeout(500);
 });
 
 test("deleting a flow test asks first", async () => {
@@ -560,26 +567,23 @@ test("a combined system: pump duty with its own unit, Tank / Town main per pump;
   assert.equal(await page.locator('[aria-label="Cut-in kPa"]').count(), 0);
   assert.equal(await page.locator('[aria-label="Year installed"]').count(), 0);
   // Contractor: year installed, cut-in, and temp and oil pressure in full screen
-  await page.waitForTimeout(600); // saved
-  await page.evaluate(() => localStorage.setItem("inspecta.flowMode", "contractor"));
-  await page.reload();
-  await page.waitForTimeout(900);
-  await page.fill('[aria-label="Year installed"]', "2006");
-  await page.fill('[aria-label="Cut-in kPa"]', "790");
-  await page.click('[aria-label="Full screen, sideways"]');
-  await page.waitForTimeout(700);
-  const wide = page.locator('[role="dialog"][aria-label="Readings, full screen"]');
+  await go(cPage, cApp, "/site/s3-flow/flow/t5", 900);
+  await cPage.click('[aria-label="Suction from"] [role="radio"]:has-text("Tank")');
+  await cPage.fill('[aria-label="Year installed"]', "2006");
+  await cPage.fill('[aria-label="Cut-in kPa"]', "790");
+  await cPage.click('[aria-label="Full screen, sideways"]');
+  await cPage.waitForTimeout(700);
+  const wide = cPage.locator('[role="dialog"][aria-label="Readings, full screen"]');
   const heads = await wide.evaluate((d) => [...d.querySelectorAll("div")].filter((e) => e.children.length <= 1 && /^(" Hg|Flow|Discharge|Suction|RPM|Temp|Oil pressure)/.test(e.textContent.trim()) && e.closest("[style*=grid]") && !e.querySelector("input")).map((e) => /^(" Hg|Flow|Discharge|Suction|RPM|Temp|Oil)/.exec(e.textContent.trim())[1]));
   assert.deepEqual([...new Set(heads)].slice(0, 7), ['" Hg', "Flow", "Discharge", "Suction", "RPM", "Temp", "Oil"]);
   await wide.locator('[aria-label="Temp"]').first().fill("52");
   await wide.locator('[aria-label="Oil pressure"]').first().fill("300");
-  await pressBack(page);
-  await page.waitForTimeout(700);
-  await page.evaluate(() => localStorage.setItem("inspecta.flowMode", "enfact"));
+  await pressBack(cPage);
+  await cPage.waitForTimeout(700);
 });
 
 test("a combined system goes on a Combined System tab, as on the preview", async () => {
-  const buf = await exportExcel("s3");
+  const buf = await exportExcel("s3", cPage, cApp);
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(buf);
   const s = wb.getWorksheet("Combined System");
@@ -598,6 +602,7 @@ test("a combined system goes on a Combined System tab, as on the preview", async
   assert.equal(s.getCell(yr, 3).value, "2006");
   assert.ok(at(s, "Diesel 2…"));
   assert.deepEqual(errors, []);
+  assert.deepEqual(cErrors, []);
 });
 
 test("the Excel's tables are the preview's tables, cell for cell", async () => {
