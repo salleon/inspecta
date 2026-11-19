@@ -68,3 +68,17 @@ test("no Mode switch in Admin in either app", async () => {
   assert.equal(await c.page.getByText("Company", { exact: true }).count() > 0, true, "the Company group");
   await c.page.context().close();
 });
+
+test("each app shows its own build number in Settings", async () => {
+  const { readFile } = await import("node:fs/promises");
+  for (const [app, file] of [
+    [enfact, "BUILD_LABEL_ENFACT"],
+    [contractor, "BUILD_LABEL_CONTRACTOR"],
+  ]) {
+    const label = (await readFile(new URL(`../../${file}`, import.meta.url), "utf8")).trim();
+    const { page } = await openPage(app);
+    await go(page, app, "/settings", 800);
+    await page.getByText(new RegExp(`Build ${label.replace(".", "\\.")}\\b`)).first().waitFor();
+    await page.context().close();
+  }
+});

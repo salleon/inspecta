@@ -37,12 +37,12 @@ This repo has a GitHub Actions workflow (`.github/workflows/build-apk.yml`) that
    git push -u origin main
    ```
 2. On GitHub, open the repo's **Actions** tab. The "Build Android APK" workflow runs automatically on that push (takes a few minutes — it's downloading the Android SDK).
-3. Once it finishes (green check), click into the run → scroll to **Artifacts** → download `inspecta-release-apk`. Unzip it to get `app-release.apk`. (The workflow signs it with the release key from the repo's Actions secrets, so each build installs as an update over the last.)
+3. Once it finishes (green check), click into the run → scroll to **Artifacts** → download `enfact-apk`. Unzip it to get `app-enfact-release.apk`. (The workflow signs it with the release key from the repo's Actions secrets, so each build installs as an update over the last.)
 
-   To build a branch other than `main`, open **Actions → Build Android APK → Run workflow** and pick the branch in **"Use workflow from"**.
+   To build a branch other than `main`, or the Contractor app, open **Actions → Build Android APK → Run workflow**, pick the branch in **"Use workflow from"** and the app in **Which app** (EnFact, Contractor or Both). A push to `main` builds EnFact.
 4. Send that `.apk` file to yourself (email, Slack, Drive — whatever's easiest) and open it **on the Android phone**. Android will ask you to allow installing from this source the first time — approve that, then install.
 
-**Test app:** the same run also produces `inspecta-test-apk` (`app-staging.apk`). It installs as a separate app called "Inspecta Test" (orange icon) with its own data, so you can try out a branch without touching the real Inspecta or its inspections.
+**Test apps:** the same run also produces `enfact-test-apk` (`app-enfact-staging.apk`), a separate app called "EnFact Test" (orange icon) with its own data, so you can try out a branch without touching the real app or its inspections. A Contractor build makes `contractor-apk` ("Inspecta") and `contractor-test-apk` ("Inspecta Test") the same way.
 
 That's it — no Play Store, no hosting, just the one file. Whenever you want an updated build, push your changes and re-download the new artifact from Actions.
 
@@ -50,17 +50,28 @@ That's it — no Play Store, no hosting, just the one file. Whenever you want an
 
 ### Automatic updates through Google Play (internal testing)
 
-Coworkers can get Inspecta from Google Play instead, as a private internal-testing app, so Play updates it on their phones by itself. The Play app ID is `au.com.inspecta.app`, the same as the APK, and Play signs with the same key, so the Play version installs over a sideloaded one and keeps its data.
+Coworkers can get the EnFact app from Google Play instead, as a private internal-testing app, so Play updates it on their phones by itself. The Play app ID is `au.com.inspecta.app`, the same as the APK, and Play signs with the same key, so the Play version installs over a sideloaded one and keeps its data.
 
-- **Every run** of Build Android APK also makes `inspecta-play-bundle` (`app-release.aab`), the file Play takes. The first one is uploaded by hand in the Play Console (Internal testing → Create new release).
-- **To publish an update:** Actions → Build Android APK → Run workflow, tick **Publish to coworkers**, optionally fill in **What's new**. It builds, tests and uploads to the internal testing track; Play then updates everyone. Needs the `PLAY_SERVICE_ACCOUNT_JSON` secret (a Google Cloud service account with "Release apps to testing tracks" on the app).
+- **Every run** of Build Android APK also makes `enfact-play-bundle` (`app-enfact-release.aab`), the file Play takes. The first one is uploaded by hand in the Play Console (Internal testing → Create new release).
+- **To publish an update:** Actions → Build Android APK → Run workflow, Which app **EnFact**, tick **Publish to Play**, optionally fill in **What's new**. It builds, tests and uploads to the internal testing track; Play then updates everyone. Needs the `PLAY_SERVICE_ACCOUNT_JSON` secret (a Google Cloud service account with "Release apps to testing tracks" on the app).
 - **In the app:** Inspecta asks Play on opening and shows an **Update ready** popup (Update now / Later), a download bar, then **Restart** (`src/lib/appUpdate.ts`, `@capawesome/capacitor-app-update`, Play's flexible in-app updates). Settings → **Check for updates** does the same on demand. Only works in the copy installed from Play, and only once Play has finished processing a release.
 - **Coworkers, once:** open the internal testing opt-in link from the Play Console on their phone (signed in with the Google account on the testers list), accept, then install Inspecta from Play.
 - **One-off signing key export:** when the Play Console asks how to sign the app, choose to use your existing key via "Export and upload a key from Java keystore", then paste the encryption key it shows into **play_encryption_key** on Run workflow. The run's `inspecta-signing-key-for-play` artifact (encrypted so only Google can open it) is the zip to upload there.
 
-### Build label
+### Two Android apps
 
-`BUILD_LABEL` (repo root) is the build number handed out to the team, shown in Settings ("Inspecta · Build 2") and used as the Android version name. It's changed by hand only when a build is given out — not on every APK build.
+`android/app/build.gradle` has a flavor per app: `enfact` (`au.com.inspecta.app`, "EnFact" under the icon) and `contractor` (`au.com.inspecta.site`, "Inspecta"), each with its test build (`.test`, orange icon: "EnFact Test", "Inspecta Test"). Names are in `android/app/src/<flavor>/res` and `src/<flavor>Staging/res`. Each is built from its own web build: `npm run build:enfact` (or `build:contractor`), `npx cap sync android`, then e.g. `./gradlew assembleEnfactRelease`. Both use the same icon for now.
+
+The Contractor app has its own Play app and its own upload key (Play won't take another app's). Setting it up, once:
+
+1. **The key:** Actions → Build Android APK → Run workflow, tick **make_contractor_key** (the rest doesn't matter). Download the run's `contractor-upload-key` artifact and add its two files as Actions secrets of the same names, `CONTRACTOR_KEYSTORE_BASE64` and `CONTRACTOR_KEYSTORE_PASSWORD` (Settings → Secrets and variables → Actions). Keep `contractor-upload.p12` and the password somewhere safe, then delete the artifact. Until the secrets are there, a Contractor build's release APK and bundle are unsigned.
+2. **The Play app:** in the Play Console, Create app → "Inspecta - Site Inspections", free. Let Google make and keep the app signing key (the default).
+3. **The first bundle by hand:** run Build Android APK with Which app **Contractor**, download `contractor-play-bundle`, and upload `app-contractor-release.aab` in the new app's Internal testing → Create new release.
+4. **Publishing access:** in Play Console → Users and permissions, give the service account behind `PLAY_SERVICE_ACCOUNT_JSON` "Release apps to testing tracks" on the new app too. After that, Which app **Contractor** with **Publish to Play** sends it to its internal testing track. Production comes with the store listing (`claude-project/SPLIT_PLAN.md`, step 6).
+
+### Build labels
+
+Each app has its own build number: `BUILD_LABEL_ENFACT` and `BUILD_LABEL_CONTRACTOR` (repo root). It's shown in that app's Settings ("Build 9.7") and used as its Android version name (and the iPhone version, so numbers and dots only, like 9.7 or 1.0.1). Changed by hand only when that app is given out, not on every build.
 
 ## Backups
 

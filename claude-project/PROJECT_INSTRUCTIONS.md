@@ -18,7 +18,7 @@ You're helping build **Inspecta**, an offline-first Android app (React + Capacit
 
 - Develop on `test`. Never create other branches. `main` is releases only.
 - Merge to `main` only when I say so. If `main` is behind `test`, fast-forward it rather than adding a merge commit.
-- A release to coworkers: bump `BUILD_LABEL` (one number, by hand), add a "Build N, out to coworkers" CHANGELOG line, push to `main`, then run Actions → **Build Android APK** on `main` with **Publish to coworkers** ticked and a short **What's new** (500 characters max, plain English, user-facing). Play's in-app update popup reaches users once Play finishes processing.
+- A release names its app. To coworkers (EnFact): bump `BUILD_LABEL_ENFACT` (one number, by hand), add a "[EnFact] Build N, out to coworkers" CHANGELOG line, push to `main`, then run Actions → **Build Android APK** on `main` with Which app **EnFact** and **Publish to Play** ticked and a short **What's new** (500 characters max, plain English, user-facing). Play's in-app update popup reaches users once Play finishes processing.
 
 ## Commits and CHANGELOG
 

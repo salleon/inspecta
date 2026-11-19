@@ -11,11 +11,11 @@ android {
         // (see .github/workflows/build-apk.yml), so every release build is a
         // higher code than the last and Android will offer it as an update.
         // Locally (no CI_VERSION_CODE set) it just falls back to 1.
-        versionCode (System.getenv("CI_VERSION_CODE") as Integer) ?: 1
-        // versionName is the build label handed out to the team, read from
-        // BUILD_LABEL at the repo root (also shown in the app's Settings).
-        // Changed by hand only when a build is given out.
-        versionName rootProject.file("../BUILD_LABEL").text.trim()
+        // (the brackets matter: `versionCode (x) ?: 1` is versionCode(x), so
+        // a local build without CI_VERSION_CODE had none and couldn't bundle)
+        versionCode((System.getenv("CI_VERSION_CODE") ?: "1") as Integer)
+        // versionName: each app's own build label (BUILD_LABEL_ENFACT /
+        // BUILD_LABEL_CONTRACTOR), set by its flavor below
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -42,6 +42,14 @@ android {
     def testKeystorePassword = System.getenv("TEST_KEYSTORE_PASSWORD")
     def hasTestSigning = testKeystorePath && testKeystorePassword
 
+    // Inspecta - Site Inspections (the contractor flavor) has its own
+    // upload key for its own Play app, as Play won't take another app's.
+    // Without it, the Contractor release isn't signed at all (an unsigned
+    // APK and bundle), so it can't go to Play by mistake with EnFact's key.
+    def contractorKeystorePath = System.getenv("CONTRACTOR_KEYSTORE_PATH")
+    def contractorKeystorePassword = System.getenv("CONTRACTOR_KEYSTORE_PASSWORD")
+    def hasContractorSigning = contractorKeystorePath && contractorKeystorePassword
+
     signingConfigs {
         if (hasReleaseSigning) {
             release {
@@ -59,20 +67,56 @@ android {
                 keyPassword testKeystorePassword
             }
         }
+        if (hasContractorSigning) {
+            contractor {
+                storeFile file(contractorKeystorePath)
+                storePassword contractorKeystorePassword
+                keyAlias "inspecta-site"
+                keyPassword contractorKeystorePassword
+            }
+        }
+    }
+
+    // The two apps (claude-project/SPLIT_PLAN.md), each built from its own
+    // copy of the web app (npm run build:enfact / build:contractor, then
+    // npx cap sync android). Names come from src/<flavor>/res, the test
+    // builds' from src/<flavor>Staging/res. Each signs its release with its
+    // own key; a build type's signing (staging's test key) comes first.
+    flavorDimensions = ["app"]
+    productFlavors {
+        // Inspecta - EnFact: EnFact's staff, Play internal testing. Keeps
+        // the original app ID, so phones update in place with their data.
+        enfact {
+            dimension "app"
+            applicationId "au.com.inspecta.app"
+            versionName rootProject.file("../BUILD_LABEL_ENFACT").text.trim()
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            }
+        }
+        // Inspecta - Site Inspections: other companies, public on Play
+        contractor {
+            dimension "app"
+            applicationId "au.com.inspecta.site"
+            versionName rootProject.file("../BUILD_LABEL_CONTRACTOR").text.trim()
+            if (hasContractorSigning) {
+                signingConfig signingConfigs.contractor
+            }
+        }
     }
 
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-            if (hasReleaseSigning) {
-                signingConfig signingConfigs.release
-            }
+            // signed by the app's own key (its flavor, above)
         }
-        // Test build ("Inspecta Test"): the same app with its own ID, so it
-        // installs beside the real Inspecta instead of over it, and keeps
-        // its own sites and findings. Its name and orange icon background
-        // come from src/staging/res. Built by CI next to the release APK.
+        // Test builds ("EnFact Test", "Inspecta Test"): the same app with
+        // its own ID (.test), so it installs beside the real one instead of
+        // over it, and keeps its own sites and findings. The orange icon
+        // background comes from src/staging/res, the name from
+        // src/<flavor>Staging/res. Built by CI next to the release APK.
+        // Without the test key, signed like that app's release.
         staging {
             initWith release
             applicationIdSuffix ".test"

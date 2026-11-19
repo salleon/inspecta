@@ -7,6 +7,11 @@ node_modules/
 /dist-enfact/
 /dist-contractor/
 android/app/src/main/assets/public/
+# a local Android build's output and caches (CI builds from scratch)
+android/.gradle/
+android/build/
+android/app/build/
+android/capacitor-cordova-android-plugins/build/
 
 # Local / OS clutter
 *.log

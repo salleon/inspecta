@@ -20,7 +20,7 @@ An offline-first app for fire safety inspectors at EnFact. Camera-first findings
 - `src/components/`: shared UI. `InAppCamera`, `MarkupEditor`, `PhotoViewer`, `NumPad`/`CellPad` (number pads), `TestsList` (Other tests), `Tour`, `UpdatePrompt`, `StairUi`
 - `src/lib/`: logic. ESR categories and suggestions (`esr*.ts`, `commonDefects.ts`), exports (`excelExport`, `projectReport`, `photosZip`, `testsExport`), flow tests (`flowTest`, `flowEquipment`, `flowPdf`, `flowExcel`), stair tests (`stairTest` for rules, limits and statuses; `stairPrint` for what the report holds; `stairPdf`; `stairExcel`), `soundMeter`, `backup`, `appUpdate`, `tour`, `settings`
 - `.github/workflows/`: `tests.yml` (every push), `build-apk.yml` (APK, Play bundle and Play publishing)
-- `BUILD_LABEL`: the build number shown in Settings
+- `BUILD_LABEL_ENFACT`, `BUILD_LABEL_CONTRACTOR`: each app's build number, shown in its Settings
 
 ## Commands
 
@@ -40,7 +40,7 @@ If the e2e tests hang in a cloud container, Playwright can't find its browser. P
 
 - `test`: development. Every push runs the tests. Running Build Android APK on `test` also publishes **Inspecta Test** (a separate app with an orange icon and its own data) to the owner's own Play track.
 - `main`: releases. Kept equal to `test` at each release (fast-forward).
-- Release: bump `BUILD_LABEL`, add a CHANGELOG line, push to `main`, then Actions → Build Android APK → Run workflow on `main`, tick **Publish to coworkers**, fill in **What's new**. The run tests, builds and uploads to Play's internal testing track. Users get an "Update ready" popup in the app (Play's flexible in-app update) once Play has processed the release.
+- Release (EnFact): bump `BUILD_LABEL_ENFACT`, add a CHANGELOG line, push to `main`, then Actions → Build Android APK → Run workflow on `main`, Which app **EnFact**, tick **Publish to Play**, fill in **What's new**. The run tests, builds and uploads to Play's internal testing track. Users get an "Update ready" popup in the app (Play's flexible in-app update) once Play has processed the release.
 - Build 6 (25 Oct): in-app camera, photo markup, speed work, flow equipment suggestions.
 - Build 7 (26 Oct): stair pressurisation (marked BETA), flow test number pad.
 

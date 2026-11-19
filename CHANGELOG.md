@@ -7,6 +7,14 @@ the technical detail.
 
 ## 19 November 2026
 
+- **[Both] Two Android apps.** The Android project now builds two apps: EnFact
+  (the one coworkers have, same app on Play, so it updates in place and
+  keeps everything) and Inspecta (Site Inspections) for other companies, each
+  with its own test app beside it. On the phone, the EnFact app is now
+  called "EnFact" under its icon (its test app "EnFact Test"). Each app has
+  its own build number, shown in its Settings: EnFact carries on from 9.7,
+  Site Inspections starts at 1.0.
+
 - **[Both] Two apps from one: EnFact and Site Inspections.** Inspecta is
   being split into Inspecta - EnFact, for EnFact's own staff, and Inspecta -
   Site Inspections, for other companies through the app stores. This first
