@@ -7,6 +7,10 @@ the technical detail.
 
 ## 19 November 2026
 
+- **Build 9.7, out to coworkers.** The new stair report layout (PDF,
+  preview and Excel), with summaries first, reading tiles, clean page
+  breaks and a labelled photo appendix; photos keep their stair and run.
+
 - **Photos remember their stair and run.** A photo taken from a stair's
   reading screen now keeps which stair it was taken on and, in system
   testing, which run, along with its level. Save & next carries them on
