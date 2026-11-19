@@ -631,3 +631,20 @@ export function drawSummary(doc: jsPDF, first: number, info: SiteReportInfo, ent
     }
   }
 }
+
+// Cards drawn from `y` on, numbered 1, 2, 3 (a flow test's defects, straight
+// on after its comments); `newPage` starts the next page and says where its
+// content begins. Returns where the last card ends.
+export async function drawEntryCards(doc: jsPDF, entries: SiteEntry[], y: number, newPage: () => number): Promise<number> {
+  for (const [i, e] of entries.entries()) {
+    const ref = String(i + 1);
+    const lay = layCard(doc, e, ref, "afss");
+    const whole = lay.h <= BOTTOM - M - 24;
+    if (y + (whole ? lay.h : lay.h - lay.extraRows * (MORE_H + TILE_GAP)) > BOTTOM) y = newPage();
+    const photos = await tiles(e.photos, () => {});
+    y = drawCard(doc, e, ref, lay, photos, y, () => newPage()) + 8;
+  }
+  return y;
+}
+
+export const CONTENT_BOTTOM = BOTTOM;

@@ -5,6 +5,36 @@ matches a commit on the `test` branch (called `advanced_controls` until
 29 September 2026) or `main`; the commit itself has
 the technical detail.
 
+## 20 November 2026
+
+- **[Both] New flow test report layout (PDF and Excel).** Flow test reports
+  follow the layout approved on the design page:
+  - Headed "Flow test · Sprinkler" (or Hydrant, Combined system), with
+    the site's name as big under it.
+  - The details in an even strip: site, date, equipment, tested by,
+    demand, and year installed when it's filled in.
+  - A new Result row: a tile per supply saying PASS or FAIL and by how
+    many kPa it clears (or misses) the closest demand point, e.g. "PASS
+    +153 kPa". The town main, the reference, says "Meets demand" in blue
+    or "Below demand" in red with its margin. A supply that wasn't tested
+    says so.
+  - A table per supply with navy headings, showing only the columns filled
+    in on it, and its result and margin on a badge beside its name.
+  - The graph across the page with its legend underneath. On a combined
+    system, the pump duty is a filled diamond, as in the app.
+  - The comments in a box, left out when there are none.
+  - The test's defects straight after it, as the same finding cards as
+    the AFSS / Project report, numbered 1, 2, 3 within the test.
+  - A footer on every page: site and address, and the page number. Inside
+    an AFSS / Project report the pages carry on its numbering; exported on
+    their own they start at 1. A test that runs on to a second page starts
+    it with a thin header line.
+  - The Excel has the same layout. The chart stays a real Excel chart, and
+    the defects sheet keeps the register's format.
+- **[Both] Year installed on every flow test.** The optional Year
+  installed box is now on sprinkler, hydrant and combined tests in both
+  apps (it was only on combined systems in the Contractor app).
+
 ## 19 November 2026
 
 - **[Contractor] A test app on Play, like EnFact Test.** Contractor

@@ -633,7 +633,8 @@ export default function FlowTest() {
             )}
           </label>
         ))}
-        {combined && !enfact && (
+        {/* optional, on every flow test in both apps; printed when filled in */}
+        {(
           <label style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{ width: 78, flexShrink: 0, fontSize: 12.5, fontWeight: 700, color: "var(--muted)" }}>Year installed</span>
             <input

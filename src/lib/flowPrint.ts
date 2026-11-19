@@ -1,6 +1,6 @@
 import type { FlowTest, Site } from "../db/types";
 import { demandPoints, extraHeading, fit, flowOf, flowUnitFor, hasData, sectionHeading, isReference, isTested, KIND_LABEL, lineShown, points, sectionName, verdict, type Point } from "./flowTest";
-import { reportFileName } from "./dates";
+import { numericDate, reportFileName } from "./dates";
 
 // What a flow test looks like printed (design canvas FlowExports): one page
 // per test with its title, the site details and demand, a table per supply
@@ -42,7 +42,8 @@ export function printDetails(test: FlowTest, site: Pick<Site, "name" | "address"
     { label: "Date", value: printDate(test.testedAt) },
     { label: "Equipment", value: test.equipment?.trim() ?? "" },
     { label: "Tested by", value: test.testedBy?.trim() ?? "" },
-    ...(test.kind === "combined" && test.yearInstalled?.trim() ? [{ label: "Year installed", value: test.yearInstalled.trim() }] : []),
+    // optional on every flow test, printed when filled in
+    ...(test.yearInstalled?.trim() ? [{ label: "Year installed", value: test.yearInstalled.trim() }] : []),
   ];
 }
 
@@ -54,57 +55,107 @@ export function printDemand(test: FlowTest): string[] {
 export interface PrintTable {
   name: string;
   result: "PASS" | "FAIL" | null;
+  // the badge on the table: a pump's PASS / FAIL, the town main's MEETS /
+  // BELOW DEMAND, each with its kPa margin at the closest demand point
+  badge: { text: string; tone: Tone } | null;
   head: string[];
   rows: string[][];
 }
 
-// a table per tested supply, with only the readings actually taken
+// pass green, fail red, the town main blue (meets demand) or red (below)
+export type Tone = "pass" | "fail" | "meets" | "below";
+
+// a plain hyphen for minus: the PDF's own font has no "−"
+const signed = (n: number) => `${n >= 0 ? "+" : "-"}${Math.abs(n)}`;
+
+// how a supply did: a pump passes or fails, the town main (the reference)
+// meets the demand or is below it; with the margin and where, when known
+export function supplyResult(test: FlowTest, i: number): { tone: Tone; word: string; margin: string; at: string; text: string } | null {
+  const s = test.sections[i];
+  if (!s || !isTested(test, i)) return null;
+  const v = verdict(test, s.rows);
+  if (v.pass === null) return null;
+  const ref = isReference(test, i);
+  const tone: Tone = ref ? (v.pass ? "meets" : "below") : v.pass ? "pass" : "fail";
+  const word = ref ? (v.pass ? "Meets demand" : "Below demand") : v.pass ? "PASS" : "FAIL";
+  const margin = v.margin === undefined ? "" : `${signed(v.margin)} kPa`;
+  const at = v.at === undefined ? "" : `${r1(v.at / div(test))} ${printUnit(test)}`;
+  return { tone, word, margin, at, text: v.text };
+}
+
+// the Result row: a tile per supply, not tested ones too
+export interface ResultTile {
+  name: string; // "Town main · reference", "Electric pump"
+  tone: Tone | null; // null: not tested, or not enough to say
+  value: string; // "PASS", "Below demand", "Not tested"
+  margin: string; // "+153 kPa"
+  line: string; // "closest to the demand at 1350 L/min"
+}
+
+export function printResults(test: FlowTest): ResultTile[] {
+  if (test.kind === "blank") return [];
+  return test.sections.map((_, i) => {
+    const ref = isReference(test, i);
+    const name = `${sectionName(test, i)}${ref ? " · reference" : ""}`;
+    if (!isTested(test, i)) return { name, tone: null, value: "Not tested", margin: "", line: "" };
+    const r = supplyResult(test, i);
+    if (!r) return { name, tone: null, value: "No result", margin: "", line: "" };
+    return { name, tone: r.tone, value: r.word, margin: r.margin, line: r.margin ? `${ref ? "against" : "closest to"} the demand at ${r.at}` : r.text };
+  });
+}
+
+// the details strip: site, date, equipment, tested by, demand, year installed
+export function printStrip(test: FlowTest, site: Pick<Site, "name" | "address">): { label: string; value: string }[] {
+  return [
+    { label: "Site", value: site.name.trim() },
+    { label: "Date", value: numericDate(test.testedAt) },
+    { label: "Equipment", value: test.equipment?.trim() ?? "" },
+    { label: "Tested by", value: test.testedBy?.trim() ?? "" },
+    ...(test.kind === "blank" ? [] : [{ label: "Demand", value: printDemand(test).join("\n") }]),
+    ...(test.yearInstalled?.trim() ? [{ label: "Year installed", value: test.yearInstalled.trim() }] : []),
+  ];
+}
+
+// a table per tested supply, with only the readings actually taken and,
+// on each, only the columns filled in on it
 export function printTables(test: FlowTest): PrintTable[] {
-  if (test.kind === "blank") return [{ name: "", result: null, head: test.columns ?? [], rows: test.cells ?? [] }];
+  if (test.kind === "blank") return [{ name: "", result: null, badge: null, head: test.columns ?? [], rows: test.cells ?? [] }];
   const year = new Date(test.testedAt).getFullYear();
-  const all = test.sections.flatMap((s) => s.rows.filter(hasData));
-  const anyHg = all.some((r) => r.hg.trim() !== "");
-  const anyRpm = all.some((r) => (r.rpm ?? "").trim() !== "");
-  const anyAmps = all.some((r) => (r.amps ?? "").trim() !== "");
-  const anyTemp = all.some((r) => (r.temp ?? "").trim() !== "");
-  const anyOil = all.some((r) => (r.oil ?? "").trim() !== "");
   const extras = test.extraCols ?? [];
   const hyd = test.kind === "hydrant";
-  const head = [
-    ...(hyd ? [`Flow ${printUnit(test)}`] : []),
-    ...(!hyd || anyHg ? ['" Hg'] : []),
-    ...(hyd ? [] : [`Flow ${printUnit(test)}`]),
-    "Discharge kPa",
-    "Suction kPa",
-    ...(anyRpm ? ["RPM"] : []),
-    ...(anyAmps ? ["Amps"] : []),
-    ...(anyTemp ? ["Temp °C"] : []),
-    ...(anyOil ? ["Oil pressure kPa"] : []),
-    ...extras.map(extraHeading),
-  ];
   return test.sections
     .map((s, i) => ({ s, i }))
     .filter(({ i }) => isTested(test, i))
     .map(({ s, i }) => {
-      const v = isReference(test, i) ? null : verdict(test, s.rows).pass;
-      const rows = s.rows.filter(hasData).map((r) => {
+      const read = s.rows.filter(hasData);
+      const any = (f: (r: (typeof read)[number]) => string | undefined) => read.some((r) => (f(r) ?? "").trim() !== "");
+      const cols: { head: string; cell: (r: (typeof read)[number]) => string }[] = [];
+      const flow = (r: (typeof read)[number]) => {
         const f = flowOf(test, r);
-        const flow = f === null ? "" : r1(f / div(test));
-        return [
-          ...(hyd ? [flow] : []),
-          ...(!hyd || anyHg ? [r.hg] : []),
-          ...(hyd ? [] : [flow]),
-          r.dis,
-          r.suc,
-          ...(anyRpm ? [r.rpm ?? ""] : []),
-          ...(anyAmps ? [r.amps ?? ""] : []),
-          ...(anyTemp ? [r.temp ?? ""] : []),
-          ...(anyOil ? [r.oil ?? ""] : []),
-          ...extras.map((_, j) => r.extra?.[j] ?? ""),
-        ];
+        return f === null ? "" : r1(f / div(test));
+      };
+      if (hyd) cols.push({ head: `Flow ${printUnit(test)}`, cell: flow });
+      if (!hyd || any((r) => r.hg)) cols.push({ head: '" Hg', cell: (r) => r.hg });
+      if (!hyd) cols.push({ head: `Flow ${printUnit(test)}`, cell: flow });
+      cols.push({ head: "Discharge kPa", cell: (r) => r.dis });
+      if (any((r) => r.suc)) cols.push({ head: "Suction kPa", cell: (r) => r.suc });
+      if (any((r) => r.rpm)) cols.push({ head: "RPM", cell: (r) => r.rpm ?? "" });
+      if (any((r) => r.amps)) cols.push({ head: "Amps", cell: (r) => r.amps ?? "" });
+      if (any((r) => r.temp)) cols.push({ head: "Temp °C", cell: (r) => r.temp ?? "" });
+      if (any((r) => r.oil)) cols.push({ head: "Oil pressure kPa", cell: (r) => r.oil ?? "" });
+      extras.forEach((x, j) => {
+        if (any((r) => r.extra?.[j])) cols.push({ head: extraHeading(x), cell: (r) => r.extra?.[j] ?? "" });
       });
+      const r = supplyResult(test, i);
+      const ref = isReference(test, i);
       const cutIn = s.cutIn?.trim();
-      return { name: `${sectionHeading(test, i)}${cutIn ? ` (cut-in ${cutIn} kPa)` : ""} – ${year}`, result: v === true ? "PASS" : v === false ? "FAIL" : null, head, rows };
+      return {
+        name: `${sectionHeading(test, i)}${cutIn ? ` (cut-in ${cutIn} kPa)` : ""} · ${year}`,
+        result: ref || !r ? null : r.tone === "pass" ? "PASS" : "FAIL",
+        badge: r ? { text: `${r.word.toUpperCase()}${r.margin ? ` ${r.margin}` : ""}`, tone: r.tone } : null,
+        head: cols.map((c) => c.head),
+        rows: read.map((row) => cols.map((c) => c.cell(row))),
+      };
     });
 }
 
@@ -119,8 +170,9 @@ interface ChartModel {
   xLabel: { x: number; y: number; text: string };
   yLabel: { x: number; y: number; text: string };
   lines: { pts: Point[]; colour: string; dash: number[]; width: number; dots: boolean }[];
-  demand: Point[];
-  legend: { x: number; y: number; w: number; h: number; items: { label: string; colour: string; dash: number[]; diamond?: boolean }[] };
+  demand: (Point & { filled?: boolean })[]; // filled: a combined system's pump duty
+  // the legend in a box on the right, or (below) in one line under the graph
+  legend: { x: number; y: number; w: number; h: number; below?: boolean; items: { label: string; colour: string; dash: number[]; diamond?: boolean; x?: number }[] };
 }
 
 // The graph's lines and demand points in the test's flow unit, with their
@@ -163,18 +215,18 @@ export function chartAxes(test: FlowTest, all: Point[]) {
 
 // In a box w × h: the discharge (and ticked suction) lines as on the app's
 // graph, the demand points, and the legend in a box on the right.
-export function chartModel(test: FlowTest, w: number, h: number, font = 8): ChartModel {
+export function chartModel(test: FlowTest, w: number, h: number, font = 8, legendBelow = false): ChartModel {
   const { series: lines, demand } = chartSeries(test);
   const series: ChartModel["lines"] = lines.map((l) => ({ pts: l.pts, colour: l.colour, dash: l.dash, width: l.width, dots: l.dots }));
   const legendItems: ChartModel["legend"]["items"] = lines.map((l) => ({ label: l.label, colour: l.colour, dash: l.dash }));
   if (demand.length) legendItems.push({ label: "Demand", colour: PRINT_DEMAND, dash: [], diamond: true });
 
   const longest = Math.max(6, ...legendItems.map((it) => it.label.length));
-  const legendW = Math.min(w * 0.36, longest * font * 0.55 + 30);
+  const legendW = legendBelow ? 0 : Math.min(w * 0.36, longest * font * 0.55 + 30);
   const L = 34;
   const T = 8;
-  const B = 28;
-  const plot = { x: L, y: T, w: w - L - legendW - 14, h: h - T - B };
+  const B = legendBelow ? 28 + font + 10 : 28;
+  const plot = { x: L, y: T, w: w - L - legendW - (legendBelow ? 6 : 14), h: h - T - B };
   const { ax, ay } = chartAxes(test, [...series.flatMap((s) => s.pts), ...demand]);
   const X = (x: number) => plot.x + (plot.w * (x - ax.min)) / (ax.max - ax.min);
   const Y = (y: number) => plot.y + plot.h - (plot.h * (y - ay.min)) / (ay.max - ay.min);
@@ -193,12 +245,25 @@ export function chartModel(test: FlowTest, w: number, h: number, font = 8): Char
     plot,
     grid,
     ticks,
-    xLabel: { x: plot.x + plot.w / 2, y: h - 3, text: `Flow (${printUnit(test)})` },
+    xLabel: { x: plot.x + plot.w / 2, y: legendBelow ? plot.y + plot.h + font * 2 + 7 : h - 3, text: `Flow (${printUnit(test)})` },
     yLabel: { x: 9, y: plot.y + plot.h / 2, text: "Pressure (kPa)" },
     lines: series.map((s) => ({ ...s, pts: s.pts.map((p) => ({ x: X(p.x), y: Y(p.y) })) })),
-    demand: demand.map((p) => ({ x: X(p.x), y: Y(p.y) })),
-    legend: { x: w - legendW, y: plot.y + Math.max(0, (plot.h - legendH) / 2), w: legendW, h: legendH, items: legendItems },
+    demand: demand.map((p, i) => ({ x: X(p.x), y: Y(p.y), filled: test.kind === "combined" && i === 0 })),
+    legend: legendBelow ? belowLegend(legendItems, w, h, font) : { x: w - legendW, y: plot.y + Math.max(0, (plot.h - legendH) / 2), w: legendW, h: legendH, items: legendItems },
   };
+}
+
+// the legend in one line, centred under the graph: each item's x is where its key starts
+function belowLegend(items: ChartModel["legend"]["items"], w: number, h: number, font: number): ChartModel["legend"] {
+  const widths = items.map((it) => 24 + it.label.length * font * 0.5);
+  const total = widths.reduce((a, b) => a + b, 0) + (items.length - 1) * 12;
+  let x = Math.max(0, (w - total) / 2);
+  const placed = items.map((it, i) => {
+    const out = { ...it, x };
+    x += widths[i] + 12;
+    return out;
+  });
+  return { x: 0, y: h - font - 4, w, h: font + 4, below: true, items: placed };
 }
 
 export function chartModelSvg(m: ChartModel, font = 8): string {
@@ -213,7 +278,7 @@ export function chartModelSvg(m: ChartModel, font = 8): string {
     if (l.pts.length > 1) s += `<polyline points="${l.pts.map((p) => `${p.x},${p.y}`).join(" ")}" fill="none" stroke="${l.colour}" stroke-width="${l.width}"${l.dash.length ? ` stroke-dasharray="${l.dash.join(" ")}"` : ""}/>`;
     if (l.dots) for (const p of l.pts) s += `<circle cx="${p.x}" cy="${p.y}" r="2" fill="${l.colour}"/>`;
   }
-  for (const p of m.demand) s += `<path d="M${p.x} ${p.y - 4} l4 4 l-4 4 l-4 -4 z" fill="none" stroke="${PRINT_DEMAND}" stroke-width="1.3"/>`;
+  for (const p of m.demand) s += `<path d="M${p.x} ${p.y - 4} l4 4 l-4 4 l-4 -4 z" fill="${p.filled ? PRINT_DEMAND : "none"}" stroke="${PRINT_DEMAND}" stroke-width="1.3"/>`;
   const g = m.legend;
   if (g.items.length) {
     s += `<rect x="${g.x}" y="${g.y}" width="${g.w}" height="${g.h}" rx="2" fill="#fff" stroke="#b8c6d2" stroke-width="0.8"/>`;

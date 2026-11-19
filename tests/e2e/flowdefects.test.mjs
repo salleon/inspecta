@@ -122,12 +122,13 @@ test("the Excel: the test's sheet, then its defects as a findings register", asy
   assert.equal(ws.getImages().length, 1, "the photo");
 });
 
-test("the PDF: the test, then its defects on the next page", async () => {
+test("the PDF: the test, then its defects straight after it as finding cards", async () => {
   await go(page, app, "/site/s1-flow/flow-export", 2000);
   const file = await download(page, () => page.click('button:has-text("Export PDF")'));
   const pdf = fs.readFileSync(file.path, "latin1");
-  assert.equal((pdf.match(/\/Type \/Page\b/g) ?? []).length, 2);
-  assert.match(pdf, /Defects found during testing/);
+  // on the test's own page when there's room, else the next
+  assert.ok((pdf.match(/\/Type \/Page\b/g) ?? []).length <= 2);
+  assert.match(pdf, /DEFECTS FOUND DURING TESTING/);
 });
 
 test("deleting the flow test deletes its defects", async () => {

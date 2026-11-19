@@ -95,7 +95,7 @@ test("a flow testing site: Export above + New flow test opens a page per test", 
   assert.equal(await page.locator('[data-testid="flow-page"]').count(), 2);
   const first = await page.locator('[data-testid="flow-page"]').first().innerText();
   assert.match(first, /SPRINKLER FLOW TEST RESULTS/);
-  assert.match(first, /Electric pump – 2026\s*PASS/);
+  assert.match(first, /Electric pump · 2026\s*PASS/);
   assert.match(first, /Comments: Diesel pump fuel tank at 60%\./);
   assert.match(await page.locator('[data-testid="flow-page"]').nth(1).innerText(), /HYDRANT FLOW TEST RESULTS[\s\S]*Booster pump/);
   assert.equal(await page.getByText("page 1 of 2").count(), 1);

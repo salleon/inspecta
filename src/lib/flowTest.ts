@@ -74,6 +74,10 @@ interface Verdict {
   text: string;
   colour: string;
   pass: boolean | null; // null: not enough to say
+  // kPa above (+) or below (−) the demand at the closest demand point, and
+  // that point's flow; absent when the readings stop short of the demand
+  margin?: number;
+  at?: number;
 }
 
 // Does a section's discharge curve clear every demand point? A test that
@@ -95,9 +99,10 @@ export function verdict(test: FlowTest, rows: FlowReading[], unit: FlowUnit = "m
     const m = y - d.y;
     if (!worst || m < worst.m) worst = { m, d };
   }
+  const margin = { margin: Math.round(worst!.m), at: worst!.d.x };
   return worst!.m >= 0
-    ? { text: `Above all demand points (closest +${Math.round(worst!.m)} kPa at ${showFlow(worst!.d.x, unit)}${u})`, colour: PASS_COLOUR, pass: true }
-    : { text: `Below demand at ${showFlow(worst!.d.x, unit)}${u} (${Math.round(worst!.m)} kPa)`, colour: FAIL_COLOUR, pass: false };
+    ? { text: `Above all demand points (closest +${Math.round(worst!.m)} kPa at ${showFlow(worst!.d.x, unit)}${u})`, colour: PASS_COLOUR, pass: true, ...margin }
+    : { text: `Below demand at ${showFlow(worst!.d.x, unit)}${u} (${Math.round(worst!.m)} kPa)`, colour: FAIL_COLOUR, pass: false, ...margin };
 }
 
 // A reading counts once something has been read on it: a row with only

@@ -194,7 +194,7 @@ export interface FlowTest {
   // the flow unit the test is read in, when it was switched (combined: the
   // pump duty's unit; absent = the kind's own, see flowUnitFor)
   unit?: FlowUnit;
-  yearInstalled?: string; // combined, Contractor
+  yearInstalled?: string; // optional, any flow test, both apps
   // the template's header and comment lines
   equipment?: string;
   testedBy?: string;
