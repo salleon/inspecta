@@ -7,6 +7,9 @@ the technical detail.
 
 ## 19 November 2026
 
+- **[EnFact] Build 9.9, out to coworkers.** The new app icon: the
+  towers and tick redrawn flat, with the EnFact swoosh behind them.
+
 - **[EnFact] Build 9.8, out to coworkers.** The new stair and AFSS /
   Project report layouts, the FFCP testing change, and the app's name
   under its icon: "EnFact Inspecta".
