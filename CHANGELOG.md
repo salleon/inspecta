@@ -5,6 +5,16 @@ matches a commit on the `test` branch (called `advanced_controls` until
 29 September 2026) or `main`; the commit itself has
 the technical detail.
 
+## 19 November 2026
+
+- **New app icons for the EnFact and Contractor apps, ready for the
+  split.** Contractor: "Site Check" (the towers and tick redrawn flat).
+  EnFact: the same with the EnFact logo's swoosh behind the towers. Both
+  keep the current navy, white and teal. The finished Android, iPhone and
+  web icon files are in `branding/icons/<edition>/`, made from each
+  edition's `art.svg` by `node scripts/render-icons.mjs`. Not wired into
+  the build yet, so the app's current icon is unchanged.
+
 ## 18 November 2026
 
 - **FFCP results in the PDF and Excel.** Each panel test prints as a page
