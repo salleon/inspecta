@@ -5,6 +5,36 @@ matches a commit on the `test` branch (called `advanced_controls` until
 29 September 2026) or `main`; the commit itself has
 the technical detail.
 
+## 19 November 2026
+
+- **New stair report layout, PDF, preview and Excel.** Every stair test
+  report now follows the layout approved on the design page:
+  - The stair's name sits under the title at the same size, with the
+    logo in its own space so it never covers the title.
+  - The details sit in an even strip, three to a row.
+  - Noise, restoration, stair pressure, fan checks and the duct probe
+    are tiles (one row for up to four, rows of three for five or six),
+    each with its result, max, how it was measured and the limit.
+  - The doors table spans the page with even rows, Yes / No for
+    latching, and the colour key under it.
+  - The fan's nine checks are listed two to a row when the stair fits
+    on one page, one to a row when it runs on anyway.
+  - General notes from setup come before the test notes.
+  - Anything not tested is left out, not left blank.
+  - Every page has a footer with the site, stair and page number.
+  - A section that won't fit at the bottom of a page moves whole to the
+    next page instead of splitting. Only a very tall doors table breaks,
+    and it repeats its heading row.
+  - In system testing, every stair's summary comes first, then every
+    stair's run-by-run pages (what changed before each run, then the
+    tables, no tiles).
+  - Photos & notes now go in one photo appendix at the end, each photo
+    5 × 6.61 cm with a small table of its stair, level, location, run
+    and note.
+  - The Excel has the same layout: Summary tabs, then Runs tabs, then
+    Photos. Every column is the same width and each cell holds one short
+    line; only the notes wrap, in a wide cell sized to fit.
+
 ## 18 November 2026
 
 - **Stair pressurisation Excel: nothing cut off.** Each stair sheet now

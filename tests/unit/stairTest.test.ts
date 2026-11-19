@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { applyLevelEdits, fanName, levelEditLabel, levelEdits, levelEditsFitLabel, levelsRead, nextStairNo, renameDoorLevels, reorderStairs } from "../../src/lib/stairTest";
 import { doorFails, doorMarginal, fanIsDefault, kindsFor, latestDoor, newRun, stairDoors, stairLabel, wellIsDefault } from "../../src/lib/stairTest";
 import { adjacentDoor, openWith, doorsOpen, doorStats, isCustomLevel, joinLevel, levelChanges, levelChip, levelName, levelsEdited, limits, onceStatus, sectionsFor, splitLevel, stairLevels, stairTestHasData, stairTestSummary, typeFor } from "../../src/lib/stairTest";
-import { stairPages } from "../../src/lib/stairPrint";
+import { lowerTables, stairPages } from "../../src/lib/stairPrint";
 import type { SpfStair, SpfSystem, StairTest } from "../../src/db/types";
 
 const sys = (edition: SpfSystem["edition"], type: SpfSystem["type"] = "Purge"): SpfSystem => ({
@@ -72,16 +72,24 @@ test("doors done and failing; once-a-stair results", () => {
   assert.ok(!stairTestHasData(test0()));
 });
 
-test("the report keeps every column; anything not tested is blank", () => {
+test("the report leaves out what isn't tested; Yes / No for latching", () => {
   const s = sys("1998");
   // custom: velocities only
   const t = test0({ kind: "custom", sections: ["vel"], doors: { s1: { "3": { vel: "0.9", force: "200" } } } });
   const [page] = stairPages(t, s, { name: "Site", address: "" });
-  assert.equal(page.head.length, 5);
-  assert.deepEqual(page.rows[0].cells, ["3", "2", "0.9", "", ""], "force isn't in this test, so it stays blank");
-  assert.deepEqual(page.rows[0].fails, [false, false, true, false, false]);
-  assert.ok(page.boxes.every((b) => b.value === ""));
-  assert.equal(page.subtitle, "SPF-1 · Front");
+  const [doors] = page.tables;
+  assert.deepEqual(doors.head, ["Level", "Adjacent door open", "Average velocity m/s (min 1)"], "force and latching aren't in this test");
+  assert.deepEqual(doors.rows[0].cells, ["3", "2", "0.9"]);
+  assert.deepEqual(doors.rows[0].fails, [false, false, true]);
+  assert.deepEqual(page.tiles, [], "no once-a-stair readings tested: no tiles");
+  assert.equal(page.checks, null);
+  assert.equal(page.stair, "SPF-1 · Front");
+  assert.match(doors.key!, /red: fail/);
+  const annual = stairPages(test0({ doors: { s1: { "3": { latch: "n" } } } }), s, { name: "Site", address: "" })[0];
+  assert.deepEqual(annual.tables[0].head!.slice(2), ["Average velocity m/s (min 1)", "Door closes and latches", "Door opening force N (max 110)"]);
+  assert.equal(annual.tables[0].rows[0].cells[3], "No");
+  assert.deepEqual(annual.tiles.map((x) => x.label), ["Noise, stair (average)", "Noise, occupied space (average)", "Pressure restoration", "Fan checks"]);
+  assert.equal(annual.checks!.list.length, 9, "the fan's nine checks, one row each");
 });
 
 test("levels are a type and a number; ground in any range across it, the others only at the ends", () => {
@@ -163,22 +171,24 @@ test("general system testing: any tests, none forced; runs, and each door's late
   assert.deepEqual(doorStats(t, s.stairs[0], "vel", s), { done: 2, fails: 0, marginal: 0, total: 4 });
   assert.equal(stairTestSummary(t, s).text, "2 of 4 doors · all pass");
   assert.ok(stairTestHasData(test0({ kind: "general", runs: [{ at: 0, change: "", doors: { s1: { "1": { vel: "1" } } } }] })));
-  // the report: a summary page per stair first, then a page per stair, a table per door reading with its runs across
+  // the report: a summary page per stair first, then a runs page per stair: what changed, then a table per door reading with its runs across
   const [summary, page] = stairPages(t, s, { name: "Site", address: "" });
   assert.equal(page.title, "Stair pressurisation · System testing");
-  assert.equal(page.subtitle, "SPF-1 · Front");
-  assert.deepEqual(page.tables!.map((x) => x.title), ["Average velocity m/s (min 1), run by run"]);
-  const table = page.tables![0];
-  assert.deepEqual(table.head.map((h) => h.replace(/\d\d:\d\d/, "T")), ["Level", "Adjacent door open", "Run 1\nT", "Run 2\nT"]);
+  assert.equal(page.stair, "SPF-1 · Front");
+  assert.deepEqual(page.tables.map((x) => x.title), ["Runs", "Average velocity m/s (min 1), run by run"]);
+  assert.deepEqual(page.tables[0].rows.map((r) => [r.cells[0], r.cells[2]]), [["1", "As found"], ["2", "damper shut"]]);
+  assert.deepEqual(page.tiles, [], "no tiles on the runs pages");
+  const table = page.tables[1];
+  assert.deepEqual(table.head!.map((h) => h.replace(/\d\d:\d\d/, "T")), ["Level", "Adjacent door open", "Run 1\nT", "Run 2\nT"]);
   const [three, two] = table.rows;
   assert.deepEqual([three.cells[0], three.cells[2], three.cells[3]], ["3", "0.4", "1.2"]);
   assert.deepEqual(three.fails, [false, false, true, false]);
   assert.deepEqual([two.cells[0], two.cells[2], two.cells[3]], ["2", "1.5", "–"], "not re-read in run 2: a dash");
-  assert.deepEqual(page.runs!.slice(0, 2).map((x) => x.replace(/\d\d:\d\d/, "T")), ["Run 1 · T · As found", "Run 2 · T · damper shut"]);
-  assert.match(page.runs![2], /– not read in that run · red: fail · yellow/);
-  // the summary: each door's latest reading, in the record layout
+  assert.match(table.key!, /– not read in that run · red: fail · yellow/);
+  // the summary: each door's latest reading
   assert.equal(summary.title, "Stair pressurisation · System testing · Summary");
-  assert.deepEqual(summary.rows.slice(0, 2).map((x) => [x.cells[0], x.cells[2]]), [["3", "1.2"], ["2", "1.5"]]);
+  assert.equal(summary.note, "Latest reading at each door");
+  assert.deepEqual(summary.tables[0].rows.slice(0, 2).map((x) => [x.cells[0], x.cells[2]]), [["3", "1.2"], ["2", "1.5"]]);
 });
 
 test("general system testing's report: door force under velocity, and the fan checks as a box", () => {
@@ -189,22 +199,28 @@ test("general system testing's report: door force under velocity, and the fan ch
     doors: { s1: { "3": { vel: "1.4", force: "120" } } },
     once: { s1: { fan: { off: "y", reset: "n" } } },
   });
-  const page = stairPages(t, s, { name: "Site", address: "" }).find((p) => p.tables)!;
-  assert.deepEqual(page.tables!.map((x) => x.title), ["Average velocity m/s (min 1), run by run", "Door opening force N (max 110), run by run"]);
-  assert.deepEqual(page.tables![1].head.slice(0, 2), ["Level", "Run 1\n" + page.tables![1].head[1].split("\n")[1]], "no adjacent door column for force");
-  assert.deepEqual(page.tables![1].rows[0].cells, ["3", "120"]);
-  assert.equal(page.tables![1].rows[0].fails[1], true);
-  const fan = page.boxes.find((b) => b.label === "Fan checks")!;
-  assert.deepEqual([fan.value, fan.fail, fan.ref], ["1 failed", true, ["No: Restarts by itself when the smoke clears"]]);
-  assert.equal(page.boxes.some((b) => b.label.startsWith("Noise")), false, "only the tests being done");
+  const [summary, page] = stairPages(t, s, { name: "Site", address: "" });
+  assert.deepEqual(page.tables.map((x) => x.title), ["Runs", "Average velocity m/s (min 1), run by run", "Door opening force N (max 110), run by run"]);
+  const force = page.tables[2];
+  assert.deepEqual(force.head!.slice(0, 2), ["Level", "Run 1\n" + force.head![1].split("\n")[1]], "no adjacent door column for force");
+  assert.deepEqual(force.rows[0].cells, ["3", "120"]);
+  assert.equal(force.rows[0].fails[1], true);
+  const fan = summary.tiles.find((b) => b.label === "Fan checks")!;
+  assert.deepEqual([fan.value, fan.fail, fan.lines], ["1 failed", true, ["1 of 9 Yes", "No: Restarts by itself when the smoke clears"]]);
+  assert.equal(summary.tiles.some((b) => b.label.startsWith("Noise")), false, "only the tests being done");
+  assert.deepEqual(summary.checks!.list.slice(0, 4).map((c) => c.value), ["Yes", "", "", "No"]);
+  // the checks two to a row, or one
+  assert.equal(lowerTables(summary, true)[0].rows.length, 5);
+  assert.equal(lowerTables(summary, false)[0].rows.length, 9);
 });
 
 test("a level with two doors has a report row for each", () => {
   const s = sys("1998");
   s.stairs[0].more = { "2": 1 };
   const [page] = stairPages(test0({ doors: { s1: { "2": { vel: "1.05" }, "2\tB": { vel: "0.5" } } } }), s, { name: "Site", address: "" });
-  assert.deepEqual(page.rows.map((r) => r.cells[0]), ["3", "2 A", "2 B", "1", "G"]);
-  assert.deepEqual([page.rows[1].cells[2], page.rows[1].warns![2], page.rows[2].cells[2], page.rows[2].fails[2]], ["1.05", true, "0.5", true]);
+  const rows = page.tables[0].rows;
+  assert.deepEqual(rows.map((r) => r.cells[0]), ["3", "2 A", "2 B", "1", "G"]);
+  assert.deepEqual([rows[1].cells[2], rows[1].warns![2], rows[2].cells[2], rows[2].fails[2]], ["1.05", true, "0.5", true]);
 });
 
 test("a renamed level takes its readings with it: every door, every run", () => {
@@ -258,4 +274,20 @@ test("level changes made in a review, and how they fit other stairs", () => {
   assert.deepEqual(levelEdits(start, start, [{ P1: "B1" }]), []);
   // a level added at the very bottom goes below the one above it
   assert.deepEqual(levelEdits(["2", "1"], ["2", "1", "Pit"], []), [{ kind: "add", level: "Pit", above: undefined, below: "1" }]);
+});
+
+test("the photo appendix: each photo numbered, labelled with its stair, level, location, run and note", async () => {
+  const { appendixPhotos } = await import("../../src/lib/stairPhotos");
+  const s = sys("2015");
+  const f = (o: object) => ({ id: "f", siteId: "x", note: "Seal torn", location: "Stair door", level: "Level 2", order: 0, createdAt: 0, updatedAt: 0, ...o });
+  const photo = { id: "p" } as never;
+  const items = [
+    { n: 1, place: "", note: "", finding: f({ stairId: "s1", run: 1 }), photos: [photo, photo] },
+    { n: 2, place: "", note: "", finding: f({ note: "Fan room locked" }), photos: [] },
+  ];
+  const general = appendixPhotos(items, { kind: "general" }, s);
+  assert.deepEqual(general.map((p) => p.n), [1, 2, 3], "a photo each, and the note with none");
+  assert.deepEqual(general[0].rows, [["Stair", "SPF-1 · Front"], ["Level", "Level 2"], ["Location", "Stair door"], ["Run", "Run 2"], ["Note", "Seal torn"]]);
+  assert.deepEqual([general[2].photo, general[2].rows[0][1], general[2].rows[3][1]], [null, "–", "–"], "an older photo: no stair or run kept");
+  assert.equal(appendixPhotos(items, { kind: "annual" }, s)[0].rows.some(([k]) => k === "Run"), false, "runs only on system testing");
 });

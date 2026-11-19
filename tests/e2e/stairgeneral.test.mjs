@@ -106,21 +106,21 @@ test("+ Run: what changed, then the same doors again beside the last run's", asy
   assert.match(await page.locator("body").innerText(), /Velocity · SPF 2[\s\S]*0 of 3/);
 });
 
-test("the report: a summary page per stair first, then a page per stair, its runs side by side, a dash where a door wasn't read", async () => {
+test("the report: a summary page per stair first, then a page per stair: what changed, then its runs side by side, a dash where a door wasn't read", async () => {
   await page.getByRole("button", { name: "Back" }).click();
   await page.getByRole("button", { name: "Preview the report" }).click();
   // the stairs still on placeholder names: on with the suggestions
   await page.getByRole("button", { name: /Not now/ }).click();
   await page.getByTestId("spf-page").first().waitFor();
   assert.equal(await page.getByTestId("spf-page").count(), 6, "a summary page per stair, then a page per stair");
-  assert.match(await page.getByTestId("spf-page").first().innerText(), /Stair pressurisation · System testing · Summary\s*SPF 1 · Stair 1 · latest reading at each door[\s\S]*P2 B\s*\S+\s*1\.3/);
+  assert.match(await page.getByTestId("spf-page").first().innerText(), /Stair pressurisation · System testing · Summary\s*SPF 1 · Stair 1\s*Latest reading at each door[\s\S]*P2 B\s*\S+\s*1\.3/);
   const first = page.getByTestId("spf-page").nth(3);
   assert.match(await first.innerText(), /Stair pressurisation · System testing\s*SPF 1 · Stair 1/);
   const tables = await first.getByTestId("spf-run-table").allInnerTexts();
   assert.equal(tables.length, 1);
-  assert.match(tables[0], /Average velocity m\/s \(min 1\), run by run\s*Level\s*Adjacent door open\s*Run 1\s*\d\d:\d\d\s*Run 2\s*\d\d:\d\d/);
+  assert.match(tables[0], /Average velocity m\/s \(min 1\), run by run\s*Level\s*Adjacent door open\s*Run 1\s*\d\d:\d\d\s*Run 2\s*\d\d:\d\d/i);
   assert.match(tables[0], /P1\s*\S+\s*1\.05\s*–[\s\S]*P2 A\s*\S+\s*–\s*–[\s\S]*P2 B\s*\S+\s*0\.2\s*1\.3/);
-  assert.match(await first.innerText(), /Runs\s*Run 1 · \d\d:\d\d · As found\s*Run 2 · \d\d:\d\d · P3 relief damper shut\s*– not read in that run/);
+  assert.match(await first.innerText(), /Runs\s*Run\s*Time\s*What changed before it\s*1\s*\d\d:\d\d\s*As found\s*2\s*\d\d:\d\d\s*P3 relief damper shut[\s\S]*– not read in that run/i);
   assert.deepEqual(errors, []);
 });
 

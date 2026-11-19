@@ -78,6 +78,11 @@ export interface Finding {
   // to that test, not the site's findings list or report, and goes with the
   // test when it's deleted. Absent on every other finding.
   stairTestId?: string;
+  // and, when taken from a stair's reading screen, which stair (its id) and
+  // which run (0 = the first) it was taken in, for the photo appendix;
+  // absent on photos taken before these were kept, and from the test's page
+  stairId?: string;
+  run?: number;
   // the same for a flow test's defects (its Comments card)
   flowTestId?: string;
   // manual sort position within a site's findings list — lower sorts

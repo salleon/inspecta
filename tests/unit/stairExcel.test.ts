@@ -19,17 +19,24 @@ const general: StairTest = {
   updatedAt: 0,
 };
 
-test("stair Excel: system testing's summary sheet first; nothing cut off", () => {
+test("stair Excel: summary sheets first, laid out like the PDF; nothing cut off", () => {
   const wb = new ExcelJS.Workbook();
-  addStairSheets(wb, [general], sys, { name: "Site", address: "" });
-  assert.deepEqual(wb.worksheets.map((w) => w.name), ["Summary SPF-1 · South", "SPF SPF-1 · South"]);
+  addStairSheets(wb, [{ ...general, notes: [{ location: "B1", text: "A long note that has to wrap across the sheet, well past the width of one cell, so its row grows to fit it." }] }], { ...sys, notes: "Relief damper is manual" }, { name: "Site", address: "" });
+  assert.deepEqual(wb.worksheets.map((w) => w.name), ["Summary SPF-1 · South", "Runs SPF-1 · South"]);
   const ws = wb.worksheets[0];
   assert.equal(ws.getCell(1, 1).value, "Stair pressurisation · System testing · Summary");
-  assert.ok(ws.getCell(1, 1).isMerged, "the title spans the sheet");
-  // a reading: label on the left, its value and where it came from a line each, wrapped, across the rest
-  const row = ws.getColumn(1).values.indexOf("Noise, stair (average)");
-  const v = ws.getCell(row, 3);
-  assert.match(String(v.value), /^54\.5 dB\(A\) ✓\nmax 65\.4 dB\(A\)\nindicative \(phone\)$/);
-  assert.equal(v.alignment.wrapText, true);
-  assert.ok(ws.getRow(row).height >= 3 * 12, "tall enough for its three lines");
+  assert.equal(ws.getCell(2, 1).value, "SPF-1 · South", "the stair's name, as big as the title");
+  assert.equal(ws.getCell(2, 1).font.size, ws.getCell(1, 1).font.size);
+  assert.ok(ws.columns.every((c) => c.width === 16), "every column the same width");
+  // the tile: its label, its result, then a line each for the max and how it was measured
+  const col = ws.getColumn(1).values as unknown[];
+  const at = col.indexOf("Noise, stair (average)");
+  assert.equal(ws.getCell(at + 1, 1).value, "54.5 dB(A) ✓");
+  assert.equal(ws.getCell(at + 2, 1).value, "max 65.4 dB(A)");
+  assert.equal(ws.getCell(at + 3, 1).value, "Phone (indicative)");
+  // the notes: the general notes, then the test notes, each wrapped in a wide cell, its row sized to it
+  assert.ok(col.indexOf("GENERAL NOTES") < col.indexOf("TEST NOTES"));
+  const note = col.indexOf("1 · B1");
+  assert.equal(ws.getCell(note, 2).alignment.wrapText, true);
+  assert.ok(ws.getRow(note).height >= 28, "tall enough for two lines");
 });
