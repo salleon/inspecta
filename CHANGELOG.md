@@ -109,6 +109,13 @@ the technical detail.
   - The Excel has the same layout: Summary tabs, then Runs tabs, then
     Photos. Every column is the same width and each cell holds one short
     line; only the notes wrap, in a wide cell sized to fit.
+- **New app icons for the EnFact and Contractor apps, ready for the
+  split.** Contractor: "Site Check" (the towers and tick redrawn flat).
+  EnFact: the same with the EnFact logo's swoosh behind the towers. Both
+  keep the current navy, white and teal. The finished Android, iPhone and
+  web icon files are in `branding/icons/<edition>/`, made from each
+  edition's `art.svg` by `node scripts/render-icons.mjs`. The two Android
+  apps don't use them yet, so both still show the current icon.
 
 ## 18 November 2026
 
