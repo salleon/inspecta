@@ -7,6 +7,12 @@ the technical detail.
 
 ## 19 November 2026
 
+- **Photos remember their stair and run.** A photo taken from a stair's
+  reading screen now keeps which stair it was taken on and, in system
+  testing, which run, along with its level. Save & next carries them on
+  to the next photo, like the level. The report's photo appendix labels
+  each photo with them. Photos taken before this update show a dash.
+
 - **New stair report layout, PDF, preview and Excel.** Every stair test
   report now follows the layout approved on the design page:
   - The stair's name sits under the title at the same size, with the

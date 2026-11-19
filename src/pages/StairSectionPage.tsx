@@ -158,7 +158,7 @@ function EveryDoor(props: EveryProps & { peek?: boolean }) {
   const photos = useTestPhotos(test.siteId, test.id);
   const [photosOpen, setPhotosOpen] = useState(false);
   const [openEdit, setOpenEdit] = useState<string | null>(null); // the Open box being typed in, "level:door"
-  const photoOpts = () => ({ siteId: test.siteId, testId: test.id, back: here.pathname + here.search, level: cur === null ? undefined : findingLevel(levels[cur.li]) });
+  const photoOpts = () => ({ siteId: test.siteId, testId: test.id, back: here.pathname + here.search, level: cur === null ? undefined : findingLevel(levels[cur.li]), stairId: stair.id, ...(test.kind === "general" ? { run } : {}) });
 
   useBackHandler(() => {
     if (photosOpen) setPhotosOpen(false);

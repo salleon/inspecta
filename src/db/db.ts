@@ -221,7 +221,7 @@ export async function deleteSite(siteId: string) {
   await db.sites.delete(siteId);
 }
 
-export async function createFinding(siteId: string, carried: Partial<Pick<Finding, "level" | "stairTestId" | "flowTestId">> = {}) {
+export async function createFinding(siteId: string, carried: Partial<Pick<Finding, "level" | "stairTestId" | "flowTestId" | "stairId" | "run">> = {}) {
   const now = Date.now();
   const finding: Finding = {
     id: uid(),
