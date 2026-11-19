@@ -530,7 +530,9 @@ test("the site's report PDF ends with a page per flow test", async () => {
   const sprinkler = pdf.indexOf("SPRINKLER FLOW TEST RESULTS");
   const hydrant = pdf.indexOf("HYDRANT FLOW TEST RESULTS");
   assert.ok(findings > 0 && sprinkler > findings && hydrant > sprinkler, `${findings} ${sprinkler} ${hydrant}`);
-  assert.ok(pdf.includes("Flow test 1 of 2") && pdf.includes("Flow test 2 of 2"));
+  // listed on the summary, and under the site report's own footer, not the flow pages' own
+  assert.ok(pdf.includes("ATTACHED TESTS"), "the summary lists the attached tests");
+  assert.ok(!pdf.includes("Flow test 1 of 2"), "no flow footer of its own");
 });
 
 test("every supply gets its own table, as on the preview", async () => {

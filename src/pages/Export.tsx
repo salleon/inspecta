@@ -22,7 +22,7 @@ import { countPhotos, photosZipName, writePhotosZip } from "../lib/photosZip";
 import DefectTypePill from "../components/DefectTypePill";
 import CategoriseFlow from "../components/CategoriseFlow";
 import { reportRows } from "../lib/esrGrouping";
-import { BAR_FILL, drawFindings, headingText, type Heading } from "../lib/findingsPdf";
+import { BAR_FILL, headingText, type Heading } from "../lib/findingsPdf";
 import { forProjectReport } from "../lib/projectReport";
 import { newSince, reportEntries } from "../lib/customReports";
 import { flowTestHasData } from "../lib/flowTest";
@@ -35,6 +35,7 @@ import { IS_CONTRACTOR } from "../lib/edition";
 import { coverBackground, coverColours, drawCoverLogo } from "../lib/contractorCover";
 import { getCompany } from "../lib/company";
 import { useTourScene } from "../lib/tour";
+import { DEFECT_TYPES } from "../lib/defectTypes";
 import { numericDate } from "../lib/dates";
 
 // the export loading screen shows for at least this long: a quick export
@@ -265,7 +266,8 @@ export default function ExportPreview() {
   // is the simplest and most robust thing this cover can be, after the
   // original per-report compositing (multiple doc.addImage() calls plus
   // jsPDF's GState opacity API) proved unreliable in the field.
-  async function drawCoverPage(doc: jsPDF, findingsCount: number) {
+  async function drawCoverPage(doc: jsPDF, entries: FindingImages[]) {
+    const findingsCount = entries.length;
     const pageW = doc.internal.pageSize.getWidth();
     const pageH = doc.internal.pageSize.getHeight();
     const margin = 40;
@@ -298,8 +300,16 @@ export default function ExportPreview() {
     const badgePillH = 28;
     const accentH = 4;
     const bottomPad = 56;
+    // under the badges, a count per risk level: the new findings on one row,
+    // the re-inspected ones (Rectified, Outstanding) on a row of their own
+    const countOf = (v: string) => entries.filter((e) => e.finding.defectType === v).length;
+    const countRows = [
+      DEFECT_TYPES.filter((t) => !t.previousInspection && countOf(t.value)),
+      DEFECT_TYPES.filter((t) => t.previousInspection && countOf(t.value)),
+    ].filter((r) => r.length);
+    const countsH = countRows.length * 26;
     const detailsH =
-      accentH + 16 + titleH + (addressH ? 4 + addressH : 0) + 16 + badgePillH + bottomPad;
+      accentH + 16 + titleH + (addressH ? 4 + addressH : 0) + 16 + badgePillH + (countsH ? 10 + countsH : 0) + bottomPad;
 
     // details block, anchored to the bottom of the page
     let dy = pageH - detailsH;
@@ -366,6 +376,27 @@ export default function ExportPreview() {
       doc.text(badge.text, bx + 14, dy + badgePillH / 2 + 4.5);
       bx += pillW + 10;
     }
+    dy += badgePillH + 10;
+    countRows.forEach((row, i) => {
+      let cx = margin;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9.5);
+      if (i === 1) {
+        doc.setTextColor(...colours.address);
+        doc.text("Re-inspected", cx, dy + 13);
+        cx += doc.getTextWidth("Re-inspected") + 10;
+      }
+      for (const t of row) {
+        const text = `${countOf(t.value)} ${t.label}`;
+        const w = doc.getTextWidth(text) + 16;
+        doc.setFillColor(...t.bgRgb);
+        doc.roundedRect(cx, dy, w, 19, 3, 3, "F");
+        doc.setTextColor(...t.textRgb);
+        doc.text(text, cx + 8, dy + 13);
+        cx += w + 6;
+      }
+      dy += 26;
+    });
   }
 
   // the tests of the flow and stair jobs attached to the site (db testJobs),
@@ -386,26 +417,51 @@ export default function ExportPreview() {
     return { flowTests, stairs, ffcp };
   }
 
+  // The PDF (the "AFSS & Project report layout" design, lib/siteReportPdf):
+  // the cover, the summary, the findings as cards, then the attached tests;
+  // every page after the cover with the site's footer (the stair pages carry
+  // their own). The summary's pages are kept free first and drawn last, once
+  // the page each finding and test landed on is known.
   async function buildPdf(onPhoto: (done: number, total: number) => void): Promise<Blob> {
     const doc = new jsPDF({ unit: "pt", format: "a4" });
-    await drawCoverPage(doc, items.length);
-    doc.addPage();
-    await drawFindings(doc, items, onPhoto);
-
-    // the attached jobs' flow tests, a page each, at the end (as the Excel's tabs)
+    const sr = await import("../lib/siteReportPdf");
+    const info = { kind: site?.kind === "project" ? ("project" as const) : ("afss" as const), siteName: site?.name ?? "Inspection", address: site?.address ?? "", dateMs: inspectionMs, inspector: getInspectorName() };
+    await drawCoverPage(doc, items);
+    const cards = sr.cardRows(items, info.kind);
     const { flowTests, stairs, ffcp } = await attachedTests();
+    const testCount = flowTests.length + stairs.reduce((n, x) => n + x.tests.length, 0) + ffcp.length;
+    const summaryPages = sr.summaryPageCount(doc, cards, items, testCount);
+    for (let i = 0; i < summaryPages; i++) doc.addPage();
+    doc.addPage();
+    const { pageOf } = await sr.drawCards(doc, cards, info, onPhoto);
+
+    // the attached jobs' tests at the end (as the Excel's tabs): flow, stair, then FFCP
+    const tests: { label: string; done: number; page: number }[] = [];
+    const stairPages = new Set<number>();
     if (site && flowTests.length) {
       setExportProgress({ percent: 86, step: "Adding flow tests…" });
-      await (await import("../lib/flowPdf")).appendFlowPages(doc, flowTests, site);
+      await (await import("../lib/flowPdf")).appendFlowPages(doc, flowTests, site, (t, page) => tests.push({ label: `Flow test · ${t.name.trim() || "Flow test"}`, done: t.testedAt, page }), false);
     }
-    // and their stair tests, a page per stair
     if (site && stairs.length) setExportProgress({ percent: 87, step: "Adding stair tests…" });
-    for (const stair of stairs) if (site) await (await import("../lib/stairPdf")).appendStairPages(doc, stair.tests, stair.sys, site, false);
-    // and their FFCP tests, a page each
+    for (const stair of stairs) {
+      if (!site) continue;
+      const { appendStairPages } = await import("../lib/stairPdf");
+      const { KIND_LABEL } = await import("../lib/stairTest");
+      for (const test of stair.tests) {
+        const from = doc.getNumberOfPages() + 1;
+        await appendStairPages(doc, [test], stair.sys, site, false);
+        for (let p = from; p <= doc.getNumberOfPages(); p++) stairPages.add(p);
+        tests.push({ label: `Stair pressurisation · ${KIND_LABEL[test.kind]} (${stair.sys.stairs.length} stair${stair.sys.stairs.length === 1 ? "" : "s"})`, done: test.testedAt, page: from });
+      }
+    }
     if (site && ffcp.length) {
       const { logoImage } = await import("../lib/flowPdf");
-      (await import("../lib/ffcpPdf")).appendFfcpPages(doc, ffcp, site, false, await logoImage().catch(() => null));
+      (await import("../lib/ffcpPdf")).appendFfcpPages(doc, ffcp, site, false, await logoImage().catch(() => null), (t, page) => tests.push({ label: "Fire fan control panel", done: t.testedAt, page }));
     }
+
+    const { logoImage } = await import("../lib/flowPdf");
+    sr.drawSummary(doc, 2, info, items, cards, pageOf, tests, await logoImage().catch(() => null));
+    for (let p = 2; p <= doc.getNumberOfPages(); p++) if (!stairPages.has(p)) sr.drawFooter(doc, info, p);
 
     setExportProgress({ percent: 88, step: "Building PDF…" });
     // let the "Building PDF…" step paint before jsPDF's synchronous output
@@ -794,7 +850,7 @@ function PreviewFinding({ entry: { finding, photos }, previews, first }: { entry
         ))}
         {photos.length === 0 && (
           <div style={{ height: 46, borderRadius: 6, border: "1px dashed #c9c4b8", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 600, color: "var(--muted-2)" }}>
-            No photo
+            Note
           </div>
         )}
       </div>

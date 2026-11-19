@@ -7,6 +7,35 @@ the technical detail.
 
 ## 19 November 2026
 
+- **[Both] New AFSS and Project report layout (PDF).** The site report
+  follows the layout approved on the design page:
+  - The cover shows a count per risk level under the date, findings and
+    inspector. Re-inspected defects (Rectified, Outstanding) get a row of
+    their own.
+  - A new summary page comes after the cover:
+    - a tile per risk level, with Rectified and Outstanding beside them
+      past a divider when there are any;
+    - every finding in one table with its reference, risk, level and
+      location, and the page it's on (new findings first, then the
+      re-inspected ones);
+    - the attached flow, stair and FFCP tests with their pages.
+  - Each finding is a card. A strip across the top shows its reference
+    (the same as the Excel's: 1.8.1, 5.5.2…), its risk and its level and
+    location, with a coloured edge for the risk. Up to two photos sit
+    beside the note at full size, and any more go four across underneath.
+    A finding without a photo shows "Note". The inspector's own note is
+    headed "Recommended action". The app's suggested actions stay in the
+    Excel only.
+  - Every page after the cover has a thin header (site, report, date,
+    inspector) and a footer (site, address, page number), including the
+    attached test pages.
+  - A finding is never split over a page. A section or item that carries
+    on to a new page repeats its heading, marked (continued).
+  - Project reports have no ESR headings, number findings 1, 2, 3 in the
+    order the photos were taken, and show the time of each finding's first
+    photo in the card's strip.
+  - The Excel is unchanged.
+
 - **[Both] Two Android apps.** The Android project now builds two apps: EnFact
   (the one coworkers have, same app on Play, so it updates in place and
   keeps everything) and Inspecta (Site Inspections) for other companies, each
