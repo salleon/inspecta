@@ -7,6 +7,12 @@ the technical detail.
 
 ## 19 November 2026
 
+- **[Both] The apps' names on the phone.** The EnFact app is called
+  "EnFact Inspecta" under its icon (its test app "EnFact Inspecta Test"),
+  and the other companies' app "Inspecta - Site Inspections" (its test app
+  "Inspecta - Site Inspections Test"), in place of the short "EnFact" and
+  "Inspecta" from the split.
+
 - **[Both] New AFSS and Project report layout (PDF).** The site report
   follows the layout approved on the design page:
   - The cover shows a count per risk level under the date, findings and

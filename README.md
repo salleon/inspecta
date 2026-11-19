@@ -42,7 +42,7 @@ This repo has a GitHub Actions workflow (`.github/workflows/build-apk.yml`) that
    To build a branch other than `main`, or the Contractor app, open **Actions → Build Android APK → Run workflow**, pick the branch in **"Use workflow from"** and the app in **Which app** (EnFact, Contractor or Both). A push to `main` builds EnFact.
 4. Send that `.apk` file to yourself (email, Slack, Drive — whatever's easiest) and open it **on the Android phone**. Android will ask you to allow installing from this source the first time — approve that, then install.
 
-**Test apps:** the same run also produces `enfact-test-apk` (`app-enfact-staging.apk`), a separate app called "EnFact Test" (orange icon) with its own data, so you can try out a branch without touching the real app or its inspections. A Contractor build makes `contractor-apk` ("Inspecta") and `contractor-test-apk` ("Inspecta Test") the same way.
+**Test apps:** the same run also produces `enfact-test-apk` (`app-enfact-staging.apk`), a separate app called "EnFact Inspecta Test" (orange icon) with its own data, so you can try out a branch without touching the real app or its inspections. A Contractor build makes `contractor-apk` ("Inspecta - Site Inspections") and `contractor-test-apk` ("Inspecta - Site Inspections Test") the same way.
 
 That's it — no Play Store, no hosting, just the one file. Whenever you want an updated build, push your changes and re-download the new artifact from Actions.
 
@@ -60,7 +60,7 @@ Coworkers can get the EnFact app from Google Play instead, as a private internal
 
 ### Two Android apps
 
-`android/app/build.gradle` has a flavor per app: `enfact` (`au.com.inspecta.app`, "EnFact" under the icon) and `contractor` (`au.com.inspecta.site`, "Inspecta"), each with its test build (`.test`, orange icon: "EnFact Test", "Inspecta Test"). Names are in `android/app/src/<flavor>/res` and `src/<flavor>Staging/res`. Each is built from its own web build: `npm run build:enfact` (or `build:contractor`), `npx cap sync android`, then e.g. `./gradlew assembleEnfactRelease`. Both use the same icon for now.
+`android/app/build.gradle` has a flavor per app: `enfact` (`au.com.inspecta.app`, "EnFact Inspecta" under the icon) and `contractor` (`au.com.inspecta.site`, "Inspecta - Site Inspections"), each with its test build (`.test`, orange icon: "EnFact Inspecta Test", "Inspecta - Site Inspections Test"). Names are in `android/app/src/<flavor>/res` and `src/<flavor>Staging/res`. Each is built from its own web build: `npm run build:enfact` (or `build:contractor`), `npx cap sync android`, then e.g. `./gradlew assembleEnfactRelease`. Both use the same icon for now.
 
 The Contractor app has its own Play app and its own upload key (Play won't take another app's). Setting it up, once:
 
