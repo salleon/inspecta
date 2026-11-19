@@ -7,6 +7,14 @@ the technical detail.
 
 ## 19 November 2026
 
+- **FFCP testing: tick and cross freely, reasons when you like.** Ticks
+  and crosses now stay where you tap them, and the screen no longer jumps
+  to the next fan by itself (tap a fan, or Next to do). A ✗ just marks the
+  fail: tap the dashed box under it any time to add why, with two quick
+  reasons ("Indicator/operation mismatch", "Incorrect indication") or your
+  own words. The reason box now looks like the app's other boxes, with
+  Save and Cancel.
+
 - **Build 9.7, out to coworkers.** The new stair report layout (PDF,
   preview and Excel), with summaries first, reading tiles, clean page
   breaks and a labelled photo appendix; photos keep their stair and run.

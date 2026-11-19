@@ -32,7 +32,6 @@
 .ff-chip { flex: 1; min-height: 42px; border-radius: 9px; border: 1px solid transparent; background: var(--panel-2); color: var(--muted-2); display: flex; align-items: center; justify-content: center; padding: 0; }
 .ff-chip.y.on { background: rgba(43, 212, 122, 0.18); border-color: rgba(43, 212, 122, 0.6); color: #2bd47a; }
 .ff-chip.n.on { background: rgba(255, 90, 74, 0.15); border-color: rgba(255, 122, 106, 0.6); color: #ff7a6a; }
-.ff-chip.cur { box-shadow: 0 0 0 2px rgba(255, 122, 92, 0.4); }
 .ff-why { display: block; width: 100%; margin: -2px 0 2px; padding: 6px 8px; border: 1px solid rgba(255, 122, 106, 0.6); border-radius: 8px; background: rgba(255, 90, 74, 0.08); text-align: left; font-size: 12px; font-weight: 700; color: #ff9a8c; line-height: 1.35; overflow-wrap: anywhere; }
 .ff-why.add { border-style: dashed; color: #ff7a6a; }
 .ff-notes { display: flex; flex-direction: column; gap: 5px; margin-top: 2px; padding-top: 8px; border-top: 1px solid var(--border-strong); }
