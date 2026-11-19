@@ -1,7 +1,29 @@
-import { readFileSync } from "node:fs";
+import { copyFileSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import react from "@vitejs/plugin-react";
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
+
+// The Contractor app's own icons (favicon, home-screen icons) in place of
+// public/'s, which are EnFact's. Both made by scripts/render-icons.mjs.
+function contractorIcons(): Plugin {
+  const dir = path.resolve(__dirname, "branding/icons/contractor/web");
+  const names = readdirSync(dir);
+  return {
+    name: "contractor-icons",
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const name = req.url?.split("?")[0].slice(1);
+        if (!name || !names.includes(name)) return next();
+        res.setHeader("Content-Type", name.endsWith(".svg") ? "image/svg+xml" : "image/png");
+        res.end(readFileSync(path.join(dir, name)));
+      });
+    },
+    // after the build has copied public/ into the output folder
+    writeBundle(options) {
+      for (const name of names) copyFileSync(path.join(dir, name), path.join(options.dir!, name));
+    },
+  };
+}
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
@@ -14,7 +36,7 @@ export default defineConfig(({ mode }) => {
   // BUILD_LABEL_CONTRACTOR, also its Android and iPhone version)
   const buildLabel = readFileSync(path.resolve(__dirname, `BUILD_LABEL_${edition.toUpperCase()}`), "utf8").trim();
   return {
-    plugins: [react()],
+    plugins: [react(), ...(edition === "contractor" ? [contractorIcons()] : [])],
     resolve: {
       // EnFact's artwork, or none in the Contractor build (edition/art.ts)
       alias: { "virtual:edition-art": path.resolve(__dirname, `src/edition/${edition}.ts`) },

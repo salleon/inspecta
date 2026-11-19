@@ -99,13 +99,15 @@ the technical detail.
   - The Excel has the same layout: Summary tabs, then Runs tabs, then
     Photos. Every column is the same width and each cell holds one short
     line; only the notes wrap, in a wide cell sized to fit.
-- **New app icons for the EnFact and Contractor apps, ready for the
-  split.** Contractor: "Site Check" (the towers and tick redrawn flat).
-  EnFact: the same with the EnFact logo's swoosh behind the towers. Both
-  keep the current navy, white and teal. The finished Android, iPhone and
-  web icon files are in `branding/icons/<edition>/`, made from each
-  edition's `art.svg` by `node scripts/render-icons.mjs`. The two Android
-  apps don't use them yet, so both still show the current icon.
+- **New app icons: each app has its own.** Contractor (Inspecta):
+  "Site Check", the towers and tick redrawn flat. EnFact: the same with
+  the EnFact logo's swoosh behind the towers. Both keep the navy, white
+  and teal. Used for the Android launcher (with the test apps on orange
+  as before), EnFact's iPhone app, and each app's web icons (EnFact's in
+  `public/` and the website, Contractor's swapped in by its build).
+  Contractor's iPhone icon is ready in `branding/icons/contractor/ios`
+  for when it gets an iPhone build. To change an icon, edit its
+  `branding/icons/<app>/art.svg` and run `node scripts/render-icons.mjs`.
 
 ## 18 November 2026
 

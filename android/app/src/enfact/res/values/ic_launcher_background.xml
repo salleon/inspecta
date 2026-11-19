@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- behind the adaptive icon's foreground (scripts/render-icons.mjs) -->
+    <color name="ic_launcher_background">#022A4C</color>
+</resources>
