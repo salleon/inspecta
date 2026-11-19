@@ -2,7 +2,7 @@
 // 2): an extra test, per stair, on that stair's fan. The name comes from the
 // fan, the stopwatch runs from START TIMER (when the detector is cleared) to STOP TIMER (when the equipment restarts) (60 to 90 s
 // passes, 5 s either side marginal), Failed to restart fails it, Retest duct
-// probe adds another go, and each go prints under the fan on the report.
+// probe adds another go, and the report's tile shows the latest with the earlier ones under it.
 // Stair pressurisation's screens are in its purple.
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
@@ -97,10 +97,10 @@ test("each stair's fan has its own probe; Failed to stop equipment fails it with
   await page.clock.runFor(600);
 });
 
-test("the report: a line per go under the fan", async () => {
+test("the report: a tile per fan, the latest go with the earlier ones under it", async () => {
   await go(page, app, "/site/p1-spf/spf/t1/report", 1500);
   const body = await page.locator("body").innerText();
-  assert.match(body, /Duct probe · fan SPF-1\s*SPF-1 duct probe · equipment shut down · restarted after 75 s · Pass\s*SPF-1 duct probe · retest 1 · equipment shut down · failed to restart · Fail · Fan stayed off, reset at the FIP/);
-  assert.match(body, /Duct probe · fan SPF-2\s*SPF-2 duct probe · failed to stop equipment · Fail/);
+  assert.match(body, /Duct probe · fan SPF-1\s*No restart ✗\s*Equipment shut down\s*Earlier: SPF-1 duct probe · equipment shut down · restarted after 75 s · Pass\s*Fan stayed off, reset at the FIP/);
+  assert.match(body, /Duct probe · fan SPF-2\s*Didn't stop ✗\s*Failed to stop equipment/);
   assert.deepEqual(errors, []);
 });

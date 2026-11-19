@@ -51,17 +51,18 @@ test("duct probe: named after the fan until typed over; a retest stands over the
   assert.equal(probeLine({ time: 57 }, "SPF-1", 0), "SPF-1 duct probe · equipment shut down · restarted after 57 s · Fail (marginal)");
 });
 
-test("duct probe: counts as data, and prints a line per go under the fan", () => {
+test("duct probe: counts as data, and prints as a tile, the latest go with the earlier ones under it", () => {
   assert.equal(stairTestHasData(test0({ once: { s1: { probe: [{}] } } })), false);
   assert.equal(stairTestHasData(test0({ once: { s1: { probe: [{ notes: "access via plant room" }] } } })), true);
   const t = test0({ sections: [...sectionsFor("annual"), "probe"], once: { s1: { probe: [{ time: 104 }, { time: 78.4, notes: "reset at FIP" }] } } });
   const page = stairPages(t, sys, { name: "Site", address: "" })[0];
-  assert.equal(page.probeLabel, "Duct probe · fan SPF-1");
-  assert.deepEqual(page.probe, ["SPF-1 duct probe · equipment shut down · restarted after 104 s · Fail", "SPF-1 duct probe · retest 1 · equipment shut down · restarted after 78 s · Pass · reset at FIP"]);
-  assert.equal(page.probeFail, false);
+  const tile = page.tiles.find((x) => x.label === "Duct probe · fan SPF-1")!;
+  assert.equal(tile.value, "78 s ✓");
+  assert.deepEqual(tile.lines, ["Equipment shut down", "Earlier: SPF-1 duct probe · equipment shut down · restarted after 104 s · Fail", "reset at FIP"]);
+  assert.equal(tile.fail, false);
   assert.equal(probeLine({ failed: true }, "SPF-2", 0), "SPF-2 duct probe · equipment shut down · failed to restart · Fail");
   assert.equal(probeLine({ noStop: true }, "SPF-2", 0), "SPF-2 duct probe · failed to stop equipment · Fail");
   assert.deepEqual(onceStatus("probe", { probe: [{ noStop: true }] }, sys), { done: true, text: "Didn't stop ✗", fail: true });
   // not on a test that isn't doing it
-  assert.equal(stairPages(test0(), sys, { name: "Site", address: "" })[0].probe, null);
+  assert.equal(stairPages(test0(), sys, { name: "Site", address: "" })[0].tiles.some((x) => x.label.startsWith("Duct probe")), false, "not tested: no tile");
 });
