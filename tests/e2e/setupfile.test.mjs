@@ -1,6 +1,7 @@
 // The company setup file (lib/setupFile): shared from Admin, loaded on a
-// new phone with Join a company. It carries the mode, company, keyword
-// changes and the PIN (as a salted fingerprint), and asks for the PIN.
+// new phone with Join a company (or Admin → Load setup file). It carries
+// which app made it, the company, keyword changes and the PIN (as a salted
+// fingerprint); the other app refuses it.
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { readFile, writeFile, mkdtemp } from "node:fs/promises";
@@ -8,15 +9,16 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { startApp, openPage, go, download } from "./helpers.mjs";
 
-let app;
+let enfact;
+let app; // the Contractor app
 const KEYWORDS = { "4.1": { added: [{ text: "spit fire", kind: "" }], removed: [] } };
 
 before(async () => {
-  app = await startApp(import.meta.url);
+  [enfact, app] = await Promise.all([startApp(import.meta.url), startApp(import.meta.url, { edition: "contractor" })]);
 });
 
 after(async () => {
-  await app?.close();
+  await Promise.all([enfact?.close(), app?.close()]);
 });
 
 const enterPin = async (page, digits) => {
@@ -25,13 +27,13 @@ const enterPin = async (page, digits) => {
 };
 
 // a phone already set up (as given), sharing its setup file from Admin
-async function shareFrom(storage) {
-  const { page } = await openPage(app);
+async function shareFrom(storage, on = app) {
+  const { page } = await openPage(on);
   await page.evaluate((s) => {
     for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v);
   }, storage);
   await page.reload(); // so the app reads them afresh
-  await go(page, app, "/admin", 600);
+  await go(page, on, "/admin", 600);
   await enterPin(page, storage["inspecta.adminPin"]);
   const file = await download(page, () => page.getByRole("button", { name: /Share setup file/ }).click());
   // kept past the page closing (Playwright deletes its downloads)
@@ -41,7 +43,7 @@ async function shareFrom(storage) {
   return { name: file.name, path };
 }
 
-// a brand new phone, joining with the file
+// a brand new Contractor phone, joining with the file
 async function freshPhone() {
   const context = await app.browser.newContext({ viewport: { width: 390, height: 844 } });
   await context.addInitScript(() => localStorage.setItem("inspecta.tourOffered", "1"));
@@ -54,8 +56,8 @@ async function freshPhone() {
 let enfactFile;
 let fileKeywords;
 
-test("Admin shares a setup file with the mode, keywords and a PIN fingerprint (not the PIN)", async () => {
-  enfactFile = await shareFrom({ "inspecta.flowMode": "enfact", "inspecta.adminPin": "4321", "inspecta.esrKeywordEdits": JSON.stringify(KEYWORDS) });
+test("Admin shares a setup file with the app, keywords and a PIN fingerprint (not the PIN)", async () => {
+  enfactFile = await shareFrom({ "inspecta.adminPin": "4321", "inspecta.esrKeywordEdits": JSON.stringify(KEYWORDS) }, enfact);
   assert.match(enfactFile.name, /^EnFact setup\.inspecta$/);
   const text = (await readFile(enfactFile.path)).toString();
   const body = JSON.parse(text);
@@ -66,26 +68,42 @@ test("Admin shares a setup file with the mode, keywords and a PIN fingerprint (n
   assert.ok(!text.includes("4321"), "the PIN itself isn't in the file");
 });
 
-test("a new phone joins with the file: wrong PIN refused, right PIN sets it up as EnFact", async () => {
-  const page = await freshPhone();
+test("a new EnFact phone loads it in Admin: wrong PIN refused, right PIN brings the keywords and PIN", async () => {
+  const { page } = await openPage(enfact);
+  await go(page, enfact, "/admin", 600);
+  await enterPin(page, "2021");
   await page.setInputFiles('input[aria-label="Setup file"]', enfactFile.path);
   await page.getByText("EnFact setup").waitFor();
   await enterPin(page, "2021");
   assert.equal(await page.getByText("Wrong PIN").count(), 1);
   await enterPin(page, "4321");
   await page.waitForTimeout(500);
-  const stored = await page.evaluate(() => ({ mode: localStorage.getItem("inspecta.flowMode"), pin: localStorage.getItem("inspecta.adminPin"), kw: JSON.parse(localStorage.getItem("inspecta.esrKeywordEdits") || "{}") }));
-  assert.equal(stored.mode, "enfact");
+  const stored = await page.evaluate(() => ({ pin: localStorage.getItem("inspecta.adminPin"), kw: JSON.parse(localStorage.getItem("inspecta.esrKeywordEdits") || "{}") }));
   assert.equal(stored.pin, "4321", "the office PIN comes across");
   assert.deepEqual(stored.kw, fileKeywords);
-  // straight on to the name prompt, in EnFact's colours
-  assert.equal(await page.locator('img[alt="EnFact"]').count(), 1);
   await page.context().close();
+});
+
+test("each app refuses the other's setup file", async () => {
+  const page = await freshPhone();
+  await page.setInputFiles('input[aria-label="Setup file"]', enfactFile.path);
+  await page.getByText("This setup file is for Inspecta - EnFact.").waitFor();
+  assert.equal(await page.getByText("EnFact setup").count(), 0);
+  await page.context().close();
+
+  const company = { name: "Coastline Fire Services", logo: null, plate: false, logoColours: [], schemeId: "firetruck", custom: { primary: "#071b2c", secondary: "#2ec4b6", light: "#f4f7f9" }, setUp: true };
+  const contractorFile = await shareFrom({ "inspecta.adminPin": "1111", "inspecta.company": JSON.stringify(company) });
+  const { page: office } = await openPage(enfact);
+  await go(office, enfact, "/admin", 600);
+  await enterPin(office, "2021");
+  await office.setInputFiles('input[aria-label="Setup file"]', contractorFile.path);
+  await office.getByText("This setup file is for Inspecta - Site Inspections.").waitFor();
+  await office.context().close();
 });
 
 test("a contractor file brings the company's name, logo and colours, and the manager's PIN without anyone typing it", async () => {
   const company = { name: "Coastline Fire Services", logo: null, plate: false, logoColours: [], schemeId: "firetruck", custom: { primary: "#071b2c", secondary: "#2ec4b6", light: "#f4f7f9" }, setUp: true };
-  const file = await shareFrom({ "inspecta.flowMode": "contractor", "inspecta.adminPin": "1111", "inspecta.company": JSON.stringify(company) });
+  const file = await shareFrom({ "inspecta.adminPin": "1111", "inspecta.company": JSON.stringify(company) });
   assert.match(file.name, /^Coastline Fire Services setup\.inspecta$/);
   assert.ok(!(await readFile(file.path)).toString().includes("1111"), "the PIN itself isn't in the file");
   const page = await freshPhone();
@@ -107,13 +125,12 @@ test("any other file is turned away", async () => {
   const page = await freshPhone();
   await page.setInputFiles('input[aria-label="Setup file"]', { name: "notes.txt", mimeType: "text/plain", buffer: Buffer.from("hello") });
   await page.getByText("That isn't an Inspecta setup file.").waitFor();
-  assert.equal(await page.evaluate(() => localStorage.getItem("inspecta.flowMode")), "contractor");
   await page.context().close();
 });
 
 test("a phone that joined a company: Admin is locked with the manager's PIN, and its own setup file keeps it", async () => {
   const company = { name: "Coastline Fire Services", logo: null, plate: false, logoColours: [], schemeId: "firetruck", custom: { primary: "#071b2c", secondary: "#2ec4b6", light: "#f4f7f9" }, setUp: true };
-  const file = await shareFrom({ "inspecta.flowMode": "contractor", "inspecta.adminPin": "1111", "inspecta.company": JSON.stringify(company) });
+  const file = await shareFrom({ "inspecta.adminPin": "1111", "inspecta.company": JSON.stringify(company) });
   const page = await freshPhone();
   await page.setInputFiles('input[aria-label="Setup file"]', file.path);
   await page.getByRole("button", { name: "Join Coastline Fire Services" }).click();
@@ -128,7 +145,6 @@ test("a phone that joined a company: Admin is locked with the manager's PIN, and
   assert.equal(await page.getByText("Wrong PIN").count(), 1);
   await enterPin(page, "1111");
   await page.getByRole("button", { name: /Share setup file/ }).waitFor();
-  assert.equal(await page.locator('[role="radiogroup"][aria-label="Mode"]').count(), 0, "no mode switch");
   // a file shared from this phone still opens with the manager's PIN
   const again = await download(page, () => page.getByRole("button", { name: /Share setup file/ }).click());
   const body = JSON.parse((await readFile(again.path)).toString());

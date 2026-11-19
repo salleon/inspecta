@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
-import enfactWordmark from "../assets/enfact-wordmark.png";
+import art from "virtual:edition-art";
 import { setInspectorName } from "../lib/profile";
-import { useFlowMode } from "../lib/settings";
+import { IS_CONTRACTOR } from "../lib/edition";
 import { CompanyLogo } from "../components/CompanySetup";
 
 // Shown once, on first launch only (App.tsx gates on hasInspectorName()) —
@@ -9,7 +9,7 @@ import { CompanyLogo } from "../components/CompanySetup";
 // afterwards to label reports.
 export default function Onboarding({ onDone }: { onDone: () => void }) {
   const [name, setName] = useState("");
-  const contractor = useFlowMode() === "contractor";
+  const contractor = IS_CONTRACTOR;
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -26,7 +26,7 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
           <CompanyLogo height={64} maxWidth={220} style={{ alignSelf: "center", marginBottom: 4 }} />
         ) : (
           <img
-            src={enfactWordmark}
+            src={art.wordmark ?? undefined}
             alt="EnFact"
             style={{ width: 150, height: "auto", display: "block", margin: "0 auto 4px" }}
           />

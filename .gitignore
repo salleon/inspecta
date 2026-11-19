@@ -3,7 +3,15 @@
 # (the APK build does it), so it isn't tracked either.
 node_modules/
 /dist/
+# the two apps' builds the browser tests run against (npm run build:test)
+/dist-enfact/
+/dist-contractor/
 android/app/src/main/assets/public/
+# a local Android build's output and caches (CI builds from scratch)
+android/.gradle/
+android/build/
+android/app/build/
+android/capacitor-cordova-android-plugins/build/
 
 # Local / OS clutter
 *.log

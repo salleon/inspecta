@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { applySetupFile, checkSetupFile, fileNeedsPin, filePinMatches, readSetupFile, type SetupFile } from "../lib/setupFile";
+import { OtherAppFile, applySetupFile, checkSetupFile, fileNeedsPin, filePinMatches, readSetupFile, type SetupFile } from "../lib/setupFile";
 import { useBackHandler } from "../lib/backButton";
 import { say } from "./Message";
 
@@ -25,9 +25,9 @@ export default function SetupFileLoader({ file, onDone, onCancel }: { file: File
       let read: SetupFile;
       try {
         read = readSetupFile(await file.text());
-      } catch {
+      } catch (err) {
         if (!live) return;
-        say("Couldn't read the file", "That isn't an Inspecta setup file.");
+        say("Couldn't read the file", err instanceof OtherAppFile ? err.message : "That isn't an Inspecta setup file.");
         cancel.current();
         return;
       }

@@ -27,20 +27,22 @@ workflows:
       - name: Build the web app
         script: |
           npm ci
-          npm run build
+          # Inspecta - EnFact (TestFlight only); the Contractor app gets its
+          # own iOS app in step 4 of claude-project/SPLIT_PLAN.md
+          npm run build:enfact
           npx cap sync ios
       - name: Set up signing
         script: xcode-project use-profiles
       - name: Set the build number
         script: cd ios/App && agvtool new-version -all $BUILD_NUMBER
-      # the version people see (Settings, App Store) is BUILD_LABEL, the
+      # the version people see (Settings, App Store) is BUILD_LABEL_ENFACT, the
       # same as the Android app's versionName; Apple only takes numbers and
       # dots (like 9.2), so anything else stops the build here
-      - name: Set the version from BUILD_LABEL
+      - name: Set the version from BUILD_LABEL_ENFACT
         script: |
-          VERSION=$(tr -d '[:space:]' < BUILD_LABEL)
+          VERSION=$(tr -d '[:space:]' < BUILD_LABEL_ENFACT)
           if ! printf '%s' "$VERSION" | grep -Eq '^[0-9]+(\.[0-9]+){0,2}$'; then
-            echo "BUILD_LABEL is '$VERSION': the App Store needs numbers and dots, like 9.2 or 1.0.1"
+            echo "BUILD_LABEL_ENFACT is '$VERSION': the App Store needs numbers and dots, like 9.2 or 1.0.1"
             exit 1
           fi
           sed -i '' "s/MARKETING_VERSION = [^;]*;/MARKETING_VERSION = $VERSION;/" ios/App/App.xcodeproj/project.pbxproj

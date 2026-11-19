@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import type { FfcpFan, FfcpMark, FfcpTest, Site } from "../db/types";
 import { getSite, saveSiteFfcp } from "../db/db";
-import { CONTROL, FAN_TYPES, INDICATION, REASONS, fanKeys, fanStats, modeStats, newFan, seriesNames, type FfcpMode, type Stats } from "../lib/ffcp";
+import { CONTROL, FAN_TYPES, INDICATION, FAIL_REASONS, fanKeys, fanStats, modeStats, newFan, seriesNames, type FfcpMode, type Stats } from "../lib/ffcp";
 import { useBackHandler } from "../lib/backButton";
 import { IconChevronLeft, IconEdit } from "../components/Icons";
 import RoundIconButton from "../components/RoundIconButton";
@@ -12,11 +12,11 @@ import NumPad, { BLANK, k, numberKeys } from "../components/NumPad";
 import { Sheet } from "../components/TestsList";
 import "./FfcpTest.css";
 
-// One fire fan control panel test (design canvas: FFCP mock-up v5). Every
+// One fire fan control panel test (design canvas: FFCP mock-up v6). Every
 // fan is a tile to jump to in any order; the picked one's checks sit in the
 // panel below: indication (run, stop, fault) beside control (on, off), and
-// notes. Normal mode and fire mode are each checked. A ✗ asks why (or
-// later). Add fans: a type, then one number at a time or a batch.
+// notes. Normal mode and fire mode are each checked. Ticks and crosses stay
+// where they're tapped; a cross's reason is added from the box under it. Add fans: a type, then one number at a time or a batch.
 
 const PASS = "#2bd47a";
 const FAIL = "#ff7a6a";
@@ -46,10 +46,9 @@ export default function FfcpTestPage() {
   const [cur, setCur] = useState<string | null>(null);
   const [show, setShow] = useState<"all" | "todo" | "fails">("all");
   const [sheet, setSheet] = useState<null | "add" | "note" | "fan" | "panel" | "delete">(null);
-  const [note, setNote] = useState<{ key: string; isNew: boolean; text: string } | null>(null);
+  const [note, setNote] = useState<{ key: string; text: string } | null>(null);
   const [nameDraft, setNameDraft] = useState("");
   const tilesRef = useRef<HTMLDivElement>(null);
-  const advance = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     let cancelled = false;
@@ -65,7 +64,6 @@ export default function FfcpTestPage() {
     });
     return () => {
       cancelled = true;
-      window.clearTimeout(advance.current);
     };
   }, [siteId, testId]);
 
@@ -83,10 +81,6 @@ export default function FfcpTestPage() {
 
   const back = () => navigate(`/site/${siteId}/findings`);
   useBackHandler(() => {
-    if (sheet === "note") {
-      cancelNote();
-      return true;
-    }
     if (sheet) {
       setSheet(null);
       return true;
@@ -138,46 +132,19 @@ export default function FfcpTestPage() {
     return next;
   }
 
-  // once the picked tile is complete, the next open one comes up
-  function moveOnIfDone(next: FfcpTest) {
-    const id = cur;
-    const it = next.fans.find((f) => f.id === id);
-    if (!it || open(fanStats(it, mode))) return;
-    window.clearTimeout(advance.current);
-    advance.current = window.setTimeout(() => {
-      setCur((c) => {
-        if (c !== id) return c;
-        const ids = next.fans.map((f) => ({ id: f.id, s: fanStats(f, mode) }));
-        const i = ids.findIndex((x) => x.id === id);
-        return [...ids.slice(i + 1), ...ids.slice(0, i)].find((x) => open(x.s))?.id ?? c;
-      });
-    }, 500);
-  }
-
+  // a tap ticks or crosses (tapped again: cleared); nothing moves on by
+  // itself, and a cross's reason is added from the box under it, any time
   function tap(key: string, mark: FfcpMark) {
     if (!item) return;
-    if (item.marks[key] === mark) {
-      write(key, null);
-      return;
-    }
-    const next = write(key, mark);
-    if (mark === "n") {
-      setNote({ key, isNew: true, text: "" });
-      setSheet("note");
-      return;
-    }
-    if (next) moveOnIfDone(next);
+    write(key, item.marks[key] === mark ? null : mark);
   }
 
-  function saveNote(later = false) {
+  function saveNote() {
     if (!note) return;
-    const next = write(note.key, "n", later ? undefined : note.text);
-    setSheet(null);
-    setNote(null);
-    if (next) moveOnIfDone(next);
+    write(note.key, "n", note.text);
+    closeNote();
   }
-  function cancelNote() {
-    if (note?.isNew) write(note.key, null);
+  function closeNote() {
     setSheet(null);
     setNote(null);
   }
@@ -200,9 +167,7 @@ export default function FfcpTestPage() {
     const i = item?.keys.indexOf(key) ?? -1;
     return i >= 0 ? item!.labels[i] : "";
   };
-  const reasons = note && /\.(on|off)$/.test(note.key) ? REASONS.control : REASONS.indication;
-  const nx = nextOpen(cur);
-  const firstOpen = item?.keys.find((key) => !item.marks[key]);
+    const nx = nextOpen(cur);
 
   const check = (key: string, text: string) => {
     const m = item!.marks[key];
@@ -211,7 +176,7 @@ export default function FfcpTestPage() {
       <div key={key} style={{ display: "contents" }}>
         <div className="ff-ck">
           <span>{text}</span>
-          <button className={`ff-chip y${m === "y" ? " on" : ""}${key === firstOpen ? " cur" : ""}`} aria-label={`${text} pass`} aria-pressed={m === "y"} onClick={() => tap(key, "y")}>
+          <button className={`ff-chip y${m === "y" ? " on" : ""}`} aria-label={`${text} pass`} aria-pressed={m === "y"} onClick={() => tap(key, "y")}>
             <Tick />
           </button>
           <button className={`ff-chip n${m === "n" ? " on" : ""}`} aria-label={`${text} fail`} aria-pressed={m === "n"} onClick={() => tap(key, "n")}>
@@ -222,7 +187,7 @@ export default function FfcpTestPage() {
           <button
             className={`ff-why${why ? "" : " add"}`}
             onClick={() => {
-              setNote({ key, isNew: false, text: why ?? "" });
+              setNote({ key, text: why ?? "" });
               setSheet("note");
             }}
           >
@@ -358,38 +323,28 @@ export default function FfcpTestPage() {
       {sheet === "add" && <AddFans onAdd={addFans} onClose={() => setSheet(null)} />}
 
       {sheet === "note" && note && (
-        <Sheet onClose={cancelNote}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 16, fontWeight: 800 }}>
-            <span style={{ color: FAIL, display: "flex" }}>
-              <Cross size={18} />
-            </span>
+        <Sheet onClose={closeNote}>
+          <div style={{ fontSize: 16, fontWeight: 800 }}>
             {item?.name} · {label(note.key)}
           </div>
           <div className="ff-chips">
-            {reasons.map((r) => (
+            {FAIL_REASONS.map((r) => (
               <button key={r} className={note.text === r ? "on" : ""} onClick={() => setNote({ ...note, text: r })}>
                 {r}
               </button>
             ))}
           </div>
-          <textarea className="ff-text" rows={3} value={note.text} placeholder="Why it failed" onChange={(e) => setNote({ ...note, text: e.target.value })} style={{ borderColor: "rgba(255,122,106,.6)" }} />
+          <textarea className="ff-text" rows={3} value={note.text} placeholder="Other reason" onChange={(e) => setNote({ ...note, text: e.target.value })} style={{ borderColor: "var(--accent)" }} />
           <button
             disabled={!note.text.trim()}
-            onClick={() => saveNote()}
+            onClick={saveNote}
             style={{ width: "100%", padding: "15px 0", borderRadius: 14, border: "none", background: "var(--accent)", color: "var(--accent-text)", fontSize: 15.5, fontWeight: 800, opacity: note.text.trim() ? 1 : 0.4 }}
           >
             Save
           </button>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={cancelNote} style={ghost}>
-              {note.isNew ? "Undo ✗" : "Cancel"}
-            </button>
-            {note.isNew && (
-              <button onClick={() => saveNote(true)} style={{ ...ghost, color: "#ff9a8c", borderColor: "rgba(255,122,106,.5)" }}>
-                Note later
-              </button>
-            )}
-          </div>
+          <button onClick={closeNote} style={ghost}>
+            Cancel
+          </button>
         </Sheet>
       )}
 

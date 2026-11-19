@@ -9,8 +9,9 @@ import ConfirmDialog from "../components/ConfirmDialog";
 import SwipeRow from "../components/SwipeRow";
 import { SITES_CHANGED, useTourScene } from "../lib/tour";
 import { useEdgeBump } from "../lib/edgeBump";
-import logo from "../assets/logo.png";
-import { useFlowMode } from "../lib/settings";
+import { useBackHandler } from "../lib/backButton";
+import art from "virtual:edition-art";
+import { IS_CONTRACTOR } from "../lib/edition";
 import { CompanyLogo } from "../components/CompanySetup";
 import SiteKindIcon, { KIND_COLOUR, KindTag, ReportsIcon } from "../components/SiteKindIcon";
 
@@ -22,7 +23,7 @@ interface SiteRow extends Site {
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const contractor = useFlowMode() === "contractor";
+  const contractor = IS_CONTRACTOR;
   const [sites, setSites] = useState<SiteRow[]>([]);
   const [query, setQuery] = useState("");
   // the chips picked under the search; none picked shows every kind
@@ -37,6 +38,16 @@ export default function Dashboard() {
     setStepBack(false);
     setAdding(true);
   }
+  // Android back: a step back in New job (details → the kinds → closed),
+  // never out of the app while it's open
+  useBackHandler(() => {
+    if (!adding) return false;
+    if (step === "details") {
+      setStepBack(true);
+      setStep("pick");
+    } else setAdding(false);
+    return true;
+  });
   // the tour opens the New job sheet to show the kinds of site
   useTourScene("new-site", openNewJob, () => setAdding(false));
   const [name, setName] = useState("");
@@ -147,7 +158,7 @@ export default function Dashboard() {
       {/* top bar */}
       <div style={{ flexShrink: 0, padding: "20px 20px 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          {contractor ? <CompanyLogo height={34} maxWidth={110} /> : <img src={logo} alt="Inspecta by EnFact" style={{ width: 34, height: 34, borderRadius: 9, display: "block" }} />}
+          {contractor ? <CompanyLogo height={34} maxWidth={110} /> : <img src={art.homeLogo ?? undefined} alt="Inspecta by EnFact" style={{ width: 34, height: 34, borderRadius: 9, display: "block" }} />}
           {/* "Inspecta" sized so its letters (top of the I to the bottom of
               the p: 0.96em in the bundled Manrope) are as tall as the 34 px
               icon. Positioned so the main body of the word (the capital-
@@ -359,7 +370,7 @@ export default function Dashboard() {
                   </span>
                   <span style={{ flexGrow: 1, display: "flex", flexDirection: "column", gap: 2 }}>
                     <span style={{ fontSize: 17, fontWeight: 800 }}>Reports</span>
-                    <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--muted)" }}>AFSS · Projects</span>
+                    <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--muted)" }}>AFSS · Project</span>
                   </span>
                   <IconChevronRight size={20} color="var(--accent)" strokeWidth={2.4} />
                 </button>
@@ -403,7 +414,7 @@ export default function Dashboard() {
                     {(["afss", "project"] as const).map((k) => (
                       <button key={k} type="button" role="radio" aria-checked={kind === k} onClick={() => setKind(k)} style={reportTypeStyle(kind === k, k)}>
                         <SiteKindIcon kind={k} size={26} color="currentColor" />
-                        {k === "afss" ? "AFSS" : "Projects"}
+                        {k === "afss" ? "AFSS" : "Project"}
                       </button>
                     ))}
                   </div>
@@ -579,6 +590,7 @@ function SiteButton({
   onClose: () => void;
   onDelete: () => void;
 }) {
+  const isTest = site.kind === "flow" || site.kind === "spf" || site.kind === "ffcp";
   // swipe-to-delete: the shared row, the same everywhere (asked first)
   return (
     <SwipeRow index={index} label={`Delete ${site.name}`} swipeOpen={isOpen} onSwipeOpen={onOpen} onSwipeClose={onClose} onOpen={onClick} onDelete={onDelete} rowStyle={{ padding: 14, color: "inherit" }} chevron={false}>
@@ -588,7 +600,9 @@ function SiteButton({
             width: 46,
             height: 46,
             borderRadius: 10,
-            background: "var(--panel-2)",
+            // test sites (flow, stair, FFCP) have no cover photo: a tint of
+            // their kind's colour behind their icon
+            background: isTest && !thumb ? `${KIND_COLOUR[site.kind]}1a` : "var(--panel-2)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -596,9 +610,11 @@ function SiteButton({
           }}
         >
           {/* the site's first finding photo, or the building icon until
-              it has one */}
+              it has one; test sites show their kind's icon */}
           {thumb ? (
             <img src={thumb} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+          ) : isTest ? (
+            <SiteKindIcon kind={site.kind} size={24} />
           ) : (
             <IconBuilding strokeWidth={1.8} />
           )}

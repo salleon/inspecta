@@ -145,6 +145,8 @@ export default function Note() {
   // then, and nothing unchanged is written again
   const loadedFor = useRef<string | null>(null);
   const savedFields = useRef<FindingFields | null>(null);
+  // a stair test photo's stair and run, carried on by Save & next like the level
+  const stairRun = useRef<{ stairId?: string; run?: number }>({});
 
   async function refresh(selectIndex?: number) {
     if (!findingId) return;
@@ -152,6 +154,7 @@ export default function Note() {
     if (f) {
       savedFields.current = { note: f.note ?? "", rectification: f.rectification ?? "", location: f.location ?? "", defectType: f.defectType, level: f.level, esrCategory: f.esrCategory };
       loadedFor.current = findingId;
+      stairRun.current = { ...(f.stairId ? { stairId: f.stairId } : {}), ...(f.run !== undefined ? { run: f.run } : {}) };
     }
     setNote(f?.note ?? "");
     setRectification(f?.rectification ?? "");
@@ -362,7 +365,7 @@ export default function Note() {
     try {
       await persist(true);
       const carry = level || undefined;
-      const finding = await createFinding(siteId, { ...(carry ? { level: carry } : {}), ...ofTest });
+      const finding = await createFinding(siteId, { ...(carry ? { level: carry } : {}), ...ofTest, ...(testId ? stairRun.current : {}) });
       navigate(nextUrl(finding.id), { state: { carriedLevel: carry, noteOnly: true } });
     } finally {
       startingNoteOnly.current = false;
@@ -385,7 +388,7 @@ export default function Note() {
         navigate(leaveTo);
         return;
       }
-      const finding = await createFinding(siteId, { ...(carry ? { level: carry } : {}), ...ofTest });
+      const finding = await createFinding(siteId, { ...(carry ? { level: carry } : {}), ...ofTest, ...(testId ? stairRun.current : {}) });
       await addPhoto(finding.id, siteId, shot.blob, undefined, shot.marks);
       navigate(nextUrl(finding.id), carry ? { state: { carriedLevel: carry } } : undefined);
     } finally {

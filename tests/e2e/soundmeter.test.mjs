@@ -102,7 +102,7 @@ test("the report says which it was", async () => {
   await go(page, app, "/site/s1/spf/t1", 1200);
   await page.getByRole("button", { name: "Preview the report" }).click();
   const sheet = await page.getByTestId("spf-page").innerText();
-  assert.match(sheet, /Noise, stair \(average\)\s+58\.2 dB\(A\) ✓[\s\S]*max 67 dB\(A\)[\s\S]*calibrated meter/);
+  assert.match(sheet, /Noise, stair \(average\)\s+58\.2 dB\(A\) ✓[\s\S]*max 67 dB\(A\)[\s\S]*Calibrated meter/);
   // listening with the phone again replaces them, as indicative
   await go(page, app, "/site/s1/spf/t1/noise?stair=st1", 1200);
   await page.getByRole("button", { name: "Listen", exact: true }).click();
@@ -113,7 +113,7 @@ test("the report says which it was", async () => {
   assert.equal(await page.getByTestId("meter-source").innerText(), "Indicative");
   await go(page, app, "/site/s1/spf/t1", 1200);
   await page.getByRole("button", { name: "Preview the report" }).click();
-  assert.match(await page.getByTestId("spf-page").innerText(), /Noise, stair \(average\)\s+[\d.]+ dB\(A\) [✓✗][\s\S]*max [\d.]+ dB\(A\)[\s\S]*indicative \(phone\)/);
+  assert.match(await page.getByTestId("spf-page").innerText(), /Noise, stair \(average\)\s+[\d.]+ dB\(A\) [✓✗][\s\S]*max [\d.]+ dB\(A\)[\s\S]*Phone \(indicative\)/);
 });
 
 test("occupied space works the same: an average and max, typed or from the phone", async () => {
@@ -130,7 +130,7 @@ test("occupied space works the same: an average and max, typed or from the phone
   assert.deepEqual([once.noiseOcc, once.noiseOccMax, once.noiseOccSource], ["52", "60", "meter"]);
   await go(page, app, "/site/s1/spf/t1", 1200);
   await page.getByRole("button", { name: "Preview the report" }).click();
-  assert.match(await page.getByTestId("spf-page").first().innerText(), /Noise, occupied space \(average\)\s+52 dB\(A\) ✓\s*max 60 dB\(A\)\s*calibrated meter/);
+  assert.match(await page.getByTestId("spf-page").first().innerText(), /Noise, occupied space \(average\)\s+52 dB\(A\) ✓\s*max 60 dB\(A\)\s*Calibrated meter/);
 });
 
 test("no page errors", () => {

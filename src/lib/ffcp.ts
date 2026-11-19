@@ -2,7 +2,7 @@ import type { FfcpFan, FfcpMarks, FfcpNotes, FfcpTest } from "../db/types";
 
 // Fire fan control panel testing (design canvas FFCP mock-up, v5): every
 // fan's indication and manual control, checked in normal mode and again in
-// fire mode. A fail asks why; the note can wait.
+// fire mode. A fail's reason is added from the box under it, any time.
 
 export type FfcpMode = "normal" | "fire";
 
@@ -21,11 +21,8 @@ export const FAN_CHECKS = [...INDICATION, ...CONTROL];
 // the shortcuts on Add fans
 export const FAN_TYPES = ["SPF", "SAF", "SEF", "ZPF", "CPEF", "KEF"];
 
-// quick reasons on a fail's note
-export const REASONS = {
-  indication: ["No light fitted", "Light not working", "Wrong light on"],
-  control: ["Fan didn't start", "Fan didn't stop", "Switch not working"],
-};
+// quick reasons on a fail's note (or type another)
+export const FAIL_REASONS = ["Indicator/operation mismatch", "Incorrect indication"];
 
 // "SPF-" 1 to 4 → SPF-01 … SPF-04 (at least two digits, more if the last needs it)
 export function seriesNames(prefix: string, from: number, to: number): string[] {

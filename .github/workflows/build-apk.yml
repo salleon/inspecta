@@ -5,16 +5,21 @@ on:
     branches: [main, master]
   workflow_dispatch:
     inputs:
+      app:
+        description: "Which app (pushes to main build EnFact)"
+        type: choice
+        options: [EnFact, Contractor, Both]
+        default: EnFact
       skip_tests:
         description: "Skip tests (build even if a test would fail)"
         type: boolean
         default: false
       publish_to_play:
-        description: "Publish to coworkers (Google Play internal testing)"
+        description: "Publish to Play: EnFact to coworkers, Contractor to its internal testing (both internal testing)"
         type: boolean
         default: false
       publish_test_to_play:
-        description: "Publish Inspecta Test to my phone (its own Play app, only you test it; always on for the test branch)"
+        description: "Publish EnFact Test to my phone (its own Play app, only you test it; always on for the test branch)"
         type: boolean
         default: false
       release_notes:
@@ -25,6 +30,10 @@ on:
         description: "One-off: Play's encryption key, to export the signing key for Play (leave empty)"
         type: string
         default: ""
+      make_contractor_key:
+        description: "One-off: make the Contractor app's upload key (then add it as secrets; see README)"
+        type: boolean
+        default: false
 
 jobs:
   # the whole test suite first; the APK is only built if it passes —
@@ -48,14 +57,17 @@ jobs:
           node-version: 22
           cache: npm
 
+      # which app(s): EnFact unless Run workflow says otherwise
+      - name: Which apps
+        id: apps
+        env:
+          APP: ${{ inputs.app || 'EnFact' }}
+        run: |
+          [ "$APP" = Contractor ] && echo "enfact=false" >> "$GITHUB_OUTPUT" || echo "enfact=true" >> "$GITHUB_OUTPUT"
+          [ "$APP" = EnFact ] && echo "contractor=false" >> "$GITHUB_OUTPUT" || echo "contractor=true" >> "$GITHUB_OUTPUT"
+
       - name: Install dependencies
         run: npm ci
-
-      - name: Build web app
-        run: npm run build
-
-      - name: Sync Capacitor Android project
-        run: npx cap sync android
 
       - name: Set up JDK
         uses: actions/setup-java@v4
@@ -73,7 +85,7 @@ jobs:
         working-directory: android/app
         run: echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > release.jks
 
-      # Inspecta Test's own upload key (see build.gradle); skipped until the
+      # the test apps' own upload key (see build.gradle); skipped until the
       # TEST_KEYSTORE_BASE64 secret is set
       - name: Decode test upload keystore
         working-directory: android/app
@@ -84,55 +96,110 @@ jobs:
           echo "$TEST_KEYSTORE_BASE64" | base64 -d > test-upload.p12
           echo "TEST_KEYSTORE_PATH=test-upload.p12" >> "$GITHUB_ENV"
 
-      - name: Build signed release and test APKs
-        working-directory: android
+      # the Contractor app's own upload key (see build.gradle); without the
+      # CONTRACTOR_KEYSTORE_BASE64 secret its release is left unsigned
+      - name: Decode Contractor upload keystore
+        if: ${{ steps.apps.outputs.contractor == 'true' }}
+        working-directory: android/app
         env:
-          # build.gradle lives in android/app, so Gradle's file() resolves
-          # this relative to that module dir — not this step's
-          # working-directory — hence just "release.jks", matching where
-          # the previous step decoded it (android/app/release.jks).
+          CONTRACTOR_KEYSTORE_BASE64: ${{ secrets.CONTRACTOR_KEYSTORE_BASE64 }}
+        run: |
+          [ -n "$CONTRACTOR_KEYSTORE_BASE64" ] || { echo "::warning title=Contractor app not signed::No CONTRACTOR_KEYSTORE_BASE64 secret, so its release APK and bundle are unsigned (fine to look at, not for Play)"; exit 0; }
+          echo "$CONTRACTOR_KEYSTORE_BASE64" | base64 -d > contractor-upload.p12
+          echo "CONTRACTOR_KEYSTORE_PATH=contractor-upload.p12" >> "$GITHUB_ENV"
+
+      # Each app is its own web build copied into the Android project, then
+      # its Gradle flavor (android/app/build.gradle). Signing reads these:
+      # build.gradle lives in android/app, so Gradle's file() resolves the
+      # keystore paths relative to that module dir (where they were decoded).
+      # Every CI run gets a unique, ever-increasing run number, so using it
+      # as versionCode lets each build install as an update over the last.
+      - name: Build Inspecta - EnFact (release and test APKs, Play bundles)
+        if: ${{ steps.apps.outputs.enfact == 'true' }}
+        env:
           RELEASE_KEYSTORE_PATH: release.jks
           RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
           TEST_KEYSTORE_PASSWORD: ${{ secrets.TEST_KEYSTORE_PASSWORD }}
-          # Every CI run gets a unique, ever-increasing run number, so using
-          # it as versionCode guarantees each release build can install as
-          # an update over the previous one with no manual bump needed.
           CI_VERSION_CODE: ${{ github.run_number }}
         run: |
+          npm run build:enfact
+          npx cap sync android
+          cd android
           chmod +x gradlew
-          ./gradlew assembleRelease assembleStaging bundleRelease bundleStaging --no-daemon
+          ./gradlew assembleEnfactRelease assembleEnfactStaging bundleEnfactRelease bundleEnfactStaging --no-daemon
 
-      - name: Upload APK
+      - name: Build Inspecta - Site Inspections (release and test APKs, Play bundle)
+        if: ${{ steps.apps.outputs.contractor == 'true' }}
+        env:
+          RELEASE_KEYSTORE_PATH: release.jks
+          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+          TEST_KEYSTORE_PASSWORD: ${{ secrets.TEST_KEYSTORE_PASSWORD }}
+          CONTRACTOR_KEYSTORE_PASSWORD: ${{ secrets.CONTRACTOR_KEYSTORE_PASSWORD }}
+          CI_VERSION_CODE: ${{ github.run_number }}
+        run: |
+          npm run build:contractor
+          npx cap sync android
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleContractorRelease assembleContractorStaging bundleContractorRelease --no-daemon
+
+      # EnFact: the app coworkers install, and "EnFact Test" (installs beside
+      # it with its own data, orange icon), each also as the bundle Play takes
+      - name: Upload EnFact APK
+        if: ${{ steps.apps.outputs.enfact == 'true' }}
         uses: actions/upload-artifact@v4
         with:
-          name: inspecta-release-apk
-          path: android/app/build/outputs/apk/release/app-release.apk
+          name: enfact-apk
+          path: android/app/build/outputs/apk/enfact/release/*.apk
 
-      # "Inspecta Test": installs beside the real app with its own data
-      # (see the staging build type in android/app/build.gradle)
-      - name: Upload test APK
+      - name: Upload EnFact Test APK
+        if: ${{ steps.apps.outputs.enfact == 'true' }}
         uses: actions/upload-artifact@v4
         with:
-          name: inspecta-test-apk
-          path: android/app/build/outputs/apk/staging/app-staging.apk
+          name: enfact-test-apk
+          path: android/app/build/outputs/apk/enfact/staging/*.apk
 
-      # the same release build as an app bundle, the format Google Play
-      # takes (the very first one is uploaded by hand in the Play Console)
-      - name: Upload Play bundle
+      - name: Upload EnFact Play bundle
+        if: ${{ steps.apps.outputs.enfact == 'true' }}
         uses: actions/upload-artifact@v4
         with:
-          name: inspecta-play-bundle
-          path: android/app/build/outputs/bundle/release/app-release.aab
+          name: enfact-play-bundle
+          path: android/app/build/outputs/bundle/enfactRelease/*.aab
 
-      # the test app as a bundle, for its own Play app "Inspecta Test"
-      # (again, its very first one is uploaded by hand in the Play Console)
-      - name: Upload test Play bundle
+      - name: Upload EnFact Test Play bundle
+        if: ${{ steps.apps.outputs.enfact == 'true' }}
         uses: actions/upload-artifact@v4
         with:
-          name: inspecta-test-play-bundle
-          path: android/app/build/outputs/bundle/staging/app-staging.aab
+          name: enfact-test-play-bundle
+          path: android/app/build/outputs/bundle/enfactStaging/*.aab
+
+      # Contractor: Inspecta (Site Inspections) and "Inspecta Test" (to
+      # install beside it, not on Play), and the bundle for its own Play app
+      # (the very first one is uploaded by hand in the Play Console)
+      - name: Upload Contractor APK
+        if: ${{ steps.apps.outputs.contractor == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: contractor-apk
+          path: android/app/build/outputs/apk/contractor/release/*.apk
+
+      - name: Upload Contractor Test APK
+        if: ${{ steps.apps.outputs.contractor == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: contractor-test-apk
+          path: android/app/build/outputs/apk/contractor/staging/*.apk
+
+      - name: Upload Contractor Play bundle
+        if: ${{ steps.apps.outputs.contractor == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: contractor-play-bundle
+          path: android/app/build/outputs/bundle/contractorRelease/*.aab
 
       # "Publish to coworkers" ticked: straight to the internal testing
       # track, and Play updates everyone's phone. versionCode is this
@@ -145,27 +212,48 @@ jobs:
           mkdir -p whatsnew
           printf '%s' "$NOTES" | head -c 500 > whatsnew/whatsnew-en-AU
 
-      - name: Publish to Google Play (internal testing)
-        if: ${{ inputs.publish_to_play }}
+      - name: Publish EnFact to Google Play (internal testing)
+        if: ${{ inputs.publish_to_play && steps.apps.outputs.enfact == 'true' }}
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: au.com.inspecta.app
-          releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
+          releaseFiles: android/app/build/outputs/bundle/enfactRelease/app-enfact-release.aab
           track: internal
           status: completed
           whatsNewDirectory: ${{ inputs.release_notes != '' && 'whatsnew' || '' }}
 
-      # "Publish Inspecta Test to my phone" ticked, or any build of the test
+      # "Publish EnFact Test to my phone" ticked, or any build of the test
       # branch: the test app's internal testing track, where only you are a
       # tester. Coworkers never get it.
-      - name: Publish Inspecta Test to Google Play (internal testing)
-        if: ${{ inputs.publish_test_to_play || github.ref_name == 'test' }}
+      - name: Publish EnFact Test to Google Play (internal testing)
+        if: ${{ (inputs.publish_test_to_play || github.ref_name == 'test') && steps.apps.outputs.enfact == 'true' }}
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: au.com.inspecta.app.test
-          releaseFiles: android/app/build/outputs/bundle/staging/app-staging.aab
+          releaseFiles: android/app/build/outputs/bundle/enfactStaging/app-enfact-staging.aab
+          track: internal
+          status: completed
+          whatsNewDirectory: ${{ inputs.release_notes != '' && 'whatsnew' || '' }}
+
+      # Contractor, "Publish to Play" ticked: its own Play app's internal
+      # testing track for now (production comes with the store listing,
+      # step 6 of claude-project/SPLIT_PLAN.md). Needs its upload key.
+      - name: Publish Inspecta - Site Inspections to Google Play (internal testing)
+        if: ${{ inputs.publish_to_play && steps.apps.outputs.contractor == 'true' }}
+        env:
+          SIGNED: ${{ env.CONTRACTOR_KEYSTORE_PATH }}
+        run: |
+          [ -n "$SIGNED" ] || { echo "::error title=Contractor app not signed::Add the CONTRACTOR_KEYSTORE_BASE64 and CONTRACTOR_KEYSTORE_PASSWORD secrets first (README: Two Android apps)"; exit 1; }
+
+      - name: Upload Inspecta - Site Inspections to Google Play
+        if: ${{ inputs.publish_to_play && steps.apps.outputs.contractor == 'true' }}
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: au.com.inspecta.site
+          releaseFiles: android/app/build/outputs/bundle/contractorRelease/app-contractor-release.aab
           track: internal
           status: completed
           whatsNewDirectory: ${{ inputs.release_notes != '' && 'whatsnew' || '' }}
@@ -218,4 +306,41 @@ jobs:
         with:
           name: inspecta-signing-key-for-play
           path: inspecta-signing-key-for-play.zip
+          retention-days: 1
+
+  # One-off: makes the Contractor app's upload key (a PKCS12 keystore,
+  # alias inspecta-site, with a random password) and hands it over as a
+  # short-lived artifact. Add its two files as the CONTRACTOR_KEYSTORE_BASE64
+  # and CONTRACTOR_KEYSTORE_PASSWORD secrets, keep a copy somewhere safe,
+  # then delete the artifact. Run it once: a new key means a new upload key
+  # to register with Play.
+  make_contractor_key:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.make_contractor_key }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Make the key
+        run: |
+          set -eu
+          mkdir key && cd key
+          PASS=$(openssl rand -base64 32 | tr -dc 'A-Za-z0-9' | head -c 32)
+          keytool -genkeypair -storetype PKCS12 -keystore contractor-upload.p12 -alias inspecta-site \
+            -keyalg RSA -keysize 4096 -validity 10000 -storepass "$PASS" -keypass "$PASS" \
+            -dname "CN=Inspecta - Site Inspections, C=AU"
+          base64 -w0 contractor-upload.p12 > CONTRACTOR_KEYSTORE_BASE64.txt
+          printf '%s' "$PASS" > CONTRACTOR_KEYSTORE_PASSWORD.txt
+          printf '%s\n' "Add each .txt file's contents as a GitHub Actions secret of the same name" \
+            "(Settings > Secrets and variables > Actions). Keep contractor-upload.p12 and the" \
+            "password somewhere safe, then delete this artifact." > README.txt
+
+      - name: Upload the key
+        uses: actions/upload-artifact@v4
+        with:
+          name: contractor-upload-key
+          path: key/
           retention-days: 1

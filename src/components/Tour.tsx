@@ -50,7 +50,7 @@ const STEPS: Step[] = [
     title: "Pick the kind of site",
     body: (
       <>
-        {b("Reports")}, then {b("AFSS")}: the annual fire safety inspection, findings under ESR categories, the ESR report and register. Or {b("Projects")}: fit-outs and construction, in the project report layout.
+        {b("Reports")}, then {b("AFSS")}: the annual fire safety inspection, findings under ESR categories, the ESR report and register. Or {b("Project")}: fit-outs and construction, in the project report layout.
         <br />
         {b("Tests")}: {b("Flow testing")} or {b("Stair pressurisation")} on their own, no findings.
       </>

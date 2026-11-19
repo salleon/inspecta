@@ -1,19 +1,20 @@
-// Shared set-up for the browser tests: serves the built app (dist/, from
-// `npm run build`) with `vite preview`, opens it in headless Chromium as a
-// phone-sized screen, and seeds the database directly.
+// Shared set-up for the browser tests: serves one of the two built apps
+// (dist-enfact/ or dist-contractor/, from `npm run build:test`) with
+// `vite preview`, opens it in headless Chromium as a phone-sized screen,
+// and seeds the database directly.
 
 import { spawn } from "node:child_process";
-import { createHash } from "node:crypto";
+import { createServer } from "node:net";
 import { chromium } from "playwright";
 
-// a different port per test file, since node --test runs files in parallel
-// (checked: no two of today's file names share one)
 // args: extra Chromium switches (e.g. a fake camera)
-export async function startApp(testFile, { args = [] } = {}) {
-  // from the file's name alone, so it's the same on every machine (the
-  // full path differed, and two files could clash on one port)
-  const port = 4300 + (parseInt(createHash("md5").update(testFile.split("/").pop()).digest("hex").slice(0, 4), 16) % 600);
-  const server = spawn("npx", ["vite", "preview", "--port", String(port), "--strictPort"], { stdio: "ignore", detached: true });
+// edition: which app, "enfact" (Inspecta - EnFact) or "contractor"
+// (Inspecta - Site Inspections); a file testing both starts one of each
+export async function startApp(_testFile, { args = [], edition = "enfact" } = {}) {
+  // a free port from the system, since node --test runs files in parallel
+  // (ports made from file names clashed)
+  const port = await freePort();
+  const server = spawn("npx", ["vite", "preview", "--outDir", `dist-${edition}`, "--port", String(port), "--strictPort"], { stdio: "ignore", detached: true });
   const url = `http://localhost:${port}`;
   for (let i = 0; i < 60; i++) {
     try {
@@ -36,6 +37,17 @@ export async function startApp(testFile, { args = [] } = {}) {
       }
     },
   };
+}
+
+function freePort() {
+  return new Promise((resolve, reject) => {
+    const probe = createServer();
+    probe.on("error", reject);
+    probe.listen(0, () => {
+      const { port } = probe.address();
+      probe.close(() => resolve(port));
+    });
+  });
 }
 
 // A new phone-sized page with an inspector name set (skips onboarding) and

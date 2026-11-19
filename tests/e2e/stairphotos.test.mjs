@@ -100,17 +100,17 @@ test("a reading screen: the camera takes the level being read; back on the same 
   assert.match(sheet, /No level\s*Fan room locked[\s\S]*Level 2\s*Door closer arm loose/);
 });
 
-test("kept out of the site's findings; their own page in the report", async () => {
+test("kept out of the site's findings; the photo appendix in the report", async () => {
   await go(page, app, "/site/p1/findings", 1500);
   assert.equal(await page.getByText("Door closer arm loose").count(), 0, "not in the site's findings list");
   await go(page, app, "/site/p1-spf/spf/t1/report", 2500);
   const photosPage = page.getByTestId("spf-photos-page");
   await photosPage.waitFor({ state: "attached" });
   const text = await photosPage.innerText();
-  assert.match(text, /Photos & notes/);
-  // as the findings report lays one out: the note, then the level
-  assert.match(text, /Fan room locked, key from FM/);
-  assert.match(text, /Door closer arm loose\s*Level 2/);
+  assert.match(text, /Photo appendix/);
+  // each photo labelled: its level, location and note
+  assert.match(text, /Note\s*Fan room locked, key from FM/);
+  assert.match(text, /Level\s*Level 2[\s\S]*Note\s*Door closer arm loose/);
   assert.match(text, /No photo/, "the note has no photo");
   assert.equal(await photosPage.locator("img[src^='blob:']").count(), 1, "the photo");
 });

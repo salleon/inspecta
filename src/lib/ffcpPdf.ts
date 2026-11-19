@@ -15,11 +15,13 @@ const GROUP = "#16486b";
 
 
 
-export function appendFfcpPages(doc: JsPDF, tests: FfcpTest[], site: Pick<Site, "name" | "address">, first: boolean, logo: Logo) {
+// onTest: each test's first page, for a report's list of what's in it
+export function appendFfcpPages(doc: JsPDF, tests: FfcpTest[], site: Pick<Site, "name" | "address">, first: boolean, logo: Logo, onTest?: (test: FfcpTest, page: number) => void) {
   let fresh = first;
   for (const test of tests) {
     if (!fresh) doc.addPage();
     fresh = false;
+    onTest?.(test, doc.getNumberOfPages());
     drawTest(doc, test, site, logo);
   }
 }

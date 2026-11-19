@@ -11,14 +11,15 @@ import { lastNativeError } from "../lib/nativeCamera";
 import { startTour } from "../lib/tour";
 import { useBackHandler } from "../lib/backButton";
 import { IS_TEST_BUILD } from "../lib/buildInfo";
-import { useFlowMode } from "../lib/settings";
-import buildLabel from "../../BUILD_LABEL?raw";
+import { IS_CONTRACTOR } from "../lib/edition";
 
 // Settings (canvas SettingsTidy): its own page, the gear on the home page
 // opens it. Grouped: You, Backup, Help & updates, Admin. (Contractor mode's
 // company name, logo and colours are in Admin, behind the PIN.)
 
-const version = `Build ${buildLabel.trim()}${IS_TEST_BUILD ? " · Test version" : ""}`;
+// this app's build label (BUILD_LABEL_ENFACT / BUILD_LABEL_CONTRACTOR, vite.config)
+declare const __BUILD_LABEL__: string;
+const version = `Build ${__BUILD_LABEL__}${IS_TEST_BUILD ? " · Test version" : ""}`;
 
 function Item({ icon, title, hint, right, onClick, switchOn, tour }: { icon: ReactNode; title: string; hint: string; right?: ReactNode; onClick: () => void; switchOn?: boolean; tour?: string }) {
   return (
@@ -38,7 +39,7 @@ export default function Settings() {
   const [name, setName] = useState(() => getInspectorName());
   const [draft, setDraft] = useState<string | null>(null);
   // the company's name, logo and colours are in Admin (behind the PIN)
-  const contractor = useFlowMode() === "contractor";
+  const contractor = IS_CONTRACTOR;
 
   useBackHandler(() => {
     if (draft === null) return false;

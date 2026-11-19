@@ -41,26 +41,15 @@ test("Settings → Admin needs the PIN (2021)", async () => {
   assert.equal(await page.locator("text=Wrong PIN").count(), 1);
   await enterPin("2021");
   assert.equal(await page.locator('button:has-text("Keywords")').count(), 1);
-  assert.equal(await page.locator('[role="radiogroup"][aria-label="Mode"]').count(), 1);
+  assert.equal(await page.locator('[role="radiogroup"][aria-label="Mode"]').count(), 0, "which app it is is fixed when built");
 });
 
-test("no Advanced controls switch any more (always on); Admin's switch is Mode", async () => {
+test("no Advanced controls switch any more (always on)", async () => {
   assert.equal(await page.getByText("Advanced controls", { exact: true }).count(), 0);
   await go(page, app, "/");
   await page.click('button[aria-label="Settings"]');
   assert.equal(await page.getByText("Advanced controls", { exact: true }).count(), 0);
   await openAdmin("/admin", "Keywords");
-});
-
-test("Mode: EnFact on a phone already in use, switched to Contractor in Admin", async () => {
-  const mode = (name) => page.getAttribute(`[role="radiogroup"][aria-label="Mode"] [role="radio"]:has-text("${name}")`, "aria-checked");
-  assert.equal(await mode("EnFact"), "true");
-  assert.equal(await mode("Contractor"), "false");
-  await page.click('[role="radio"]:has-text("Contractor")');
-  assert.equal(await mode("Contractor"), "true");
-  assert.equal(await page.evaluate(() => localStorage.getItem("inspecta.flowMode")), "contractor");
-  await page.click('[role="radio"]:has-text("EnFact")');
-  assert.equal(await page.evaluate(() => localStorage.getItem("inspecta.flowMode")), "enfact");
 });
 
 test("add a keyword; it drives suggestions and survives a restart", async () => {

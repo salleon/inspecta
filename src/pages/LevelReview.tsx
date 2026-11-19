@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { SpfStair } from "../db/types";
 import SwipeRow from "../components/SwipeRow";
-import { isCustomLevel, joinLevel, LEVEL_TYPES, levelChip, levelName, levelType, splitLevel, stairLevels, suggestLevels, type LevelType } from "../lib/stairTest";
+import { isCustomLevel, joinLevel, LEVEL_TYPES, levelChip, levelEditLabel, levelEdits, levelEditsFitLabel, levelName, levelType, splitLevel, stairLevels, suggestLevels, type LevelEdit, type LevelEditsFit, type LevelType } from "../lib/stairTest";
 import { useBackHandler } from "../lib/backButton";
 import { PageHeader, StairName } from "../components/StairUi";
 import NumPad, { BLANK, numberKeys, PadTag } from "../components/NumPad";
@@ -16,7 +16,13 @@ import "./LevelReview.css";
 // pad), Remove it, or add one above or below it, or a custom name for an odd
 // layout. Changing a car park to a basement (or back) offers to change the
 // rest to match. Every change is kept on the stair as it's made; Looks right
-// ✓ finishes.
+// ✓ finishes. Once something's changed, a card offers the same changes on
+// the other stairs (design canvas "Copy level changes to other stairs",
+// revised row): Apply to all does it there and then, with Undo; Choose
+// stairs… lists them to tick, each with how many of the changes fit it.
+
+// another stair, and how the changes made here would fit it
+export type CopyTarget = { id: string; name: string; fit: LevelEditsFit };
 
 const numeric = (c: string) => /^\d+$/.test(c);
 
@@ -48,6 +54,8 @@ function parts(L: string[]): Part[] {
   return out;
 }
 
+// "SPF 2 and SPF 3", "SPF 2, SPF 3 and 2 more"
+const names3 = (a: string[]) => (a.length <= 3 ? a.join(", ").replace(/, ([^,]*)$/, " and $1") : `${a.slice(0, 2).join(", ")} and ${a.length - 2} more`);
 const list3 = (a: string[]) => (a.length <= 3 ? a.join(", ").replace(/, ([^,]*)$/, " and $1") : `${a[0]} to ${a[a.length - 1]}`);
 
 export default function LevelReview({
@@ -58,6 +66,9 @@ export default function LevelReview({
   onRename,
   onBack,
   onDone,
+  step,
+  doneLabel,
+  copy,
 }: {
   stair: SpfStair;
   n: number;
@@ -66,6 +77,10 @@ export default function LevelReview({
   onRename?: (names: Record<string, string>) => void; // old name to new: their readings go with them
   onBack: () => void;
   onDone: () => void;
+  step?: string; // "2 of 3", reviewing every stair in turn
+  doneLabel?: string;
+  // the same changes on other stairs: how they'd fit each, make them, take them back
+  copy?: { targets: (edits: LevelEdit[]) => CopyTarget[]; apply: (edits: LevelEdit[], ids: string[]) => void; undo: () => void };
 }) {
   const L = stairLevels(stair);
   const suggested = suggestLevels(stair);
@@ -79,9 +94,20 @@ export default function LevelReview({
   const [openSwipe, setOpenSwipe] = useState<number | null>(null);
   const [swap, setSwap] = useState<{ was: string; now: string; from: "P" | "B"; to: "P" | "B" } | null>(null);
   const list = useRef<HTMLDivElement>(null);
+  // the levels as the review opened, and the renames since: what's changed here
+  const [start] = useState(() => stairLevels(stair));
+  const renames = useRef<Record<string, string>[]>([]);
+  const rename = (names: Record<string, string>) => {
+    renames.current.push(names);
+    onRename?.(names);
+  };
+  // the card for these changes: put away (✕), or applied (with the stairs' names, for Undo)
+  const [card, setCard] = useState<{ sig: string; applied?: string[] } | null>(null);
+  const [picking, setPicking] = useState<Set<string> | null>(null);
 
   useBackHandler(() => {
-    if (removing !== null) setRemoving(null);
+    if (picking) setPicking(null);
+    else if (removing !== null) setRemoving(null);
     else if (swap) setSwap(null);
     else if (edit) setEdit(null);
     else if (named) setNamed(null);
@@ -91,6 +117,13 @@ export default function LevelReview({
   useEffect(() => {
     list.current?.querySelector(".lr-lv.sel")?.scrollIntoView({ block: "nearest" });
   }, [sel]);
+  // a group with a picked level stays open after, even once it's grown past
+  // the size that starts closed: nothing folds away under the finger
+  useEffect(() => {
+    if (sel === null) return;
+    const p = parts(L).find((x) => sel >= x.i && sel <= x.j);
+    if (p && open[p.key] === undefined) setOpen((o) => ({ ...o, [p.key]: true }));
+  }, [sel, L, open]);
 
   // kept only when it isn't the suggestion
   const put = (next: string[]) => onChange(next.join("\n") === suggested.join("\n") ? undefined : next);
@@ -119,7 +152,7 @@ export default function LevelReview({
       if (named.rename) next[sel] = code;
       else next.splice(at(), 0, code);
       put(next);
-      if (named.rename && code !== L[sel]) onRename?.({ [L[sel]]: code });
+      if (named.rename && code !== L[sel]) rename({ [L[sel]]: code });
       if (!named.rename) setSel(at());
     }
     setNamed(null);
@@ -133,7 +166,7 @@ export default function LevelReview({
         const next = [...L];
         next[edit.i] = code;
         put(next);
-        if (code !== edit.was) onRename?.({ [edit.was]: code });
+        if (code !== edit.was) rename({ [edit.was]: code });
         // a car park made a basement (or back): the rest can follow
         const was = isCustomLevel(edit.was) ? null : splitLevel(edit.was).type;
         const now = splitLevel(code).type;
@@ -152,7 +185,8 @@ export default function LevelReview({
 
   const rows = parts(L).flatMap((p) => {
     const count = p.j - p.i + 1;
-    const isOpen = open[p.key] ?? count <= OPEN_UP_TO;
+    // a small group starts open, and one stays open while a level in it is picked
+    const isOpen = open[p.key] ?? (count <= OPEN_UP_TO || (sel !== null && sel >= p.i && sel <= p.j));
     const head = (
       <button
         key={`g${p.key}`}
@@ -208,12 +242,25 @@ export default function LevelReview({
   });
 
   const c = sel === null ? "" : L[sel];
+  const edits = copy ? levelEdits(start, L, renames.current) : [];
+  const sig = JSON.stringify(edits);
+  const targets = edits.length && copy ? copy.targets(edits) : [];
+  const able = targets.filter((t) => t.fit.done > 0);
+  const applied = card?.sig === sig ? card.applied : undefined;
+  // shown once something's changed that another stair can take, until put away
+  const showCard = !!copy && sel === null && (applied ? true : able.length > 0 && card?.sig !== sig);
+  const applyTo = (ids: string[]) => {
+    copy?.apply(edits, ids);
+    setCard({ sig, applied: targets.filter((t) => ids.includes(t.id)).map((t) => t.name) });
+    setPicking(null);
+  };
   const et = edit ? levelType(edit.type) : null;
   const ecode = edit && et ? (et.numbered ? (edit.num ? joinLevel(edit.type, edit.num) : "") : edit.type) : "";
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
       <PageHeader title="Review level layout" sub={
           <>
+            {step ? `${step} · ` : ""}
             <StairName stair={stair} i={n - 1} /> · {L.length} doors
           </>
         } onBack={onBack} />
@@ -262,9 +309,60 @@ export default function LevelReview({
           </div>
         )}
       </div>
+      {showCard && (
+        <div data-testid="copy-card" style={{ flexShrink: 0, margin: "10px 14px 0", display: "flex", flexDirection: "column", gap: 10, padding: "11px 12px 12px", borderRadius: 13, background: applied ? "var(--panel-2)" : "rgba(var(--accent-rgb), .1)", border: applied ? "1px solid var(--border-strong)" : "1px solid rgba(var(--accent-rgb), .55)" }}>
+          {applied ? (
+            // the same shape as the offer, so nothing moves when it turns into Undo
+            <>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, minHeight: 30 }}>
+                <span style={{ width: 22, height: 22, borderRadius: 11, flexShrink: 0, background: "var(--accent)", color: "var(--accent-text)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 900 }}>✓</span>
+                <div style={{ flex: 1, minWidth: 0, lineHeight: 1.25 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 800 }}>Applied</div>
+                  <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>To {names3(applied)}</div>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  copy?.undo();
+                  setCard(null);
+                }}
+                style={{ height: 44, borderRadius: 11, border: "1px solid rgba(var(--accent-rgb), .55)", background: "none", color: "var(--accent-soft)", fontSize: 13.5, fontWeight: 800 }}
+              >
+                Undo
+              </button>
+            </>
+          ) : (
+            <>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, minHeight: 30 }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent-soft)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
+                  <rect x="8" y="8" width="12" height="12" rx="2" />
+                  <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
+                </svg>
+                <div style={{ flex: 1, minWidth: 0, lineHeight: 1.25 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 800 }}>Same changes on other stairs?</div>
+                  <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--muted)" }}>
+                    {edits.length} change{edits.length === 1 ? "" : "s"} · {able.length} other stair{able.length === 1 ? "" : "s"}
+                  </div>
+                </div>
+                <button aria-label="Not now" onClick={() => setCard({ sig })} style={{ width: 36, height: 36, margin: "-6px -6px -6px 0", border: "none", background: "none", color: "var(--muted)", fontSize: 16 }}>
+                  ✕
+                </button>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8 }}>
+                <button onClick={() => applyTo(able.map((t) => t.id))} style={{ height: 44, borderRadius: 11, border: "none", background: "var(--accent)", color: "var(--accent-text)", fontSize: 13.5, fontWeight: 800 }}>
+                  Apply to all {able.length}
+                </button>
+                <button onClick={() => setPicking(new Set())} style={{ height: 44, borderRadius: 11, border: "1px solid rgba(var(--accent-rgb), .55)", background: "none", color: "var(--accent-soft)", fontSize: 13.5, fontWeight: 800 }}>
+                  Choose stairs…
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
       <div style={{ flexShrink: 0, padding: "10px 14px calc(24px + var(--sa-bottom))" }}>
         <button onClick={onDone} style={{ width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: "var(--accent)", color: "var(--accent-text)", fontSize: 16, fontWeight: 800 }}>
-          Looks right ✓
+          {doneLabel ?? "Looks right ✓"}
           {edited && (
             <span
               role="button"
@@ -281,6 +379,65 @@ export default function LevelReview({
           )}
         </button>
       </div>
+
+      {picking && (
+        <>
+          <div className="lr-dim" onClick={() => setPicking(null)} />
+          <div className="lr-dlg" role="dialog" aria-label="Choose stairs" style={{ top: 70, maxHeight: "calc(100% - 100px)", overflowY: "auto" }}>
+            <h3>Choose stairs</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "10px 12px", borderRadius: 12, background: "#0a2135", border: "1px solid var(--border-strong)" }}>
+              {edits.map((e, i) => (
+                <div key={i} style={{ display: "flex", gap: 8, alignItems: "baseline", fontSize: 13, fontWeight: 700, color: "#dbe6ef" }}>
+                  <i style={{ fontStyle: "normal", color: "var(--accent-soft)", fontWeight: 800, width: 14 }}>{e.kind === "add" ? "+" : e.kind === "remove" ? "−" : "↔"}</i>
+                  <span>{levelEditLabel(e)}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
+              <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--muted)" }}>
+                {picking.size} of {able.length} ticked
+              </span>
+              <button onClick={() => setPicking(picking.size === able.length ? new Set() : new Set(able.map((t) => t.id)))} style={{ border: "none", background: "none", padding: "6px 2px", color: "var(--accent-soft)", fontSize: 12.5, fontWeight: 800 }}>
+                {picking.size === able.length ? "Untick all" : "Tick all"}
+              </button>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: -4 }}>
+              {targets.map((t) => {
+                const on = picking.has(t.id);
+                const can = t.fit.done > 0;
+                const part = can && t.fit.fits < t.fit.total;
+                return (
+                  <button
+                    key={t.id}
+                    role="checkbox"
+                    aria-checked={on}
+                    disabled={!can}
+                    onClick={() => {
+                      const next = new Set(picking);
+                      if (on) next.delete(t.id);
+                      else next.add(t.id);
+                      setPicking(next);
+                    }}
+                    style={{ display: "flex", alignItems: "center", gap: 11, minHeight: 48, padding: "6px 10px", borderRadius: 11, textAlign: "left", color: "var(--text)", background: on ? "rgba(var(--accent-rgb), .08)" : "var(--panel-2)", border: on ? "1px solid rgba(var(--accent-rgb), .6)" : "1px solid var(--border-strong)", opacity: can ? 1 : 0.5 }}
+                  >
+                    <span style={{ width: 22, height: 22, borderRadius: 6, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 900, ...(on ? { background: "var(--accent)", color: "var(--accent-text)" } : { border: "1.5px solid #3f6a90" }) }}>{on ? "✓" : ""}</span>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <b style={{ display: "block", fontSize: 13.5, fontWeight: 800 }}>{t.name}</b>
+                      <small style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: part ? "#f7b977" : "var(--muted)" }}>{levelEditsFitLabel(t.fit)}</small>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="bb">
+              <button onClick={() => setPicking(null)}>Cancel</button>
+              <button className="go" disabled={!picking.size} style={picking.size ? undefined : { opacity: 0.45 }} onClick={() => applyTo([...picking])}>
+                {picking.size ? `Apply to ${picking.size} stair${picking.size === 1 ? "" : "s"}` : "Apply"}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       {removing !== null && (
         <>
@@ -332,7 +489,7 @@ export default function LevelReview({
                     }
                   });
                   put(next);
-                  onRename?.(names);
+                  rename(names);
                   setSwap(null);
                 }}
               >
@@ -398,7 +555,7 @@ export default function LevelReview({
                     {et.numbered ? (
                       <span style={{ ...numBox, borderColor: "var(--accent)", boxShadow: "0 0 0 2px rgba(var(--accent-rgb), .18)" }}>
                         {edit.num}
-                        <span style={{ display: "inline-block", width: 2, height: 18, background: "#5ff0e0", marginLeft: 1 }} />
+                        <span style={{ display: "inline-block", width: 2, height: 18, background: "var(--accent-soft)", marginLeft: 1 }} />
                       </span>
                     ) : (
                       <span style={{ ...numBox, borderStyle: "dashed", color: "#5f7890", fontSize: 12.5 }}>no number</span>

@@ -57,12 +57,21 @@ test("New job offers Flow testing; the home page tags flow testing sites", async
   await page.click('form button:has-text("Reports")');
   await page.waitForTimeout(350);
   assert.equal(await page.locator('[role="radio"][aria-checked="true"]').innerText(), "AFSS");
-  await page.click('[role="radio"]:has-text("Projects")');
+  await page.click('[role="radio"]:has-text("Project")');
   // the picked kind in its own colour: Projects orange (AFSS teal)
-  assert.equal(await page.locator('[role="radio"]:has-text("Projects")').evaluate((e) => getComputedStyle(e).color), "rgb(245, 165, 92)");
+  assert.equal(await page.locator('[role="radio"]:has-text("Project")').evaluate((e) => getComputedStyle(e).color), "rgb(245, 165, 92)");
   assert.equal(await page.locator('form button[type="submit"]').innerText(), "Start inspection");
-  await page.click('[aria-label="Back"]');
+  // the phone's back button steps back through New job, not out of the app
+  assert.equal(await page.evaluate(() => { const e = new Event("inspecta:back", { cancelable: true }); window.dispatchEvent(e); return e.defaultPrevented; }), true);
   await page.waitForTimeout(350);
+  assert.equal(await page.locator('[role="radiogroup"][aria-label="Report type"]').count(), 0, "back on the kinds");
+  assert.equal(await page.evaluate(() => { const e = new Event("inspecta:back", { cancelable: true }); window.dispatchEvent(e); return e.defaultPrevented; }), true);
+  await page.waitForTimeout(350);
+  assert.equal(await page.locator('form button:has-text("Reports")').count(), 0, "New job closed");
+  // home itself: back is left to leave the app
+  assert.equal(await page.evaluate(() => { const e = new Event("inspecta:back", { cancelable: true }); window.dispatchEvent(e); return e.defaultPrevented; }), false);
+  await page.click('[aria-label="New job"]');
+  await page.waitForTimeout(300);
   await page.click('form button:has-text("Flow testing")');
   await page.waitForTimeout(350);
   assert.equal(await page.locator('[role="radiogroup"][aria-label="Report type"]').count(), 0, "no AFSS / Projects for a test");

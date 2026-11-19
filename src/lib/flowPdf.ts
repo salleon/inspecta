@@ -83,17 +83,20 @@ export async function buildFlowPdf(tests: FlowTest[], site: Pick<Site, "name" | 
 
 // The same pages at the end of a site's report PDF (AFSS and projects):
 // a page per flow test, numbered among the flow tests.
-export async function appendFlowPages(doc: JsPDF, tests: FlowTest[], site: Pick<Site, "name" | "address">): Promise<void> {
+// onTest: each test's first page, for a report's list of what's in it;
+// ownFooter false: the report around them draws one footer on every page
+export async function appendFlowPages(doc: JsPDF, tests: FlowTest[], site: Pick<Site, "name" | "address">, onTest?: (test: FlowTest, page: number) => void, ownFooter = true): Promise<void> {
   if (!tests.length) return;
   const logo = await logoImage().catch(() => null);
   for (const [n, test] of tests.entries()) {
     doc.addPage();
-    drawPage(doc, test, site, logo, n + 1, tests.length, "Flow test");
+    onTest?.(test, doc.getNumberOfPages());
+    drawPage(doc, test, site, logo, n + 1, tests.length, "Flow test", ownFooter);
     await drawDefects(doc, test, site, logo);
   }
 }
 
-function drawPage(doc: JsPDF, test: FlowTest, site: Pick<Site, "name" | "address">, logo: { data: string; w: number; h: number } | null, page: number, pages: number, counter = "Page") {
+function drawPage(doc: JsPDF, test: FlowTest, site: Pick<Site, "name" | "address">, logo: { data: string; w: number; h: number } | null, page: number, pages: number, counter = "Page", ownFooter = true) {
   const { w: W, h: H, m: M } = PAGE;
   const width = W - 2 * M;
   let y = M + 6;
@@ -199,6 +202,7 @@ function drawPage(doc: JsPDF, test: FlowTest, site: Pick<Site, "name" | "address
   }
 
   // footer
+  if (!ownFooter) return;
   doc.setDrawColor("#d3dbe2");
   doc.setLineWidth(0.5);
   doc.line(M, H - M + 8, W - M, H - M + 8);

@@ -163,11 +163,11 @@ test("photo-less findings are in the PDF", async () => {
   assert.match(pdf.name, / \(1\)\.pdf$/, pdf.name);
   const text = (await readFile(pdf.path)).toString("latin1");
   assert.ok(text.includes("Logbook not on site"), "photo-less finding present");
-  assert.ok(text.includes("No photo"), "No photo box drawn");
+  assert.ok(text.includes("(Note)"), "a Note box in place of a photo");
   // rectification notes only where written; no suggested wording in the PDF
   assert.ok(text.includes("Provide logbook on site"));
   assert.ok(text.includes("Reinstall extinguisher on bracket"));
-  assert.equal(text.split("Rectification:").length - 1, 2, "only the two findings with notes");
+  assert.equal(text.split("(Recommended action)").length - 1, 2, "only the two findings with notes, headed Recommended action");
   assert.ok(!text.includes("As per AS 2293"), "no suggested corrective action in the PDF");
 });
 

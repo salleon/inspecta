@@ -8,17 +8,13 @@ import '@fontsource-variable/manrope'
 import '@fontsource/sora/700.css'
 import './index.css'
 import App from './App.tsx'
-import { setUpOfflineCache } from './lib/offlineCache'
+import { removeOldOfflineCache } from './lib/offlineCache'
 import { Capacitor } from '@capacitor/core'
 import { clearOldExports } from './lib/cacheFile'
 import { splitSiteTests, tidyPhotoStorage } from './db/db'
-import { settleMode } from './lib/settings'
 import { applyTheme, repairLogo } from './lib/company'
 
-// a new phone starts in Contractor mode, one already in use stays EnFact
-// (lib/settings); before anything reads the mode or the name prompt shows
-settleMode()
-// the company's colours in Contractor mode, before the first paint
+// the company's colours in the Contractor app, before the first paint
 applyTheme()
 // a logo saved before logos were checked is made a PNG (or dropped)
 void repairLogo()
@@ -28,8 +24,8 @@ void repairLogo()
 // cache. Best effort: nothing changes if it's refused or unsupported.
 void navigator.storage?.persist?.().catch(() => false)
 
-// offline cache: web only; cleared out inside the Android app
-void setUpOfflineCache()
+// an offline cache left by an older version is cleared out
+void removeOldOfflineCache()
 
 // exports shared in an earlier session are no longer needed
 if (Capacitor.isNativePlatform()) void clearOldExports(0)

@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <!-- Inspecta - Site Inspections: shown under the icon and in the app switcher -->
+    <string name="app_name">Inspecta</string>
+    <string name="title_activity_main">Inspecta</string>
+    <string name="package_name">au.com.inspecta.site</string>
+    <string name="custom_url_scheme">au.com.inspecta.site</string>
+</resources>
