@@ -89,6 +89,7 @@ Limits come from `limits()` in `src/lib/stairTest.ts`. The report is a page per 
 
 ## Later: not yet, come back to it
 
+- **iOS SDK deadline: April 2027 (Apple notice ITMS-90725, 19 Nov 2026, on version 9.7 build 11).** Apple accepted the build but warned it was made with the iOS 26.5 SDK. From April 2027, App Store Connect only takes builds made with the iOS 27 SDK (Xcode 27) or later. Codemagic (`codemagic.yaml`, `ios-testflight`) is set to `xcode: latest`, so it should switch by itself once Codemagic offers Xcode 27. Before April 2027, check that a TestFlight build no longer gets this warning; if it still does, pin the Xcode version in `codemagic.yaml`. The GitHub iPhone compile check (`build-ios.yml`, `runs-on: macos-15`) only compiles, never uploads, so it isn't affected, but move it to a newer macOS runner at the same time to keep it close to what ships.
 - **Accounts and a web login (owner, 11 Nov).** Once accounts exist: a website where a company signs in and manages its sites, dates and inspection data, uploaded from the apps of all its contractors and gathered under one company. Too early to build; don't start it until the owner says. Ground already laid: every site, finding, photo and test has a stable id; each site records `changedAt` and `backedUpAt`; and a backup holds each site as a self-contained folder (`site.json` + photos). Those are the starting point for uploading per site and syncing only what changed.
 
 ## Owner's preferences (learned)
