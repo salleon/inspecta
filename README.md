@@ -68,6 +68,7 @@ The Contractor app has its own Play app and its own upload key (Play won't take 
 2. **The Play app:** in the Play Console, Create app → "Inspecta - Site Inspections", free. Let Google make and keep the app signing key (the default).
 3. **The first bundle by hand:** run Build Android APK with Which app **Contractor**, download `contractor-play-bundle`, and upload `app-contractor-release.aab` in the new app's Internal testing → Create new release.
 4. **Publishing access:** in Play Console → Users and permissions, give the service account behind `PLAY_SERVICE_ACCOUNT_JSON` "Release apps to testing tracks" on the new app too. After that, Which app **Contractor** with **Publish to Play** sends it to its internal testing track. Production comes with the store listing (`claude-project/SPLIT_PLAN.md`, step 6).
+5. **Its test app (optional, like EnFact Test):** Create app → "Inspecta - Site Inspections Test", upload the first `contractor-test-play-bundle` (`app-contractor-staging.aab`, package `au.com.inspecta.site.test`, signed with the test key) by hand in its Internal testing, add yourself as a tester and give the service account "Release apps to testing tracks" on it. After that every Contractor (or Both) build of `test` publishes it there, like EnFact Test. Contractor publishes carry no "What's new" for now (the workflow writes it as en-AU; these Play apps are en-US).
 
 ### Build labels
 

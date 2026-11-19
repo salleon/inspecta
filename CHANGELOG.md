@@ -7,6 +7,12 @@ the technical detail.
 
 ## 19 November 2026
 
+- **[Contractor] A test app on Play, like EnFact Test.** Contractor
+  builds now also make the test app's Play bundle, and builds of `test`
+  publish it to "Inspecta - Site Inspections Test" (its own Play app,
+  orange icon, own data, only you test it). Contractor publishes go out
+  without "What's new" for now.
+
 - **[EnFact] New app icon, out to coworkers (still Build 9.8).** The
   towers and tick redrawn flat, with the EnFact swoosh behind them.
 

@@ -19,7 +19,7 @@ on:
         type: boolean
         default: false
       publish_test_to_play:
-        description: "Publish EnFact Test to my phone (its own Play app, only you test it; always on for the test branch)"
+        description: "Publish the test apps to my phone (EnFact Test / Site Inspections Test, their own Play apps, only you test them; always on for the test branch)"
         type: boolean
         default: false
       release_notes:
@@ -130,7 +130,7 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleEnfactRelease assembleEnfactStaging bundleEnfactRelease bundleEnfactStaging --no-daemon
 
-      - name: Build Inspecta - Site Inspections (release and test APKs, Play bundle)
+      - name: Build Inspecta - Site Inspections (release and test APKs, Play bundles)
         if: ${{ steps.apps.outputs.contractor == 'true' }}
         env:
           RELEASE_KEYSTORE_PATH: release.jks
@@ -145,7 +145,7 @@ jobs:
           npx cap sync android
           cd android
           chmod +x gradlew
-          ./gradlew assembleContractorRelease assembleContractorStaging bundleContractorRelease --no-daemon
+          ./gradlew assembleContractorRelease assembleContractorStaging bundleContractorRelease bundleContractorStaging --no-daemon
 
       # EnFact: the app coworkers install, and "EnFact Test" (installs beside
       # it with its own data, orange icon), each also as the bundle Play takes
@@ -177,9 +177,10 @@ jobs:
           name: enfact-test-play-bundle
           path: android/app/build/outputs/bundle/enfactStaging/*.aab
 
-      # Contractor: Inspecta (Site Inspections) and "Inspecta Test" (to
-      # install beside it, not on Play), and the bundle for its own Play app
-      # (the very first one is uploaded by hand in the Play Console)
+      # Contractor: Inspecta - Site Inspections and its test app (installs
+      # beside it with its own data, orange icon), each also as the bundle
+      # its own Play app takes (the very first of each uploaded by hand in
+      # the Play Console)
       - name: Upload Contractor APK
         if: ${{ steps.apps.outputs.contractor == 'true' }}
         uses: actions/upload-artifact@v4
@@ -200,6 +201,13 @@ jobs:
         with:
           name: contractor-play-bundle
           path: android/app/build/outputs/bundle/contractorRelease/*.aab
+
+      - name: Upload Contractor Test Play bundle
+        if: ${{ steps.apps.outputs.contractor == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: contractor-test-play-bundle
+          path: android/app/build/outputs/bundle/contractorStaging/*.aab
 
       # "Publish to coworkers" ticked: straight to the internal testing
       # track, and Play updates everyone's phone. versionCode is this
@@ -256,7 +264,21 @@ jobs:
           releaseFiles: android/app/build/outputs/bundle/contractorRelease/app-contractor-release.aab
           track: internal
           status: completed
-          whatsNewDirectory: ${{ inputs.release_notes != '' && 'whatsnew' || '' }}
+          # no "What's new" for the Contractor apps yet: it's written as
+          # en-AU (EnFact's language) and their Play apps are en-US
+
+      # "Publish the test apps to my phone" ticked, or any build of the test
+      # branch: Site Inspections Test's internal testing track, where only
+      # you are a tester (like EnFact Test above)
+      - name: Publish Inspecta - Site Inspections Test to Google Play (internal testing)
+        if: ${{ (inputs.publish_test_to_play || github.ref_name == 'test') && steps.apps.outputs.contractor == 'true' }}
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: au.com.inspecta.site.test
+          releaseFiles: android/app/build/outputs/bundle/contractorStaging/app-contractor-staging.aab
+          track: internal
+          status: completed
 
   # One-off, for setting up Play App Signing with the key the app is
   # already signed with (so the Play version installs over the current one
