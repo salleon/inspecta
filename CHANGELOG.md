@@ -7,6 +7,10 @@ the technical detail.
 
 ## 19 November 2026
 
+- **[EnFact] Build 9.8, out to coworkers.** The new stair and AFSS /
+  Project report layouts, the FFCP testing change, and the app's name
+  under its icon: "EnFact Inspecta".
+
 - **[Both] The apps' names on the phone.** The EnFact app is called
   "EnFact Inspecta" under its icon (its test app "EnFact Inspecta Test"),
   and the other companies' app "Inspecta - Site Inspections" (its test app
