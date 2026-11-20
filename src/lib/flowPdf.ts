@@ -4,6 +4,7 @@ import { reportLogoUrl } from "./branding";
 import { KIND_LABEL as KIND_TITLE } from "./flowTest";
 import { chartModel, PRINT_DEMAND, printResults, printStrip, printSubtitle, printTables, type PrintTable, type ResultTile, type Tone } from "./flowPrint";
 import { numericDate } from "./dates";
+import { drawReportHeading } from "./reportHeading";
 import { listTestFindings } from "../db/db";
 import { photoItems } from "./stairPhotos";
 
@@ -167,33 +168,13 @@ async function drawTest(doc: JsPDF, test: FlowTest, site: SiteInfo, logo: Logo, 
   doc.setPage(doc.getNumberOfPages());
 }
 
-// "Flow test · Sprinkler", the rule, the site's name as big, its address (and the test's own name) under it
+// "Flow test · Sprinkler", the rule, the site's name as big, its address (and the test's own name) under it (lib/reportHeading)
 function heading(doc: JsPDF, test: FlowTest, site: SiteInfo, logo: Logo) {
-  const y = M + 6;
-  const lh = logo ? Math.min(58, (240 * logo.h) / logo.w) : 0;
-  const lw = logo ? (logo.w / logo.h) * lh : 0;
-  const room = CW - lw - 12;
-  const big = (text: string, at: number) => {
-    let size = 16.5;
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(size);
-    while (size > 10 && doc.getTextWidth(text) > room) doc.setFontSize((size -= 0.5));
-    doc.setTextColor(INK);
-    doc.text(text, M, at);
-  };
-  big(test.kind === "blank" ? `Flow test · ${test.name.trim() || "Blank sheet"}` : `Flow test · ${KIND_TITLE[test.kind]}`, y + 10);
-  if (logo) doc.addImage(logo.data, "PNG", W - M - lw, y - 22, lw, lh);
-  doc.setFillColor("#1f6fb2");
-  doc.rect(M, y + 17, 46, 2.5, "F");
-  big(site.name.trim() || "Flow test", y + 42);
-  const note = [site.address?.trim(), printSubtitle(test)].filter(Boolean).join(" · ");
-  if (note) {
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.setTextColor(SOFT);
-    doc.text(note, M, y + 54);
-  }
-  return y + (note ? 66 : 56);
+  return drawReportHeading(doc, {
+    title: test.kind === "blank" ? `Flow test · ${test.name.trim() || "Blank sheet"}` : `Flow test · ${KIND_TITLE[test.kind]}`,
+    name: site.name.trim() || "Flow test",
+    note: [site.address?.trim(), printSubtitle(test)].filter(Boolean).join(" · "),
+  }, logo);
 }
 
 function sectionTitle(doc: JsPDF, text: string, y: number) {

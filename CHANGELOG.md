@@ -7,6 +7,13 @@ the technical detail.
 
 ## 20 November 2026
 
+- **[Both] One heading for every report.** The stair, flow test and AFSS /
+  Project summary pages now share one heading: the title, the blue rule,
+  the name under it at the same size, and a small line under that. On the
+  AFSS / Project summary the site's name is now as big as the title (it
+  was smaller), and a long title or name shrinks to stay clear of a wide
+  company logo.
+
 - **[Both] New flow test report layout (PDF and Excel).** Flow test reports
   follow the layout approved on the design page:
   - Headed "Flow test · Sprinkler" (or Hydrant, Combined system), with

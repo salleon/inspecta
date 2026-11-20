@@ -5,6 +5,7 @@ import { logoImage } from "./flowPdf";
 import { columnWidths, lowerTables, photosTitle, stairPages, type StairPage, type StairTable, type StairTile } from "./stairPrint";
 import { appendixPhotos, PHOTO_H, PHOTO_W, testPhotoItems, type AppendixPhoto } from "./stairPhotos";
 import { numericDate } from "./dates";
+import { drawReportHeading } from "./reportHeading";
 import { EXPORT_MAX_EDGE, STAMP_VERSION, watermarkBlob } from "./watermark";
 
 // Stair tests in the PDF, laid out as lib/stairPrint (the "Stair report
@@ -110,34 +111,8 @@ class Flow {
   }
 }
 
-// the stair heading: title, rule and the stair's name the same size, the logo on the right
-function stairHeading(doc: JsPDF, page: Pick<StairPage, "title" | "stair" | "note">, logo: Logo) {
-  const { w: W, m: M } = PAGE;
-  const y = M + 6;
-  const lh = logo ? Math.min(58, (240 * logo.h) / logo.w) : 0;
-  const lw = logo ? (logo.w / logo.h) * lh : 0;
-  const room = W - 2 * M - lw - 12;
-  const big = (text: string, at: number) => {
-    let size = 16.5;
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(size);
-    while (size > 10 && doc.getTextWidth(text) > room) doc.setFontSize((size -= 0.5));
-    doc.setTextColor(INK);
-    doc.text(text, M, at);
-  };
-  big(page.title, y + 10);
-  if (logo) doc.addImage(logo.data, "PNG", W - M - lw, y - 22, lw, lh);
-  doc.setFillColor("#1f6fb2");
-  doc.rect(M, y + 17, 46, 2.5, "F");
-  big(page.stair, y + 42);
-  if (page.note) {
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.setTextColor(SOFT);
-    doc.text(page.note, M, y + 54);
-  }
-  return y + (page.note ? 66 : 56);
-}
+// the stair heading (lib/reportHeading): title, rule, the stair's name as big, the logo
+const stairHeading = (doc: JsPDF, page: Pick<StairPage, "title" | "stair" | "note">, logo: Logo) => drawReportHeading(doc, { title: page.title, name: page.stair, note: page.note }, logo);
 
 function sectionTitle(doc: JsPDF, text: string, x: number, y: number) {
   doc.setFont("helvetica", "bold");

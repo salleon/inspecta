@@ -5,6 +5,7 @@ import { defectTypeStyle, type DefectTypeStyle } from "./defectTypes";
 import { reportRows } from "./esrGrouping";
 import { headingText, type Heading } from "./findingsPdf";
 import { numericDate } from "./dates";
+import { drawReportHeading } from "./reportHeading";
 import { EXPORT_MAX_EDGE, STAMP_VERSION, watermarkBlob } from "./watermark";
 
 // The AFSS and Project site report's PDF pages after the cover (the "AFSS &
@@ -428,23 +429,7 @@ function summaryRows(doc: jsPDF, cards: CardRow[], pageOf: Map<SiteEntry, number
 
 // the summary's first page heading: the title and the logo, the site under it
 function summaryHeading(doc: jsPDF, info: SiteReportInfo, logo: { data: string; w: number; h: number } | null) {
-  const y = M + 6;
-  const lh = logo ? Math.min(58, (240 * logo.h) / logo.w) : 0;
-  const lw = logo ? (logo.w / logo.h) * lh : 0;
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(16.5);
-  doc.setTextColor(...INK);
-  doc.text(`${reportName(info.kind)} · Summary`, M, y + 10);
-  if (logo) doc.addImage(logo.data, "PNG", W - M - lw, y - 22, lw, lh);
-  doc.setFillColor(31, 111, 178);
-  doc.rect(M, y + 17, 46, 2.5, "F");
-  doc.setFontSize(12);
-  doc.text(info.siteName, M, y + 38);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.setTextColor(...SOFT);
-  doc.text([info.address, numericDate(info.dateMs), info.inspector].filter((x) => x.trim()).join(" · "), M, y + 50);
-  return y + 66;
+  return drawReportHeading(doc, { title: `${reportName(info.kind)} · Summary`, name: info.siteName, note: [info.address, numericDate(info.dateMs), info.inspector].filter((x) => x.trim()).join(" · ") }, logo);
 }
 
 // the tiles: the five new-finding levels, then (when there are any) a
