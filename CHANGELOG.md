@@ -7,6 +7,10 @@ the technical detail.
 
 ## 20 November 2026
 
+- **[Both] Flow test defects in the Excel, out to all apps (still EnFact
+  Build 9.9 and Site Inspections 1.1).** Android to coworkers and Site
+  Inspections' internal testing, both iPhone apps on TestFlight.
+
 - **[Both] Flow test defects in the Excel, as the PDF.** A flow test's
   defects now follow straight on after the test on its own sheet, under the
   graph and comments: numbered as in the PDF, the risk, the defect and its
