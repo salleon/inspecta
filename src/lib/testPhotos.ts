@@ -32,14 +32,16 @@ const field = (kind: TestKind, testId: string) => (kind === "flow" ? { flowTestI
 export const testFindingUrl = (siteId: string, testId: string, findingId: string, back: string, kind: TestKind = "stair") =>
   `/site/${siteId}/finding/${findingId}/note?${kind === "flow" ? "flow" : "test"}=${encodeURIComponent(testId)}&back=${encodeURIComponent(back)}`;
 
-type Opts = { siteId: string; testId: string; level?: string; back: string; kind?: TestKind };
+// stairId and run: the stair and run being read, kept with the photo for the report's appendix
+type Opts = { siteId: string; testId: string; level?: string; back: string; kind?: TestKind; stairId?: string; run?: number };
+const where = (o: Opts) => ({ ...(o.level ? { level: o.level } : {}), ...(o.stairId ? { stairId: o.stairId } : {}), ...(o.run !== undefined ? { run: o.run } : {}) });
 
 // the camera, then the new photo's Finding screen; nothing is made if the camera's cancelled
 export async function takeTestPhoto(navigate: NavigateFunction, o: Opts) {
   const kind = o.kind ?? "stair";
   const shot = await capturePhoto({ title: kind === "flow" ? "Flow test defect" : "Stair test photo", level: o.level, siteId: o.siteId });
   if (!shot) return;
-  const finding = await createFinding(o.siteId, { ...field(kind, o.testId), ...(o.level ? { level: o.level } : {}) });
+  const finding = await createFinding(o.siteId, { ...field(kind, o.testId), ...where(o) });
   await addPhoto(finding.id, o.siteId, shot.blob, undefined, shot.marks);
   navigate(testFindingUrl(o.siteId, o.testId, finding.id, o.back, kind));
 }
@@ -47,6 +49,6 @@ export async function takeTestPhoto(navigate: NavigateFunction, o: Opts) {
 // a note with no photo yet: its Finding screen with the keyboard up
 export async function addTestNote(navigate: NavigateFunction, o: Opts) {
   const kind = o.kind ?? "stair";
-  const finding = await createFinding(o.siteId, { ...field(kind, o.testId), ...(o.level ? { level: o.level } : {}) });
+  const finding = await createFinding(o.siteId, { ...field(kind, o.testId), ...where(o) });
   navigate(testFindingUrl(o.siteId, o.testId, finding.id, o.back, kind), { state: { noteOnly: true } });
 }

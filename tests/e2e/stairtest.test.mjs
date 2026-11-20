@@ -79,10 +79,22 @@ test("the system is set once: edition, type, stairs; the rules follow the editio
     ["Roof", "Level", "Mezzanine", "Upper ground", "Ground", "Lower ground", "Car park", "Basement"],
   );
   await page.getByRole("option", { name: /^Ground/ }).click();
-  // the range set: its levels to review, top to bottom, in their group
+  // the range set: still on the page (no jump to the review mid-entry)
+  await page.waitForTimeout(300);
+  assert.equal(await page.getByTestId("level-list").count(), 0);
+  await page.getByLabel("Stair name").waitFor();
+  // closed, it folds to one line; opened again, it can be closed again
+  await page.getByRole("button", { name: "Close the stair" }).click();
+  assert.match(await page.locator("[data-stair]").first().innerText(), /SPF-1 · Front[\s\S]*G to 3 · 4 doors[\s\S]*Edit/);
+  await page.locator("[data-stair]").first().click();
+  await page.getByLabel("Stair name").waitFor();
+  await page.getByRole("button", { name: "Close the stair" }).click();
+  assert.equal(await page.getByLabel("Stair name").count(), 0);
+  // the levels are looked over on the way out, stair by stair, top to bottom, in their group
+  await page.getByRole("button", { name: "Save and review levels ›" }).click();
   const list = page.getByTestId("level-list");
   await list.waitFor();
-  assert.match(await page.locator("body").innerText(), /Review level layout\s*SPF-1 · Front · 4 doors/);
+  assert.match(await page.locator("body").innerText(), /Review level layout\s*1 of 1 · SPF-1 · Front · 4 doors/);
   assert.match(await list.innerText(), /Levels\s*3 to G · 4 levels[\s\S]*3[\s\S]*2[\s\S]*1[\s\S]*G/);
   // a level with a name of its own, above 3, then removed again
   await list.locator('[data-level="3"]').click();
@@ -121,16 +133,8 @@ test("the system is set once: edition, type, stairs; the rules follow the editio
   await edit.getByRole("button", { name: "Done" }).click();
   await page.waitForTimeout(300);
   assert.match(await list.innerText(), /3[\s\S]*2[\s\S]*1/);
-  // Looks right ✓ folds the stair to one line
-  await page.getByRole("button", { name: /Looks right/ }).click();
-  assert.match(await page.locator("[data-stair]").first().innerText(), /SPF-1 · Front[\s\S]*G to 3 · 4 doors[\s\S]*Edit/);
-  // opened again, it can be closed again
-  await page.locator("[data-stair]").first().click();
-  await page.getByLabel("Stair name").waitFor();
-  await page.getByRole("button", { name: "Close the stair" }).click();
-  assert.equal(await page.getByLabel("Stair name").count(), 0);
-  assert.match(await page.locator("[data-stair]").first().innerText(), /G to 3 · 4 doors/);
-  await page.getByRole("button", { name: "Save and continue ›" }).click();
+  // the last stair: Looks right ✓ saves and goes on
+  await page.getByRole("button", { name: "Looks right ✓" }).click();
   await page.getByText("Purge · built to AS 1668.1-1998 · 1 stair").waitFor();
 });
 
@@ -220,7 +224,8 @@ test("an AFSS site: Other tests, + Add a test, and the export chooser", async ()
   await page.getByRole("button", { name: /Other tests · 2/ }).waitFor();
   await page.getByRole("button", { name: /Stair pressurisation/ }).click();
   await page.waitForURL(/\/site\/a1-spf\/findings/);
-  assert.equal(await page.getByTestId("attach-chip").innerText(), "155 Kent St");
+  // the chip names the site once the sites have loaded
+  await page.getByTestId("attach-chip").getByText("155 Kent St").waitFor({ timeout: 3000 });
   assert.deepEqual(errors, []);
 });
 

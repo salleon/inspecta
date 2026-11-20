@@ -12,6 +12,10 @@ import { startApp, openPage, go, seed, download, pressBack } from "./helpers.mjs
 let app;
 let page;
 let errors;
+// the Contractor app, with the same sites and tests, for what only it has
+let cApp;
+let cPage;
+let cErrors;
 
 const rows = (list) => list.map(([hg, dis, suc = "", rpm = "", amps = "", flow = "", flowUnit]) => ({ hg: String(hg), flow: String(flow), flowUnit, dis: String(dis), suc: String(suc), rpm: String(rpm), amps: String(amps) }));
 // flows are typed, never worked out from " Hg: these are what the inspector
@@ -83,13 +87,17 @@ export const FLOW_TESTS = [
 for (const t of FLOW_TESTS) if (t.k) for (const sec of t.sections) sec.rows = typedFlows(t.k, sec.rows);
 
 before(async () => {
-  app = await startApp(import.meta.url);
+  [app, cApp] = await Promise.all([startApp(import.meta.url), startApp(import.meta.url, { edition: "contractor" })]);
+  const data = { sites: SITES, findings: SITES.map((s, i) => ({ id: `f${i}`, siteId: s.id, note: "Exit sign not illuminated", esrCategory: "3.1" })), flowTests: FLOW_TESTS };
   ({ page, errors } = await openPage(app));
-  await seed(page, { sites: SITES, findings: SITES.map((s, i) => ({ id: `f${i}`, siteId: s.id, note: "Exit sign not illuminated", esrCategory: "3.1" })), flowTests: FLOW_TESTS });
+  await seed(page, data);
+  ({ page: cPage, errors: cErrors } = await openPage(cApp));
+  await cPage.evaluate(() => localStorage.setItem("inspecta.company", JSON.stringify({ name: "Coastline Fire", logo: null, plate: false, logoColours: [], schemeId: "default", custom: { primary: "#071b2c", secondary: "#2ec4b6", light: "#f4f7f9" }, setUp: true })));
+  await seed(cPage, data);
 });
 
 after(async () => {
-  await app?.close();
+  await Promise.all([app?.close(), cApp?.close()]);
 });
 
 // how many flow tests a site (or job) has
@@ -102,8 +110,9 @@ const flowCount = (siteId) =>
     return all.filter((t) => t.siteId === siteId).length;
   }, siteId);
 
-async function exportExcel(siteId) {
-  await go(page, app, `/site/${siteId}/export`, 1500);
+async function exportExcel(siteId, page_ = page, app_ = app) {
+  const page = page_;
+  await go(page, app_, `/site/${siteId}/export`, 1500);
   const file = await download(page, async () => {
     await page.click("text=Share Excel");
     await page.waitForTimeout(600);
@@ -380,40 +389,38 @@ test("EnFact mode (the default): always discharge and town main, no line options
   await pressBack(page);
 });
 
-test("the graph's line chips and More list (Contractor mode): suction off until ticked, kept with the test", async () => {
-  await page.evaluate(() => localStorage.setItem("inspecta.flowMode", "contractor"));
-  await go(page, app, "/site/s1-flow/findings");
-  await page.reload();
-  await page.waitForTimeout(600);
-  await page.click("text=Sprinkler >> nth=0");
-  await page.waitForTimeout(800);
-  const dotted = () => page.locator('[stroke-dasharray="2 3"]').count();
-  const dashed = () => page.locator('polyline[stroke-dasharray="5 4"]').count();
+test("the graph's line chips and More list (Contractor app): suction off until ticked, kept with the test", async () => {
+  await go(cPage, cApp, "/site/s1-flow/findings");
+  await cPage.reload();
+  await cPage.waitForTimeout(600);
+  await cPage.click("text=Sprinkler >> nth=0");
+  await cPage.waitForTimeout(800);
+  const dotted = () => cPage.locator('[stroke-dasharray="2 3"]').count();
+  const dashed = () => cPage.locator('polyline[stroke-dasharray="5 4"]').count();
   assert.equal(await dotted(), 0, "suction starts hidden");
   assert.equal(await dashed(), 1, "town main shown");
-  await page.click('button[aria-pressed]:has-text("Suction")');
+  await cPage.click('button[aria-pressed]:has-text("Suction")');
   assert.equal(await dotted(), 1, "the electric pump's suction");
-  await page.click('button[aria-pressed]:has-text("Town main")');
+  await cPage.click('button[aria-pressed]:has-text("Town main")');
   assert.equal(await dashed(), 0);
   // More: single lines, then Reset
-  await page.click('button[aria-expanded]:has-text("More")');
-  assert.equal(await page.locator('[role="menuitemcheckbox"]').count(), 3);
-  await page.click('[role="menuitemcheckbox"]:has-text("Electric pump") >> nth=0');
-  assert.equal(await page.locator("polyline[stroke-width]:not([stroke-dasharray])").count(), 0, "electric discharge hidden");
-  await page.click('[role="menu"] button:has-text("Reset")');
+  await cPage.click('button[aria-expanded]:has-text("More")');
+  assert.equal(await cPage.locator('[role="menuitemcheckbox"]').count(), 3);
+  await cPage.click('[role="menuitemcheckbox"]:has-text("Electric pump") >> nth=0');
+  assert.equal(await cPage.locator("polyline[stroke-width]:not([stroke-dasharray])").count(), 0, "electric discharge hidden");
+  await cPage.click('[role="menu"] button:has-text("Reset")');
   assert.equal(await dotted(), 0);
   assert.equal(await dashed(), 1);
-  await page.click('[role="menuitemcheckbox"]:has-text("Electric pump") >> nth=1');
-  await page.click('[role="menu"] button:has-text("Done")');
-  await page.waitForTimeout(600);
-  await pressBack(page);
-  await page.waitForTimeout(500);
-  await page.click("text=Sprinkler >> nth=0");
-  await page.waitForTimeout(800);
+  await cPage.click('[role="menuitemcheckbox"]:has-text("Electric pump") >> nth=1');
+  await cPage.click('[role="menu"] button:has-text("Done")');
+  await cPage.waitForTimeout(600);
+  await pressBack(cPage);
+  await cPage.waitForTimeout(500);
+  await cPage.click("text=Sprinkler >> nth=0");
+  await cPage.waitForTimeout(800);
   assert.equal(await dotted(), 1, "kept with the test");
-  await pressBack(page);
-  await page.waitForTimeout(500);
-  await page.evaluate(() => localStorage.setItem("inspecta.flowMode", "enfact"));
+  await pressBack(cPage);
+  await cPage.waitForTimeout(500);
 });
 
 test("deleting a flow test asks first", async () => {
@@ -449,31 +456,37 @@ test("the Excel gets SPRINKLER and HYDRANT tabs laid out like the preview, with 
   await wb.xlsx.load(buf);
   assert.deepEqual(wb.worksheets.map((w) => w.name).slice(1), ["SPRINKLER", "HYDRANT"]);
   const s = wb.getWorksheet("SPRINKLER");
-  // the preview's title, blue bar, details and demand
-  assert.equal(s.getCell("B1").value, "SPRINKLER FLOW TEST RESULTS");
+  // as the PDF: "Flow test · Sprinkler", the blue bar, the site's name, then the details
+  assert.equal(s.getCell("B1").value, "Flow test · Sprinkler");
   assert.equal(s.getCell("B2").fill.fgColor.argb, "FF1F6FB2");
-  const [site] = at(s, "Location");
-  assert.equal(s.getCell(site, 3).value, "Coles Turramurra, 1 Rohini St, Turramurra");
+  assert.equal(s.getCell("B3").value, "Coles Turramurra");
+  const [site] = at(s, "Site");
+  assert.equal(s.getCell(site, 3).value, "Coles Turramurra");
   assert.ok(at(s, "Wormald"));
   const [dem] = at(s, "Demand");
   assert.match(s.getCell(dem, 3).value, /1350 L\/min @/);
-  // Town main table (no PASS / FAIL), then Electric pump; the untested diesel is left out
-  const [town, tc] = at(s, "Town main – 2026");
+  // the Result: a row per supply, the margin beside PASS / FAIL, the town main below demand, the diesel not tested
+  assert.ok(at(s, "PASS  +…"), "the electric pump passes, with its margin");
+  assert.ok(at(s, "Below demand  -…"), "the town main, below demand by so many kPa");
+  assert.ok(at(s, "Not tested"));
+  // Town main table (meets / below demand, not PASS / FAIL), then Electric pump; the untested diesel has no table
+  const [town, tc] = at(s, "TOWN MAIN · 2026");
   assert.equal(tc, 2);
-  assert.deepEqual(rowValues(s, town), ["Town main – 2026"]);
+  assert.match(rowValues(s, town).at(-1), /^BELOW DEMAND -\d+ kPa$/);
   const head = rowValues(s, town + 1);
   assert.ok(head.includes("Flow L/min"), head.join(" | "));
-  assert.equal(s.getCell(town + 1, 2).fill.fgColor.argb, "FFE6EEF5");
+  assert.ok(!head.includes("RPM"), "only the columns filled in on the town main");
+  assert.equal(s.getCell(town + 1, 2).fill.fgColor.argb, "FF0B3550");
   assert.ok([2, 3, 4, 5].some((k) => rowValues(s, town + k).includes(250)));
-  const [pump] = at(s, "Electric pump – 2026");
+  const [pump] = at(s, "ELECTRIC PUMP · 2026");
   const pumpHead = rowValues(s, pump + 1);
   assert.ok(pumpHead.includes("Oil pressure (kPa)") || pumpHead.includes("Oil pressure kPa"), pumpHead.join(" | "));
   assert.ok(rowValues(s, pump + 2).includes(420));
   assert.ok(rowValues(s, pump + 2).includes(2950));
-  assert.equal(rowValues(s, pump).filter((v) => v === "PASS").length, 1);
-  assert.equal(at(s, "Diesel pump…"), null);
+  assert.equal(rowValues(s, pump).filter((v) => /^PASS \+\d+ kPa$/.test(v)).length, 1);
+  assert.equal(at(s, "DIESEL PUMP…"), null);
   const h = wb.getWorksheet("HYDRANT");
-  assert.equal(h.getCell("B1").value, "HYDRANT FLOW TEST RESULTS");
+  assert.equal(h.getCell("B1").value, "Flow test · Hydrant");
   // both an A4 page wide, however many columns (a 3-column hydrant table isn't squeezed into a third of it)
   for (const ws of [s, h]) {
     let width = 0;
@@ -482,7 +495,7 @@ test("the Excel gets SPRINKLER and HYDRANT tabs laid out like the preview, with 
     assert.equal(ws.pageSetup.paperSize, 9);
     assert.equal(ws.pageSetup.fitToWidth, 1);
   }
-  const [ht] = at(h, "Town main – 2026");
+  const [ht] = at(h, "TOWN MAIN · 2026");
   // hydrants in L/s, as typed in the app
   assert.ok(rowValues(h, ht + 1).some((v) => /L\/s/.test(v)));
   assert.ok([2, 3, 4, 5].some((k) => rowValues(h, ht + k).includes(4.5)), [2, 3, 4, 5].map((k) => rowValues(h, ht + k).join(" ")).join(" / "));
@@ -520,10 +533,12 @@ test("the site's report PDF ends with a page per flow test", async () => {
   });
   const pdf = fs.readFileSync(file.path).toString("latin1");
   const findings = pdf.indexOf("Exit sign not illuminated");
-  const sprinkler = pdf.indexOf("SPRINKLER FLOW TEST RESULTS");
-  const hydrant = pdf.indexOf("HYDRANT FLOW TEST RESULTS");
-  assert.ok(findings > 0 && sprinkler > findings && hydrant > sprinkler, `${findings} ${sprinkler} ${hydrant}`);
-  assert.ok(pdf.includes("Flow test 1 of 2") && pdf.includes("Flow test 2 of 2"));
+  // after the findings, a graph per flow test
+  const graphs = [...pdf.matchAll(/PRESSURE AGAINST FLOW/g)].map((m) => m.index);
+  assert.ok(findings > 0 && graphs.length === 2 && graphs[0] > findings, `${findings} ${graphs}`);
+  // listed on the summary, and under the site report's own footer, not the flow pages' own
+  assert.ok(pdf.includes("ATTACHED TESTS"), "the summary lists the attached tests");
+  assert.ok(!pdf.includes("Flow test 1 of 2"), "no flow footer of its own");
 });
 
 test("every supply gets its own table, as on the preview", async () => {
@@ -532,7 +547,7 @@ test("every supply gets its own table, as on the preview", async () => {
   await wb.xlsx.load(buf);
   assert.deepEqual(wb.worksheets.map((w) => w.name).slice(1), ["SPRINKLER", "Drencher valve test"]);
   const s = wb.getWorksheet("SPRINKLER");
-  const rows = ["Town main", "Diesel pump 1", "Diesel pump 2", "Jockey pump"].map((n) => at(s, `${n} – 2026`)?.[0] ?? 0);
+  const rows = ["TOWN MAIN", "DIESEL PUMP 1", "DIESEL PUMP 2", "JOCKEY PUMP"].map((n) => at(s, `${n} · 2026`)?.[0] ?? 0);
   assert.ok(rows.every((r) => r > 0) && rows.every((r, i) => !i || r > rows[i - 1]), rows.join(", "));
   const d = wb.getWorksheet("Drencher valve test");
   let found = false;
@@ -555,37 +570,34 @@ test("a combined system: pump duty with its own unit, Tank / Town main per pump;
   assert.equal(await page.locator("text=Flow L/min").count() > 0, true);
   await page.click('[aria-label="Pump duty unit"] [role="radio"]:has-text("L/s")');
   assert.equal(await page.inputValue('[aria-label="Flow"] >> nth=1'), "128.2");
-  // suction from tank (any test type); EnFact has no cut-in or year installed
+  // suction from tank (any test type); EnFact has no cut-in, but year installed (optional, on every flow test)
   await page.click('[aria-label="Suction from"] [role="radio"]:has-text("Tank")');
   assert.equal(await page.locator('[aria-label="Cut-in kPa"]').count(), 0);
-  assert.equal(await page.locator('[aria-label="Year installed"]').count(), 0);
+  assert.equal(await page.locator('[aria-label="Year installed"]').count(), 1);
   // Contractor: year installed, cut-in, and temp and oil pressure in full screen
-  await page.waitForTimeout(600); // saved
-  await page.evaluate(() => localStorage.setItem("inspecta.flowMode", "contractor"));
-  await page.reload();
-  await page.waitForTimeout(900);
-  await page.fill('[aria-label="Year installed"]', "2006");
-  await page.fill('[aria-label="Cut-in kPa"]', "790");
-  await page.click('[aria-label="Full screen, sideways"]');
-  await page.waitForTimeout(700);
-  const wide = page.locator('[role="dialog"][aria-label="Readings, full screen"]');
+  await go(cPage, cApp, "/site/s3-flow/flow/t5", 900);
+  await cPage.click('[aria-label="Suction from"] [role="radio"]:has-text("Tank")');
+  await cPage.fill('[aria-label="Year installed"]', "2006");
+  await cPage.fill('[aria-label="Cut-in kPa"]', "790");
+  await cPage.click('[aria-label="Full screen, sideways"]');
+  await cPage.waitForTimeout(700);
+  const wide = cPage.locator('[role="dialog"][aria-label="Readings, full screen"]');
   const heads = await wide.evaluate((d) => [...d.querySelectorAll("div")].filter((e) => e.children.length <= 1 && /^(" Hg|Flow|Discharge|Suction|RPM|Temp|Oil pressure)/.test(e.textContent.trim()) && e.closest("[style*=grid]") && !e.querySelector("input")).map((e) => /^(" Hg|Flow|Discharge|Suction|RPM|Temp|Oil)/.exec(e.textContent.trim())[1]));
   assert.deepEqual([...new Set(heads)].slice(0, 7), ['" Hg', "Flow", "Discharge", "Suction", "RPM", "Temp", "Oil"]);
   await wide.locator('[aria-label="Temp"]').first().fill("52");
   await wide.locator('[aria-label="Oil pressure"]').first().fill("300");
-  await pressBack(page);
-  await page.waitForTimeout(700);
-  await page.evaluate(() => localStorage.setItem("inspecta.flowMode", "enfact"));
+  await pressBack(cPage);
+  await cPage.waitForTimeout(700);
 });
 
 test("a combined system goes on a Combined System tab, as on the preview", async () => {
-  const buf = await exportExcel("s3");
+  const buf = await exportExcel("s3", cPage, cApp);
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(buf);
   const s = wb.getWorksheet("Combined System");
-  assert.equal(s.getCell("B1").value, "COMBINED SYSTEM FLOW TEST RESULTS");
+  assert.equal(s.getCell("B1").value, "Flow test · Combined system");
   // headed with where its suction comes from, and its cut-in
-  const [d1] = at(s, "Diesel 1 - TANK (cut-in 790 kPa) – 2026") ?? [0];
+  const [d1] = at(s, "DIESEL 1 - TANK (CUT-IN 790 KPA) · 2026") ?? [0];
   assert.ok(d1);
   const head = rowValues(s, d1 + 1);
   assert.ok(head.includes("Temp °C") && head.includes("Oil pressure kPa"), head.join(" | "));
@@ -593,11 +605,12 @@ test("a combined system goes on a Combined System tab, as on the preview", async
   // combined systems in L/s, like hydrants (5" Hg × 3440.5 = 7693.2 L/min)
   assert.ok([2, 3, 4, 5].some((k) => rowValues(s, d1 + k).includes(128.2)));
   assert.ok(head.some((h) => /L\/s/.test(h)));
-  assert.equal(rowValues(s, d1).filter((v) => v === "PASS").length, 1);
+  assert.equal(rowValues(s, d1).filter((v) => /^PASS \+\d+ kPa$/.test(v)).length, 1);
   const [yr] = at(s, "Year installed");
   assert.equal(s.getCell(yr, 3).value, "2006");
   assert.ok(at(s, "Diesel 2…"));
   assert.deepEqual(errors, []);
+  assert.deepEqual(cErrors, []);
 });
 
 test("the Excel's tables are the preview's tables, cell for cell", async () => {
@@ -611,7 +624,11 @@ test("the Excel's tables are the preview's tables, cell for cell", async () => {
     await wb.xlsx.load(fs.readFileSync(file.path));
     assert.equal(wb.worksheets.length, previews.length);
     wb.worksheets.forEach((ws, i) => {
-      const text = (r, n) => [...rowValues(ws, r), ...Array(n).fill(null)].slice(0, n).map((v) => (v === null ? "" : String(v)));
+      // each table spreads its columns over the sheet's (lib/flowExcel spans): read each from the start of its share
+      let sheetCols = 0;
+      for (let c = 2; !ws.getColumn(c).hidden && ws.getColumn(c).width; c++) sheetCols++;
+      const starts = (k) => Array.from({ length: k }, (_, j) => 2 + Array.from({ length: j }, (_, i) => Math.floor(sheetCols / k) + (i < sheetCols % k ? 1 : 0)).reduce((a, b) => a + b, 0));
+      const text = (r, n) => starts(n).map((c) => ws.getCell(r, c).value).map((v) => (v === null || v === undefined ? "" : String(v)));
       let from = 0;
       for (const table of previews[i]) {
         // the heading row, then each row below it, the same

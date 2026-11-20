@@ -18,9 +18,18 @@
   --accent: #2ec4b6;
   --accent-text: #04140f;
   --accent-rgb: 46, 196, 182; /* --accent as r, g, b, for rgba() */
+  --accent-soft: #5ff0e0; /* the accent's light tint, for text on dark */
   --paper: #f7f3ea;
   --paper-border: #e2ddd0;
   --paper-text: #1c2530;
+}
+
+/* stair pressurisation's screens: its purple in place of the teal */
+.spf-theme {
+  --accent: #b18cff;
+  --accent-text: #160a2e;
+  --accent-rgb: 177, 140, 255;
+  --accent-soft: #d7c2ff;
 }
 
 * {
@@ -808,4 +817,24 @@ button:active:not(:disabled) {
   color: #f7b977;
   font-style: italic;
   opacity: 1;
+}
+
+/* the splash of both apps: builds from the test branch (lib/buildInfo) get
+   a label at the top, there from the first frame, so a test version is never
+   mistaken for the real one */
+.splash-test {
+  position: absolute;
+  left: 50%;
+  top: calc(28px + env(safe-area-inset-top));
+  transform: translateX(-50%);
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid #f5b841;
+  color: #f5b841;
+  background: rgba(245, 184, 65, 0.1);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  white-space: nowrap;
 }

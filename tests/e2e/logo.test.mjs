@@ -14,7 +14,7 @@ let app;
 const errors = [];
 
 before(async () => {
-  app = await startApp(import.meta.url);
+  app = await startApp(import.meta.url, { edition: "contractor" });
 });
 
 after(async () => {
@@ -157,7 +157,7 @@ test("a logo saved before logos were checked (a JPEG) is made a PNG on start", a
   const jpeg = await picture(draw, "image/jpeg", 300, 100);
   await draw.context().close();
   const company = { name: "Coastline Fire Services", logo: jpeg, plate: false, logoColours: [], schemeId: "default", custom: { primary: "#071b2c", secondary: "#2ec4b6", light: "#f4f7f9" }, setUp: true };
-  const page = await freshPhone({ "inspecta.flowMode": "contractor", "inspecta.company": JSON.stringify(company), "inspecta.inspectorName": "Tester" });
+  const page = await freshPhone({ "inspecta.company": JSON.stringify(company), "inspecta.inspectorName": "Tester" });
   assert.deepEqual(await storedLogo(page), { png: true, w: 300, h: 100 });
   await page.context().close();
 });

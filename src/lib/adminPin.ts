@@ -1,17 +1,14 @@
-import { getFlowMode, setFlowMode, type FlowMode } from "./settings";
+import { IS_ENFACT } from "./edition";
 
 // Admin PIN for Settings → Admin (keywords, setup file, the PIN). It keeps
 // staff out of the admin tools, not a real security boundary — everything
 // stays on the phone.
 //
 // Who sets it:
-// - EnFact phones start with EnFact's PIN (2021) until the office changes it
-//   in Admin (Change PIN, or Forgot PIN with a recovery code). A phone that
-//   moves into EnFact drops whatever PIN it had and is back on 2021, so a
-//   PIN someone chose while it was still a new Contractor phone never
-//   follows it in (see switchMode).
-// - Contractor phones have no PIN at first: the first time Admin is opened,
-//   the company's manager chooses one. EnFact's PIN never works on them.
+// - The EnFact app starts with EnFact's PIN (2021) until the office changes
+//   it in Admin (Change PIN, or Forgot PIN with a recovery code).
+// - The Contractor app has no PIN at first: the first time Admin is opened,
+//   the company's manager chooses one. EnFact's PIN never works there.
 // - A phone that joins a company with its setup file gets the manager's PIN
 //   from the file, without anyone typing it: staff join, but Admin stays
 //   locked to them. The file only has a salted fingerprint of the PIN, so
@@ -19,9 +16,8 @@ import { getFlowMode, setFlowMode, type FlowMode } from "./settings";
 //
 // Forgotten PIN: "Forgot PIN?" on the PIN screen takes this phone's own
 // recovery code (the admin menu can email it), then a new PIN is chosen.
-// The owner's master code (below) also goes there: it opens Admin as the
-// owner, which is the only way to see the EnFact / Contractor switch on a
-// Contractor phone, and leaves the company's PIN as it is.
+// The owner's master code (below) also goes there: it opens Admin and
+// leaves the company's PIN as it is.
 
 const PIN_KEY = "inspecta.adminPin";
 const PRINT_KEY = "inspecta.adminPinPrint";
@@ -82,7 +78,7 @@ function storedPrint(): PinPrint | null {
 // (null on a phone that has only a fingerprint, or no PIN yet)
 function storedOrDefault(): string | null {
   if (get(PIN_KEY) === null && storedPrint()) return null;
-  return get(PIN_KEY) ?? (getFlowMode() === "enfact" ? DEFAULT_PIN : null);
+  return get(PIN_KEY) ?? (IS_ENFACT ? DEFAULT_PIN : null);
 }
 
 // false on a Contractor phone whose company hasn't chosen a PIN yet
@@ -101,29 +97,6 @@ export async function checkPin(pin: string): Promise<boolean> {
 // unlocked by then, so there is one)
 export async function currentPinPrint(): Promise<PinPrint> {
   return storedPrint() ?? makePinPrint(storedOrDefault() ?? DEFAULT_PIN);
-}
-
-// writes down the PIN this phone opens with, so it carries on as it is
-// when the mode changes (an EnFact phone on EnFact's PIN moved to
-// Contractor keeps that PIN, rather than being left with none)
-function keepPin() {
-  const current = storedOrDefault();
-  if (current !== null && get(PIN_KEY) === null) set(PIN_KEY, current);
-}
-
-// Moves the phone to a mode (Admin's switch, the splash corner). Into
-// EnFact from Contractor: whatever PIN the phone had goes, so it opens
-// with EnFact's 2021. Into Contractor: it keeps the PIN it opens with.
-export function switchMode(mode: FlowMode) {
-  if (mode === "enfact") {
-    if (getFlowMode() !== "enfact") {
-      remove(PIN_KEY);
-      remove(PRINT_KEY);
-    }
-  } else {
-    keepPin();
-  }
-  setFlowMode(mode);
 }
 
 // a PIN typed on this phone (chosen, changed, or entered to load a file)
@@ -166,10 +139,9 @@ export async function checkRecoveryCode(typed: string): Promise<"phone" | "owner
 }
 
 // Unlocked until the app is closed, so moving around the admin screens
-// doesn't ask again. "owner" (the master code) also shows the mode switch.
-let unlocked: false | "pin" | "owner" = false;
-export const isAdminUnlocked = () => unlocked !== false;
-export const isOwnerUnlocked = () => unlocked === "owner";
-export const unlockAdmin = (as: "pin" | "owner" = "pin") => {
-  if (unlocked !== "owner") unlocked = as;
+// doesn't ask again.
+let unlocked = false;
+export const isAdminUnlocked = () => unlocked;
+export const unlockAdmin = () => {
+  unlocked = true;
 };

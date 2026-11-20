@@ -1,20 +1,13 @@
-import { Capacitor } from "@capacitor/core";
-
-// The offline cache (the PWA service worker, sw.js) is only for the web
-// version. Inside the Android app it's switched off: the app's files are on
-// the phone already, and a cached copy made the app keep showing the old
-// version after an update (Restart, or even reopening) until it was swiped
-// out of the recent-apps tray. So in the app, any worker left over from
-// earlier versions is removed with its caches, and the page reloads once
-// from the real files if one was found.
+// The web version's offline cache (a service worker, sw.js) is gone, with
+// the web version itself (claude-project/SPLIT_PLAN.md). In the apps it
+// was never wanted: the app's files are on the phone already, and a cached
+// copy made the app keep showing the old version after an update. So any
+// worker left over from earlier versions is removed with its caches, and
+// the page reloads once from the real files if one was found.
 const RELOADED_KEY = "inspecta.swRemoved";
 
-export async function setUpOfflineCache() {
+export async function removeOldOfflineCache() {
   if (!("serviceWorker" in navigator)) return;
-  if (!Capacitor.isNativePlatform()) {
-    window.addEventListener("load", () => void navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => {}));
-    return;
-  }
   try {
     const registrations = await navigator.serviceWorker.getRegistrations();
     for (const r of registrations) await r.unregister();

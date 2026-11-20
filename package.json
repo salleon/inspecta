@@ -6,9 +6,12 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:enfact": "tsc -b && vite build --mode enfact",
+    "build:contractor": "tsc -b && vite build --mode contractor",
+    "build:test": "tsc -b && vite build --mode enfact --outDir dist-enfact && vite build --mode contractor --outDir dist-contractor && node scripts/check-edition.mjs dist-contractor",
     "lint": "oxlint",
     "preview": "vite preview",
-    "test": "npm run test:unit && npm run build && npm run test:e2e",
+    "test": "npm run test:unit && npm run build:test && npm run test:e2e",
     "test:unit": "node --import tsx --import ./tests/unit/setup.ts --test tests/unit/*.test.ts",
     "test:e2e": "node --test tests/e2e/*.test.mjs"
   },
@@ -41,7 +44,6 @@
     "playwright": "1.56.1",
     "tsx": "4.23.15",
     "typescript": "~6.0.2",
-    "vite": "^8.3.0",
-    "vite-plugin-pwa": "^1.3.0"
+    "vite": "^8.3.0"
   }
 }

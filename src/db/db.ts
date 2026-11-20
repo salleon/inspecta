@@ -221,7 +221,7 @@ export async function deleteSite(siteId: string) {
   await db.sites.delete(siteId);
 }
 
-export async function createFinding(siteId: string, carried: Partial<Pick<Finding, "level" | "stairTestId" | "flowTestId">> = {}) {
+export async function createFinding(siteId: string, carried: Partial<Pick<Finding, "level" | "stairTestId" | "flowTestId" | "stairId" | "run">> = {}) {
   const now = Date.now();
   const finding: Finding = {
     id: uid(),
@@ -661,6 +661,12 @@ export async function testJobFor(site: Site, kind: TestJobKind): Promise<Site> {
 // Moves the flow and stair tests of AFSS and project sites, with their
 // photos and notes and the stair system, into the sites' attached jobs.
 // Safe to run any time: a site with no tests of its own is left alone.
+// A job made here is dated from its oldest test (or the site, for a stair
+// system with no tests yet), not the day of the move, so it sits on home
+// where the work was done rather than at the top; and no job is ever dated
+// after its oldest test (which puts right the jobs moved before this was so).
+// A job also takes its site's last backup: what's in it was in that backup,
+// so it isn't "never backed up" (which, dated back, set off the backup nudge).
 export async function splitSiteTests() {
   const sites = await db.sites.filter((s) => (s.kind === "afss" || s.kind === "project") && !s.restoreIncomplete).toArray();
   for (const site of sites) {
@@ -669,6 +675,8 @@ export async function splitSiteTests() {
       const ids = (await table.where("siteId").equals(site.id).primaryKeys()) as string[];
       if (!ids.length && !(kind === "spf" && site.spf)) continue;
       const job = await testJobFor(site, kind);
+      const dates = ((await table.where("id").anyOf(ids).toArray()) as unknown as { createdAt: number }[]).map((t) => t.createdAt);
+      await dateJobBack(job.id, dates.length ? Math.min(...dates) : site.createdAt);
       await db.transaction("rw", [db.sites, db.findings, db.photos, db.thumbnails, db.exportCopies, db.flowTests, db.stairTests], async () => {
         await table.where("siteId").equals(site.id).modify({ siteId: job.id });
         const idSet = new Set(ids);
@@ -696,6 +704,29 @@ export async function splitSiteTests() {
       });
     }
   }
+  // every attached job: no newer than its oldest test, and backed up when its site was
+  const all = await db.sites.toArray();
+  const backedUp = new Map(all.map((s) => [s.id, s.backedUpAt]));
+  for (const job of all.filter((s) => !!s.attachedTo)) {
+    const tests = [...(await db.flowTests.where("siteId").equals(job.id).toArray()), ...(await db.stairTests.where("siteId").equals(job.id).toArray())];
+    if (tests.length) await dateJobBack(job.id, Math.min(...tests.map((t) => t.createdAt)));
+    const siteBackup = backedUp.get(job.attachedTo!);
+    // only when nothing in it has changed since that backup (so it's all in
+    // it): then it counts as saved, not changed by the move
+    if (!job.backedUpAt && siteBackup && tests.every((t) => t.updatedAt <= siteBackup))
+      await db.sites.where("id").equals(job.id).modify((j) => {
+        j.backedUpAt ??= siteBackup;
+        j.changedAt = siteBackup;
+      });
+  }
+}
+
+// a job's date (home's order and the date on its card) back to `at`, if it's later
+async function dateJobBack(jobId: string, at: number) {
+  if (!Number.isFinite(at)) return;
+  await db.sites.where("id").equals(jobId).modify((j) => {
+    if (j.createdAt > at) j.createdAt = at;
+  });
 }
 
 // ---- backup / restore (see lib/backup.ts) ----

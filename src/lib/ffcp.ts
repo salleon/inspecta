@@ -2,7 +2,7 @@ import type { FfcpFan, FfcpMarks, FfcpNotes, FfcpTest } from "../db/types";
 
 // Fire fan control panel testing (design canvas FFCP mock-up, v5): every
 // fan's indication and manual control, checked in normal mode and again in
-// fire mode. A fail asks why; the note can wait.
+// fire mode. A fail's reason is added from the box under it, any time.
 
 export type FfcpMode = "normal" | "fire";
 
@@ -21,11 +21,8 @@ export const FAN_CHECKS = [...INDICATION, ...CONTROL];
 // the shortcuts on Add fans
 export const FAN_TYPES = ["SPF", "SAF", "SEF", "ZPF", "CPEF", "KEF"];
 
-// quick reasons on a fail's note
-export const REASONS = {
-  indication: ["No light fitted", "Light not working", "Wrong light on"],
-  control: ["Fan didn't start", "Fan didn't stop", "Switch not working"],
-};
+// quick reasons on a fail's note (or type another)
+export const FAIL_REASONS = ["Indicator/operation mismatch", "Incorrect indication"];
 
 // "SPF-" 1 to 4 → SPF-01 … SPF-04 (at least two digits, more if the last needs it)
 export function seriesNames(prefix: string, from: number, to: number): string[] {
@@ -86,34 +83,59 @@ export const newFan = (name: string): FfcpFan => ({ id: crypto.randomUUID(), nam
 
 // ---- the report (lib/ffcpPdf, lib/ffcpExcel) ----
 
-// what each check is called in the notes, where the table's headings aren't there to say
 // the table's column headings (manual control: run and stop, as the drawn sheet)
 export const HEADS = ["RUN", "STOP", "FAULT", "RUN", "STOP"];
+// what each check is called in the notes, where the table's headings aren't there to say
 const NOTE_LABEL: Record<string, string> = { run: "Run light", stop: "Stop light", fault: "Fault light", on: "Manual run", off: "Manual stop" };
 
 // the modes with anything ticked: a mode not tested gets no table
 export const modesTested = (test: FfcpTest): FfcpMode[] => (["normal", "fire"] as FfcpMode[]).filter((m) => test.fans.some((f) => FAN_CHECKS.some(([k]) => f.marks[`${m}.${k}`])));
 
-// each fail's why, then each fan's own note
-export function reportNotes(test: FfcpTest): { head: string; text: string; fail: boolean }[] {
-  const notes: { head: string; text: string; fail: boolean }[] = [];
+// ---- the report's Result row and notes table (the "FFCP report layout" design) ----
+
+export interface FfcpTile {
+  name: string; // "Normal mode", "Fire mode", "The panel test"
+  tone: "pass" | "fail" | null; // null: not tested
+  value: string; // "2 fails", "All pass", "Not tested"
+  line: string; // "on 2 fans · 38 of 40 checks pass · 2 not checked"
+}
+
+const plural = (k: number, w: string) => `${k} ${w}${k === 1 ? "" : "s"}`;
+
+// a tile per mode, then the whole test (the modes tested only)
+export function reportResults(test: FfcpTest): FfcpTile[] {
+  const tested = modesTested(test);
+  const marksOf = (modes: FfcpMode[]) => test.fans.flatMap((f) => modes.flatMap((m) => FAN_CHECKS.map(([k]) => f.marks[`${m}.${k}`])));
+  const fansFailing = (modes: FfcpMode[]) => test.fans.filter((f) => modes.some((m) => FAN_CHECKS.some(([k]) => f.marks[`${m}.${k}`] === "n"))).length;
+  const tile = (name: string, modes: FfcpMode[], whole: boolean): FfcpTile => {
+    if (!modes.length) return { name, tone: null, value: "Not tested", line: "" };
+    const all = marksOf(modes);
+    const fails = all.filter((x) => x === "n").length;
+    const passed = all.filter((x) => x === "y").length;
+    const left = all.filter((x) => !x).length;
+    const fans = fansFailing(modes);
+    const value = fails ? (whole ? `${plural(fails, "fail")} on ${plural(fans, "fan")}` : plural(fails, "fail")) : "All pass";
+    const scope = whole ? `${plural(test.fans.length, "fan")} · ${modes.length === 2 ? "both modes tested" : `${modes[0] === "normal" ? "normal" : "fire"} mode only`}` : `${fails ? `on ${plural(fans, "fan")} · ` : ""}${passed} of ${all.length} checks pass`;
+    return { name, tone: fails ? "fail" : "pass", value, line: [scope, left ? `${left} not checked` : ""].filter(Boolean).join(" · ") };
+  };
+  return [
+    tile("Normal mode", tested.includes("normal") ? ["normal"] : [], false),
+    tile("Fire mode", tested.includes("fire") ? ["fire"] : [], false),
+    tile("The panel test", tested, true),
+  ];
+}
+
+// the notes table: each fail that has a reason, then each fan's own note
+// (a fail with no reason is left out: its ✗ is in the mode table)
+export function reportNoteRows(test: FfcpTest): { fan: string; check: string; text: string; fail: boolean }[] {
+  const rows: { fan: string; check: string; text: string; fail: boolean }[] = [];
   for (const fan of test.fans) {
     for (const mode of ["normal", "fire"] as FfcpMode[])
       for (const [k] of FAN_CHECKS) {
-        if (fan.marks[`${mode}.${k}`] !== "n") continue;
-        notes.push({ head: `${fan.name} · ${mode === "normal" ? "Normal" : "Fire"} · ${NOTE_LABEL[k]} FAIL`, text: fan.notes[`${mode}.${k}`]?.trim() || "No note", fail: true });
+        const why = fan.notes[`${mode}.${k}`]?.trim();
+        if (fan.marks[`${mode}.${k}`] === "n" && why) rows.push({ fan: fan.name, check: `${mode === "normal" ? "Normal" : "Fire"} · ${NOTE_LABEL[k]} FAIL`, text: why, fail: true });
       }
-    if (fan.note?.trim()) notes.push({ head: fan.name, text: fan.note.trim(), fail: false });
+    if (fan.note?.trim()) rows.push({ fan: fan.name, check: "Fan note", text: fan.note.trim(), fail: false });
   }
-  return notes;
-}
-
-// "7 fans · 3 fails on 2 fans · 3 not checked" (the modes tested only)
-export function reportSummary(test: FfcpTest): { text: string; fails: number } {
-  const all = test.fans.flatMap((f) => modesTested(test).flatMap((m) => FAN_CHECKS.map(([k]) => f.marks[`${m}.${k}`])));
-  const fails = all.filter((x) => x === "n").length;
-  const left = all.filter((x) => !x).length;
-  const failedFans = test.fans.filter((f) => Object.values(f.marks).includes("n")).length;
-  const n = (k: number, w: string) => `${k} ${w}${k === 1 ? "" : "s"}`;
-  return { text: [n(test.fans.length, "fan"), fails ? `${n(fails, "fail")} on ${n(failedFans, "fan")}` : "all passed", left ? `${left} not checked` : ""].filter(Boolean).join(" · "), fails };
+  return rows;
 }

@@ -14,7 +14,7 @@ import type { DefectType } from "../db/types";
 // one the Excel already uses for a finding's old reference number, and in
 // the Excel both are also written under the Ref (in `refText`).
 
-interface DefectTypeStyle {
+export interface DefectTypeStyle {
   value: DefectType;
   label: string;
   bg: string;

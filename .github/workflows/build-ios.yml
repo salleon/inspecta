@@ -8,7 +8,7 @@ name: Build iOS
 on:
   push:
     branches: [main, test, ios]
-    paths: ["ios/**", ".github/workflows/build-ios.yml"]
+    paths: ["ios/**", "scripts/ios-app.sh", "branding/icons/contractor/ios/**", ".github/workflows/build-ios.yml"]
   workflow_dispatch:
 
 jobs:
@@ -24,9 +24,14 @@ jobs:
 
       - run: npm ci
 
-      - run: npm run build
+      # the Contractor app (Inspecta - Site Inspections), set up the way
+      # codemagic.yaml does, so scripts/ios-app.sh is checked on a Mac too;
+      # EnFact's setup differs only in its ID, name and version
+      - run: npm run build:contractor
 
       - run: npx cap sync ios
+
+      - run: scripts/ios-app.sh contractor
 
       - name: Build for the simulator
         run: |

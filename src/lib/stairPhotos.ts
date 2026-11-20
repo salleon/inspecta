@@ -1,6 +1,7 @@
-import type { Finding, Photo } from "../db/types";
+import type { Finding, Photo, SpfSystem, StairTest } from "../db/types";
 import { listTestFindings } from "../db/db";
 import { defectTypeStyle } from "./defectTypes";
+import { stairLabel } from "./stairTest";
 
 // A stair test's Photos & notes (lib/testPhotos) as they print: their own
 // page after the stair pages, in the preview, the PDF and the Excel alike.
@@ -45,4 +46,34 @@ export function photoItems(rows: { finding: Finding; photos: Photo[] }[]): Stair
 
 export async function testPhotoItems(test: { id: string; siteId: string }): Promise<StairPhotoItem[]> {
   return photoItems(await listTestFindings(test.siteId, test.id));
+}
+
+// The photo appendix (the PDF, the preview and the Excel alike): every photo
+// of the test's Photos & notes, numbered in order across all its stairs, each
+// 5 × 6.61 cm with a label table under it. A note with no photo still gets
+// its place, marked No photo.
+export const PHOTO_W = 141.73; // pt, 5 cm
+export const PHOTO_H = 187.37; // pt, 6.61 cm
+
+export interface AppendixPhoto {
+  n: number;
+  photo: Photo | null;
+  rows: [string, string][]; // Stair, Level, Location, Run (system testing only), Note
+}
+
+export function appendixPhotos(items: StairPhotoItem[], test: Pick<StairTest, "kind">, sys: Pick<SpfSystem, "stairs">): AppendixPhoto[] {
+  const out: AppendixPhoto[] = [];
+  for (const item of items) {
+    const f = item.finding;
+    const k = sys.stairs.findIndex((s) => s.id === f.stairId);
+    const rows: [string, string][] = [
+      ["Stair", k >= 0 ? stairLabel(sys.stairs[k], k) : "–"],
+      ["Level", f.level?.trim() || "–"],
+      ["Location", f.location.trim() || "–"],
+      ...(test.kind === "general" ? [["Run", f.run === undefined ? "–" : `Run ${f.run + 1}`] as [string, string]] : []),
+      ["Note", f.note.trim() || "–"],
+    ];
+    for (const photo of item.photos.length ? item.photos : [null]) out.push({ n: out.length + 1, photo, rows });
+  }
+  return out;
 }

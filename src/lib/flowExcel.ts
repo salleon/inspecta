@@ -2,14 +2,17 @@ import type { Workbook, Worksheet } from "exceljs";
 import type { FlowTest, Site } from "../db/types";
 import { num } from "./flowTest";
 import { ZipWriter } from "./zip";
-import { chartAxes, chartSeries, printDemand, printDetails, printSubtitle, printTables, printTitle, printUnit, PRINT_DEMAND, type PrintSeries } from "./flowPrint";
+import { chartAxes, chartSeries, printResults, printStrip, printSubtitle, printTables, printUnit, PRINT_DEMAND, type PrintSeries, type Tone } from "./flowPrint";
+import { KIND_LABEL } from "./flowTest";
 // the logo (EnFact's, or the company's in Contractor mode), as on the preview
 import { reportLogoUrl } from "./branding";
 import { sheetName } from "./excelSheetName";
 
-// Flow tests in Excel, laid out like the export preview and the PDF (design
-// canvas FlowExports): the title and logo, the details and demand, a table
-// per supply or pump with PASS / FAIL, the graph and the comments. Built
+// Flow tests in Excel, laid out like the PDF (the "Flow test report layout"
+// design): the title, the site's name and the logo, the details, the Result
+// (PASS / FAIL, or the town main's Meets / Below demand, with the kPa
+// margin), a table per supply with navy headings and only the columns filled
+// in, the graph and the comments. Built
 // from the same pieces as the preview (lib/flowPrint), so what's previewed
 // is what's exported. The graph is a real Excel chart, added to the file
 // after ExcelJS has written it (ExcelJS can't make charts): see
@@ -19,12 +22,17 @@ const SHEET = { sprinkler: "SPRINKLER", hydrant: "HYDRANT", combined: "Combined 
 
 const FONT = "Arial";
 const INK = "FF1C2833";
-const HEAD_FILL = "FFE6EEF5";
-const HEAD_LINE = "FFB8C6D2";
+const NAVY = "FF0B3550";
+const SOFT = "FF4A6175";
 const CELL_LINE = "FFD3DBE2";
 const BLUE = "FF1F6FB2";
-const PASS = "FF127A3E";
-const FAIL = "FFC62828";
+// as the PDF: a pump's PASS green, FAIL red; the town main blue (meets) or red (below)
+const TONE: Record<Tone, { ink: string; fill: string }> = {
+  pass: { ink: "FF1B7A43", fill: "FFDFF3E6" },
+  fail: { ink: "FFB3261E", fill: "FFFFD9D4" },
+  below: { ink: "FFB3261E", fill: "FFFFD9D4" },
+  meets: { ink: "FF1F6FB2", fill: "FFDCECFB" },
+};
 // An A4 page, portrait, 1.3 cm margins: the table columns share this width
 // (in Excel's character widths, about 7 px each), the tables and the graph
 // spanning it like the preview's page.
@@ -46,6 +54,14 @@ interface FlowChart {
   xml: string;
 }
 
+// k cells spread across n columns (k ≤ n): how many columns each takes, so
+// every table and Result row spans the sheet as on the PDF
+export function spans(n: number, k: number): number[] {
+  const base = Math.floor(n / k);
+  const extra = n % k;
+  return Array.from({ length: k }, (_, i) => base + (i < extra ? 1 : 0));
+}
+
 // numbers as numbers, so they can be worked with in Excel
 const cellValue = (v: string) => {
   const t = v.trim();
@@ -60,16 +76,7 @@ const cellValue = (v: string) => {
 // workbook) rather than SPRINKLER / HYDRANT (a tab in the site's report)
 export async function addFlowSheets(wb: Workbook, tests: FlowTest[], site: Pick<Site, "name" | "address">, byTest = false): Promise<FlowChart[]> {
   const charts: FlowChart[] = [];
-  const url = reportLogoUrl();
-  let logo: Logo | null = null;
-  if (url) {
-    const id = wb.addImage({ buffer: new Uint8Array(await (await fetch(url)).arrayBuffer()) as never, extension: "png" });
-    const img = new Image();
-    img.src = url;
-    await img.decode().catch(() => {});
-    const aspect = img.naturalWidth && img.naturalHeight ? img.naturalWidth / img.naturalHeight : 110 / 52;
-    logo = { id, w: Math.round(Math.min(160, 52 * aspect)), h: Math.round(Math.min(52, 160 / aspect)) };
-  }
+  const logo = await excelLogo(wb);
   for (const test of tests) {
     const kindName = SHEET[test.kind];
     const name = sheetName(wb, byTest || test.kind === "blank" ? test.name.trim() || kindName : kindName, "Flow test");
@@ -79,7 +86,19 @@ export async function addFlowSheets(wb: Workbook, tests: FlowTest[], site: Pick<
   return charts;
 }
 
-type Logo = { id: number; w: number; h: number };
+export type Logo = { id: number; w: number; h: number };
+
+// the report's logo (EnFact's, or the company's in Contractor mode) in the workbook, up to 160 × 52 px
+export async function excelLogo(wb: Workbook): Promise<Logo | null> {
+  const url = reportLogoUrl();
+  if (!url) return null;
+  const id = wb.addImage({ buffer: new Uint8Array(await (await fetch(url)).arrayBuffer()) as never, extension: "png" });
+  const img = new Image();
+  img.src = url;
+  await img.decode().catch(() => {});
+  const aspect = img.naturalWidth && img.naturalHeight ? img.naturalWidth / img.naturalHeight : 110 / 52;
+  return { id, w: Math.round(Math.min(160, 52 * aspect)), h: Math.round(Math.min(52, 160 / aspect)) };
+}
 
 function fillSheet(ws: Worksheet, name: string, test: FlowTest, site: Pick<Site, "name" | "address">, logo: Logo | null): FlowChart | null {
   const tables = printTables(test);
@@ -90,77 +109,108 @@ function fillSheet(ws: Worksheet, name: string, test: FlowTest, site: Pick<Site,
   const line = (argb: string, style: "thin" | "medium" = "thin") => ({ style, color: { argb } });
   const box = (argb: string, style: "thin" | "medium" = "thin") => ({ left: line(argb, style), right: line(argb, style), top: line(argb, style), bottom: line(argb, style) });
 
-  // columns: the page's width shared out by how wide their headings and
-  // values are, as the preview's table does
+  // columns: the page's width shared out evenly (each table spreads its
+  // own columns over them), the first wide enough for the detail labels
   ws.getColumn(1).width = 2;
-  const want = [...Array(cols)].map((_, j) => Math.max(5, ...tables.flatMap((t) => [t.head[j] ?? "", ...t.rows.map((r) => r[j] ?? "")]).map((t) => t.length)) + 2);
-  let widths = want.map((w) => (w * PAGE_WIDTH) / want.reduce((a, b) => a + b, 0));
-  if (widths[0] < LABEL_WIDTH) {
-    const rest = want.slice(1).reduce((a, b) => a + b, 0);
-    widths = [LABEL_WIDTH, ...want.slice(1).map((w) => (w * (PAGE_WIDTH - LABEL_WIDTH)) / rest)];
-  }
-  if (cols === 1) widths = [PAGE_WIDTH];
+  const even = PAGE_WIDTH / cols;
+  let widths = [...Array(cols)].map(() => even);
+  if (cols > 1 && even < LABEL_WIDTH) widths = [LABEL_WIDTH, ...widths.slice(1).map(() => (PAGE_WIDTH - LABEL_WIDTH) / (cols - 1))];
   widths.forEach((w, j) => (ws.getColumn(first + j).width = Math.round(w * 10) / 10));
 
   let r = 1;
-  // title, the short blue bar under it, the test's own name
+  // as the PDF: "Flow test · Sprinkler", the blue bar, the site's name as big, its address (and the test's own name)
   ws.getRow(r).height = 22;
-  ws.getCell(r, first).value = printTitle(test);
+  ws.getCell(r, first).value = test.kind === "blank" ? `Flow test · ${test.name.trim() || "Blank sheet"}` : `Flow test · ${KIND_LABEL[test.kind]}`;
   ws.getCell(r, first).font = font({ size: 14, bold: true });
   ws.getCell(r, first).alignment = { vertical: "bottom" };
   r++;
   ws.getRow(r).height = 4;
   ws.getCell(r, first).fill = { type: "pattern", pattern: "solid", fgColor: { argb: BLUE } };
   r++;
-  const sub = printSubtitle(test);
-  if (sub) {
-    ws.getCell(r, first).value = sub;
-    ws.getCell(r, first).font = font({ size: 11, bold: true });
+  ws.getRow(r).height = 22;
+  ws.getCell(r, first).value = site.name.trim();
+  ws.getCell(r, first).font = font({ size: 14, bold: true });
+  r++;
+  const note = [site.address?.trim(), printSubtitle(test)].filter(Boolean).join(" · ");
+  if (note) {
+    ws.getCell(r, first).value = note;
+    ws.getCell(r, first).font = font({ size: 9, color: { argb: SOFT } });
     r++;
   }
   r++;
 
-  // details, then the demand
-  const details = printDetails(test, site);
-  const demand = printDemand(test);
-  if (demand.length) details.push({ label: "Demand", value: demand.join(", ") });
-  for (const d of details) {
+  // the details: site, date, equipment, tested by, demand, year installed
+  for (const d of printStrip(test, site)) {
     ws.getCell(r, first).value = d.label;
-    ws.getCell(r, first).font = font({ bold: true });
+    ws.getCell(r, first).font = font({ bold: true, color: { argb: NAVY } });
     if (last > first + 1) ws.mergeCells(r, first + 1, r, last);
-    ws.getCell(r, first + 1).value = d.value || "–";
+    ws.getCell(r, first + 1).value = d.value.split("\n").join(", ") || "–";
     ws.getCell(r, first + 1).font = font();
     r++;
   }
 
-  // a table per supply: its name and PASS / FAIL, the headings, the readings
+  // the Result: a row per supply, its verdict and margin, then where
+  const results = printResults(test);
+  if (results.length) {
+    r++;
+    ws.getCell(r, first).value = "RESULT";
+    ws.getCell(r, first).font = font({ size: 9, bold: true, color: { argb: NAVY } });
+    r++;
+    const parts = cols >= 3 ? spans(cols, 3) : [1, cols - 1].filter(Boolean);
+    for (const t of results) {
+      const texts = [t.name, `${t.value}${t.margin ? `  ${t.margin}` : ""}`, t.line].slice(0, parts.length);
+      let c0 = first;
+      parts.forEach((w, j) => {
+        if (w > 1) ws.mergeCells(r, c0, r, c0 + w - 1);
+        const c = ws.getCell(r, c0);
+        c.value = texts[j];
+        c.alignment = { vertical: "middle", wrapText: j === 2 };
+        if (j === 1) {
+          c.font = font({ bold: true, color: { argb: t.tone ? TONE[t.tone].ink : "FF9AABB9" } });
+          if (t.tone) c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: TONE[t.tone].fill } };
+        } else c.font = font({ size: 9, color: { argb: SOFT } });
+        c0 += w;
+      });
+      r++;
+    }
+  }
+
+  // a table per supply: its name and badge (with its margin), navy headings, the readings
   for (const t of tables) {
     r++;
     if (t.name) {
-      ws.getCell(r, first).value = t.name;
-      ws.getCell(r, first).font = font({ size: 11, bold: true });
-      if (t.result) {
+      ws.getCell(r, first).value = t.name.toUpperCase();
+      ws.getCell(r, first).font = font({ size: 9, bold: true, color: { argb: NAVY } });
+      if (t.badge) {
         const c = ws.getCell(r, last);
-        const argb = t.result === "PASS" ? PASS : FAIL;
-        c.value = t.result;
-        c.font = font({ bold: true, color: { argb } });
-        c.border = box(argb, "medium");
+        const tone = TONE[t.badge.tone];
+        c.value = t.badge.text;
+        c.font = font({ bold: true, size: 9, color: { argb: tone.ink } });
+        c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: tone.fill } };
         c.alignment = { horizontal: "center", vertical: "middle" };
       }
       r++;
     }
+    // each column of this table spread over the sheet's columns
+    const w = spans(cols, Math.max(1, t.head.length));
+    const at = w.map((_, j) => first + w.slice(0, j).reduce((a, b) => a + b, 0));
+    const place = (j: number) => {
+      if (w[j] > 1) ws.mergeCells(r, at[j], r, at[j] + w[j] - 1);
+      return ws.getCell(r, at[j]);
+    };
     t.head.forEach((h, j) => {
-      const c = ws.getCell(r, first + j);
+      const c = place(j);
       c.value = h;
-      c.font = font({ bold: true, size: 9 });
-      c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: HEAD_FILL } };
-      c.border = box(HEAD_LINE);
+      c.font = font({ bold: true, size: 9, color: { argb: "FFFFFFFF" } });
+      c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: NAVY } };
+      c.border = box(NAVY);
       c.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
     });
+    ws.getRow(r).height = 26;
     r++;
     for (const row of t.rows) {
       row.forEach((v, j) => {
-        const c = ws.getCell(r, first + j);
+        const c = place(j);
         c.value = cellValue(v);
         c.font = font({ size: 9 });
         c.border = box(CELL_LINE);
@@ -180,8 +230,8 @@ function fillSheet(ws: Worksheet, name: string, test: FlowTest, site: Pick<Site,
     r++;
   }
   if (test.comment?.trim()) {
-    ws.getCell(r, first).value = "Comments:";
-    ws.getCell(r, first).font = font({ bold: true });
+    ws.getCell(r, first).value = "Comments";
+    ws.getCell(r, first).font = font({ bold: true, color: { argb: NAVY } });
     ws.getCell(r, first).alignment = { vertical: "top" };
     if (last > first + 1) ws.mergeCells(r, first + 1, r, last);
     const c = ws.getCell(r, first + 1);

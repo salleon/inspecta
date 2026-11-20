@@ -58,16 +58,20 @@ test("a panel test from a site's Other tests: add fans one at a time and as a ba
   assert.match(await tile("SAF-01").getAttribute("class"), /\bon\b/, "the first new fan is picked");
 });
 
-test("a cross asks why; the note shows under it, or waits as 'no note'", async () => {
+test("a cross just marks the fail; its reason is added from the box under it, any time", async () => {
   await page.click('[aria-label="Run pass"]');
   await page.click('[aria-label="Fault fail"]');
-  await page.click('.ff-chips button:has-text("No light fitted")');
-  await page.click('button:has-text("Save")');
-  assert.equal(await page.locator(".ff-why", { hasText: "No light fitted" }).count(), 1);
-  // later: the tile says it still needs one
   await page.click('[aria-label="Off fail"]');
-  await page.click('button:has-text("Note later")');
+  // nothing pops up, and the fan stays picked
+  assert.equal(await page.locator(".sheet-panel").count(), 0);
+  assert.match(await tile("SAF-01").getAttribute("class"), /\bon\b/);
   assert.match(await tile("SAF-01").innerText(), /2 fails · no note/);
+  assert.equal(await page.locator(".ff-why.add").count(), 2);
+  // the reason, when you like: a quick one or typed
+  await page.locator(".ff-why.add").first().click();
+  await page.click('.ff-chips button:has-text("Incorrect indication")');
+  await page.click('.sheet-panel button:has-text("Save")');
+  assert.equal(await page.locator(".ff-why", { hasText: "Incorrect indication" }).count(), 1);
   assert.equal(await page.locator(".ff-why.add").count(), 1);
   // a quick note on the fan itself
   await page.fill(".ff-notes textarea", "Label faded");
@@ -94,8 +98,10 @@ test("Export: the job's panel tests as a PDF, and as one Excel sheet", async () 
   const text = readFileSync(pdf.path, "latin1");
   assert.match(text, /^%PDF/);
   assert.match(text, /Fire fan control panel/);
-  assert.match(text, /Normal mode/);
-  assert.doesNotMatch(text, /Fire mode/, "fire mode had nothing ticked: no table");
+  assert.match(text, /NORMAL MODE/);
+  assert.doesNotMatch(text, /FIRE MODE/, "fire mode had nothing ticked: no table");
+  assert.match(text, /\(Not tested\)/, "its Result tile says so");
+  assert.match(text, /Page 1/, "its own footer");
   await page.waitForTimeout(800);
   await page.click('button:has-text("Export")');
   await page.click('button[aria-pressed]:has-text("Excel")');

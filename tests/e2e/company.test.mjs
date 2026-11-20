@@ -1,10 +1,10 @@
-// Contractor mode's company setup (components/CompanySetup): a new phone
+// The Contractor app's company setup (components/CompanySetup): a new phone
 // sets up its company (name, logo, colours) before the name prompt, the
 // app takes the company's colours, and Settings → Company edits them.
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { startApp, seed, download } from "./helpers.mjs";
+import { startApp, openPage, seed, download } from "./helpers.mjs";
 
 let app;
 let context;
@@ -17,7 +17,7 @@ const LOGO = Buffer.from(
 );
 
 before(async () => {
-  app = await startApp(import.meta.url);
+  app = await startApp(import.meta.url, { edition: "contractor" });
   context = await app.browser.newContext({ viewport: { width: 390, height: 844 } });
   await context.addInitScript(() => localStorage.setItem("inspecta.tourOffered", "1"));
   page = await context.newPage();
@@ -122,11 +122,18 @@ test("no EnFact branding: home header and the PDF cover are the company's", asyn
   assert.ok(text.includes("(AFSS)"), "the report kind is drawn as text by the accent bar");
 });
 
-test("EnFact mode keeps EnFact's own colours", async () => {
-  await page.evaluate(() => localStorage.setItem("inspecta.flowMode", "enfact"));
-  await page.reload();
-  await page.waitForTimeout(2300);
-  assert.equal(await cssVar("--accent"), "#2ec4b6");
-  assert.equal(await page.getByText("Company name").count(), 0);
+test("the EnFact app keeps EnFact's own colours, and has no company setup", async () => {
+  const enfact = await startApp(import.meta.url);
+  try {
+    const { page: office, errors: officeErrors } = await openPage(enfact);
+    await office.evaluate(() => localStorage.setItem("inspecta.company", JSON.stringify({ name: "Coastline Fire", logo: null, plate: false, logoColours: [], schemeId: "firetruck", custom: { primary: "#071b2c", secondary: "#2ec4b6", light: "#f4f7f9" }, setUp: true })));
+    await office.reload();
+    await office.waitForTimeout(2300);
+    assert.equal(await office.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--accent").trim()), "#2ec4b6");
+    assert.equal(await office.getByText("Company name").count(), 0);
+    assert.deepEqual(officeErrors, []);
+  } finally {
+    await enfact.close();
+  }
   assert.deepEqual(errors, []);
 });

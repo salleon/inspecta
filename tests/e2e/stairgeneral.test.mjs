@@ -1,5 +1,5 @@
 // General system testing (the Stair general system testing canvas): the test
-// kinds by mode and in their order, velocities run against run, a door added
+// kinds in each app and in their order, velocities run against run, a door added
 // at a level, a pass that's only just one in
 // yellow, the report run by run, and in Review level layout the groups and
 // the pop-up that changes the other car parks to basements.
@@ -17,11 +17,7 @@ const tap = async (keys) => {
   for (const k of keys) await page.getByRole("button", { name: k, exact: true }).dispatchEvent("pointerdown");
 };
 
-before(async () => {
-  app = await startApp(import.meta.url);
-  ({ page, errors } = await openPage(app));
-  await go(page, app, "/", 1500);
-  await seed(page, {
+const SITE = {
     sites: [
       {
         id: "g1",
@@ -30,7 +26,13 @@ before(async () => {
         spf: { edition: "2015", type: "Zone", notes: "", stairs: [stair("s1", "SPF 1", "P3", "P1"), stair("s2", "SPF 2", "P3", "P1"), stair("s3", "SPF 3", "G", "12")] },
       },
     ],
-  });
+  };
+
+before(async () => {
+  app = await startApp(import.meta.url);
+  ({ page, errors } = await openPage(app));
+  await go(page, app, "/", 1500);
+  await seed(page, SITE);
 });
 
 after(async () => {
@@ -42,11 +44,18 @@ test("the kinds: General first and picked, Commissioning last; Contractor adds t
   const kinds = async () => (await page.getByRole("radio").allInnerTexts()).map((t) => t.split("\n")[0].replace(/\s*Contractor$/, ""));
   assert.deepEqual(await kinds(), ["General system testing", "Annual Testing", "Commissioning"]);
   assert.equal(await page.getByRole("radio", { name: /General system testing/ }).getAttribute("aria-checked"), "true");
-  await page.evaluate(() => localStorage.setItem("inspecta.flowMode", "contractor"));
-  await go(page, app, "/site/g1/spf/new", 1200);
-  assert.deepEqual(await kinds(), ["General system testing", "Annual Testing", "Three-monthly check", "Commissioning"]);
-  await page.evaluate(() => localStorage.removeItem("inspecta.flowMode"));
-  await go(page, app, "/site/g1/spf/new", 1200);
+  // the Contractor app
+  const cApp = await startApp(import.meta.url, { edition: "contractor" });
+  try {
+    const { page: cPage } = await openPage(cApp);
+    await cPage.evaluate(() => localStorage.setItem("inspecta.company", JSON.stringify({ name: "Coastline Fire", logo: null, plate: false, logoColours: [], schemeId: "default", custom: { primary: "#071b2c", secondary: "#2ec4b6", light: "#f4f7f9" }, setUp: true })));
+    await seed(cPage, SITE);
+    await go(cPage, cApp, "/site/g1/spf/new", 1200);
+    const cKinds = (await cPage.getByRole("radio").allInnerTexts()).map((t) => t.split("\n")[0].replace(/\s*Contractor$/, ""));
+    assert.deepEqual(cKinds, ["General system testing", "Annual Testing", "Three-monthly check", "Commissioning"]);
+  } finally {
+    await cApp.close();
+  }
 });
 
 test("General system testing: any tests, none ticked to start; Start opens the overview", async () => {
@@ -106,21 +115,21 @@ test("+ Run: what changed, then the same doors again beside the last run's", asy
   assert.match(await page.locator("body").innerText(), /Velocity · SPF 2[\s\S]*0 of 3/);
 });
 
-test("the report: a page per stair, its runs side by side, a dash where a door wasn't read", async () => {
+test("the report: a summary page per stair first, then a page per stair: what changed, then its runs side by side, a dash where a door wasn't read", async () => {
   await page.getByRole("button", { name: "Back" }).click();
   await page.getByRole("button", { name: "Preview the report" }).click();
   // the stairs still on placeholder names: on with the suggestions
   await page.getByRole("button", { name: /Not now/ }).click();
   await page.getByTestId("spf-page").first().waitFor();
-  assert.equal(await page.getByTestId("spf-page").count(), 6, "a page per stair, then a summary page per stair");
-  assert.match(await page.getByTestId("spf-page").nth(3).innerText(), /General system testing · Summary\s*SPF 1 · Stair 1 · latest reading at each door[\s\S]*P2 B\s*\S+\s*1\.3/);
-  const first = page.getByTestId("spf-page").first();
-  assert.match(await first.innerText(), /Stair pressurisation · General system testing\s*SPF 1 · Stair 1/);
+  assert.equal(await page.getByTestId("spf-page").count(), 6, "a summary page per stair, then a page per stair");
+  assert.match(await page.getByTestId("spf-page").first().innerText(), /Stair pressurisation · System testing · Summary\s*SPF 1 · Stair 1\s*Latest reading at each door[\s\S]*P2 B\s*\S+\s*1\.3/);
+  const first = page.getByTestId("spf-page").nth(3);
+  assert.match(await first.innerText(), /Stair pressurisation · System testing\s*SPF 1 · Stair 1/);
   const tables = await first.getByTestId("spf-run-table").allInnerTexts();
   assert.equal(tables.length, 1);
-  assert.match(tables[0], /Average velocity m\/s \(min 1\), run by run\s*Level\s*Adjacent door open\s*Run 1\s*\d\d:\d\d\s*Run 2\s*\d\d:\d\d/);
+  assert.match(tables[0], /Average velocity m\/s \(min 1\), run by run\s*Level\s*Adjacent door open\s*Run 1\s*\d\d:\d\d\s*Run 2\s*\d\d:\d\d/i);
   assert.match(tables[0], /P1\s*\S+\s*1\.05\s*–[\s\S]*P2 A\s*\S+\s*–\s*–[\s\S]*P2 B\s*\S+\s*0\.2\s*1\.3/);
-  assert.match(await first.innerText(), /Runs\s*Run 1 · \d\d:\d\d · As found\s*Run 2 · \d\d:\d\d · P3 relief damper shut\s*– not read in that run/);
+  assert.match(await first.innerText(), /Runs\s*Run\s*Time\s*What changed before it\s*1\s*\d\d:\d\d\s*As found\s*2\s*\d\d:\d\d\s*P3 relief damper shut[\s\S]*– not read in that run/i);
   assert.deepEqual(errors, []);
 });
 

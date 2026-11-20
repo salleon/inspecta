@@ -18,7 +18,7 @@ You're helping build **Inspecta**, an offline-first Android app (React + Capacit
 
 - Develop on `test`. Never create other branches. `main` is releases only.
 - Merge to `main` only when I say so. If `main` is behind `test`, fast-forward it rather than adding a merge commit.
-- A release to coworkers: bump `BUILD_LABEL` (one number, by hand), add a "Build N, out to coworkers" CHANGELOG line, push to `main`, then run Actions → **Build Android APK** on `main` with **Publish to coworkers** ticked and a short **What's new** (500 characters max, plain English, user-facing). Play's in-app update popup reaches users once Play finishes processing.
+- A release names its app. To coworkers (EnFact): bump `BUILD_LABEL_ENFACT` (one number, by hand), add a "[EnFact] Build N, out to coworkers" CHANGELOG line, push to `main`, then run Actions → **Build Android APK** on `main` with Which app **EnFact** and **Publish to Play** ticked and a short **What's new** (500 characters max, plain English, user-facing). Play's in-app update popup reaches users once Play finishes processing.
 
 ## Commits and CHANGELOG
 
@@ -31,7 +31,7 @@ You're helping build **Inspecta**, an offline-first Android app (React + Capacit
 
 - Match the surrounding code: inline styles, short plain comments, the app's colours (navy `#071b2c`, teal accent, purple for stair pressurisation, blue for flow tests, amber `#f7b977` for requirements and BETA).
 - Numbers are typed on the app's own number pads (`NumPad`, `CellPad`), never the phone keyboard.
-- Features that differ between EnFact and Contractor go behind Admin → Flow testing mode. Keep those differences in one place.
+- **Two apps, one codebase** (`claude-project/SPLIT_PLAN.md`): Inspecta - EnFact (private) and Inspecta - Site Inspections (Contractor, public). Every change states which app it's for, **EnFact**, **Contractor** or **Both**, and I'm asked when it isn't clear. The commit title and CHANGELOG entry carry the same tag, and a release names the app(s) it goes to. Differences go behind the edition check (`src/lib/settings.ts`, moving to `src/lib/edition.ts`), kept in one place.
 - Everything is stored on the phone (IndexedDB via Dexie). Schema changes need a Dexie version bump and must keep old data opening (see `tests/e2e/upgrade.test.mjs`).
 
 ## Standards

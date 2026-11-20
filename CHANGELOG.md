@@ -5,7 +5,264 @@ matches a commit on the `test` branch (called `advanced_controls` until
 29 September 2026) or `main`; the commit itself has
 the technical detail.
 
+## 20 November 2026
+
+- **[Both] FFCP report redesigned.** The shared heading (site name, address
+  and panel), the details in one row, a Result row (Normal mode, Fire mode,
+  the panel test), the mode tables with a grey dash for checks not done, and
+  one notes table (fails with a reason, and fan notes; fails without a reason
+  show only as the cross). The bottom summary line is gone. Footer and page
+  numbers on every page; continued pages start with a thin header line. The
+  Excel sheet matches.
+
+- **[Both] One heading for every report.** The stair, flow test and AFSS /
+  Project summary pages now share one heading: the title, the blue rule,
+  the name under it at the same size, and a small line under that. On the
+  AFSS / Project summary the site's name is now as big as the title (it
+  was smaller), and a long title or name shrinks to stay clear of a wide
+  company logo.
+
+- **[Both] New flow test report layout (PDF and Excel).** Flow test reports
+  follow the layout approved on the design page:
+  - Headed "Flow test · Sprinkler" (or Hydrant, Combined system), with
+    the site's name as big under it.
+  - The details in an even strip: site, date, equipment, tested by,
+    demand, and year installed when it's filled in.
+  - A new Result row: a tile per supply saying PASS or FAIL and by how
+    many kPa it clears (or misses) the closest demand point, e.g. "PASS
+    +153 kPa". The town main, the reference, says "Meets demand" in blue
+    or "Below demand" in red with its margin. A supply that wasn't tested
+    says so.
+  - A table per supply with navy headings, showing only the columns filled
+    in on it, and its result and margin on a badge beside its name.
+  - The graph across the page with its legend underneath. On a combined
+    system, the pump duty is a filled diamond, as in the app.
+  - The comments in a box, left out when there are none.
+  - The test's defects straight after it, as the same finding cards as
+    the AFSS / Project report, numbered 1, 2, 3 within the test.
+  - A footer on every page: site and address, and the page number. Inside
+    an AFSS / Project report the pages carry on its numbering; exported on
+    their own they start at 1. A test that runs on to a second page starts
+    it with a thin header line.
+  - The Excel has the same layout. The chart stays a real Excel chart, and
+    the defects sheet keeps the register's format.
+- **[Both] Year installed on every flow test.** The optional Year
+  installed box is now on sprinkler, hydrant and combined tests in both
+  apps (it was only on combined systems in the Contractor app).
+
+## 19 November 2026
+
+- **[Contractor] Its own icon on iPhone.** The first Site Inspections test
+  build on iPhone had EnFact's icon (with the swoosh); it now gets its own
+  Site Check icon, as on Android.
+
+- **[Both] Two iPhone apps on TestFlight.** The iPhone project now builds
+  either app: EnFact (as before, to TestFlight with every release, now
+  called "EnFact" under its icon) or Inspecta (Site Inspections), sent to
+  TestFlight only when started by hand. iPhone only for now; iPad comes
+  later.
+
+- **[Contractor] A test app on Play, like EnFact Test.** Contractor
+  builds now also make the test app's Play bundle, and builds of `test`
+  publish it to "Inspecta - Site Inspections Test" (its own Play app,
+  orange icon, own data, only you test it). Contractor publishes go out
+  without "What's new" for now.
+
+- **[EnFact] New app icon, out to coworkers (still Build 9.8).** The
+  towers and tick redrawn flat, with the EnFact swoosh behind them.
+
+- **[EnFact] Build 9.8, out to coworkers.** The new stair and AFSS /
+  Project report layouts, the FFCP testing change, and the app's name
+  under its icon: "EnFact Inspecta".
+
+- **[Both] The apps' names on the phone.** The EnFact app is called
+  "EnFact Inspecta" under its icon (its test app "EnFact Inspecta Test"),
+  and the other companies' app "Inspecta - Site Inspections" (its test app
+  "Inspecta - Site Inspections Test"), in place of the short "EnFact" and
+  "Inspecta" from the split.
+
+- **[Both] New AFSS and Project report layout (PDF).** The site report
+  follows the layout approved on the design page:
+  - The cover shows a count per risk level under the date, findings and
+    inspector. Re-inspected defects (Rectified, Outstanding) get a row of
+    their own.
+  - A new summary page comes after the cover:
+    - a tile per risk level, with Rectified and Outstanding beside them
+      past a divider when there are any;
+    - every finding in one table with its reference, risk, level and
+      location, and the page it's on (new findings first, then the
+      re-inspected ones);
+    - the attached flow, stair and FFCP tests with their pages.
+  - Each finding is a card. A strip across the top shows its reference
+    (the same as the Excel's: 1.8.1, 5.5.2…), its risk and its level and
+    location, with a coloured edge for the risk. Up to two photos sit
+    beside the note at full size, and any more go four across underneath.
+    A finding without a photo shows "Note". The inspector's own note is
+    headed "Recommended action". The app's suggested actions stay in the
+    Excel only.
+  - Every page after the cover has a thin header (site, report, date,
+    inspector) and a footer (site, address, page number), including the
+    attached test pages.
+  - A finding is never split over a page. A section or item that carries
+    on to a new page repeats its heading, marked (continued).
+  - Project reports have no ESR headings, number findings 1, 2, 3 in the
+    order the photos were taken, and show the time of each finding's first
+    photo in the card's strip.
+  - The Excel is unchanged.
+
+- **[Both] Two Android apps.** The Android project now builds two apps: EnFact
+  (the one coworkers have, same app on Play, so it updates in place and
+  keeps everything) and Inspecta (Site Inspections) for other companies, each
+  with its own test app beside it. On the phone, the EnFact app is now
+  called "EnFact" under its icon (its test app "EnFact Test"). Each app has
+  its own build number, shown in its Settings: EnFact carries on from 9.7,
+  Site Inspections starts at 1.0.
+
+- **[Both] Two apps from one: EnFact and Site Inspections.** Inspecta is
+  being split into Inspecta - EnFact, for EnFact's own staff, and Inspecta -
+  Site Inspections, for other companies through the app stores. This first
+  step changes nothing on screen: which app a phone has is now fixed by
+  the app itself, so the Mode switch in Admin is gone (and the hidden
+  switch on the opening screen). A setup file only loads in the app that
+  made it, and says which app it's for if not. The Site Inspections app
+  carries none of EnFact's logos or artwork. The web version, which nobody
+  used, is gone.
+
+- **FFCP testing: tick and cross freely, reasons when you like.** Ticks
+  and crosses now stay where you tap them, and the screen no longer jumps
+  to the next fan by itself (tap a fan, or Next to do). A ✗ just marks the
+  fail: tap the dashed box under it any time to add why, with two quick
+  reasons ("Indicator/operation mismatch", "Incorrect indication") or your
+  own words. The reason box now looks like the app's other boxes, with
+  Save and Cancel.
+
+- **Build 9.7, out to coworkers.** The new stair report layout (PDF,
+  preview and Excel), with summaries first, reading tiles, clean page
+  breaks and a labelled photo appendix; photos keep their stair and run.
+
+- **Photos remember their stair and run.** A photo taken from a stair's
+  reading screen now keeps which stair it was taken on and, in system
+  testing, which run, along with its level. Save & next carries them on
+  to the next photo, like the level. The report's photo appendix labels
+  each photo with them. Photos taken before this update show a dash.
+
+- **New stair report layout, PDF, preview and Excel.** Every stair test
+  report now follows the layout approved on the design page:
+  - The stair's name sits under the title at the same size, with the
+    logo in its own space so it never covers the title.
+  - The details sit in an even strip, three to a row.
+  - Noise, restoration, stair pressure, fan checks and the duct probe
+    are tiles (one row for up to four, rows of three for five or six),
+    each with its result, max, how it was measured and the limit.
+  - The doors table spans the page with even rows, Yes / No for
+    latching, and the colour key under it.
+  - The fan's nine checks are listed two to a row when the stair fits
+    on one page, one to a row when it runs on anyway.
+  - General notes from setup come before the test notes.
+  - Anything not tested is left out, not left blank.
+  - Every page has a footer with the site, stair and page number.
+  - A section that won't fit at the bottom of a page moves whole to the
+    next page instead of splitting. Only a very tall doors table breaks,
+    and it repeats its heading row.
+  - In system testing, every stair's summary comes first, then every
+    stair's run-by-run pages (what changed before each run, then the
+    tables, no tiles).
+  - Photos & notes now go in one photo appendix at the end, each photo
+    5 × 6.61 cm with a small table of its stair, level, location, run
+    and note.
+  - The Excel has the same layout: Summary tabs, then Runs tabs, then
+    Photos. Every column is the same width and each cell holds one short
+    line; only the notes wrap, in a wide cell sized to fit.
+- **New app icons: each app has its own.** Contractor (Inspecta):
+  "Site Check", the towers and tick redrawn flat. EnFact: the same with
+  the EnFact logo's swoosh behind the towers. Both keep the navy, white
+  and teal. Used for the Android launcher (with the test apps on orange
+  as before), EnFact's iPhone app, and each app's web icons (EnFact's in
+  `public/` and the website, Contractor's swapped in by its build).
+  Contractor's iPhone icon is ready in `branding/icons/contractor/ios`
+  for when it gets an iPhone build. To change an icon, edit its
+  `branding/icons/<app>/art.svg` and run `node scripts/render-icons.mjs`.
+
 ## 18 November 2026
+
+- **Stair pressurisation Excel: nothing cut off.** Each stair sheet now
+  lists the noise, restoration and fan readings a row each, with the
+  reading, its max, where it came from and the ambient on lines of their
+  own, instead of squeezed into narrow boxes. Titles, table headings,
+  runs and notes stretch across the sheet and wrap, and rows are tall
+  enough to show everything. For system testing, the Summary tabs come
+  first, then the run-by-run tabs.
+- **System testing reports open with the summary.** In a stair
+  pressurisation general system testing report (PDF, Excel and preview),
+  the summary page for each stair now comes first, with each door's latest
+  reading, and the run-by-run pages follow. The pages are headed "System
+  testing" rather than the full name, so the word Summary is no longer
+  hidden under the logo, and any report title too long for the space
+  beside the logo now prints a little smaller instead of running under it.
+- **New stair test: duct probe.** Add Duct probe from Additional tests (or
+  pick it for General system testing). It's per stair, on that stair's
+  fan, and is named after it ("SPF-1 duct probe"; type over it if you
+  like). Smoke the probe, then tap **START TIMER** (a round play button)
+  and **STOP TIMER** (a stop button) when the fan comes back on. 60 to
+  90 s passes (green); anything else fails: 55 to 60 and 90 to 95 s in
+  yellow as marginal, the rest in red. The bar runs to 120+ s, and the
+  timer keeps going if you lock the phone or leave the screen. Tap the red
+  **Failed to stop equipment** if smoke at the probe didn't stop the fan;
+  once the timer runs it turns green (Equipment shut down). Tap the red
+  **Failed to restart** if the fan never comes back (it asks first, then
+  stops the clock), and add a note. **Retest duct probe** adds another
+  go; the stair's card shows the latest. Every go prints under the fan on
+  the report, PDF and Excel.
+  Excel.
+- **Stair pressurisation in purple.** Its screens now use its own purple
+  (the colour of its home chip and tag) instead of the app's teal.
+- **Back button in New job.** The phone's back button now steps back
+  through New job (from a report's details to the list of kinds, then
+  closed) instead of closing the app.
+- **"Project", not "Projects".** The report type in New job reads AFSS ·
+  Project.
+
+- **Moved tests keep their dates on home.** When this update moves the
+  flow and stair tests out of each AFSS and project site into their own
+  jobs, the new jobs are dated from when the tests were done (or the site,
+  for a stair system with no tests yet), not the day of the update. Home
+  stays in the order it was, rather than every old site's tests jumping to
+  the top. Jobs already moved and dated today are put back the same way.
+  They also count as backed up when their site was (what's in them was in
+  that backup), so the move no longer turns the backup reminder amber.
+
+- **The same level changes on other stairs.** After changing a stair's
+  levels in Review level layout (a level added, removed or renamed, car
+  parks made basements), a card offers the same changes for the other
+  stairs. Apply to all makes them straight away on every stair they fit,
+  and the card turns into Undo. Choose stairs… lists each stair with how
+  many of the changes fit it (in orange, with why, when only some do) to
+  tick and apply. A change that doesn't fit a stair is skipped, a level
+  with readings isn't removed, and readings go with a renamed level. A
+  stair that took every change counts as reviewed. Nothing changes on the
+  other stairs until you tap.
+- **Review level layout: a group no longer folds shut under you.** Adding
+  a level to a group that then passed six levels closed it and hid the
+  new level; a group with a level picked now stays open.
+
+- **Stair setup: the level review comes after, and the screen holds
+  still.** Typing a stair's levels no longer throws you into Review level
+  layout halfway through, and coming back from it no longer jumps to the
+  fan name and pops the keyboard up. Fill in every stair first, then Save
+  and review levels takes you through each stair's levels in turn (1 of 3,
+  2 of 3…) and on. A stair's own Review row still opens its levels any
+  time, and brings you back where you were. The page no longer shifts as
+  the level pad opens and closes.
+
+- **Move a stair along the stair tabs.** On a stair test, hold a stair in
+  the tabs at the top for a moment (the phone buzzes) and drag it left or
+  right. The stairs it passes slide aside to show where it will land, and
+  the row scrolls on its own near either end. Let go and it drops in.
+  The new order is the site's, so the stair bar at the bottom, the setup
+  page and the reports follow it. A tap still opens a stair and a swipe
+  still scrolls the tabs. Stairs not yet named keep their suggested names
+  when moved: SPF-2 and Stair 2 stay SPF-2 and Stair 2 wherever they go,
+  and a stair added afterwards takes the next number up.
 
 - **FFCP results in the PDF and Excel.** Each panel test prints as a page
   laid out like the hand-drawn sheet: a small table per mode tested (a

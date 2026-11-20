@@ -11,7 +11,7 @@ let page;
 const errors = [];
 
 before(async () => {
-  app = await startApp(import.meta.url);
+  app = await startApp(import.meta.url, { edition: "contractor" });
   const context = await app.browser.newContext({ viewport: { width: 390, height: 844 }, acceptDownloads: true });
   await context.addInitScript(() => localStorage.setItem("inspecta.tourOffered", "1"));
   page = await context.newPage();

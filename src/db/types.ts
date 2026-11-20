@@ -78,6 +78,11 @@ export interface Finding {
   // to that test, not the site's findings list or report, and goes with the
   // test when it's deleted. Absent on every other finding.
   stairTestId?: string;
+  // and, when taken from a stair's reading screen, which stair (its id) and
+  // which run (0 = the first) it was taken in, for the photo appendix;
+  // absent on photos taken before these were kept, and from the test's page
+  stairId?: string;
+  run?: number;
   // the same for a flow test's defects (its Comments card)
   flowTestId?: string;
   // manual sort position within a site's findings list — lower sorts
@@ -189,7 +194,7 @@ export interface FlowTest {
   // the flow unit the test is read in, when it was switched (combined: the
   // pump duty's unit; absent = the kind's own, see flowUnitFor)
   unit?: FlowUnit;
-  yearInstalled?: string; // combined, Contractor
+  yearInstalled?: string; // optional, any flow test, both apps
   // the template's header and comment lines
   equipment?: string;
   testedBy?: string;
@@ -228,6 +233,7 @@ export interface SpfStair {
   reviewed?: boolean; // its level layout has been looked over (Looks right ✓)
   doors?: number; // doors on each level (1 unless set)
   more?: Record<string, number>; // doors added at a level, on top of that
+  no?: number; // its placeholder number (SPF-2, Stair 2), kept once the stairs are reordered
 }
 
 export interface SpfSystem {
@@ -241,7 +247,7 @@ export interface SpfSystem {
 // check, Annual Testing, commissioning, or the inspector's own pick of readings
 export type StairTestKind = "general" | "quick" | "annual" | "comm" | "custom";
 // the readings: at every door (vel, force, latch) or once a stair
-export type StairSection = "vel" | "force" | "latch" | "noise" | "rest" | "pa" | "fan" | "quick";
+export type StairSection = "vel" | "force" | "latch" | "noise" | "rest" | "pa" | "fan" | "probe" | "quick";
 export type Tick = "y" | "n";
 
 // one door's readings, as typed ("" or absent = not tested)
@@ -268,7 +274,23 @@ export interface StairOnce {
   restTime?: string; // s
   pa?: string; // stair pressure, all doors closed
   fan?: Record<string, Tick>; // by check (lib/stairTest FAN_CHECKS)
+  probe?: DuctProbe[]; // the fan's duct probe: the test, then any retests
   quick?: Record<string, Tick>; // three-monthly checks
+}
+
+// One go at a stair fan's supply air duct probe (lib/stairTest probeResult):
+// smoke at the probe cuts the fan out, and once the detector is cleared the
+// fan restarts by itself, 60 to 90 s later. The time comes from the app's
+// stopwatch; while it runs, started holds when the detector was cleared, so
+// leaving the screen or locking the phone doesn't stop it.
+export interface DuctProbe {
+  name?: string; // as typed; absent = the fan's name ("SPF-1 duct probe", "… · retest 1")
+  noStop?: boolean; // Failed to stop equipment: smoke at the probe didn't stop the fan
+  failed?: boolean; // the fan didn't restart
+  time?: number; // s, from clearing the detector to the fan restarting
+  started?: number; // the stopwatch's start (ms), while it runs
+  stoppedAt?: number; // s on the stopwatch when it was stopped as Failed to restart
+  notes?: string;
 }
 
 // a run after the first, in general system testing: what was changed

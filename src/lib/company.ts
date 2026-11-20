@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { getFlowMode } from "./settings";
+import { IS_CONTRACTOR } from "./edition";
 
 // Contractor mode's company branding (canvas "Inspecta for contractors"):
 // the company's name, its logo for the app and report covers, and its
@@ -96,7 +96,7 @@ export function useCompany(): Company {
 }
 
 // Contractor mode with the setup not yet finished: the setup shows first
-export const needsCompanySetup = () => getFlowMode() === "contractor" && !getCompany().setUp;
+export const needsCompanySetup = () => IS_CONTRACTOR && !getCompany().setUp;
 
 export const companyName = (c: Company = getCompany()) => c.name.trim();
 

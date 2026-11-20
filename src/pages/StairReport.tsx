@@ -1,18 +1,20 @@
 import { say } from "../components/Message";
-import { useRef, useState, type CSSProperties } from "react";
+import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { stairPages, type StairPage, type StairRow } from "../lib/stairPrint";
+import { columnWidths, lowerTables, photosTitle, stairPages, type StairPage, type StairTable, type StairTile } from "../lib/stairPrint";
+import type { StairTest } from "../db/types";
+import { numericDate } from "../lib/dates";
 import { KIND_LABEL, stairFileName } from "../lib/stairTest";
 import { exportTests, type TestsFormat } from "../lib/testsExport";
 import ProgressOverlay from "../components/ProgressOverlay";
 import { PageHeader, useStairTest } from "../components/StairUi";
 import { reportLogoUrl } from "../lib/branding";
-import { PHOTOS_SUBTITLE, type StairPhotoItem } from "../lib/stairPhotos";
-import { FindingsOnPaper, useReportPhotos } from "../components/FindingsOnPaper";
+import { appendixPhotos, PHOTO_H, PHOTO_W, type AppendixPhoto } from "../lib/stairPhotos";
+import { useReportPhotos } from "../components/FindingsOnPaper";
 
 // A stair test's report, previewed as it prints (lib/stairPrint): a page
-// per stair, swiped sideways, then the test's Photos & notes on a page of
-// their own (lib/stairPhotos), then Export PDF or Excel.
+// per stair, swiped sideways, then the test's photo appendix
+// (lib/stairPhotos), then Export PDF or Excel.
 
 const MIN_LOADER_MS = 3000;
 
@@ -28,8 +30,8 @@ export default function StairReport() {
   const stairs = site?.spf && test ? stairPages(test, site.spf, site) : [];
   // Photos & notes, with their photos' thumbnails
   const photoData = useReportPhotos(test ? [test] : []);
-  const photos = { items: (test && photoData.byTest[test.id]) || [], thumbs: photoData.thumbs };
-  const withPhotos = photos.items.length > 0 && stairs.length > 0;
+  const appendix = test && site?.spf ? appendixPhotos((photoData.byTest[test.id] || []), test, site.spf) : [];
+  const withPhotos = appendix.length > 0 && stairs.length > 0;
   const pages: (StairPage | "photos")[] = withPhotos ? [...stairs, "photos"] : stairs;
   const go = (i: number) => strip.current?.scrollTo({ left: i * strip.current.clientWidth, behavior: "smooth" });
 
@@ -61,7 +63,7 @@ export default function StairReport() {
             ‹
           </button>
           <span>
-            {pages[page] === "photos" ? PHOTOS_SUBTITLE : (pages[page] as StairPage | undefined)?.subtitle} <span style={{ color: "var(--muted)", fontWeight: 700 }}>· page {page + 1} of {pages.length}</span>
+            {pages[page] === "photos" ? "Photo appendix" : (pages[page] as StairPage | undefined)?.stair} <span style={{ color: "var(--muted)", fontWeight: 700 }}>· page {page + 1} of {pages.length}</span>
           </span>
           <button aria-label="Next page" disabled={page >= pages.length - 1} onClick={() => go(page + 1)} style={{ border: "none", background: "none", color: page >= pages.length - 1 ? "var(--muted-2)" : "var(--accent)", fontSize: 18, padding: "0 8px" }}>
             ›
@@ -75,7 +77,7 @@ export default function StairReport() {
       >
         {pages.map((p, i) => (
           <div key={i} style={{ flex: "0 0 100%", scrollSnapAlign: "center", overflowY: "auto", padding: "6px 14px 12px", boxSizing: "border-box" }}>
-            {p === "photos" ? <PhotosPaper first={stairs[0]} items={photos.items} thumbs={photos.thumbs} /> : <Paper page={p} />}
+            {p === "photos" ? test && site && <PhotosPaper test={test} photos={appendix} thumbs={photoData.thumbs} site={site} /> : <Paper page={p} />}
           </div>
         ))}
       </div>
@@ -92,132 +94,205 @@ export default function StairReport() {
   );
 }
 
-// the test's Photos & notes as they print: each one's place and type, its note, its photos
-function PhotosPaper({ first, items, thumbs }: { first: StairPage; items: StairPhotoItem[]; thumbs: Record<string, string> }) {
-  const details = first.details.filter((d) => ["Site", "Date", "Test", "Tested by"].includes(d.label));
+// The pages as they print (lib/stairPrint, lib/stairPdf): drawn at the
+// PDF's own size, 595 pt across, and scaled down to fit the screen.
+const INK = "#14212e";
+const SOFT = "#4a6175";
+const NAVY = "#0b3550";
+const LINE = "#d5dee6";
+const WIDTH = 515; // the PDF's content width
+
+function Scaled({ children, testId }: { children: ReactNode; testId: string }) {
+  const outer = useRef<HTMLDivElement>(null);
+  const inner = useRef<HTMLDivElement>(null);
+  const [fit, setFit] = useState({ scale: 1, h: 0 });
+  useLayoutEffect(() => {
+    const measure = () => {
+      if (!outer.current || !inner.current) return;
+      const scale = Math.min(1, outer.current.clientWidth / 595);
+      setFit({ scale, h: inner.current.offsetHeight * scale });
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    if (outer.current) ro.observe(outer.current);
+    if (inner.current) ro.observe(inner.current);
+    return () => ro.disconnect();
+  }, []);
   return (
-    <div data-testid="spf-photos-page" style={{ background: "#fff", color: "#14212e", borderRadius: 6, padding: "16px 14px", display: "flex", flexDirection: "column", gap: 7, boxShadow: "0 8px 24px rgba(0,0,0,.35)", fontFamily: "Helvetica, Arial, sans-serif", fontSize: 10 }}>
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
-        <div>
-          <div style={{ fontSize: 13.5, fontWeight: 800, color: "#0b3550" }}>{first.title}</div>
-          <div style={{ width: 40, height: 2.5, background: "#1f6fb2", marginTop: 4 }} />
-          <div style={{ fontSize: 11, fontWeight: 700, marginTop: 4 }}>{PHOTOS_SUBTITLE}</div>
-        </div>
-        {reportLogoUrl() && <img src={reportLogoUrl()!} alt="" style={{ height: 22, maxWidth: 90, objectFit: "contain", flexShrink: 0 }} />}
+    <div ref={outer} style={{ width: "100%", height: fit.h || undefined, position: "relative" }}>
+      <div
+        ref={inner}
+        data-testid={testId}
+        style={{ width: 595, minHeight: 842, boxSizing: "border-box", padding: 40, background: "#fff", color: INK, fontFamily: "Helvetica, Arial, sans-serif", fontSize: 8.5, lineHeight: 1.25, position: "absolute", left: 0, top: 0, transformOrigin: "0 0", transform: `scale(${fit.scale})`, boxShadow: "0 8px 24px rgba(0,0,0,.35)", borderRadius: 4, display: "flex", flexDirection: "column", gap: 14 }}
+      >
+        {children}
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "auto 1fr auto 1fr", gap: "1px 6px", fontSize: 9 }}>
-        {details.map((d) => (
-          <Detail key={d.label} label={d.label} value={d.value} />
-        ))}
-      </div>
-      <FindingsOnPaper items={items} thumbs={thumbs} />
     </div>
   );
 }
 
-// one stair as it prints, on white paper
-function Paper({ page }: { page: StairPage }) {
+function Heading({ title, stair, note }: { title: string; stair: string; note: string }) {
+  const logo = reportLogoUrl();
   return (
-    <div data-testid="spf-page" style={{ background: "#fff", color: "#14212e", borderRadius: 6, padding: "16px 14px", display: "flex", flexDirection: "column", gap: 7, boxShadow: "0 8px 24px rgba(0,0,0,.35)", fontFamily: "Helvetica, Arial, sans-serif", fontSize: 10 }}>
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
-        <div>
-          <div style={{ fontSize: 13.5, fontWeight: 800, color: "#0b3550" }}>{page.title}</div>
-          <div style={{ width: 40, height: 2.5, background: "#1f6fb2", marginTop: 4 }} />
-          <div style={{ fontSize: 11, fontWeight: 700, marginTop: 4 }}>{page.subtitle}</div>
-        </div>
-        {reportLogoUrl() && <img src={reportLogoUrl()!} alt="" style={{ height: 22, maxWidth: 90, objectFit: "contain", flexShrink: 0 }} />}
+    <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 16.5, fontWeight: 700, lineHeight: "20px", paddingTop: 6 }}>{title}</div>
+        <div style={{ width: 46, height: 2.5, background: "#1f6fb2", marginTop: 6 }} />
+        <div style={{ fontSize: 16.5, fontWeight: 700, lineHeight: "20px", marginTop: 10 }}>{stair}</div>
+        {note && <div style={{ fontSize: 9, color: SOFT }}>{note}</div>}
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "auto 1fr auto 1fr", gap: "1px 6px", fontSize: 9 }}>
-        {page.details.map((d) => (
-          <Detail key={d.label} label={d.label} value={d.value} />
-        ))}
-      </div>
-      {page.boxes.length > 0 && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 5 }}>
-          {page.boxes.map((b) => (
-            <div key={b.label} style={{ border: "1px solid #c9d6e0", borderRadius: 5, padding: "4px 5px", fontSize: 8, color: "#4a6175", minHeight: 34 }}>
-              {b.label}
-              <b style={{ display: "block", fontSize: 11, color: b.fail ? "#b3261e" : "#14212e" }}>{b.value || " "}</b>
-              {b.ref?.map((r) => (
-                <span key={r} style={{ display: "block", fontSize: 7.5 }}>
-                  {r}
-                </span>
-              ))}
-            </div>
-          ))}
-        </div>
-      )}
-      {page.tables ? (
-        page.tables.map((t, i) => (
-          <div key={i} data-testid="spf-run-table" style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-            <b style={{ fontSize: 9 }}>{t.title}</b>
-            <Table head={t.head} rows={t.rows} />
-          </div>
-        ))
-      ) : (
-        <Table head={page.head} rows={page.rows} />
-      )}
-      {!!page.runs?.length && <Block label="Runs" lines={page.runs} />}
-      {!!page.readings?.length && <Block label="Other readings" lines={page.readings} />}
-      {page.fanLabel && <Block label={page.fanLabel} lines={[page.fan || " "]} />}
-      {page.quick !== null && <Block label="Three-monthly check (AS 1851-2012 Table 13.4.2.2)" lines={[page.quick || " "]} />}
-      {page.siteNotes && <Block label="Site notes" lines={[page.siteNotes]} />}
-      {page.notes.length > 0 && <Block label="Notes" lines={page.notes} />}
+      {logo && <img src={logo} alt="" style={{ height: 58, maxWidth: 240, objectFit: "contain", flexShrink: 0, marginTop: -16 }} />}
     </div>
   );
 }
 
-// a table as it prints: fails in red, a pass that's only just one in yellow
-function Table({ head, rows }: { head: string[]; rows: StairRow[] }) {
-  const cell: CSSProperties = { border: "1px solid #d5dee6", padding: "2px 3px", textAlign: "center" };
-  return (
-    <table style={{ borderCollapse: "collapse", width: "100%", fontSize: 9 }}>
-      <thead>
-        <tr>
-          {head.map((h, i) => (
-            <th key={i} style={{ background: "#0b3550", color: "#fff", fontWeight: 700, padding: "4px 3px", fontSize: 8, lineHeight: 1.2 }}>
-              {h}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((r) => (
-          <tr key={r.cells[0]}>
-            {r.cells.map((c, j) => {
-              const fail = r.fails[j];
-              const warn = !fail && !!r.warns?.[j];
-              return (
-                <td key={j} style={{ ...cell, fontWeight: j === 0 || fail || warn ? 700 : 400, background: fail ? "#ffd9d4" : warn ? "#fff0b8" : undefined, color: fail ? "#b3261e" : warn ? "#6b4a00" : undefined }}>
-                  {c}
-                </td>
-              );
-            })}
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-}
+const sectionTitle: CSSProperties = { fontWeight: 700, fontSize: 8, color: NAVY, textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 5 };
 
-function Detail({ label, value }: { label: string; value: string }) {
+function Details({ details }: { details: StairPage["details"] }) {
   return (
-    <>
-      <b style={{ color: "#0b3550" }}>{label}</b>
-      <span>{value || "–"}</span>
-    </>
-  );
-}
-
-function Block({ label, lines }: { label: string; lines: string[] }) {
-  return (
-    <div style={{ fontSize: 9 }}>
-      <b>{label}</b>
-      {lines.map((l, i) => (
-        <div key={i} style={{ whiteSpace: "pre-wrap", borderBottom: "1px solid #e3e9ee", padding: "2px 0" }}>
-          {l}
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", borderTop: `1px solid ${LINE}`, borderBottom: `1px solid ${LINE}` }}>
+      {details.map((d, i) => (
+        <div key={d.label} style={{ display: "grid", gridTemplateColumns: "56px 1fr", padding: "5px 0", borderTop: i >= 3 ? `1px solid ${LINE}` : undefined, minWidth: 0 }}>
+          <b style={{ color: NAVY }}>{d.label}</b>
+          <span style={{ overflowWrap: "anywhere" }}>{d.value || "–"}</span>
         </div>
       ))}
     </div>
+  );
+}
+
+function Tiles({ tiles }: { tiles: StairTile[] }) {
+  return (
+    <div data-testid="spf-tiles">
+      <div style={sectionTitle}>Stair readings</div>
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(${tiles.length <= 4 ? 4 : 3}, 1fr)`, gap: 6 }}>
+        {tiles.map((t) => (
+          <div key={t.label} style={{ border: `1px solid ${t.fail ? "#b3261e" : "#c9d6e0"}`, borderRadius: 3, minHeight: 50, boxSizing: "border-box", padding: "5px 6px" }}>
+            <div style={{ fontSize: 7, color: SOFT }}>{t.label}</div>
+            <div style={{ fontSize: 11, fontWeight: 700, margin: "2px 0", color: t.fail ? "#b3261e" : INK }}>{t.value}</div>
+            {t.lines.map((l, i) => (
+              <div key={i} style={{ fontSize: 6.5, color: t.fail ? "#b3261e" : SOFT }}>
+                {l}
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// a table as it prints: full width, fails in red, a pass that's only just one in yellow
+function PaperTable({ t }: { t: StairTable }) {
+  const widths = columnWidths(t, WIDTH);
+  const cell: CSSProperties = { border: `1px solid ${LINE}`, padding: "2px 4px", height: 15, boxSizing: "border-box", overflowWrap: "anywhere" };
+  return (
+    <div data-testid={/run by run/.test(t.title) ? "spf-run-table" : "spf-table"}>
+      <div style={sectionTitle}>{t.title}</div>
+      <table style={{ borderCollapse: "collapse", width: "100%", tableLayout: "fixed", fontSize: 8.5, color: INK }}>
+        <colgroup>
+          {widths.map((w, i) => (
+            <col key={i} style={{ width: `${(w / WIDTH) * 100}%` }} />
+          ))}
+        </colgroup>
+        {t.head && (
+          <thead>
+            <tr>
+              {t.head.map((h, i) => (
+                <th key={i} style={{ background: NAVY, color: "#fff", fontWeight: 700, fontSize: 7.5, height: 24, padding: "0 3px", whiteSpace: "pre-line", lineHeight: 1.15, border: `1px solid ${NAVY}` }}>
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+        )}
+        <tbody>
+          {t.rows.map((r, k) => (
+            <tr key={k}>
+              {r.cells.map((c, j) => {
+                const fail = r.fails[j];
+                const warn = !fail && !!r.warns?.[j];
+                return (
+                  <td key={j} style={{ ...cell, textAlign: (t.align[j] ?? "c") === "l" ? "left" : "center", fontWeight: (j === 0 && t.bold) || fail || warn ? 700 : 400, background: fail ? "#ffd9d4" : warn ? "#fff0b8" : undefined, color: fail ? "#b3261e" : warn ? "#6b4a00" : c === "–" ? "#9aabb9" : undefined }}>
+                    {c}
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {t.key && <div style={{ fontSize: 7.5, color: SOFT, marginTop: 4 }}>{t.key}</div>}
+    </div>
+  );
+}
+
+const Footer = ({ text }: { text: string }) => (
+  <div style={{ marginTop: "auto", paddingTop: 6, borderTop: `1px solid ${LINE}`, color: SOFT, fontSize: 7.5 }}>{text}</div>
+);
+
+// one stair's page; the checks two to a row while it fits on one sheet, else one
+function Paper({ page }: { page: StairPage }) {
+  const [twoUp, setTwoUp] = useState(true);
+  const box = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    if (twoUp && page.checks && (box.current?.offsetHeight ?? 0) > 762) setTwoUp(false);
+  }, [twoUp, page]);
+  return (
+    <Scaled testId="spf-page">
+      <div ref={box} style={{ display: "flex", flexDirection: "column", gap: 14, flexGrow: 1 }}>
+        <Heading title={page.title} stair={page.stair} note={page.note} />
+        <Details details={page.details} />
+        {page.tiles.length > 0 && <Tiles tiles={page.tiles} />}
+        {[...page.tables, ...lowerTables(page, twoUp)].map((t, i) => (
+          <PaperTable key={i} t={t} />
+        ))}
+        <Footer text={page.footer} />
+      </div>
+    </Scaled>
+  );
+}
+
+// the photo appendix: each photo 5 × 6.61 cm, three to a row, a label table under it
+function PhotosPaper({ test, photos, thumbs, site }: { test: StairTest; photos: AppendixPhoto[]; thumbs: Record<string, string>; site: { name: string } }) {
+  return (
+    <Scaled testId="spf-photos-page">
+      <Heading title={photosTitle(test)} stair="Photo appendix" note={`Photos & notes from every stair in this test · ${[site.name.trim(), numericDate(test.testedAt)].filter(Boolean).join(" · ")}`} />
+      <div>
+        <div style={sectionTitle}>Photo appendix</div>
+        <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", rowGap: 14 }}>
+          {photos.map((p) => (
+            <div key={p.n} style={{ width: PHOTO_W }}>
+              <div style={{ width: PHOTO_W, height: PHOTO_H, background: "#f3f6f9", border: p.photo ? undefined : "1px solid #c9d6e0", boxSizing: "border-box", display: "flex", alignItems: "center", justifyContent: "center", color: SOFT, fontSize: 8, overflow: "hidden" }}>
+                {p.photo ? thumbs[p.photo.id] && <img src={thumbs[p.photo.id]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : "No photo"}
+              </div>
+              <table style={{ borderCollapse: "collapse", width: "100%", tableLayout: "fixed", fontSize: 7.5, marginTop: 4 }}>
+                <colgroup>
+                  <col style={{ width: 44 }} />
+                  <col />
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th colSpan={2} style={{ background: NAVY, color: "#fff", textAlign: "left", padding: "0 4px", height: 14 }}>
+                      Photo {p.n}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {p.rows.map(([k, v]) => (
+                    <tr key={k}>
+                      <td style={{ border: `1px solid ${LINE}`, background: "#f3f6f9", color: NAVY, fontWeight: 700, padding: "1px 4px" }}>{k}</td>
+                      <td style={{ border: `1px solid ${LINE}`, padding: "1px 4px", overflowWrap: "anywhere" }}>{v}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ))}
+          {photos.length % 3 === 2 && <div style={{ width: PHOTO_W }} />}
+        </div>
+      </div>
+      <Footer text={[site.name.trim(), "Photo appendix"].filter(Boolean).join(" · ")} />
+    </Scaled>
   );
 }
