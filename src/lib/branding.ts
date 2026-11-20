@@ -18,3 +18,6 @@ export function brandWording(text: string): string {
   if (!IS_CONTRACTOR) return text;
   return text.replace(/\bEnFact\b/g, companyName() || "the inspector");
 }
+
+
+// the report accent, footer company name and Excel title rows: lib/reportBranding

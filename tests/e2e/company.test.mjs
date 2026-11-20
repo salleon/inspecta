@@ -120,6 +120,23 @@ test("no EnFact branding: home header and the PDF cover are the company's", asyn
   const text = (await readFile(pdf.path)).toString("latin1");
   assert.ok(text.includes("Harbour Tower"));
   assert.ok(text.includes("(AFSS)"), "the report kind is drawn as text by the accent bar");
+  assert.ok(text.includes("(Coastline Fire Services)"), "the company's name in the footer");
+  // the Excel: title rows above EnFact's register, on a sheet called Findings
+  await page.waitForTimeout(1500);
+  const xlsx = await download(page, async () => {
+    await page.click("text=Share Excel");
+    await page.waitForTimeout(400);
+    if (await page.locator("text=Export anyway").count()) await page.click("text=Export anyway");
+  });
+  const ExcelJS = (await import("exceljs")).default;
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.load(await readFile(xlsx.path));
+  const ws = wb.worksheets[0];
+  assert.equal(ws.name, "Findings");
+  assert.equal(ws.getCell("A1").value, "AFSS inspection · Findings");
+  assert.equal(ws.getCell("A3").value, "Harbour Tower");
+  assert.equal(ws.getCell("A6").value, "Ref", "EnFact's heading row, under the title");
+  assert.match(String(ws.getCell("A7").value ?? ws.getCell("B7").value), /\S/, "the finding under it");
 });
 
 test("the EnFact app keeps EnFact's own colours, and has no company setup", async () => {

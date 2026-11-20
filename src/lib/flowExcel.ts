@@ -6,6 +6,7 @@ import { chartAxes, chartSeries, printResults, printStrip, printSubtitle, printT
 import { KIND_LABEL } from "./flowTest";
 // the logo (EnFact's, or the company's in Contractor mode), as on the preview
 import { reportLogoUrl } from "./branding";
+import { reportAccent } from "./reportBranding";
 import { sheetName } from "./excelSheetName";
 
 // Flow tests in Excel, laid out like the PDF (the "Flow test report layout"
@@ -25,7 +26,6 @@ const INK = "FF1C2833";
 const NAVY = "FF0B3550";
 const SOFT = "FF4A6175";
 const CELL_LINE = "FFD3DBE2";
-const BLUE = "FF1F6FB2";
 // as the PDF: a pump's PASS green, FAIL red; the town main blue (meets) or red (below)
 const TONE: Record<Tone, { ink: string; fill: string }> = {
   pass: { ink: "FF1B7A43", fill: "FFDFF3E6" },
@@ -125,7 +125,7 @@ function fillSheet(ws: Worksheet, name: string, test: FlowTest, site: Pick<Site,
   ws.getCell(r, first).alignment = { vertical: "bottom" };
   r++;
   ws.getRow(r).height = 4;
-  ws.getCell(r, first).fill = { type: "pattern", pattern: "solid", fgColor: { argb: BLUE } };
+  ws.getCell(r, first).fill = { type: "pattern", pattern: "solid", fgColor: { argb: `FF${reportAccent().slice(1).toUpperCase()}` } };
   r++;
   ws.getRow(r).height = 22;
   ws.getCell(r, first).value = site.name.trim();

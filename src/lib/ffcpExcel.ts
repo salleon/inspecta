@@ -4,6 +4,7 @@ import { FAN_CHECKS, HEADS, INDICATION, modesTested, reportNoteRows, reportResul
 import { sheetName } from "./excelSheetName";
 import { numericDate } from "./dates";
 import { excelLogo } from "./flowExcel";
+import { reportAccent } from "./reportBranding";
 
 // FFCP tests in Excel: one sheet holding them all, each laid out like its
 // PDF pages (lib/ffcpPdf, the "FFCP report layout" design): the heading and
@@ -16,7 +17,6 @@ const INK = "FF14212E";
 const SOFT = "FF4A6175";
 const NAVY = "FF0B3550";
 const GROUP = "FF16486B";
-const BLUE = "FF1F6FB2";
 const LINE = "FFD5DEE6";
 const FAIL_FILL = "FFFFD9D4";
 const FAIL_INK = "FFB3261E";
@@ -79,7 +79,7 @@ export async function addFfcpSheet(wb: Workbook, tests: FfcpTest[], site: Pick<S
     ws.getCell(r, FIRST).alignment = { vertical: "bottom" };
     r++;
     ws.getRow(r).height = 4;
-    ws.getCell(r, FIRST).fill = fill(BLUE);
+    ws.getCell(r, FIRST).fill = fill(`FF${reportAccent().slice(1).toUpperCase()}`);
     r++;
     ws.getRow(r).height = 22;
     ws.getCell(r, FIRST).value = site.name.trim();

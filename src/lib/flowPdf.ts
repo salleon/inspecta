@@ -4,7 +4,7 @@ import { reportLogoUrl } from "./branding";
 import { KIND_LABEL as KIND_TITLE } from "./flowTest";
 import { chartModel, PRINT_DEMAND, printResults, printStrip, printSubtitle, printTables, type PrintTable, type ResultTile, type Tone } from "./flowPrint";
 import { numericDate } from "./dates";
-import { drawReportHeading } from "./reportHeading";
+import { drawReportFooter, drawReportHeading } from "./reportHeading";
 import { listTestFindings } from "../db/db";
 import { photoItems } from "./stairPhotos";
 
@@ -86,14 +86,7 @@ export async function appendFlowPages(doc: JsPDF, tests: FlowTest[], site: SiteI
 // the footer every page ends with: site and address, the page number
 export function flowFooter(doc: JsPDF, site: SiteInfo, page: number) {
   doc.setPage(page);
-  doc.setDrawColor(LINE);
-  doc.setLineWidth(0.5);
-  doc.line(M, PAGE.h - 32, M + CW, PAGE.h - 32);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(7.5);
-  doc.setTextColor(SOFT);
-  doc.text([site.name, site.address].filter((x) => x?.trim()).join(" · "), M, PAGE.h - 22);
-  doc.text(`Page ${page}`, M + CW, PAGE.h - 22, { align: "right" });
+  drawReportFooter(doc, [site.name, site.address].filter((x) => x?.trim()).join(" · "), page);
 }
 
 async function drawTest(doc: JsPDF, test: FlowTest, site: SiteInfo, logo: Logo, ownFooter: boolean) {

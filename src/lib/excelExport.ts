@@ -1,5 +1,7 @@
 import type { FfcpTest, Finding, FlowTest, Photo, Site, SpfSystem, StairTest } from "../db/types";
 import { brandWording } from "./branding";
+import { footerCompany, reportAccent, REGISTER_TITLE } from "./reportBranding";
+import { numericDate } from "./dates";
 import { fitPhotos } from "./excelPhotoFit";
 import { defectTypeStyle } from "./defectTypes";
 import { reportRows } from "./esrGrouping";
@@ -126,6 +128,77 @@ function excelDate(ms: number): Date {
 const PCOL = { photo: 1, location: 2, notes: 3, date: 4, risk: 5 } as const;
 const PROJECT_HEADINGS = ["Photo", "Location", "Notes", "Date", "Risk Level"];
 
+// What the register's title rows say (Contractor mode only: see
+// branding.REGISTER_TITLE), from the report being exported
+export interface RegisterHeading {
+  kind: "afss" | "project";
+  siteName: string;
+  address: string;
+  dateMs: number;
+  inspector: string;
+}
+
+const TITLE_ROWS = 5; // title, accent rule, site, details, a gap
+
+// the template's heading row moved down under the title rows, and the
+// sheet named "Findings"; returns the heading row (1 when there's no title)
+function reserveTitle(ws: import("exceljs").Worksheet, heading?: RegisterHeading): number {
+  if (!REGISTER_TITLE || !heading) return 1;
+  const head = TITLE_ROWS + 1;
+  const from = ws.getRow(1);
+  const to = ws.getRow(head);
+  to.height = from.height;
+  from.eachCell({ includeEmpty: true }, (cell, c) => {
+    const t = to.getCell(c);
+    t.value = cell.value;
+    t.style = JSON.parse(JSON.stringify(cell.style));
+    cell.value = null;
+    cell.style = {};
+  });
+  from.height = 22;
+  ws.name = "Findings";
+  return head;
+}
+
+// the title rows (the "Contractor site report" design, Excel): the
+// report, the accent rule, the site, its address, date and inspector; the
+// company's logo (or its name) on the right. Drawn once the columns are
+// their final widths, so the logo's right edge sits on the last one's.
+async function drawTitle(wb: import("exceljs").Workbook, ws: import("exceljs").Worksheet, heading: RegisterHeading | undefined, lastCol: number) {
+  if (!REGISTER_TITLE || !heading) return;
+  const font = (extra: Partial<import("exceljs").Font> = {}) => ({ name: "Arial", size: 10, color: { argb: "FF14212E" }, ...extra });
+  const title = ws.getCell(1, 1);
+  title.value = `${heading.kind === "project" ? "Project inspection" : "AFSS inspection"} · Findings`;
+  title.font = font({ size: 14, bold: true });
+  title.alignment = { vertical: "bottom" };
+  ws.getRow(2).height = 4;
+  ws.getCell(2, 1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: `FF${reportAccent().slice(1).toUpperCase()}` } };
+  ws.getRow(3).height = 20;
+  ws.getCell(3, 1).value = heading.siteName.trim();
+  ws.getCell(3, 1).font = font({ size: 13, bold: true });
+  ws.getCell(4, 1).value = [heading.address.trim(), numericDate(heading.dateMs), heading.inspector.trim()].filter(Boolean).join(" · ");
+  ws.getCell(4, 1).font = font({ size: 9, color: { argb: "FF4A6175" } });
+  const { excelLogo } = await import("./flowExcel");
+  const logo = await excelLogo(wb).catch(() => null);
+  if (logo) {
+    // its right edge on the last column's (a column: ~7 px a character plus 5)
+    const px = Array.from({ length: lastCol }, (_, i) => (ws.getColumn(i + 1).width ?? 9) * 7 + 5);
+    let edge = px.reduce((a, b) => a + b, 0) - logo.w;
+    let at = 0;
+    for (const w of px) {
+      if (edge <= w) break;
+      edge -= w;
+      at++;
+    }
+    ws.addImage(logo.id, { tl: { nativeCol: at, nativeColOff: Math.round(edge * EMU_PER_PX), nativeRow: 0, nativeRowOff: 0 } as never, ext: { width: logo.w, height: logo.h }, editAs: "oneCell" });
+  } else if (footerCompany()) {
+    const name = ws.getCell(1, lastCol);
+    name.value = footerCompany();
+    name.font = font({ size: 12, bold: true });
+    name.alignment = { horizontal: "right", vertical: "bottom" };
+  }
+}
+
 // Progress for the loading screen. Stamping and adding photos is nearly
 // all of the work, so it's reported photo by photo.
 type ExcelProgress =
@@ -137,12 +210,16 @@ export async function buildFindingsWorkbook(
   inspectionMs: number,
   onProgress?: (progress: ExcelProgress) => void,
   flow?: FlowExport,
+  heading?: RegisterHeading,
 ): Promise<Blob> {
   const ExcelJS = (await import("exceljs")).default;
   const wb = new ExcelJS.Workbook();
   const template = await (await fetch(templateDataUrl)).arrayBuffer();
   await wb.xlsx.load(template);
-  await fillFindingsSheet(wb, wb.worksheets[0], items, inspectionMs, onProgress);
+  const ws = wb.worksheets[0];
+  const head = reserveTitle(ws, heading);
+  await fillFindingsSheet(wb, ws, items, inspectionMs, onProgress, head);
+  await drawTitle(wb, ws, heading, ws.getRow(head).getCell(COL.extra).value ? COL.extra : COL.action);
   onProgress?.({ stage: "building" });
   return writeWorkbook(wb, flow);
 }
@@ -167,7 +244,8 @@ export async function addFindingsSheet(wb: import("exceljs").Workbook, name: str
   await fillFindingsSheet(wb, ws, items, inspectionMs);
 }
 
-async function fillFindingsSheet(wb: import("exceljs").Workbook, ws: import("exceljs").Worksheet, items: ExcelFinding[], inspectionMs: number, onProgress?: (progress: ExcelProgress) => void) {
+// head: the heading row (the template's row 1, or under the title rows)
+async function fillFindingsSheet(wb: import("exceljs").Workbook, ws: import("exceljs").Worksheet, items: ExcelFinding[], inspectionMs: number, onProgress?: (progress: ExcelProgress) => void, head = 1) {
   const totalPhotos = items.reduce((n, i) => n + i.photos.length, 0);
   let donePhotos = 0;
   onProgress?.({ stage: "photos", done: 0, total: totalPhotos });
@@ -183,7 +261,7 @@ async function fillFindingsSheet(wb: import("exceljs").Workbook, ws: import("exc
   const actionPx = colPx(ws.getColumn(COL.action).width ?? 40);
 
   const date = excelDate(inspectionMs);
-  let rowNum = 2; // row 1 is the template's header
+  let rowNum = head + 1; // under the template's header
   let extraPx = 0; // Additional photos column's width, if any finding needs it
 
   // B–G merged, for heading text
@@ -386,14 +464,14 @@ async function fillFindingsSheet(wb: import("exceljs").Workbook, ws: import("exc
   }
 
   if (extraPx) {
-    const head = ws.getRow(1).getCell(COL.extra);
-    head.style = JSON.parse(JSON.stringify(ws.getRow(1).getCell(COL.action).style));
-    head.value = "Additional photos";
+    const extraHead = ws.getRow(head).getCell(COL.extra);
+    extraHead.style = JSON.parse(JSON.stringify(ws.getRow(head).getCell(COL.action).style));
+    extraHead.value = "Additional photos";
     ws.getColumn(COL.extra).width = colWidthFor(extraPx);
   }
 
   // keep the header visible while scrolling through tall photo rows
-  ws.views = [{ state: "frozen", ySplit: 1, topLeftCell: "A2", activeCell: "A2" }];
+  ws.views = [{ state: "frozen", ySplit: head, topLeftCell: `A${head + 1}`, activeCell: `A${head + 1}` }];
 
 }
 
@@ -432,6 +510,7 @@ export async function buildProjectWorkbook(
   items: ExcelFinding[],
   onProgress?: (progress: ExcelProgress) => void,
   flow?: FlowExport,
+  heading?: RegisterHeading,
 ): Promise<Blob> {
   const totalPhotos = items.reduce((n, i) => n + i.photos.length, 0);
   let donePhotos = 0;
@@ -465,8 +544,9 @@ export async function buildProjectWorkbook(
   for (const c of [6, 7]) ws.getColumn(c).width = 9;
   const locPx = colPx(22);
   const notesPx = colPx(46);
+  const head = reserveTitle(ws, heading);
 
-  let rowNum = 2;
+  let rowNum = head + 1;
   for (const { finding, photos } of items) {
     const locationText = [finding.level, finding.location].filter(Boolean).join("\n");
     const textFloor = Math.max(PAD + estimateTextPx(locationText, locPx) + PAD, PAD + estimateTextPx(finding.note, notesPx) + PAD, MIN_ROW_PX, 2 * LINE_PX + 2 * PAD);
@@ -550,7 +630,8 @@ export async function buildProjectWorkbook(
     rowNum = last + 1;
   }
 
-  ws.views = [{ state: "frozen", ySplit: 1, topLeftCell: "A2", activeCell: "A2" }];
+  ws.views = [{ state: "frozen", ySplit: head, topLeftCell: `A${head + 1}`, activeCell: `A${head + 1}` }];
+  await drawTitle(wb, ws, heading, PCOL.risk);
   onProgress?.({ stage: "building" });
   return writeWorkbook(wb, flow);
 }

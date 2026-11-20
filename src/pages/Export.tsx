@@ -544,7 +544,9 @@ export default function ExportPreview() {
           // ones with readings only
           const { flowTests, stairs, ffcp } = await attachedTests();
           const flow = site && (flowTests.length || stairs.length || ffcp.length) ? { tests: flowTests, site, stairs, ffcp } : undefined;
-          blob = site?.kind === "project" ? await buildProjectWorkbook(items, onProgress, flow) : await buildFindingsWorkbook(items, inspectionMs, onProgress, flow);
+          // the register's title rows (Contractor's Excel; lib/branding REGISTER_TITLE)
+          const heading = { kind: site?.kind === "project" ? ("project" as const) : ("afss" as const), siteName: site?.name ?? "Inspection", address: site?.address ?? "", dateMs: inspectionMs, inspector: getInspectorName() };
+          blob = site?.kind === "project" ? await buildProjectWorkbook(items, onProgress, flow, heading) : await buildFindingsWorkbook(items, inspectionMs, onProgress, flow, heading);
         }
         timer.mark("building");
         setExportProgress({ percent: 97, step: "Opening share menu…" });

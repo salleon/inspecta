@@ -5,7 +5,7 @@ import { logoImage } from "./flowPdf";
 import { columnWidths, lowerTables, photosTitle, stairPages, type StairPage, type StairTable, type StairTile } from "./stairPrint";
 import { appendixPhotos, PHOTO_H, PHOTO_W, testPhotoItems, type AppendixPhoto } from "./stairPhotos";
 import { numericDate } from "./dates";
-import { drawReportHeading } from "./reportHeading";
+import { drawReportFooter, drawReportHeading } from "./reportHeading";
 import { EXPORT_MAX_EDGE, STAMP_VERSION, watermarkBlob } from "./watermark";
 
 // Stair tests in the PDF, laid out as lib/stairPrint (the "Stair report
@@ -54,30 +54,6 @@ export async function appendStairPages(doc: JsPDF, tests: StairTest[], sys: SpfS
   }
 }
 
-// the heading every page has (the FFCP pages too): title, logo, rule, subtitle; returns where the page goes on from
-export function heading(doc: JsPDF, title: string, subtitle: string, logo: Logo) {
-  const { w: W, m: M } = PAGE;
-  let y = M + 6;
-  doc.setTextColor(INK);
-  doc.setFont("helvetica", "bold");
-  // big enough to read at a glance; a wide company logo: 240 pt across at most
-  const lh = logo ? Math.min(58, (240 * logo.h) / logo.w) : 0;
-  const lw = logo ? (logo.w / logo.h) * lh : 0;
-  // the title stays clear of the logo: smaller type if it would run under it
-  const room = W - 2 * M - lw - 12;
-  let size = 15;
-  doc.setFontSize(size);
-  while (size > 10 && doc.getTextWidth(title) > room) doc.setFontSize((size -= 0.5));
-  doc.text(title, M, y + 8);
-  if (logo) doc.addImage(logo.data, "PNG", W - M - lw, y - 22, lw, lh);
-  doc.setFillColor("#1f6fb2");
-  doc.rect(M, y + 15, 46, 2.5, "F");
-  y += 30;
-  doc.setFontSize(11);
-  doc.text(subtitle, M, y + 4);
-  return y + 16;
-}
-
 // a page laid out top to bottom: sections that keep together, a footer on every page
 class Flow {
   y = PAGE.m;
@@ -91,17 +67,7 @@ class Flow {
     return PAGE.h - PAGE.m - FOOT;
   }
   footer() {
-    const { doc } = this;
-    const { w: W, h: H, m: M } = PAGE;
-    doc.setDrawColor(LINE);
-    doc.setLineWidth(0.5);
-    // where the flow, FFCP and site report footers sit
-    doc.line(M, H - 32, W - M, H - 32);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(7.5);
-    doc.setTextColor(SOFT);
-    doc.text(this.foot, M, H - 22);
-    doc.text(`Page ${doc.getNumberOfPages()}`, W - M, H - 22, { align: "right" });
+    drawReportFooter(this.doc, this.foot, this.doc.getNumberOfPages());
   }
   newPage() {
     this.footer();

@@ -5,7 +5,7 @@ import { defectTypeStyle, type DefectTypeStyle } from "./defectTypes";
 import { reportRows } from "./esrGrouping";
 import { headingText, type Heading } from "./findingsPdf";
 import { numericDate } from "./dates";
-import { drawReportHeading } from "./reportHeading";
+import { drawReportFooter, drawReportHeading } from "./reportHeading";
 import { EXPORT_MAX_EDGE, STAMP_VERSION, watermarkBlob } from "./watermark";
 
 // The AFSS and Project site report's PDF pages after the cover (the "AFSS &
@@ -89,14 +89,7 @@ export function drawRunningHeader(doc: jsPDF, info: SiteReportInfo) {
 // the footer: site and address, page number; on every page after the cover
 export function drawFooter(doc: jsPDF, info: SiteReportInfo, page: number) {
   doc.setPage(page);
-  doc.setDrawColor(...LINE);
-  doc.setLineWidth(0.5);
-  doc.line(M, H - 32, M + CW, H - 32);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(7.5);
-  doc.setTextColor(...SOFT);
-  doc.text([info.siteName, info.address].filter((x) => x.trim()).join(" · "), M, H - 22);
-  doc.text(`Page ${page}`, M + CW, H - 22, { align: "right" });
+  drawReportFooter(doc, [info.siteName, info.address].filter((x) => x.trim()).join(" · "), page);
 }
 
 function sectionTitle(doc: jsPDF, text: string, y: number) {

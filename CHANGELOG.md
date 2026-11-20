@@ -7,6 +7,16 @@ the technical detail.
 
 ## 20 November 2026
 
+- **[Contractor] The site report in the company's colours and name.** The
+  short rule under every report title is the company's accent (PDF, and the
+  flow and FFCP sheets' bar). Every PDF footer has the company's name in the
+  middle, so a report says whose it is even without a logo. The Excel
+  register gets title rows above it (the report, the accent rule, the site,
+  its address, date and inspector, the company's logo or name on the right)
+  and its sheet is called "Findings"; the headings and the pre-filled
+  Corrective action stay as EnFact's. The cover is unchanged. EnFact's
+  reports are unchanged. (The footer is now one drawing for every report.)
+
 - **[Both] One footer on every PDF page.** The stair pages' footer now sits
   where the flow, FFCP and site report footers do, and reads the same: site
   and address on the left, the page number on the right (the stair's name is
