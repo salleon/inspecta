@@ -44,6 +44,10 @@ the technical detail.
 
 ## 19 November 2026
 
+- **[Contractor] Its own icon on iPhone.** The first Site Inspections test
+  build on iPhone had EnFact's icon (with the swoosh); it now gets its own
+  Site Check icon, as on Android.
+
 - **[Both] Two iPhone apps on TestFlight.** The iPhone project now builds
   either app: EnFact (as before, to TestFlight with every release, now
   called "EnFact" under its icon) or Inspecta (Site Inspections), sent to

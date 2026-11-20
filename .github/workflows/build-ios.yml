@@ -8,7 +8,7 @@ name: Build iOS
 on:
   push:
     branches: [main, test, ios]
-    paths: ["ios/**", "scripts/ios-app.sh", ".github/workflows/build-ios.yml"]
+    paths: ["ios/**", "scripts/ios-app.sh", "branding/icons/contractor/ios/**", ".github/workflows/build-ios.yml"]
   workflow_dispatch:
 
 jobs:
