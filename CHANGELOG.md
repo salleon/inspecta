@@ -7,6 +7,16 @@ the technical detail.
 
 ## 20 November 2026
 
+- **[EnFact] Build 9.9, out to coworkers** (Android, and iPhone on
+  TestFlight). One heading and footer on every report, the new FFCP
+  report, the contents page on Export Other Tests Only, and a custom
+  report's name inside the report.
+
+- **[Contractor] Build 1.1** (Android internal testing, and iPhone on
+  TestFlight). The same report changes, plus the company's accent colour
+  and name in the reports and title rows on the Excel; the iPhone app's
+  own icon.
+
 - **[Both] A customised report says its name inside.** The summary's big
   name and the thin header line on the findings pages read "Harbour Tower -
   Level 3 defects", the same as the cover (and the Contractor Excel's title
