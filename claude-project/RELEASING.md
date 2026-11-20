@@ -40,3 +40,17 @@ copied from one app to the other.
 Before any release, say in one line what's on `test` that isn't on `main`
 yet (`git log --oneline origin/main..origin/test`), so the owner knows what
 goes out.
+
+## The release map (keep it current)
+
+The owner's pinned reference page is https://claude.ai/artifact/8S4BAqGdRfDEE2B7SRCvcW.
+Its source is `claude-project/release-map.html`.
+
+Update it whenever a release goes out, or an app, branch, build step or
+build label changes (including the "Right now" section and its "Last
+updated" date):
+1. Edit `claude-project/release-map.html` and commit it with the change.
+2. Publish it to the same page: Artifact tool, publish, `url` set to the
+   link above. Read the page first (`action: "read"`) and build on what
+   comes back, in case it was updated elsewhere.
+Never publish it as a new page: the owner relies on that one link.
