@@ -7,6 +7,11 @@ the technical detail.
 
 ## 20 November 2026
 
+- **[Both] A customised report says its name inside.** The summary's big
+  name and the thin header line on the findings pages read "Harbour Tower -
+  Level 3 defects", the same as the cover (and the Contractor Excel's title
+  rows). The whole-site report and the footer are unchanged.
+
 - **[Contractor] The site report in the company's colours and name.** The
   short rule under every report title is the company's accent (PDF, and the
   flow and FFCP sheets' bar). Every PDF footer has the company's name in the

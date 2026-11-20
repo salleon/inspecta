@@ -82,6 +82,8 @@ test("its PDF is named after it and has only its findings; Whole site still has 
   const text = (await readFile(pdf.path)).toString("latin1");
   assert.ok(text.includes("Fire door hinge damaged") && text.includes("Exit sign not illuminated"));
   assert.ok(!text.includes("Extinguisher service tag expired"));
+  // its name inside as well as on the cover: the summary's big name and the pages' header line
+  assert.ok(text.split("(Harbour Tower - Level 1)").length - 1 >= 3, "the cover, the summary and the header line name it");
   await page.click('button:has-text("Whole site · 5")');
   assert.equal(await page.locator("text=Extinguisher service tag expired").count(), 1);
 });

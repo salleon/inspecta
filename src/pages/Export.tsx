@@ -425,7 +425,7 @@ export default function ExportPreview() {
   async function buildPdf(onPhoto: (done: number, total: number) => void): Promise<Blob> {
     const doc = new jsPDF({ unit: "pt", format: "a4" });
     const sr = await import("../lib/siteReportPdf");
-    const info = { kind: site?.kind === "project" ? ("project" as const) : ("afss" as const), siteName: site?.name ?? "Inspection", address: site?.address ?? "", dateMs: inspectionMs, inspector: getInspectorName() };
+    const info = { kind: site?.kind === "project" ? ("project" as const) : ("afss" as const), siteName: site?.name ?? "Inspection", reportName: report?.name, address: site?.address ?? "", dateMs: inspectionMs, inspector: getInspectorName() };
     await drawCoverPage(doc, items);
     const cards = sr.cardRows(items, info.kind);
     const { flowTests, stairs, ffcp } = await attachedTests();
@@ -545,7 +545,7 @@ export default function ExportPreview() {
           const { flowTests, stairs, ffcp } = await attachedTests();
           const flow = site && (flowTests.length || stairs.length || ffcp.length) ? { tests: flowTests, site, stairs, ffcp } : undefined;
           // the register's title rows (Contractor's Excel; lib/branding REGISTER_TITLE)
-          const heading = { kind: site?.kind === "project" ? ("project" as const) : ("afss" as const), siteName: site?.name ?? "Inspection", address: site?.address ?? "", dateMs: inspectionMs, inspector: getInspectorName() };
+          const heading = { kind: site?.kind === "project" ? ("project" as const) : ("afss" as const), siteName: site?.name ?? "Inspection", reportName: report?.name, address: site?.address ?? "", dateMs: inspectionMs, inspector: getInspectorName() };
           blob = site?.kind === "project" ? await buildProjectWorkbook(items, onProgress, flow, heading) : await buildFindingsWorkbook(items, inspectionMs, onProgress, flow, heading);
         }
         timer.mark("building");

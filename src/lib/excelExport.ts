@@ -133,6 +133,7 @@ const PROJECT_HEADINGS = ["Photo", "Location", "Notes", "Date", "Risk Level"];
 export interface RegisterHeading {
   kind: "afss" | "project";
   siteName: string;
+  reportName?: string; // a customised report's: "Harbour Tower - Level 3 defects", as the PDF
   address: string;
   dateMs: number;
   inspector: string;
@@ -174,7 +175,7 @@ async function drawTitle(wb: import("exceljs").Workbook, ws: import("exceljs").W
   ws.getRow(2).height = 4;
   ws.getCell(2, 1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: `FF${reportAccent().slice(1).toUpperCase()}` } };
   ws.getRow(3).height = 20;
-  ws.getCell(3, 1).value = heading.siteName.trim();
+  ws.getCell(3, 1).value = heading.reportName?.trim() ? `${heading.siteName.trim()} - ${heading.reportName.trim()}` : heading.siteName.trim();
   ws.getCell(3, 1).font = font({ size: 13, bold: true });
   ws.getCell(4, 1).value = [heading.address.trim(), numericDate(heading.dateMs), heading.inspector.trim()].filter(Boolean).join(" · ");
   ws.getCell(4, 1).font = font({ size: 9, color: { argb: "FF4A6175" } });

@@ -25,10 +25,17 @@ export interface SiteEntry {
 export interface SiteReportInfo {
   kind: "afss" | "project";
   siteName: string;
+  // a customised report's name ("Level 3 defects"): the summary's big name
+  // and the pages' header line read "Harbour Tower - Level 3 defects", as
+  // the cover (the "Custom report heading" design, option B)
+  reportName?: string;
   address: string;
   dateMs: number;
   inspector: string;
 }
+
+// the site's name, with a customised report's after it
+export const reportHeadName = (info: Pick<SiteReportInfo, "siteName" | "reportName">) => (info.reportName?.trim() ? `${info.siteName} - ${info.reportName.trim()}` : info.siteName);
 
 export interface AttachedTest {
   label: string;
@@ -74,8 +81,8 @@ export function drawRunningHeader(doc: jsPDF, info: SiteReportInfo) {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
   doc.setTextColor(...INK);
-  doc.text(info.siteName, M, M + 6);
-  const w = doc.getTextWidth(info.siteName);
+  doc.text(reportHeadName(info), M, M + 6);
+  const w = doc.getTextWidth(reportHeadName(info));
   doc.setFont("helvetica", "normal");
   doc.setTextColor(...SOFT);
   doc.text(` · ${reportName(info.kind)} · ${numericDate(info.dateMs)}`, M + w, M + 6);
@@ -422,7 +429,7 @@ function summaryRows(doc: jsPDF, cards: CardRow[], pageOf: Map<SiteEntry, number
 
 // the summary's first page heading: the title and the logo, the site under it
 function summaryHeading(doc: jsPDF, info: SiteReportInfo, logo: { data: string; w: number; h: number } | null) {
-  return drawReportHeading(doc, { title: `${reportName(info.kind)} · Summary`, name: info.siteName, note: [info.address, numericDate(info.dateMs), info.inspector].filter((x) => x.trim()).join(" · ") }, logo);
+  return drawReportHeading(doc, { title: `${reportName(info.kind)} · Summary`, name: reportHeadName(info), note: [info.address, numericDate(info.dateMs), info.inspector].filter((x) => x.trim()).join(" · ") }, logo);
 }
 
 // the tiles: the five new-finding levels, then (when there are any) a
