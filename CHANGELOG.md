@@ -7,6 +7,11 @@ the technical detail.
 
 ## 20 November 2026
 
+- **[Both] Tidy-up: old code removed.** The old findings PDF drawing (no
+  longer used since the new report layout) and a few unused names are
+  gone; the ESR heading helpers moved to lib/esrGrouping. No change on
+  screen or in any report.
+
 - **[EnFact] Build 9.9, out to coworkers** (Android, and iPhone on
   TestFlight). One heading and footer on every report, the new FFCP
   report, the contents page on Export Other Tests Only, and a custom

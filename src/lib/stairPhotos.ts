@@ -17,7 +17,6 @@ export interface StairPhotoItem {
   photos: Photo[];
 }
 
-export const PHOTOS_SUBTITLE = "Photos & notes";
 // a flow test's, on the page after it
 export const DEFECTS_HEADING = "Defects found during testing";
 

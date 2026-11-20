@@ -99,3 +99,15 @@ export function reportRows<T extends { finding: Finding }>(entries: T[]): Report
   }
   return rows;
 }
+
+// ---- a heading row's text and colour (the reports and the export screen) ----
+
+export type Heading = Exclude<ReportRow<unknown>, { kind: "finding" }>;
+
+export function headingText(row: Heading): string {
+  if (row.kind === "uncategorised") return "Uncategorised";
+  return row.kind === "section" ? `${row.code} · ${row.name}` : `${row.code}  ${row.name}`;
+}
+
+// section (blue), group (yellow, 6.3) and Uncategorised (grey) as a filled bar
+export const BAR_FILL = { section: "#99ccff", group: "#ffffcc", uncategorised: "#d9d9d9" } as const;

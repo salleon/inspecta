@@ -2,8 +2,7 @@ import type { jsPDF } from "jspdf";
 import type { Finding, Photo } from "../db/types";
 import { getStamped } from "../db/db";
 import { defectTypeStyle, type DefectTypeStyle } from "./defectTypes";
-import { reportRows } from "./esrGrouping";
-import { headingText, type Heading } from "./findingsPdf";
+import { headingText, reportRows, type Heading } from "./esrGrouping";
 import { numericDate } from "./dates";
 import { drawReportFooter, drawReportHeading } from "./reportHeading";
 import { EXPORT_MAX_EDGE, STAMP_VERSION, watermarkBlob } from "./watermark";
@@ -631,5 +630,3 @@ export async function drawEntryCards(doc: jsPDF, entries: SiteEntry[], y: number
   }
   return y;
 }
-
-export const CONTENT_BOTTOM = BOTTOM;

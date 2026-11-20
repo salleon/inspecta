@@ -3,8 +3,8 @@ import { getThumbnail } from "../db/db";
 import { testPhotoItems, type StairPhotoItem } from "../lib/stairPhotos";
 
 // A stair or flow test's photos and defects in a report preview, each as
-// the findings report draws one (lib/findingsPdf): photos on the left
-// half, then the type, note, level and location on the right.
+// the old findings report drew them: photos on the left half, then the
+// type, note, level and location on the right.
 
 // each test's, by test id, and their photos' thumbnails (photo id → URL)
 export function useReportPhotos(tests: { id: string; siteId: string }[]) {

@@ -18,5 +18,3 @@ export const EDITION: Edition = typeof __EDITION__ !== "undefined" && __EDITION_
 export const IS_CONTRACTOR = EDITION === "contractor";
 export const IS_ENFACT = !IS_CONTRACTOR;
 
-// the app's full name, as in the stores
-export const APP_NAME = IS_CONTRACTOR ? "Inspecta - Site Inspections" : "Inspecta - EnFact";

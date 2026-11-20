@@ -19,7 +19,6 @@ function el<K extends keyof SVGElementTagNameMap>(tag: K, attrs: Attrs, parent: 
 }
 // the two main gears, drawn as on the canvas board: chunky teeth with
 // sloped sides, a navy ring and a hub; a seamless loop every LOOP_S seconds
-export const MAIN_GEARS = { w: 300, h: 230 };
 const BIG = { r: 72, teeth: 16, x: 114, y: 99, fill: A };
 const SMALL = { r: 44, teeth: 10, x: 204, y: 154, fill: "#3f5a73" };
 const DEPTH = 10;
