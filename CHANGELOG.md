@@ -7,6 +7,12 @@ the technical detail.
 
 ## 20 November 2026
 
+- **[Both] One footer on every PDF page.** The stair pages' footer now sits
+  where the flow, FFCP and site report footers do, and reads the same: site
+  and address on the left, the page number on the right (the stair's name is
+  in its heading). In the AFSS / Project report and Export Other Tests Only.
+  The stair preview and Excel are unchanged.
+
 - **[Both] Export Other Tests Only: a contents page.** The PDF now opens
   with the shared heading ("Test results", the site, its address), a strip
   (site, exported date, how many tests and pages) and a list of the tests in

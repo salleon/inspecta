@@ -35,19 +35,21 @@ export type Logo = { data: string; w: number; h: number } | null;
 
 export async function appendStairPages(doc: JsPDF, tests: StairTest[], sys: SpfSystem, site: Pick<Site, "name" | "address">, first: boolean): Promise<void> {
   const logo = await logoImage().catch(() => null);
+  // the footer every report page has (site · address, Page N); the preview and Excel keep the stair's own
+  const foot = [site.name, site.address].map((x) => x?.trim()).filter(Boolean).join(" · ");
   let fresh = first;
   for (const test of tests) {
     for (const page of stairPages(test, sys, site)) {
       if (!fresh) doc.addPage();
       fresh = false;
-      drawPage(doc, page, logo);
+      drawPage(doc, page, logo, foot);
     }
     // the test's photo appendix, after all its stairs
     const photos = appendixPhotos(await testPhotoItems(test), test, sys);
     if (photos.length) {
       if (!fresh) doc.addPage();
       fresh = false;
-      await drawAppendix(doc, test, site, photos, logo);
+      await drawAppendix(doc, test, site, photos, logo, foot);
     }
   }
 }
@@ -93,12 +95,13 @@ class Flow {
     const { w: W, h: H, m: M } = PAGE;
     doc.setDrawColor(LINE);
     doc.setLineWidth(0.5);
-    doc.line(M, H - M - 12, W - M, H - M - 12);
+    // where the flow, FFCP and site report footers sit
+    doc.line(M, H - 32, W - M, H - 32);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7.5);
     doc.setTextColor(SOFT);
-    doc.text(this.foot, M, H - M - 2);
-    doc.text(`Page ${doc.getNumberOfPages()}`, W - M, H - M - 2, { align: "right" });
+    doc.text(this.foot, M, H - 22);
+    doc.text(`Page ${doc.getNumberOfPages()}`, W - M, H - 22, { align: "right" });
   }
   newPage() {
     this.footer();
@@ -303,8 +306,8 @@ function tableBlock(doc: JsPDF, t: StairTable) {
   };
 }
 
-function drawPage(doc: JsPDF, page: StairPage, logo: Logo) {
-  const flow = new Flow(doc, page.footer);
+function drawPage(doc: JsPDF, page: StairPage, logo: Logo, foot: string) {
+  const flow = new Flow(doc, foot);
   flow.y = stairHeading(doc, page, logo);
   const details = detailsBlock(doc, page.details);
   const tiles = page.tiles.length ? tilesBlock(doc, page.tiles) : null;
@@ -330,10 +333,10 @@ function drawPage(doc: JsPDF, page: StairPage, logo: Logo) {
 
 // ---- the photo appendix: every stair's Photos & notes, each photo 5 × 6.61 cm with a label table under it ----
 const ROW_GAP = 14;
-async function drawAppendix(doc: JsPDF, test: StairTest, site: Pick<Site, "name" | "address">, photos: AppendixPhoto[], logo: Logo) {
+async function drawAppendix(doc: JsPDF, test: StairTest, site: Pick<Site, "name" | "address">, photos: AppendixPhoto[], logo: Logo, foot: string) {
   const { w: W, m: M } = PAGE;
   const width = W - 2 * M;
-  const flow = new Flow(doc, [site.name.trim(), "Photo appendix"].filter(Boolean).join(" · "));
+  const flow = new Flow(doc, foot);
   flow.y = stairHeading(doc, { title: photosTitle(test), stair: "Photo appendix", note: `Photos & notes from every stair in this test · ${[site.name.trim(), numericDate(test.testedAt)].filter(Boolean).join(" · ")}` }, logo);
   sectionTitle(doc, "Photo appendix", M, flow.y);
   flow.y += TITLE_H;
