@@ -197,6 +197,8 @@ export default function TestsList({ site, mode, onCount }: { site: Site; mode: "
           ffcp: chosen.flatMap((i) => (i.kind === "ffcp" ? [i.test] : [])),
           site,
           sys: mode === "other" ? stairSys : site.spf,
+          // Export Other Tests Only: a contents page first
+          contents: mode === "other",
           formats: (["pdf", "xlsx"] as TestsFormat[]).filter((f) => formats.has(f)),
         },
         (percent, step) => setExporting({ percent, step }),

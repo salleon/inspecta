@@ -697,7 +697,12 @@ test("exporting tests as both PDF and Excel sends one zip holding the two", asyn
   const base = names[0].replace(/\.pdf$/, "");
   assert.match(base, /Tests/);
   assert.deepEqual(names, [`${base}.pdf`, `${base}.xlsx`]);
-  assert.equal((await zip.file(`${base}.pdf`).async("string")).slice(0, 5), "%PDF-");
+  const pdf = (await zip.file(`${base}.pdf`).async("nodebuffer")).toString("latin1");
+  assert.equal(pdf.slice(0, 5), "%PDF-");
+  // a contents page first: the tests in it, and where each starts
+  assert.match(pdf, /\(Test results\)/);
+  assert.match(pdf, /IN THIS REPORT/);
+  assert.match(pdf, /\(PAGE\)/);
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(await zip.file(`${base}.xlsx`).async("nodebuffer"));
   assert.ok(wb.worksheets.length >= 1);

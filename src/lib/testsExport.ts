@@ -7,25 +7,49 @@ import { ZipWriter } from "./zip";
 import { testsFileName } from "./stairTest";
 
 // Exporting a site's other tests (design canvas SiteTests, "Export tests"):
-// the flow, stair and FFCP tests picked, as one PDF (a page per flow test,
+// the flow, stair and FFCP tests picked, as one PDF (a contents page, lib/testsContents, then a page per flow test,
 // a page per stair of each stair test, a page per FFCP test) and / or one
 // Excel (a sheet each; the FFCP tests share one). With
 // both picked they go out as one zip holding the two, so they travel as a
 // single attachment.
 
-async function buildTestsPdf(flow: FlowTest[], stair: StairTest[], sys: SpfSystem | undefined, site: Pick<Site, "name" | "address">, ffcp: FfcpTest[]): Promise<Blob> {
+// contents: the contents page first (Export Other Tests Only; a stair or FFCP job's own export goes without)
+async function buildTestsPdf(flow: FlowTest[], stair: StairTest[], sys: SpfSystem | undefined, site: Pick<Site, "name" | "address">, ffcp: FfcpTest[], contents: boolean): Promise<Blob> {
   const { jsPDF } = await import("jspdf");
+  const { logoImage, appendFlowPages, flowFooter } = await import("./flowPdf");
+  const tc = await import("./testsContents");
   const doc = new jsPDF({ unit: "pt", format: "a4" });
+  const logo = await logoImage().catch(() => null);
+  const stairs = stair.length && sys ? stair : [];
+  // the contents page(s) first (measured with page 0 for now), then the tests
+  const rough = [...flow.map((t) => tc.flowRow(t, 0)), ...stairs.map((t) => tc.stairRow(t, sys!, 0)), ...ffcp.map((t) => tc.ffcpRow(t, 0))];
+  const front = contents ? tc.contentsPageCount(doc, rough) : 0;
+  for (let i = 1; i < front; i++) doc.addPage();
+  const rows: import("./testsContents").ContentsRow[] = [];
+  // without a contents page, the first test goes on the blank first page
+  let blank = !front;
+  // the flow pages' footers once they're where they stay (the blank page gone)
+  let flowPages: [number, number] = [0, -1];
   if (flow.length) {
-    await (await import("./flowPdf")).appendFlowPages(doc, flow, site);
-    doc.deletePage(1); // appendFlowPages starts each test on a new page
+    const shift = blank ? 1 : 0;
+    await appendFlowPages(doc, flow, site, (t, page) => rows.push(tc.flowRow(t, page - shift)), false);
+    if (blank) doc.deletePage(1); // appendFlowPages starts each test on a new page
+    flowPages = [front + 1, doc.getNumberOfPages()];
+    blank = false;
   }
-  const stairs = !!(stair.length && sys);
-  if (stairs) await (await import("./stairPdf")).appendStairPages(doc, stair, sys!, site, !flow.length);
-  if (ffcp.length) {
-    const { logoImage } = await import("./flowPdf");
-    (await import("./ffcpPdf")).appendFfcpPages(doc, ffcp, site, !flow.length && !stairs, await logoImage().catch(() => null));
+  if (stairs.length) {
+    const { appendStairPages } = await import("./stairPdf");
+    for (const t of stairs) {
+      rows.push(tc.stairRow(t, sys!, blank ? 1 : doc.getNumberOfPages() + 1));
+      await appendStairPages(doc, [t], sys!, site, blank);
+      blank = false;
+    }
   }
+  if (ffcp.length) (await import("./ffcpPdf")).appendFfcpPages(doc, ffcp, site, blank, logo, (t, page) => rows.push(tc.ffcpRow(t, page)));
+  if (front) tc.drawContents(doc, 1, site, rows, doc.getNumberOfPages(), logo);
+  for (let p = 1; p <= front; p++) flowFooter(doc, site, p);
+  for (let p = flowPages[0]; p <= flowPages[1]; p++) flowFooter(doc, site, p);
+  doc.setPage(doc.getNumberOfPages());
   return doc.output("blob");
 }
 
@@ -51,7 +75,7 @@ export type TestsFormat = "pdf" | "xlsx";
 // builds the chosen formats and opens the share menu with them all
 export async function exportTests(
   // sys: the stair tests' system (the site's own, unless given)
-  opts: { flow: FlowTest[]; stair: StairTest[]; ffcp?: FfcpTest[]; site: Site; sys?: SpfSystem; formats: TestsFormat[]; fileName?: (ext: TestsFormat) => string },
+  opts: { flow: FlowTest[]; stair: StairTest[]; ffcp?: FfcpTest[]; site: Site; sys?: SpfSystem; formats: TestsFormat[]; contents?: boolean; fileName?: (ext: TestsFormat) => string },
   onStep: (percent: number, step: string) => void,
 ): Promise<void> {
   const { flow, stair, site, formats } = opts;
@@ -61,7 +85,7 @@ export async function exportTests(
     onStep(15 + i * 35, f === "pdf" ? "Drawing the pages…" : "Building the sheets…");
     const sys = opts.sys ?? site.spf;
     const ffcp = opts.ffcp ?? [];
-    const blob = f === "pdf" ? await buildTestsPdf(flow, stair, sys, site, ffcp) : await buildTestsWorkbook(flow, stair, sys, site, ffcp);
+    const blob = f === "pdf" ? await buildTestsPdf(flow, stair, sys, site, ffcp, !!opts.contents) : await buildTestsWorkbook(flow, stair, sys, site, ffcp);
     built.push({ blob, ext: f });
   }
   const files: { blob: Blob; name: string; shared: () => void }[] = [];

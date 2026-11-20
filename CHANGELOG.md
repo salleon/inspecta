@@ -7,6 +7,14 @@ the technical detail.
 
 ## 20 November 2026
 
+- **[Both] Export Other Tests Only: a contents page.** The PDF now opens
+  with the shared heading ("Test results", the site, its address), a strip
+  (site, exported date, how many tests and pages) and a list of the tests in
+  it: each one's date, who tested it, its result in a few words and the page
+  it starts on. A stair or FFCP job's own export goes without it. Also fixed:
+  when a tests-only PDF started with a flow test, its pages were numbered
+  one too high.
+
 - **[Both] FFCP report redesigned.** The shared heading (site name, address
   and panel), the details in one row, a Result row (Normal mode, Fire mode,
   the panel test), the mode tables with a grey dash for checks not done, and
