@@ -98,8 +98,10 @@ test("Export: the job's panel tests as a PDF, and as one Excel sheet", async () 
   const text = readFileSync(pdf.path, "latin1");
   assert.match(text, /^%PDF/);
   assert.match(text, /Fire fan control panel/);
-  assert.match(text, /Normal mode/);
-  assert.doesNotMatch(text, /Fire mode/, "fire mode had nothing ticked: no table");
+  assert.match(text, /NORMAL MODE/);
+  assert.doesNotMatch(text, /FIRE MODE/, "fire mode had nothing ticked: no table");
+  assert.match(text, /\(Not tested\)/, "its Result tile says so");
+  assert.match(text, /Page 1/, "its own footer");
   await page.waitForTimeout(800);
   await page.click('button:has-text("Export")');
   await page.click('button[aria-pressed]:has-text("Excel")');

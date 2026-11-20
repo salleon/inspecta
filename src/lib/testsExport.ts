@@ -40,7 +40,7 @@ async function buildTestsWorkbook(flow: FlowTest[], stair: StairTest[], sys: Spf
     addStairSheets(wb, stair, sys, site);
     await addStairPhotoSheets(wb, stair, sys);
   }
-  if (ffcp.length) (await import("./ffcpExcel")).addFfcpSheet(wb, ffcp, site);
+  if (ffcp.length) await (await import("./ffcpExcel")).addFfcpSheet(wb, ffcp, site);
   const buffer = await wb.xlsx.writeBuffer({ zip: { compression: "STORE" } } as never);
   const bytes = await addFlowCharts(new Uint8Array(buffer as ArrayBuffer), charts);
   return new Blob([bytes as BlobPart], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });

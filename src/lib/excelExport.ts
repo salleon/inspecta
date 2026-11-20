@@ -409,7 +409,7 @@ async function writeWorkbook(wb: import("exceljs").Workbook, flow?: FlowExport):
     addStairSheets(wb, stair.tests, stair.sys, flow!.site);
     await addStairPhotoSheets(wb, stair.tests, stair.sys);
   }
-  if (flow?.ffcp?.length) (await import("./ffcpExcel")).addFfcpSheet(wb, flow.ffcp, flow.site);
+  if (flow?.ffcp?.length) await (await import("./ffcpExcel")).addFfcpSheet(wb, flow.ffcp, flow.site);
   const buffer = await wb.xlsx.writeBuffer({ zip: { compression: "STORE" } } as never);
   const bytes = await addFlowCharts(new Uint8Array(buffer as ArrayBuffer), charts);
   return new Blob([bytes as BlobPart], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });

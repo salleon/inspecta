@@ -76,16 +76,7 @@ const cellValue = (v: string) => {
 // workbook) rather than SPRINKLER / HYDRANT (a tab in the site's report)
 export async function addFlowSheets(wb: Workbook, tests: FlowTest[], site: Pick<Site, "name" | "address">, byTest = false): Promise<FlowChart[]> {
   const charts: FlowChart[] = [];
-  const url = reportLogoUrl();
-  let logo: Logo | null = null;
-  if (url) {
-    const id = wb.addImage({ buffer: new Uint8Array(await (await fetch(url)).arrayBuffer()) as never, extension: "png" });
-    const img = new Image();
-    img.src = url;
-    await img.decode().catch(() => {});
-    const aspect = img.naturalWidth && img.naturalHeight ? img.naturalWidth / img.naturalHeight : 110 / 52;
-    logo = { id, w: Math.round(Math.min(160, 52 * aspect)), h: Math.round(Math.min(52, 160 / aspect)) };
-  }
+  const logo = await excelLogo(wb);
   for (const test of tests) {
     const kindName = SHEET[test.kind];
     const name = sheetName(wb, byTest || test.kind === "blank" ? test.name.trim() || kindName : kindName, "Flow test");
@@ -95,7 +86,19 @@ export async function addFlowSheets(wb: Workbook, tests: FlowTest[], site: Pick<
   return charts;
 }
 
-type Logo = { id: number; w: number; h: number };
+export type Logo = { id: number; w: number; h: number };
+
+// the report's logo (EnFact's, or the company's in Contractor mode) in the workbook, up to 160 × 52 px
+export async function excelLogo(wb: Workbook): Promise<Logo | null> {
+  const url = reportLogoUrl();
+  if (!url) return null;
+  const id = wb.addImage({ buffer: new Uint8Array(await (await fetch(url)).arrayBuffer()) as never, extension: "png" });
+  const img = new Image();
+  img.src = url;
+  await img.decode().catch(() => {});
+  const aspect = img.naturalWidth && img.naturalHeight ? img.naturalWidth / img.naturalHeight : 110 / 52;
+  return { id, w: Math.round(Math.min(160, 52 * aspect)), h: Math.round(Math.min(52, 160 / aspect)) };
+}
 
 function fillSheet(ws: Worksheet, name: string, test: FlowTest, site: Pick<Site, "name" | "address">, logo: Logo | null): FlowChart | null {
   const tables = printTables(test);

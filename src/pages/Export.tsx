@@ -456,7 +456,7 @@ export default function ExportPreview() {
     }
     if (site && ffcp.length) {
       const { logoImage } = await import("../lib/flowPdf");
-      (await import("../lib/ffcpPdf")).appendFfcpPages(doc, ffcp, site, false, await logoImage().catch(() => null), (t, page) => tests.push({ label: "Fire fan control panel", done: t.testedAt, page }));
+      (await import("../lib/ffcpPdf")).appendFfcpPages(doc, ffcp, site, false, await logoImage().catch(() => null), (t, page) => tests.push({ label: "Fire fan control panel", done: t.testedAt, page }), false);
     }
 
     const { logoImage } = await import("../lib/flowPdf");

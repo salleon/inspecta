@@ -7,6 +7,14 @@ the technical detail.
 
 ## 20 November 2026
 
+- **[Both] FFCP report redesigned.** The shared heading (site name, address
+  and panel), the details in one row, a Result row (Normal mode, Fire mode,
+  the panel test), the mode tables with a grey dash for checks not done, and
+  one notes table (fails with a reason, and fan notes; fails without a reason
+  show only as the cross). The bottom summary line is gone. Footer and page
+  numbers on every page; continued pages start with a thin header line. The
+  Excel sheet matches.
+
 - **[Both] One heading for every report.** The stair, flow test and AFSS /
   Project summary pages now share one heading: the title, the blue rule,
   the name under it at the same size, and a small line under that. On the
