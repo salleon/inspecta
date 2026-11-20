@@ -8,7 +8,7 @@ import { reportRows } from "./esrGrouping";
 import { suggestedCorrectiveAction } from "./correctiveAction";
 import { EXPORT_MAX_EDGE, STAMP_VERSION, watermarkBlob } from "./watermark";
 import { getStamped } from "../db/db";
-import { addFlowCharts, addFlowDefectSheets, addFlowSheets } from "./flowExcel";
+import { addFlowCharts, addFlowSheets } from "./flowExcel";
 
 // the site's flow tests, which go in as tabs after the findings (lib/flowExcel)
 interface FlowExport {
@@ -22,8 +22,9 @@ interface FlowExport {
 }
 
 // A photo stamped for the Excel: made once from its export copy, then
-// reused by every Excel export after (see db/getStamped).
-function excelPhoto(p: Photo) {
+// reused by every Excel export after (see db/getStamped). Also the flow
+// sheets' defect photos (lib/flowExcel).
+export function excelPhoto(p: Photo) {
   return getStamped(p, "excel", `${STAMP_VERSION}:${EXPORT_MAX_EDGE}:${p.takenAt}`, async (source) => {
     const { jpeg, width, height } = await watermarkBlob(source, p.takenAt, { maxEdge: EXPORT_MAX_EDGE });
     return { blob: jpeg, width, height };
@@ -223,26 +224,6 @@ export async function buildFindingsWorkbook(
   await drawTitle(wb, ws, heading, ws.getRow(head).getCell(COL.extra).value ? COL.extra : COL.action);
   onProgress?.({ stage: "building" });
   return writeWorkbook(wb, flow);
-}
-
-// A findings register sheet of its own in another workbook (a stair or
-// flow test's photos and defects): the template's heading row and column
-// widths copied over, then filled exactly as the findings report's sheet.
-export async function addFindingsSheet(wb: import("exceljs").Workbook, name: string, items: ExcelFinding[], inspectionMs: number) {
-  const ExcelJS = (await import("exceljs")).default;
-  const t = new ExcelJS.Workbook();
-  await t.xlsx.load(await (await fetch(templateDataUrl)).arrayBuffer());
-  const from = t.worksheets[0];
-  const ws = wb.addWorksheet(name, { pageSetup: JSON.parse(JSON.stringify(from.pageSetup)) });
-  for (let c = 1; c <= from.columnCount; c++) ws.getColumn(c).width = from.getColumn(c).width;
-  const head = from.getRow(1);
-  ws.getRow(1).height = head.height;
-  head.eachCell({ includeEmpty: true }, (cell, c) => {
-    const to = ws.getRow(1).getCell(c);
-    to.value = cell.value;
-    to.style = JSON.parse(JSON.stringify(cell.style));
-  });
-  await fillFindingsSheet(wb, ws, items, inspectionMs);
 }
 
 // head: the heading row (the template's row 1, or under the title rows)
@@ -481,7 +462,6 @@ async function fillFindingsSheet(wb: import("exceljs").Workbook, ws: import("exc
 // freezes the loading screen) for a negligible saving on the XML.
 async function writeWorkbook(wb: import("exceljs").Workbook, flow?: FlowExport): Promise<Blob> {
   const charts = flow?.tests.length ? await addFlowSheets(wb, flow.tests, flow.site) : [];
-  if (flow?.tests.length) await addFlowDefectSheets(wb, flow.tests);
   for (const stair of flow?.stairs ?? []) {
     if (!stair.tests.length) continue;
     const { addStairSheets, addStairPhotoSheets } = await import("./stairExcel");

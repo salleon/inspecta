@@ -13,7 +13,8 @@ import { sheetName } from "./excelSheetName";
 // design): the title, the site's name and the logo, the details, the Result
 // (PASS / FAIL, or the town main's Meets / Below demand, with the kPa
 // margin), a table per supply with navy headings and only the columns filled
-// in, the graph and the comments. Built
+// in, the graph and the comments, then the defects found during the test
+// (numbered, with their photos, as the PDF's cards). Built
 // from the same pieces as the preview (lib/flowPrint), so what's previewed
 // is what's exported. The graph is a real Excel chart, added to the file
 // after ExcelJS has written it (ExcelJS can't make charts): see
@@ -80,13 +81,61 @@ export async function addFlowSheets(wb: Workbook, tests: FlowTest[], site: Pick<
   for (const test of tests) {
     const kindName = SHEET[test.kind];
     const name = sheetName(wb, byTest || test.kind === "blank" ? test.name.trim() || kindName : kindName, "Flow test");
-    const chart = fillSheet(wb.addWorksheet(name), name, test, site, logo);
+    const chart = fillSheet(wb.addWorksheet(name), name, test, site, logo, await testDefects(wb, test));
     if (chart) charts.push(chart);
   }
   return charts;
 }
 
 export type Logo = { id: number; w: number; h: number };
+
+// a flow test's defects (lib/testPhotos), numbered as the PDF's cards,
+// each photo stamped and added to the workbook
+interface Defect {
+  n: number;
+  risk: { label: string; bg: string; text: string } | null;
+  note: string;
+  action: string;
+  place: string;
+  photos: { id: number; w: number; h: number }[];
+}
+async function testDefects(wb: Workbook, test: FlowTest): Promise<Defect[]> {
+  const { listTestFindings } = await import("../db/db");
+  const { photoItems } = await import("./stairPhotos");
+  const { excelPhoto } = await import("./excelExport");
+  const out: Defect[] = [];
+  for (const item of photoItems(await listTestFindings(test.siteId, test.id))) {
+    const photos: Defect["photos"] = [];
+    for (const p of item.photos) {
+      const st = await excelPhoto(p).catch(() => null);
+      if (!st) continue;
+      const id = wb.addImage({ buffer: new Uint8Array(await st.blob.arrayBuffer()) as never, extension: "jpeg" });
+      photos.push({ id, w: st.width, h: st.height });
+    }
+    out.push({ n: item.n, risk: item.type ?? null, note: item.note, action: item.finding.rectification?.trim() ?? "", place: item.place, photos });
+  }
+  return out;
+}
+
+// k parts across the sheet's columns (pixel widths px), each part at least
+// one column, their edges as near as can be to the fractions given
+function partSpans(px: number[], fracs: number[]): number[] {
+  const total = px.reduce((a, b) => a + b, 0);
+  const edges = px.map((_, i) => px.slice(0, i + 1).reduce((a, b) => a + b, 0));
+  const out: number[] = [];
+  let used = 0;
+  let cum = 0;
+  fracs.forEach((f, k) => {
+    cum += f;
+    const left = fracs.length - k - 1;
+    if (!left) return out.push(px.length - used);
+    let best = used + 1;
+    for (let c = used + 1; c <= px.length - left; c++) if (Math.abs(edges[c - 1] - cum * total) < Math.abs(edges[best - 1] - cum * total)) best = c;
+    out.push(best - used);
+    used = best;
+  });
+  return out;
+}
 
 // the report's logo (EnFact's, or the company's in Contractor mode) in the workbook, up to 160 × 52 px
 export async function excelLogo(wb: Workbook): Promise<Logo | null> {
@@ -100,7 +149,7 @@ export async function excelLogo(wb: Workbook): Promise<Logo | null> {
   return { id, w: Math.round(Math.min(160, 52 * aspect)), h: Math.round(Math.min(52, 160 / aspect)) };
 }
 
-function fillSheet(ws: Worksheet, name: string, test: FlowTest, site: Pick<Site, "name" | "address">, logo: Logo | null): FlowChart | null {
+function fillSheet(ws: Worksheet, name: string, test: FlowTest, site: Pick<Site, "name" | "address">, logo: Logo | null, defects: Defect[] = []): FlowChart | null {
   const tables = printTables(test);
   const cols = Math.max(1, ...tables.map((t) => t.head.length));
   const first = 2; // column B (A is a narrow margin)
@@ -240,6 +289,116 @@ function fillSheet(ws: Worksheet, name: string, test: FlowTest, site: Pick<Site,
     c.alignment = { wrapText: true, vertical: "top" };
     ws.getRow(r).height = Math.max(15, Math.ceil(test.comment.length / 70) * 13);
     r++;
+  }
+
+  // the defects found during testing, straight on after it as in the PDF
+  // (the "Flow test defects in the Excel" design, option B): numbered, the
+  // risk, the defect and its recommended action, level and location, the
+  // photos two across
+  if (defects.length) {
+    r++;
+    ws.getCell(r, first).value = "DEFECTS FOUND DURING TESTING";
+    ws.getCell(r, first).font = font({ size: 9, bold: true, color: { argb: NAVY } });
+    r++;
+    const colPx = widths.map((w) => w * 7 + 5);
+    // fewer columns than parts: the number joins the risk, the place the defect
+    const parts = cols >= 5 ? ["n", "risk", "defect", "place", "photos"] : cols === 4 ? ["risk", "defect", "place", "photos"] : cols === 3 ? ["risk", "defect", "photos"] : ["defect", "photos"];
+    const FRAC: Record<string, number> = { n: 0.05, risk: 0.13, defect: 0.34, place: 0.16, photos: 0.32 };
+    const fr = parts.map((k) => FRAC[k] + (k === "risk" && !parts.includes("n") ? FRAC.n : 0) + (k === "defect" && !parts.includes("place") ? FRAC.place : 0) + (k === "defect" && !parts.includes("risk") ? FRAC.risk + FRAC.n : 0));
+    const sum = fr.reduce((a, b) => a + b, 0);
+    const span = cols >= 2 ? partSpans(colPx, fr.map((f) => f / sum)) : [1, 1];
+    const start = span.map((_, j) => first + span.slice(0, j).reduce((a, b) => a + b, 0));
+    const pxOf = (j: number) => {
+      const from = start[j] - first;
+      return (cols >= 2 ? colPx : [...colPx, 140]).slice(from, from + span[j]).reduce((a, b) => a + b, 0);
+    };
+    if (cols < 2) ws.getColumn(last + 1).width = 19; // a column of its own for the photos
+    const cell = (j: number) => {
+      if (span[j] > 1) ws.mergeCells(r, start[j], r, start[j] + span[j] - 1);
+      return ws.getCell(r, start[j]);
+    };
+    const HEAD: Record<string, string> = { n: "#", risk: parts.includes("n") ? "Risk" : "# · Risk", defect: "Defect", place: "Level · location", photos: "Photos" };
+    parts.forEach((k, j) => {
+      const c = cell(j);
+      c.value = HEAD[k];
+      c.font = font({ bold: true, size: 9, color: { argb: "FFFFFFFF" } });
+      c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: NAVY } };
+      c.border = box(NAVY);
+      c.alignment = { horizontal: k === "n" ? "center" : "left", vertical: "middle", indent: k === "n" ? 0 : 1 };
+    });
+    ws.getRow(r).height = 18;
+    r++;
+    const photoJ = parts.indexOf("photos");
+    const boxPx = pxOf(photoJ);
+    const textPx = pxOf(parts.indexOf("defect"));
+    for (const d of defects) {
+      // the photos: two across (more across if they'd stand taller than a row can)
+      const GAPPX = 6;
+      // the same slot for every photo, one or many: two across
+      let across = 2;
+      const size = () => {
+        const w = (boxPx - GAPPX * (across + 1)) / across;
+        const h = w * (4 / 3);
+        const rows = Math.ceil(d.photos.length / across);
+        return { w, h, rows, total: rows * (h + GAPPX) + GAPPX };
+      };
+      let lay = size();
+      while (d.photos.length && lay.total > 540 && across < d.photos.length) {
+        across++;
+        lay = size();
+      }
+      // the text's height: about 6.5 px a character across, 15 px a line
+      const perLine = Math.max(10, Math.floor((textPx - 12) / 6.5));
+      const placeIn = !parts.includes("place") && d.place;
+      const textLines = [d.note || "–", d.action ? `Recommended action: ${d.action}` : "", placeIn ? d.place : ""].filter(Boolean).reduce((n, t) => n + Math.ceil(t.length / perLine), 0);
+      const hPx = Math.max(22, textLines * 15 + 8, d.photos.length ? lay.total : 0);
+      ws.getRow(r).height = Math.min(409, Math.round(hPx * 0.75));
+      parts.forEach((k, j) => {
+        const c = cell(j);
+        c.border = box(CELL_LINE);
+        c.alignment = { vertical: "top", wrapText: true, horizontal: k === "n" ? "center" : "left", indent: k === "n" ? 0 : 1 };
+        c.font = font({ size: 9 });
+        if (k === "n") c.value = d.n;
+        else if (k === "risk") {
+          c.value = parts.includes("n") ? (d.risk?.label ?? "–") : `${d.n} · ${d.risk?.label ?? "–"}`;
+          if (d.risk) {
+            c.font = font({ size: 9, bold: true, color: { argb: `FF${d.risk.text.slice(1).toUpperCase()}` } });
+            c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: `FF${d.risk.bg.slice(1).toUpperCase()}` } };
+          }
+        } else if (k === "defect") {
+          const bits: { text: string; font: Partial<import("exceljs").Font> }[] = [{ text: d.note || "–", font: font({ size: 9, bold: true }) }];
+          if (!parts.includes("risk")) bits.unshift({ text: `${d.n} · ${d.risk?.label ?? ""}\n`, font: font({ size: 9, bold: true, color: { argb: d.risk ? `FF${d.risk.bg.slice(1).toUpperCase()}` : SOFT } }) });
+          if (d.action) bits.push({ text: `\nRecommended action: ${d.action}`, font: font({ size: 9, color: { argb: SOFT } }) });
+          if (placeIn) bits.push({ text: `\n${d.place}`, font: font({ size: 9, color: { argb: SOFT } }) });
+          c.value = { richText: bits };
+        } else if (k === "place") c.value = d.place || "–";
+        else if (k === "photos") {
+          if (!d.photos.length) {
+            c.value = "–";
+            c.font = font({ size: 9, color: { argb: "FF9AABB9" } });
+          }
+        }
+      });
+      // each photo inside the Photos cell, fitted to its slot (4:3 upright)
+      const firstCol = start[photoJ] - 1; // 0-based
+      d.photos.forEach((ph, i) => {
+        const fit = Math.min(lay.w / ph.w, lay.h / ph.h);
+        const w = ph.w * fit;
+        const h = ph.h * fit;
+        const x = GAPPX + (i % across) * (lay.w + GAPPX) + (lay.w - w) / 2;
+        const y = GAPPX + Math.floor(i / across) * (lay.h + GAPPX);
+        // the column the photo's left edge falls in, and how far into it
+        let col = firstCol;
+        let off = x;
+        const pxs = cols >= 2 ? colPx : [...colPx, 140];
+        while (col - (first - 1) < pxs.length - 1 && off > pxs[col - (first - 1)]) {
+          off -= pxs[col - (first - 1)];
+          col++;
+        }
+        ws.addImage(ph.id, { tl: { nativeCol: col, nativeColOff: Math.round(off * 9525), nativeRow: r - 1, nativeRowOff: Math.round(y * 9525) } as never, ext: { width: w, height: h }, editAs: "oneCell" });
+      });
+      r++;
+    }
   }
 
   // the logo, its right edge on the page's (848 × 401). A column is about
@@ -479,24 +638,10 @@ export async function addFlowCharts(xlsx: Uint8Array, charts: FlowChart[]): Prom
 
 // A flow testing site's own workbook: a sheet per flow test, named after it
 // (design canvas FlowExports), laid out like the preview, with its graph.
-// Each flow test's defects (lib/testPhotos): a findings register sheet of
-// their own after the tests, laid out exactly as the findings report's
-// (lib/excelExport), named after the test.
-export async function addFlowDefectSheets(wb: Workbook, tests: FlowTest[]) {
-  const { listTestFindings } = await import("../db/db");
-  const { photoItems } = await import("./stairPhotos");
-  const { addFindingsSheet } = await import("./excelExport");
-  for (const t of tests) {
-    const items = photoItems(await listTestFindings(t.siteId, t.id));
-    if (items.length) await addFindingsSheet(wb, sheetName(wb, `${t.name.trim() || SHEET[t.kind]} defects`, "Defects"), items.map((i) => ({ finding: i.finding, photos: i.photos })), t.testedAt);
-  }
-}
-
 export async function buildFlowWorkbook(tests: FlowTest[], site: Pick<Site, "name" | "address">): Promise<Blob> {
   const ExcelJS = (await import("exceljs")).default;
   const wb = new ExcelJS.Workbook();
   const charts = await addFlowSheets(wb, tests, site, true);
-  await addFlowDefectSheets(wb, tests);
   const buffer = await wb.xlsx.writeBuffer({ zip: { compression: "STORE" } } as never);
   const bytes = await addFlowCharts(new Uint8Array(buffer as ArrayBuffer), charts);
   return new Blob([bytes as BlobPart], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });

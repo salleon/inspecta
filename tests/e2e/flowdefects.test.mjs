@@ -106,20 +106,25 @@ test("kept out of the site's findings; on the page after the test in the preview
   assert.match(await page.locator("body").innerText(), /page 1 of 2/);
 });
 
-test("the Excel: the test's sheet, then its defects as a findings register", async () => {
+test("the Excel: the defects on the test's own sheet, after it, as the PDF", async () => {
   await go(page, app, "/site/s1-flow/flow-export", 2000);
   const file = await download(page, () => page.click('button:has-text("Export Excel")'));
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(fs.readFileSync(file.path));
-  assert.deepEqual(wb.worksheets.map((w) => w.name), ["Sprinkler", "Sprinkler defects"]);
-  const ws = wb.worksheets[1];
-  // the findings register's heading row, then a row each
-  assert.match(String(ws.getCell(1, 2).value), /Location/i);
-  assert.match(String(ws.getCell(1, 3).value), /Description/i);
-  assert.equal(ws.getCell(2, 2).value, "Valve room");
-  assert.equal(ws.getCell(2, 3).value, "Main isolating valve not locked open");
-  assert.equal(ws.getCell(3, 3).value, "Pump room door closer missing");
-  assert.equal(ws.getImages().length, 1, "the photo");
+  assert.deepEqual(wb.worksheets.map((w) => w.name), ["Sprinkler"], "no separate defects tab");
+  const ws = wb.worksheets[0];
+  // every cell's text, rich text joined, row by row
+  const rows = [];
+  ws.eachRow((row) => rows.push(row.values.map((v) => (v && typeof v === "object" && "richText" in v ? v.richText.map((t) => t.text).join("") : String(v ?? ""))).join(" | ")));
+  const at = rows.findIndex((r) => r.includes("DEFECTS FOUND DURING TESTING"));
+  assert.ok(at > 0, "the defects heading");
+  const after = rows.slice(at + 1).join("\n");
+  assert.match(after, /Defect/, "the table's headings");
+  assert.match(after, /Main isolating valve not locked open/);
+  assert.match(after, /Valve room/);
+  assert.match(after, /Pump room door closer missing/);
+  // the logo and the one photo
+  assert.equal(ws.getImages().length, 2);
 });
 
 test("the PDF: the test, then its defects straight after it as finding cards", async () => {

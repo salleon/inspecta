@@ -7,6 +7,12 @@ the technical detail.
 
 ## 20 November 2026
 
+- **[Both] Flow test defects in the Excel, as the PDF.** A flow test's
+  defects now follow straight on after the test on its own sheet, under the
+  graph and comments: numbered as in the PDF, the risk, the defect and its
+  recommended action, level and location, and the photos (two across, all
+  the same size). The separate "Sprinkler defects" register tab is gone.
+
 - **[Both] Tidy-up: old code removed.** The old findings PDF drawing (no
   longer used since the new report layout) and a few unused names are
   gone; the ESR heading helpers moved to lib/esrGrouping. No change on
