@@ -35,6 +35,15 @@ definitions:
     - &build_ipa
       name: Build the app
       script: xcode-project build-ipa --project ios/App/App.xcodeproj --scheme App
+    - &check_sdk
+      name: Check the iOS SDK is 27 or later
+      script: |
+        SDK=$(xcrun --sdk iphoneos --show-sdk-version)
+        echo "Xcode: $(xcodebuild -version | head -1), iOS SDK: $SDK"
+        if [ "${SDK%%.*}" -lt 27 ]; then
+          echo "iOS SDK $SDK is too old: App Store Connect needs iOS 27 SDK or later (ITMS-90725). Set xcode: to 27 or later in codemagic.yaml."
+          exit 1
+        fi
 
 workflows:
   ios-testflight:
@@ -53,8 +62,13 @@ workflows:
         distribution_type: app_store
         bundle_identifier: au.com.inspecta.app
       node: 22
-      xcode: latest
+      # Apple only takes builds made with the iOS 27 SDK (Xcode 27) or later
+      # from April 2027 (ITMS-90725). Codemagic's "latest" still meant Xcode
+      # 26.x in Nov 2026, so pin 27.2 (Codemagic picks its newest 27.2 patch).
+      # Move this up when a newer Xcode is out of beta on Codemagic.
+      xcode: 27.2
     scripts:
+      - *check_sdk
       - name: Build the web app (EnFact) and set the project up as EnFact
         script: |
           npm ci
@@ -77,8 +91,13 @@ workflows:
         distribution_type: app_store
         bundle_identifier: au.com.inspecta.site
       node: 22
-      xcode: latest
+      # Apple only takes builds made with the iOS 27 SDK (Xcode 27) or later
+      # from April 2027 (ITMS-90725). Codemagic's "latest" still meant Xcode
+      # 26.x in Nov 2026, so pin 27.2 (Codemagic picks its newest 27.2 patch).
+      # Move this up when a newer Xcode is out of beta on Codemagic.
+      xcode: 27.2
     scripts:
+      - *check_sdk
       # before signing, so the profile for au.com.inspecta.site matches
       - name: Build the web app (Contractor) and set the project up as Contractor
         script: |

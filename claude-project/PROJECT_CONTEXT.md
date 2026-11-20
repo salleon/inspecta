@@ -38,6 +38,8 @@ If the e2e tests hang in a cloud container, Playwright can't find its browser. P
 
 ## Branches, CI and releases
 
+The full playbook (both apps, their Test apps and iPhone builds) is `claude-project/RELEASING.md`.
+
 - `test`: development. Every push runs the tests. Running Build Android APK on `test` also publishes **Inspecta Test** (a separate app with an orange icon and its own data) to the owner's own Play track.
 - `main`: releases. Kept equal to `test` at each release (fast-forward).
 - Release (EnFact): bump `BUILD_LABEL_ENFACT`, add a CHANGELOG line, push to `main`, then Actions → Build Android APK → Run workflow on `main`, Which app **EnFact**, tick **Publish to Play**, fill in **What's new**. The run tests, builds and uploads to Play's internal testing track. Users get an "Update ready" popup in the app (Play's flexible in-app update) once Play has processed the release.

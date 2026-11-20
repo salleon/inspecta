@@ -1,0 +1,167 @@
+<title>Inspecta Release Map</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap">
+<style>
+/* Layout: one narrow column; a map of the 6 apps up top, then "I want to…" recipes, then the 3 rules. */
+:root {
+  --bg: #f5f7f8; --panel: #ffffff; --fg: #17202a; --muted: #5b6875; --line: #dbe2e7;
+  --enfact: #0f9488; --enfact-soft: #dff4f1;
+  --site: #c2610c; --site-soft: #fbeedd;
+  --test: #6b5bd6; --test-soft: #ecebfb;
+  --display: "Space Grotesk", system-ui, sans-serif;
+  --body: "Inter", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #11171c; --panel: #1a2229; --fg: #e6edf2; --muted: #9aa8b4; --line: #2c3740;
+  --enfact: #3cc9b9; --enfact-soft: #12302d; --site: #f0954a; --site-soft: #3a2614; --test: #a397f2; --test-soft: #262241;
+  color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #11171c; --panel: #1a2229; --fg: #e6edf2; --muted: #9aa8b4; --line: #2c3740;
+  --enfact: #3cc9b9; --enfact-soft: #12302d; --site: #f0954a; --site-soft: #3a2614; --test: #a397f2; --test-soft: #262241;
+  color-scheme: dark }
+* { box-sizing: border-box }
+body { background: var(--bg); color: var(--fg); font: 15px/1.55 var(--body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 32px 64px }
+main { max-width: 860px; margin: 0 auto; display: grid; gap: 40px }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0 }
+h1 { font-size: 2rem; line-height: 1.15 }
+h2 { font-size: 1.3rem; margin-bottom: 14px }
+h3 { font-size: 1.02rem }
+p { margin: 0 }
+.lede { color: var(--muted); max-width: 62ch; margin-top: 8px }
+code { font: 0.88em ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--line); padding: 1px 5px; border-radius: 4px }
+.eyebrow { font-size: .72rem; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); font-weight: 600 }
+
+/* branches */
+.flow { display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: stretch }
+.branch { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: grid; gap: 6px; min-width: 0 }
+.branch .name { font-family: var(--display); font-size: 1.5rem; font-weight: 700 }
+.arrow { align-self: center; text-align: center; color: var(--muted); font-size: .8rem; line-height: 1.3 }
+.arrow b { display: block; font-size: 1.6rem; color: var(--fg) }
+@media (max-width: 620px) { .flow { grid-template-columns: 1fr } .arrow b { transform: rotate(90deg) } }
+
+/* app grid */
+.apps { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 14px }
+@media (max-width: 620px) { .apps { grid-template-columns: 1fr } }
+.col { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; min-width: 0 }
+.col > header { padding: 14px 16px; display: grid; gap: 2px }
+.col.enfact > header { background: var(--enfact-soft); border-bottom: 3px solid var(--enfact) }
+.col.site > header { background: var(--site-soft); border-bottom: 3px solid var(--site) }
+.col > header small { color: var(--muted) }
+.row { padding: 12px 16px; border-top: 1px solid var(--line); display: grid; gap: 4px }
+.row:first-of-type { border-top: 0 }
+.row .what { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-weight: 600 }
+.row .how { color: var(--muted); font-size: .9rem }
+.pill { font-size: .7rem; font-weight: 600; letter-spacing: .04em; padding: 2px 8px; border-radius: 99px; white-space: nowrap }
+.pill.main { background: var(--fg); color: var(--bg) }
+.pill.test { background: var(--test-soft); color: var(--test) }
+.pill.auto { border: 1px solid var(--line); color: var(--muted) }
+
+/* recipes */
+.recipes { display: grid; gap: 14px }
+.recipe { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 18px; display: grid; gap: 10px }
+.recipe ol { margin: 0; padding-left: 1.3em; display: grid; gap: 5px }
+.say { background: var(--test-soft); color: var(--fg); border-radius: 8px; padding: 10px 12px; font-size: .92rem }
+.say b { color: var(--test) }
+
+.rules { margin: 0; padding-left: 1.3em; display: grid; gap: 10px; max-width: 66ch }
+.now { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px }
+.stat { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: grid; gap: 2px }
+.stat .v { font-family: var(--display); font-size: 1.35rem; font-weight: 700; font-variant-numeric: tabular-nums }
+.stat .k { color: var(--muted); font-size: .85rem }
+</style>
+
+<main>
+  <header>
+    <div class="eyebrow">Inspecta · one codebase, two apps</div>
+    <h1>Where everything goes</h1>
+    <p class="lede">There's only one set of code. EnFact and Site Inspections are both built from it, so a fix made once reaches both apps. The tags EnFact, Contractor and Both only say who a change affects. You don't have to copy anything between the two apps.</p>
+  </header>
+
+  <section>
+    <h2>Two branches</h2>
+    <div class="flow">
+      <div class="branch">
+        <span class="eyebrow">Work happens here</span>
+        <span class="name">test</span>
+        <p>Every change goes here first. Builds from <code>test</code> go to the <b>Test</b> apps on your own phone (orange icon, separate data).</p>
+      </div>
+      <div class="arrow"><b>→</b>merge when<br>releasing</div>
+      <div class="branch">
+        <span class="eyebrow">Releases only</span>
+        <span class="name">main</span>
+        <p>Nobody works on <code>main</code> directly. It only changes when <code>test</code> is merged in to release.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Six apps</h2>
+    <div class="apps">
+      <div class="col enfact">
+        <header><h3>Inspecta - EnFact</h3><small>For EnFact staff · <code>au.com.inspecta.app</code></small></header>
+        <div class="row"><div class="what">Android <span class="pill main">main</span></div><div class="how">Play internal testing, to coworkers. Build Android APK on main, App EnFact, tick Publish to Play.</div></div>
+        <div class="row"><div class="what">Android Test <span class="pill test">test</span></div><div class="how">Your phone only. Build Android APK on test, App EnFact.</div></div>
+        <div class="row"><div class="what">iPhone <span class="pill main">main</span> <span class="pill auto">starts by itself</span></div><div class="how">TestFlight, for you to check at home. Codemagic builds it on every push to main.</div></div>
+      </div>
+      <div class="col site">
+        <header><h3>Inspecta - Site Inspections</h3><small>For other contractors · <code>au.com.inspecta.site</code></small></header>
+        <div class="row"><div class="what">Android <span class="pill main">main</span></div><div class="how">Play. Build Android APK on main, App Contractor, tick Publish to Play.</div></div>
+        <div class="row"><div class="what">Android Test <span class="pill test">test</span></div><div class="how">Your phone only. Build Android APK on test, App Contractor.</div></div>
+        <div class="row"><div class="what">iPhone <span class="pill main">main</span> <span class="pill auto">start by hand</span></div><div class="how">TestFlight, later the App Store. In Codemagic: Start new build, choose "Inspecta - Site Inspections (iOS)" on main.</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>I want to…</h2>
+    <div class="recipes">
+      <div class="recipe">
+        <h3>Try a change on my own phone</h3>
+        <div class="say">Tell Claude: <b>"Put this on my test phone (EnFact / Site Inspections / both)."</b></div>
+        <ol>
+          <li>Claude pushes the change to <code>test</code>.</li>
+          <li>GitHub → Actions → <b>Build Android APK</b> → Run workflow. Choose branch <code>test</code> and the App, then Run.</li>
+          <li>The Test app updates on your phone from Play.</li>
+        </ol>
+      </div>
+      <div class="recipe">
+        <h3>Release to EnFact coworkers</h3>
+        <div class="say">Tell Claude: <b>"Release EnFact."</b> Claude bumps the build number, writes the changelog line, merges <code>test</code> into <code>main</code> and gives you the What's new text.</div>
+        <ol>
+          <li>The EnFact iPhone build starts by itself.</li>
+          <li>GitHub → Actions → <b>Build Android APK</b> → Run workflow. Choose branch <code>main</code> and App <b>EnFact</b>, tick <b>Publish to Play</b>, paste What's new, then Run.</li>
+        </ol>
+      </div>
+      <div class="recipe">
+        <h3>Release Site Inspections</h3>
+        <div class="say">Tell Claude: <b>"Release Site Inspections."</b> Claude does the same steps for the Site Inspections build number.</div>
+        <ol>
+          <li>GitHub → Actions → <b>Build Android APK</b> → Run workflow. Choose branch <code>main</code> and App <b>Contractor</b>, tick <b>Publish to Play</b>, paste What's new, then Run.</li>
+          <li>Codemagic → Start new build → <b>Inspecta - Site Inspections (iOS)</b> on <code>main</code>.</li>
+          <li>Merging to <code>main</code> also starts an EnFact iPhone build. That's harmless, so let it run.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Three rules</h2>
+    <ol class="rules">
+      <li><b>Every Claude session works on <code>test</code>.</b> If a session says it pushed somewhere else, ask why.</li>
+      <li><b><code>main</code> only changes when you say "release".</b> Merging always takes everything on <code>test</code>, so release when <code>test</code> is in a state you're happy with.</li>
+      <li><b>You don't have to sync the two apps.</b> A report or layout fix reaches both. Only branding differs: EnFact's logo, or the contractor's own.</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Right now</h2>
+    <p class="lede" style="margin:-6px 0 14px">Last updated 20 Nov 2026. Claude updates this page whenever something is released or an app, branch or build step changes.</p>
+    <div class="now">
+      <div class="stat"><span class="v">5 ahead</span><span class="k"><code>test</code> has 5 changes not on <code>main</code> yet: new report heading, FFCP report, Site Inspections iPhone icon, Xcode 27, this release playbook</span></div>
+      <div class="stat"><span class="v">9.8</span><span class="k">EnFact build label</span></div>
+      <div class="stat"><span class="v">1.0</span><span class="k">Site Inspections build label</span></div>
+    </div>
+  </section>
+</main>
