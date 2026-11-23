@@ -1,6 +1,7 @@
 // Test jobs attached to sites (db testJobs): a flow job's Attach to site
-// chip, searched by name; the site's Other tests and the home row show the
-// link; Detach; deleting the site leaves the job stand-alone.
+// chip, searched by name; the site's Other tests show it; home leaves it out
+// of the whole list but its chip or a search shows it with the link; Detach
+// puts it back; deleting the site leaves the job stand-alone.
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { startApp, openPage, go, seed } from "./helpers.mjs";
@@ -57,10 +58,22 @@ test("Attach to site: search, pick, and the site shows the job", async () => {
   await page.waitForURL(/\/site\/j1\/findings/);
 });
 
-test("home: the job shows the site it's attached to", async () => {
+test("home: an attached job is left out of the whole list; its chip or a search shows it, with its site", async () => {
   await go(page, app, "/", 1200);
   const row = page.locator('[data-site-id="j1"]');
+  await page.locator('[data-site-id="a1"]').waitFor();
+  assert.equal(await row.count(), 0, "reached through its site");
+  // the Flow chip shows every flow job, attached or not
+  const flow = page.locator('[role="group"][aria-label="Show job types"] button:has-text("Flow")');
+  await flow.click();
   assert.match(await row.innerText(), /Pump room[\s\S]*155 Kent St/);
+  await flow.click();
+  assert.equal(await row.count(), 0);
+  // a search finds it too
+  await page.fill('input[placeholder="Search sites"]', "pump");
+  assert.match(await row.innerText(), /Pump room[\s\S]*155 Kent St/);
+  await page.fill('input[placeholder="Search sites"]', "");
+  assert.equal(await row.count(), 0);
 });
 
 test("Detach: stand-alone again", async () => {
@@ -69,6 +82,9 @@ test("Detach: stand-alone again", async () => {
   await page.getByRole("button", { name: "Detach" }).click();
   await page.getByTestId("attach-chip").filter({ hasText: "Attach to site" }).waitFor();
   assert.equal((await jobOf("j1")).attachedTo, undefined);
+  // stand-alone again: back in the whole list on home
+  await go(page, app, "/", 1200);
+  await page.locator('[data-site-id="j1"]').waitFor();
 });
 
 test("deleting a site keeps its attached job, stand-alone", async () => {

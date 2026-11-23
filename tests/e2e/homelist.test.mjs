@@ -1,7 +1,8 @@
 // The home page (pages/Dashboard): every job in one list, newest made first
 // whatever its type (editing one doesn't move it), each row tagged with its type. The chips
 // under the search show only the types picked (none picked: all), and
-// reset to the whole list when the app opens.
+// reset to the whole list when the app opens. (Tests attached to a site are
+// left out of the whole list: tests/e2e/attach.test.mjs.)
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { startApp, openPage, go, seed } from "./helpers.mjs";

@@ -5,6 +5,14 @@ matches a commit on the `test` branch (called `advanced_controls` until
 29 September 2026) or `main`; the commit itself has
 the technical detail.
 
+## 23 November 2026
+
+- **[Both] Home shows sites, not the tests inside them.** A flow, stair or
+  FFCP job attached to a site no longer has its own card on the home list;
+  open the site to get to it. Tap Flow, Stair or FFCP at the top to see
+  every test of that type, attached or not, or search for it by name.
+  Tests not attached to a site still show on their own.
+
 ## 20 November 2026
 
 - **[Both] Flow test defects in the Excel, out to all apps (still EnFact

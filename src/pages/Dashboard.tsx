@@ -124,8 +124,15 @@ export default function Dashboard() {
       s.name.toLowerCase().includes(query.toLowerCase()) ||
       s.address.toLowerCase().includes(query.toLowerCase()),
   );
+  // a test attached to a site is reached through that site, so the whole
+  // list leaves it out; a chip or a search still finds it
+  const isAttached = (s: SiteRow) => !!s.attachedTo && sites.some((x) => x.id === s.attachedTo);
   // one list, newest first (see refresh), narrowed by the chips
-  const shown = kinds.length ? filtered.filter((s) => kinds.includes(chipOf(s.kind))) : filtered;
+  const shown = kinds.length
+    ? filtered.filter((s) => kinds.includes(chipOf(s.kind)))
+    : query
+      ? filtered
+      : filtered.filter((s) => !isAttached(s));
   const toggleKind = (k: ChipKind) => setKinds((ks) => (ks.includes(k) ? ks.filter((x) => x !== k) : [...ks, k]));
 
   async function handleDeleteSite() {
