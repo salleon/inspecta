@@ -7,6 +7,9 @@ the technical detail.
 
 ## 23 November 2026
 
+- **[EnFact] Build 10.0, out to coworkers** (Android). Home shows sites,
+  not the tests attached to them.
+
 - **[Both] Home shows sites, not the tests inside them.** A flow, stair or
   FFCP job attached to a site no longer has its own card on the home list;
   open the site to get to it. Tap Flow, Stair or FFCP at the top to see
