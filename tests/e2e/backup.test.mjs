@@ -363,9 +363,14 @@ test("Keep both: the backup's copy as a separate site, the phone's untouched", a
   assert.deepEqual(notes, ["Coworker finding", "Coworker note"]);
   assert.equal((await rows("photos")).filter((p) => p.siteId === copy.id).length, 2);
   await go(page, app, "/");
-  // the copy, and its flow job (the backup's test, moved out of the site),
-  // named after it and showing it's attached to it
-  assert.equal(await page.getByText("Riverside Plaza (from backup)").count(), 3);
+  // the copy on home; its flow job (the backup's test, moved out of the
+  // site) is attached to it, so it shows under the Flow chip, named after it
+  // and showing it's attached to it
+  assert.equal(await page.getByText("Riverside Plaza (from backup)").count(), 1);
+  const flowChip = page.locator('[role="group"][aria-label="Show job types"] button:has-text("Flow")');
+  await flowChip.click();
+  assert.equal(await page.getByText("Riverside Plaza (from backup)").count(), 2);
+  await flowChip.click();
   assert.equal((await rows("sites")).filter((x) => x.attachedTo === copy.id && x.kind === "flow").length, 1);
 
   // stopped part way (a photo missing, still marked): restoring again finishes the copy
