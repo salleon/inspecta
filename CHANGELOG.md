@@ -7,6 +7,9 @@ the technical detail.
 
 ## 24 November 2026
 
+- **[Contractor] Site Inspections out with the same changes (still 1.1).**
+  Android to internal testing; iPhone on TestFlight.
+
 - **[EnFact] Build 10.0, out to coworkers** (Android; iPhone on
   TestFlight). Home shows sites, not the tests attached to them; the
   L/min ⇄ L/s switch; number pads laid out like a phone; back puts the
