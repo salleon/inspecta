@@ -6,7 +6,7 @@ import { defaultSystem, doorsEach, EDITIONS, joinLevel, LEVEL_TYPES, levelChange
 import { useBackHandler } from "../lib/backButton";
 import SwipeRow from "../components/SwipeRow";
 import { AMBER, card, cardLabel, fieldInput, PageHeader, RulesBox, Seg, StairName } from "../components/StairUi";
-import NumPad, { k, numberKeys, PadTag } from "../components/NumPad";
+import NumPad, { levelKeys, PadTag } from "../components/NumPad";
 import SiteKindIcon from "../components/SiteKindIcon";
 import LevelReview, { typeButton } from "./LevelReview";
 import "./LevelReview.css";
@@ -482,7 +482,7 @@ export default function StairSystem() {
               </div>
             </>
           }
-          keys={numberKeys(k("prev", "‹", "ins", "Previous field"), k("next2", "›", "ins", "Next field"), k("next", "Next ›", "fn", "Next"))}
+          keys={levelKeys()}
           onKey={(key) => padKey(key === "next2" ? "next" : key)}
         />
       )}

@@ -191,8 +191,9 @@ export interface FlowTest {
   k: number;
   sections: FlowSection[];
   demand: DemandPoint[];
-  // the flow unit the test is read in, when it was switched (combined: the
-  // pump duty's unit; absent = the kind's own, see flowUnitFor)
+  // the flow unit the test is shown in, when it was switched (the L/min ⇄
+  // L/s switch under Flow, or a combined system's pump duty unit; absent =
+  // the kind's own, see flowUnitFor)
   unit?: FlowUnit;
   yearInstalled?: string; // optional, any flow test, both apps
   // the template's header and comment lines

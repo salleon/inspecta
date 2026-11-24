@@ -8,7 +8,7 @@ import { IconChevronLeft, IconEdit } from "../components/Icons";
 import RoundIconButton from "../components/RoundIconButton";
 import SiteKindIcon from "../components/SiteKindIcon";
 import ConfirmDialog from "../components/ConfirmDialog";
-import NumPad, { BLANK, k, numberKeys } from "../components/NumPad";
+import NumPad, { BLANK, plainKeys } from "../components/NumPad";
 import { Sheet } from "../components/TestsList";
 import "./FfcpTest.css";
 
@@ -429,14 +429,16 @@ function AddFans({ onAdd, onClose }: { onAdd: (names: string[]) => void; onClose
     }
     setTyped("");
   }
+  // tapping the From or To box keeps what was typed in the other one
+  function openPad(which: "one" | "from" | "to") {
+    commit();
+    setPad(which);
+  }
   function key(kk: string) {
     if (kk === "bs") setTyped((t) => t.slice(0, -1));
     else if (kk === "done") {
       commit();
       setPad(null);
-    } else if (kk === "swap") {
-      commit();
-      setPad((p) => (p === "from" ? "to" : "from"));
     } else if (/^\d$/.test(kk) && typed.length < 3) setTyped((t) => t + kk);
   }
   useBackHandler(() => {
@@ -492,7 +494,7 @@ function AddFans({ onAdd, onClose }: { onAdd: (names: string[]) => void; onClose
               <button className="ff-step" aria-label="One less" onClick={() => setFrom((n) => Math.max(1, n - 1))}>
                 −
               </button>
-              <button className={`ff-nbox${pad === "one" ? " on" : ""}`} onClick={() => setPad("one")}>
+              <button className={`ff-nbox${pad === "one" ? " on" : ""}`} onClick={() => openPad("one")}>
                 <small>NUMBER</small>
                 {shownNum("from")}
               </button>
@@ -502,12 +504,12 @@ function AddFans({ onAdd, onClose }: { onAdd: (names: string[]) => void; onClose
             </>
           ) : (
             <>
-              <button className={`ff-nbox${pad === "from" ? " on" : ""}`} onClick={() => setPad("from")}>
+              <button className={`ff-nbox${pad === "from" ? " on" : ""}`} onClick={() => openPad("from")}>
                 <small>FROM</small>
                 {shownNum("from")}
               </button>
               <span style={{ color: "var(--muted-2)", fontWeight: 800 }}>–</span>
-              <button className={`ff-nbox${pad === "to" ? " on" : ""}`} onClick={() => setPad("to")}>
+              <button className={`ff-nbox${pad === "to" ? " on" : ""}`} onClick={() => openPad("to")}>
                 <small>TO</small>
                 {shownNum("to")}
               </button>
@@ -546,7 +548,7 @@ function AddFans({ onAdd, onClose }: { onAdd: (names: string[]) => void; onClose
               {typed || (pad === "to" ? to : from)}
             </span>
           }
-          keys={numberKeys(pad === "one" ? BLANK(1) : k("swap", pad === "from" ? "To ›" : "‹ From", "fn"), BLANK(2), BLANK(3))}
+          keys={plainKeys(BLANK(1))}
           onKey={key}
         />
       )}

@@ -4,7 +4,7 @@ import SwipeRow from "../components/SwipeRow";
 import { isCustomLevel, joinLevel, LEVEL_TYPES, levelChip, levelEditLabel, levelEdits, levelEditsFitLabel, levelName, levelType, splitLevel, stairLevels, suggestLevels, type LevelEdit, type LevelEditsFit, type LevelType } from "../lib/stairTest";
 import { useBackHandler } from "../lib/backButton";
 import { PageHeader, StairName } from "../components/StairUi";
-import NumPad, { BLANK, numberKeys, PadTag } from "../components/NumPad";
+import NumPad, { BLANK, PadTag, plainKeys } from "../components/NumPad";
 import "./LevelReview.css";
 
 // Review level layout (design canvas SpfLevelPlay; the groups and the P / B
@@ -573,7 +573,7 @@ export default function LevelReview({
                   </div>
                 </div>
               }
-              keys={numberKeys(BLANK(1), BLANK(2), BLANK(3))}
+              keys={plainKeys(BLANK(1))}
               onKey={editKey}
             />
           </div>

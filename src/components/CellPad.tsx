@@ -1,10 +1,12 @@
 import { useEffect, useLayoutEffect, useState, type RefObject } from "react";
-import NumPad, { k, numberKeys, swallowClick } from "./NumPad";
+import NumPad, { flowKeys } from "./NumPad";
+import { useBackHandler } from "../lib/backButton";
 
 // The flow test's number cells on the upright page (design canvas FlowPads):
 // tapping one brings up the blue pad instead of the phone's keyboard. It
-// says which reading and column it is; ‹ › step to the cell before or after
-// (along the row, then on to the next reading); Done ✓ or Hide closes it.
+// says which reading and column it is; ► steps to the next cell (along the
+// row, then on to the next reading), ▼ to the same column on the next
+// reading (nothing on the last); Done ✓ or Android back closes it.
 // Every number box in `scope` is taken over: inputMode decimal or numeric.
 // The full screen keeps its own keypad.
 
@@ -58,6 +60,14 @@ export default function CellPad({ scope }: { scope: RefObject<HTMLElement | null
     };
   }, [cell, scope]);
 
+  // Android back puts the pad away and stays on the page
+  useBackHandler(() => {
+    if (!cell) return false;
+    cell.blur();
+    setCell(null);
+    return true;
+  }, true);
+
   if (!cell) return null;
   const where = cell.closest<HTMLElement>("[data-pad-where]")?.dataset.padWhere;
   const what = cell.getAttribute("aria-label") ?? "";
@@ -69,10 +79,18 @@ export default function CellPad({ scope }: { scope: RefObject<HTMLElement | null
       setCell(null);
       return;
     }
-    if (key === "prev" || key === "next") {
-      const all = [...(scope.current?.querySelectorAll<HTMLInputElement>("input[data-pad]") ?? [])].filter((el) => el.offsetParent && !el.closest(".wide-grid"));
-      const next = all[all.indexOf(cell) + (key === "next" ? 1 : -1)];
-      next?.focus({ preventScroll: true });
+    const shown = (root: Element | null | undefined) => [...(root?.querySelectorAll<HTMLInputElement>("input[data-pad]") ?? [])].filter((el) => el.offsetParent && !el.closest(".wide-grid"));
+    if (key === "next") {
+      const all = shown(scope.current);
+      all[all.indexOf(cell) + 1]?.focus({ preventScroll: true });
+      return;
+    }
+    if (key === "down") {
+      // the same column on the next reading (or demand point)
+      const row = cell.closest<HTMLElement>("[data-pad-where]");
+      const below = row?.nextElementSibling;
+      if (!row || !below?.hasAttribute("data-pad-where")) return;
+      shown(below)[shown(row).indexOf(cell)]?.focus({ preventScroll: true });
       return;
     }
     // into the cell as if typed, so the cell's own rules apply
@@ -95,19 +113,9 @@ export default function CellPad({ scope }: { scope: RefObject<HTMLElement | null
             {where ? " · " : ""}
             {what}
           </div>
-          <button
-            onPointerDown={(e) => {
-              e.preventDefault();
-              swallowClick();
-              key("done");
-            }}
-            style={{ marginLeft: "auto", fontSize: 12, fontWeight: 800, color: "#8cc8ff", background: "none", border: "1px solid rgba(90,176,255,.4)", borderRadius: 999, padding: "4px 10px" }}
-          >
-            Hide ▾
-          </button>
         </>
       }
-      keys={numberKeys(k("prev", "‹", "ins", "Previous cell"), k("next", "›", "ins", "Next cell"), k(".", ".", "fn"))}
+      keys={flowKeys()}
       onKey={key}
     />
   );

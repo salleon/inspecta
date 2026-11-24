@@ -58,6 +58,8 @@ const SAVE_DELAY_MS = 0;
 const card: CSSProperties = { background: "var(--panel)", border: "1px solid var(--border)", borderRadius: 14, padding: 12, display: "flex", flexDirection: "column", gap: 8 };
 const lbl: CSSProperties = { fontSize: 11, fontWeight: 800, letterSpacing: "0.05em", textTransform: "uppercase", color: "var(--muted-2)" };
 const th: CSSProperties = { fontSize: 10.5, fontWeight: 800, color: "var(--muted)", textAlign: "center", lineHeight: 1.25 };
+// the L/min ⇄ L/s switch under Flow
+const unitPill: CSSProperties = { fontSize: 10.5, fontWeight: 800, lineHeight: 1.25, color: "#5ab0ff", background: "rgba(90,176,255,.12)", border: "1px solid rgba(90,176,255,.55)", borderRadius: 999, padding: "2px 7px", whiteSpace: "nowrap" };
 const cellStyle = (font: number, auto = false): CSSProperties => ({
   width: "100%",
   minWidth: 0,
@@ -503,20 +505,23 @@ export default function FlowTest() {
       />
     );
   };
-  const stepHead = hydrant ? (
-    <div style={th}>
+  // Flow's heading, with the L/min ⇄ L/s switch under it: the flows (typed
+  // or worked out), demand points, graph, Excel and PDF all follow it
+  const switchUnit = () => change((t) => void (t.unit = unit === "sec" ? "min" : "sec"));
+  const flowHead = (
+    <div key="f" style={{ ...th, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
       Flow
-      <br />
-      L/s
+      <button type="button" aria-label="Switch flow unit" onClick={switchUnit} style={unitPill}>
+        {unitLabel} ⇄
+      </button>
     </div>
+  );
+  const stepHead = hydrant ? (
+    flowHead
   ) : (
     <>
       <div style={th}>" Hg</div>
-      <div style={th}>
-        Flow
-        <br />
-        {unitLabel}
-      </div>
+      {flowHead}
     </>
   );
   const stepCell = (r: FlowReading, i: number, f: number) =>
@@ -530,22 +535,12 @@ export default function FlowTest() {
     );
   // the same, one column at a time, for full screen (the first one is pinned)
   const stepHeadParts = hydrant
-    ? [
-        <div key="f" style={th}>
-          Flow
-          <br />
-          L/s
-        </div>,
-      ]
+    ? [flowHead]
     : [
         <div key="h" style={th}>
           " Hg
         </div>,
-        <div key="f" style={th}>
-          Flow
-          <br />
-          {unitLabel}
-        </div>,
+        flowHead,
       ];
   const stepCellParts = (r: FlowReading, i: number, f: number) => (hydrant ? [flowCell(r, i, f)] : [hgCell(r, i, f), flowCell(r, i, f)]);
   const pumpHeads = (
@@ -1496,7 +1491,7 @@ function WideReadings({
             <button type="button" tabIndex={-1} className="wide-key hide" onPointerDown={pressIn} onMouseDown={(e) => e.preventDefault()} onClick={hidePad}>
               Hide keypad ›
             </button>
-            {["7", "8", "9", "4", "5", "6", "1", "2", "3"].map((k) => key(k))}
+            {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((k) => key(k))}
             {key(".", ".")}
             {key("0")}
             {key("bs", "⌫", " bs")}

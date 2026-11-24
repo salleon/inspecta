@@ -77,8 +77,9 @@ test("General system testing: any tests, none ticked to start; Start opens the o
 
 test("a pass within 0.1 m/s is marginal; + Door adds a door at a level", async () => {
   await page.getByRole("button", { name: "Level P1", exact: true }).click();
-  // the pad: ⌫ top right, ▲ ▼ together, < beside 0
-  assert.deepEqual(await page.locator(".np-key").allInnerTexts(), ["7", "8", "9", "⌫", "4", "5", "6", "▲", "1", "2", "3", "▼", ".", "0", "Done ✓"]);
+  // the pad: numbers as on a phone (1 2 3 on top), ⌫ top right, ▲ ▼ together under it
+  const labels = await page.locator(".np-key").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label")));
+  assert.deepEqual(labels, ["1", "2", "3", "Backspace", "4", "5", "6", "Level above", "7", "8", "9", "Level below", ".", "0", "Done"]);
   await tap(["1", ".", "0", "5", "Done"]);
   assert.match(await page.locator('[data-i="0"]').innerText(), /P1[\s\S]*1\.05\s*Pass/);
   assert.match(await page.locator("body").innerText(), /1 of 3 · 1 marginal/);

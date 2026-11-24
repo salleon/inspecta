@@ -47,9 +47,19 @@ test("a panel test from a site's Other tests: add fans one at a time and as a ba
   await page.click('button:has-text("+ Add SAF-02")');
   await page.click('.ff-nmode button:has-text("Batch")');
   await page.click('.ff-sheet button:has-text("SEF")');
+  // tapping the To box keeps what was typed in From (no To › key on the pad)
+  const key = (k) => page.locator(`.np-key[aria-label="${k}"]`).dispatchEvent("pointerdown");
+  await page.click(".ff-nbox:has-text('FROM')");
+  assert.equal(await page.locator('.np-key[aria-label="To ›"], .np-key[aria-label="‹ From"]').count(), 0);
+  await key("2");
   await page.click(".ff-nbox:has-text('TO')");
-  await page.locator('.np-key[aria-label="3"]').dispatchEvent("pointerdown");
-  await page.locator('.np-key[aria-label="Done"]').dispatchEvent("pointerdown");
+  await key("3");
+  await key("Done");
+  await page.waitForTimeout(300);
+  assert.equal(await page.locator('button:has-text("+ Add SEF-02 – SEF-03")').count(), 1, "From kept when To was tapped");
+  await page.click(".ff-nbox:has-text('FROM')");
+  await key("1");
+  await key("Done");
   await page.waitForTimeout(300);
   await page.click('button:has-text("+ Add SEF-01 – SEF-03")');
   await page.click('button:has-text("Add 5 fans to the test")');

@@ -35,7 +35,7 @@ import {
 import { startMeter, type Meter, type MeterInfo } from "../lib/soundMeter";
 import { useBackHandler } from "../lib/backButton";
 import { AMBER, PageHeader, StairChin, StairName, useStairTest } from "../components/StairUi";
-import NumPad, { BLANK, k, numberKeys, PadTag, readingKeys } from "../components/NumPad";
+import NumPad, { Arrow, k, PadTag, plainKeys, readingKeys } from "../components/NumPad";
 import ConfirmDialog from "../components/ConfirmDialog";
 import DuctProbes from "../components/DuctProbes";
 import { CameraButton, TestPhotosSheet, useTestPhotos } from "../components/TestPhotos";
@@ -638,8 +638,8 @@ function EveryDoor(props: EveryProps & { peek?: boolean }) {
           }
           keys={
             section === "latch"
-              ? [k("y", "Yes", "yes"), k("n", "No", "no"), k("bs", "⌫", "bs", "Clear"), k("up", "▲", "ins", "Level above"), k("down", "▼", "ins", "Level below"), k("done", "Done ✓", "go1", "Done")]
-              : readingKeys(k(".", ".", "fn"), null)
+              ? [k("y", "Yes", "yes"), k("n", "No", "no"), k("bs", "⌫", "bs", "Clear"), k("up", <Arrow to="up" />, "ins", "Level above"), k("down", <Arrow to="down" />, "ins", "Level below"), k("done", "Done ✓", "go1", "Done")]
+              : readingKeys(k(".", ".", "fn"))
           }
           onKey={key}
         />
@@ -895,7 +895,7 @@ function Once(props: OnceProps) {
               </div>
             </>
           }
-          keys={numberKeys(BLANK(1), BLANK(2), k(".", ".", "fn"))}
+          keys={plainKeys(k(".", ".", "fn"))}
           onKey={key}
         />
       )}

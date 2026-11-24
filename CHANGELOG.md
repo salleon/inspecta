@@ -5,6 +5,26 @@ matches a commit on the `test` branch (called `advanced_controls` until
 29 September 2026) or `main`; the commit itself has
 the technical detail.
 
+## 24 November 2026
+
+- **[Both] Flow tests: L/min ⇄ L/s switch is back.** Tap the unit under
+  Flow in the readings to show the flows in the other unit: every flow,
+  typed or worked out from " Hg, converts on the spot (755.4 L/min shows
+  as 12.6 L/s), and the demand points and graph follow. The Excel and PDF
+  come out in whichever unit the test is left on. Sprinklers still start in
+  L/min, hydrants and combined systems in L/s.
+- **[Both] Number pads laid out like a phone.** Every pad now has 1 2 3 on
+  the top row and 7 8 9 on the third, like the phone's dial pad. The flow
+  readings pad has Done top right, then ► (next cell), ▼ (same column, next
+  reading; nothing on the last reading) and ⌫ down the right, with a wider 0;
+  the Hide button is gone. The stair one-off, Edit level and FFCP pads have a
+  tall ⌫ and a tall Done down the right. Arrows are solid triangles. The full
+  screen flow pad's Hide keypad button is solid blue.
+- **[Both] Android back puts the flow pad away** instead of leaving the
+  test, like the other pads already did.
+- **[Both] FFCP: no To › key.** Tap the From or To box to type in it; the
+  number typed in the other box is kept.
+
 ## 23 November 2026
 
 - **[EnFact] Build 10.0, out to coworkers** (Android). Home shows sites,

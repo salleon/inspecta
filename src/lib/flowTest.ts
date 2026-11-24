@@ -188,11 +188,12 @@ export function blankRows(kind: FlowKind): FlowReading[] {
 
 const blankReading = (kind: FlowKind): FlowReading => (kind === "hydrant" ? { hg: "", flow: "", flowUnit: "sec", dis: "", suc: "" } : { hg: "", flow: "", dis: "", suc: "" });
 
-// The flow unit a test is read in: L/s for hydrants, L/min for sprinklers;
-// a combined system starts in L/s and follows its pump duty's unit switch
-// (FlowTest.unit). Sums are done in L/min either way.
+// The flow unit a test is shown in: hydrants and combined systems start in
+// L/s, sprinklers in L/min; the L/min ⇄ L/s switch under Flow (or a
+// combined system's pump duty switch) sets FlowTest.unit, which the
+// screen, Excel and PDF all follow. Sums are done in L/min either way.
 export const flowUnitFor = (test: Pick<FlowTest, "kind" | "unit">): FlowUnit =>
-  test.kind === "combined" ? (test.unit ?? "sec") : test.kind === "hydrant" ? "sec" : "min";
+  test.unit ?? (test.kind === "hydrant" || test.kind === "combined" ? "sec" : "min");
 
 // A section's heading in the Excel / PDF, with where its suction comes
 // from: "Diesel pump 1 - TANK"

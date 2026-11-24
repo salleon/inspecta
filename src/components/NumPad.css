@@ -1,7 +1,7 @@
 /* The number pad for tests (design canvas SpfTidy, SpfStairPad, FlowPads):
    the measuring tool's pad (MeasurePad), tinted with the test's colour from
    the home screen: a 10% fill and a 40% outline, like the site kind tags.
-   ⌫ is always third row, right, in red-pink. */
+   ⌫ is always red-pink. */
 .np {
   --pad: 46, 196, 182;
   --pad-solid: var(--accent);
@@ -103,6 +103,12 @@
 }
 .np-key.blank {
   visibility: hidden;
+}
+.np-key.wide {
+  grid-column: span 2;
+}
+.np-key.tall {
+  grid-row: span 2;
 }
 .np-key.bs {
   background: rgba(255, 92, 106, 0.16);

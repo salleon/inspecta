@@ -154,7 +154,10 @@ test("flow testing exports are named after the site", async () => {
 test("combined systems: L/s to start, the pump duty's unit when switched; headings say where suction comes from; the pump duty is a filled diamond", () => {
   assert.equal(flowUnitFor({ kind: "combined" }), "sec");
   assert.equal(flowUnitFor({ kind: "combined", unit: "min" }), "min");
-  assert.equal(flowUnitFor({ kind: "hydrant", unit: "min" }), "sec", "only combined systems switch");
+  // the L/min ⇄ L/s switch under Flow, on any test: the screen, Excel and PDF follow it
+  assert.equal(flowUnitFor({ kind: "sprinkler", unit: "sec" }), "sec");
+  assert.equal(flowUnitFor({ kind: "hydrant", unit: "min" }), "min");
+  assert.equal(flowUnitFor({ kind: "blank" }), "min");
   const t = make({
     kind: "combined",
     sections: [

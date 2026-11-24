@@ -166,7 +166,14 @@ test("a new sprinkler test: flows are typed (never worked out from \" Hg), the r
   const hgBox = await hg.nth(1).boundingBox();
   const flowBox = await page.locator('[aria-label="Flow"]').nth(1).boundingBox();
   assert.ok(flowBox.x > hgBox.x + hgBox.width - 1 && Math.abs(flowBox.y - hgBox.y) < 2, "side by side");
-  assert.equal(await page.locator('[aria-label="Change flow unit"]').count(), 0, "no L/s for sprinklers");
+  // the L/min ⇄ L/s switch under Flow: the flows show converted, and switch back
+  const unitSwitch = page.getByRole("button", { name: "Switch flow unit" });
+  assert.equal(await unitSwitch.innerText(), "L/min ⇄");
+  await unitSwitch.click();
+  assert.equal(await unitSwitch.innerText(), "L/s ⇄");
+  assert.equal(await flow.nth(1).inputValue(), "12.6", "755.4 L/min is 12.6 L/s");
+  await unitSwitch.click();
+  assert.equal(await flow.nth(1).inputValue(), "755.4");
   // an unnamed supply: no RPM or Amps
   assert.equal(await page.locator('[aria-label="RPM"], [aria-label="Amps"]').count(), 0);
   const dis = page.locator('[aria-label="Discharge"]');
@@ -735,10 +742,30 @@ test("upright readings: a number cell brings up the blue pad, not the phone's ke
   assert.equal(await cell.inputValue(), "125");
   await pad.getByRole("button", { name: "Backspace" }).dispatchEvent("pointerdown");
   assert.equal(await cell.inputValue(), "12");
-  // › on to the next cell: suction is reading 1's last, so reading 2's " Hg
+  // the keys: numbers as on a phone; Done, ►, ▼ and ⌫ down the right
+  const labels = await pad.locator(".np-key").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label")));
+  assert.deepEqual(labels, ["1", "2", "3", "Done", "4", "5", "6", "Next cell", "7", "8", "9", "Next reading", ".", "0", "Backspace"]);
+  // ► on to the next cell: suction is reading 1's last, so reading 2's " Hg
   await pad.getByRole("button", { name: "Next cell" }).dispatchEvent("pointerdown");
   assert.match(await pad.innerText(), /Reading 2 · " Hg/);
+  // ▼ down the column: reading 3's " Hg
+  await pad.getByRole("button", { name: "Next reading" }).dispatchEvent("pointerdown");
+  assert.match(await pad.innerText(), /Reading 3 · " Hg/);
+  // on the last reading ▼ does nothing
+  const rows = page.locator('[data-pad-where^="Reading"]');
+  const last = await rows.count();
+  await rows.nth(last - 1).locator('input[aria-label="Discharge"]').click();
+  assert.match(await pad.innerText(), new RegExp(`Reading ${last} · Discharge`));
+  await pad.getByRole("button", { name: "Next reading" }).dispatchEvent("pointerdown");
+  assert.match(await pad.innerText(), new RegExp(`Reading ${last} · Discharge`));
   await pad.getByRole("button", { name: "Done" }).dispatchEvent("pointerdown");
   await page.waitForTimeout(200);
   assert.equal(await pad.count(), 0, "Done closes it");
+  // Android back puts the pad away and stays on the page
+  await cell.click();
+  await pad.waitFor();
+  await page.evaluate(() => window.__pressBack());
+  await page.waitForTimeout(200);
+  assert.equal(await pad.count(), 0, "back hid the pad");
+  assert.match(page.url(), /\/flow\/t1$/, "still on the test");
 });
