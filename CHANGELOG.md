@@ -7,6 +7,11 @@ the technical detail.
 
 ## 24 November 2026
 
+- **[EnFact] Build 10.0, out to coworkers** (Android; iPhone on
+  TestFlight). Home shows sites, not the tests attached to them; the
+  L/min ⇄ L/s switch; number pads laid out like a phone; back puts the
+  flow pad away; FFCP From / To boxes.
+
 - **[Both] Flow tests: L/min ⇄ L/s switch is back.** Tap the unit under
   Flow in the readings to show the flows in the other unit: every flow,
   typed or worked out from " Hg, converts on the spot (755.4 L/min shows
@@ -27,8 +32,8 @@ the technical detail.
 
 ## 23 November 2026
 
-- **[EnFact] Build 10.0, out to coworkers** (Android). Home shows sites,
-  not the tests attached to them.
+- **[EnFact] Build 10.0 set up.** Its Play build stopped on a failed
+  test the same day; it went out to coworkers on 24 November.
 
 - **[Both] Home shows sites, not the tests inside them.** A flow, stair or
   FFCP job attached to a site no longer has its own card on the home list;
