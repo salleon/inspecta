@@ -128,7 +128,7 @@ code { font: 0.88em ui-monospace, SFMono-Regular, Menlo, monospace; background: 
       </div>
       <div class="recipe">
         <h3>Release to EnFact coworkers</h3>
-        <div class="say">Tell Claude: <b>"Release EnFact."</b> Claude bumps the build number, writes the changelog line, merges <code>test</code> into <code>main</code> and gives you the What's new text.</div>
+        <div class="say">Tell Claude: <b>"Release EnFact."</b> Claude writes the changelog line (the build number only changes if you ask), merges <code>test</code> into <code>main</code> and gives you the What's new text.</div>
         <ol>
           <li>The EnFact iPhone build starts by itself.</li>
           <li>GitHub → Actions → <b>Build Android APK</b> → Run workflow. Choose branch <code>main</code> and App <b>EnFact</b>, tick <b>Publish to Play</b>, paste What's new, then Run.</li>

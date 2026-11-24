@@ -42,7 +42,7 @@ The full playbook (both apps, their Test apps and iPhone builds) is `claude-proj
 
 - `test`: development. Every push runs the tests. Running Build Android APK on `test` also publishes **Inspecta Test** (a separate app with an orange icon and its own data) to the owner's own Play track.
 - `main`: releases. Kept equal to `test` at each release (fast-forward).
-- Release (EnFact): bump `BUILD_LABEL_ENFACT`, add a CHANGELOG line, push to `main`, then Actions → Build Android APK → Run workflow on `main`, Which app **EnFact**, tick **Publish to Play**, fill in **What's new**. The run tests, builds and uploads to Play's internal testing track. Users get an "Update ready" popup in the app (Play's flexible in-app update) once Play has processed the release.
+- Release (EnFact): add a CHANGELOG line (the build number stays as it is unless the owner asks for a new one), push to `main`, then Actions → Build Android APK → Run workflow on `main`, Which app **EnFact**, tick **Publish to Play**, fill in **What's new**. The run tests, builds and uploads to Play's internal testing track. Users get an "Update ready" popup in the app (Play's flexible in-app update) once Play has processed the release.
 - Build 6 (25 Oct): in-app camera, photo markup, speed work, flow equipment suggestions.
 - Build 7 (26 Oct): stair pressurisation (marked BETA), flow test number pad.
 

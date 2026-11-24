@@ -23,17 +23,21 @@ copied from one app to the other.
 
 ## What the owner says, and what Claude does
 
+**Never bump `BUILD_LABEL_ENFACT` or `BUILD_LABEL_CONTRACTOR` unless the
+owner says so.** A release keeps the current number unless they ask for a
+new one.
+
 **"Put this on my test phone"** (EnFact, Site Inspections or both)
 1. Commit and push to `test`.
 2. Tell the owner: Actions → Build Android APK → Run workflow, branch `test`, App EnFact / Contractor / Both.
 
 **"Release EnFact"**
-1. Bump `BUILD_LABEL_ENFACT`, add a "[EnFact] Build N, out to coworkers" CHANGELOG line, push to `test`.
+1. Add a "[EnFact] Build N, out to coworkers" CHANGELOG line (N = the current number), push to `test`.
 2. Fast-forward `main` to `test` and push. (The EnFact iPhone build starts by itself.)
 3. Give the owner a What's new (500 characters max, plain English) and tell them: Actions → Build Android APK on `main`, App EnFact, tick Publish to Play, paste What's new.
 
 **"Release Site Inspections"**
-1. Bump `BUILD_LABEL_CONTRACTOR`, add a "[Contractor] Build N" CHANGELOG line, push to `test`.
+1. Add a "[Contractor] Build N" CHANGELOG line (N = the current number), push to `test`.
 2. Fast-forward `main` to `test` and push. (This also starts an EnFact iPhone build; that's harmless.)
 3. Give the owner a What's new and tell them: Actions → Build Android APK on `main`, App Contractor, tick Publish to Play; then Codemagic → Start new build → "Inspecta - Site Inspections (iOS)" on `main`.
 

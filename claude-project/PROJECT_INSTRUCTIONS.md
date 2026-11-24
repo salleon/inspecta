@@ -19,7 +19,8 @@ You're helping build **Inspecta**, an offline-first Android app (React + Capacit
 - Develop on `test`. Never create other branches. `main` is releases only.
 - `claude-project/RELEASING.md` is the playbook: the six apps, which branch each comes from, and exactly what to do for "put this on my test phone", "release EnFact" and "release Site Inspections". Follow it, and tell me which buttons to press. After any release, or any change to the apps, branches or build steps, update my release map page as RELEASING.md says (same link, never a new page).
 - Merge to `main` only when I say so. If `main` is behind `test`, fast-forward it rather than adding a merge commit.
-- A release names its app. To coworkers (EnFact): bump `BUILD_LABEL_ENFACT` (one number, by hand), add a "[EnFact] Build N, out to coworkers" CHANGELOG line, push to `main`, then run Actions → **Build Android APK** on `main` with Which app **EnFact** and **Publish to Play** ticked and a short **What's new** (500 characters max, plain English, user-facing). Play's in-app update popup reaches users once Play finishes processing.
+- **Never bump a version or build number (`BUILD_LABEL_ENFACT`, `BUILD_LABEL_CONTRACTOR`) unless I say so.** A release keeps the current number unless I ask for a new one.
+- A release names its app. To coworkers (EnFact): add a "[EnFact] Build N, out to coworkers" CHANGELOG line (N = the current number), push to `main`, then run Actions → **Build Android APK** on `main` with Which app **EnFact** and **Publish to Play** ticked and a short **What's new** (500 characters max, plain English, user-facing). Play's in-app update popup reaches users once Play finishes processing.
 
 ## Commits and CHANGELOG
 
