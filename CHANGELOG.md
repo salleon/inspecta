@@ -7,6 +7,14 @@ the technical detail.
 
 ## 27 November 2026
 
+- **[EnFact] Out to coworkers with the long-Done flow pad and the demand
+  points unit switch (still Build 10.0).** Android to coworkers; iPhone on
+  TestFlight.
+
+- **[Both] Flow readings pad laid out like the stair pad.** ⌫ top right,
+  ► and ▼ under it, and a long Done along the bottom; 0 is back to its
+  normal size.
+
 - **[Both] Flow tests: the L/min ⇄ L/s switch in Demand points too.** The
   Flow heading over the demand points has the same pill as the readings;
   tap either to switch every flow on the test.

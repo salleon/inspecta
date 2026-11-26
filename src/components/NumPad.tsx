@@ -12,8 +12,8 @@ type PadKey = {
   label: ReactNode;
   kind?: "num" | "fn" | "ins" | "bs" | "go" | "go1" | "blank" | "yes" | "no";
   aria?: string;
-  // two keys wide (0 on the flow pad) or two keys tall (⌫ and Done on the pads with room)
-  size?: "wide" | "tall";
+  // two keys tall (⌫ and Done on the pads with room)
+  size?: "tall";
 };
 
 export const k = (key: string, label: ReactNode = key, kind: PadKey["kind"] = "num", aria?: string, size?: PadKey["size"]): PadKey => ({ key, label, kind, aria, size });
@@ -31,9 +31,9 @@ export function Arrow({ to }: { to: keyof typeof ARROW }) {
 const BS = (size?: PadKey["size"]) => k("bs", "⌫", "bs", "Backspace", size);
 export const BLANK = (n: number) => k(`blank${n}`, "", "blank");
 
-// the flow readings' pad: 1 2 3 Done / 4 5 6 ► / 7 8 9 ▼ / . 0 0 ⌫
+// the flow readings' pad, laid out like the stair readings': 1 2 3 ⌫ / 4 5 6 ► / 7 8 9 ▼ / . 0 Done Done
 export function flowKeys(): PadKey[] {
-  return [k("1"), k("2"), k("3"), k("done", "Done ✓", "go1", "Done"), k("4"), k("5"), k("6"), k("next", <Arrow to="right" />, "ins", "Next cell"), k("7"), k("8"), k("9"), k("down", <Arrow to="down" />, "ins", "Next reading"), k(".", ".", "fn"), k("0", "0", "num", undefined, "wide"), BS()];
+  return [k("1"), k("2"), k("3"), BS(), k("4"), k("5"), k("6"), k("next", <Arrow to="right" />, "ins", "Next cell"), k("7"), k("8"), k("9"), k("down", <Arrow to="down" />, "ins", "Next reading"), k(".", ".", "fn"), k("0"), k("done", "Done ✓", "go", "Done")];
 }
 // the stair readings' pad: 1 2 3 ⌫ / 4 5 6 ▲ / 7 8 9 ▼ / c 0 Done Done
 export function readingKeys(c: PadKey): PadKey[] {

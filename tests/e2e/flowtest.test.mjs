@@ -749,9 +749,9 @@ test("upright readings: a number cell brings up the blue pad, not the phone's ke
   assert.equal(await cell.inputValue(), "125");
   await pad.getByRole("button", { name: "Backspace" }).dispatchEvent("pointerdown");
   assert.equal(await cell.inputValue(), "12");
-  // the keys: numbers as on a phone; Done, ►, ▼ and ⌫ down the right
+  // the keys: numbers as on a phone; ⌫, ►, ▼ down the right, a long Done at the bottom (as the stair pad)
   const labels = await pad.locator(".np-key").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label")));
-  assert.deepEqual(labels, ["1", "2", "3", "Done", "4", "5", "6", "Next cell", "7", "8", "9", "Next reading", ".", "0", "Backspace"]);
+  assert.deepEqual(labels, ["1", "2", "3", "Backspace", "4", "5", "6", "Next cell", "7", "8", "9", "Next reading", ".", "0", "Done"]);
   // ► on to the next cell: suction is reading 1's last, so reading 2's " Hg
   await pad.getByRole("button", { name: "Next cell" }).dispatchEvent("pointerdown");
   assert.match(await pad.innerText(), /Reading 2 · " Hg/);

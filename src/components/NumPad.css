@@ -104,9 +104,6 @@
 .np-key.blank {
   visibility: hidden;
 }
-.np-key.wide {
-  grid-column: span 2;
-}
 .np-key.tall {
   grid-row: span 2;
 }
