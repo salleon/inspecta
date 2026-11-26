@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { FlowKind, FlowTest } from "../db/types";
-import { addFlowTest, deleteFlowTest, listFlowTests } from "../db/db";
+import { addFlowTest, deleteFlowTest, duplicateFlowTest, listFlowTests } from "../db/db";
 import { blankThumbSvg, chartSvg, KIND_HINT, KIND_LABEL, newFlowTest, readingCount, summary } from "../lib/flowTest";
 import { useBackHandler } from "../lib/backButton";
 import SwipeRow from "./SwipeRow";
@@ -9,7 +9,7 @@ import ConfirmDialog from "./ConfirmDialog";
 import { shortDate } from "../lib/dates";
 
 // The Flow tests tab of a site (canvas option E1): its flow tests, each
-// with a small graph and its result, swipe left to delete; and + New flow test, which asks what kind.
+// with a small graph and its result, swipe left to delete, hold to duplicate; and + New flow test, which asks what kind.
 
 const KINDS: FlowKind[] = ["sprinkler", "hydrant", "combined", "blank"];
 
@@ -23,6 +23,7 @@ export default function FlowTestList({ siteId, onCount, onExport, exportLabel = 
   const [picking, setPicking] = useState(false);
   const [openSwipeId, setOpenSwipeId] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<FlowTest | null>(null);
+  const [menu, setMenu] = useState<FlowTest | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -36,8 +37,9 @@ export default function FlowTestList({ siteId, onCount, onExport, exportLabel = 
   }, [siteId]);
 
   useBackHandler(() => {
-    if (!picking) return false;
+    if (!picking && !menu) return false;
     setPicking(false);
+    setMenu(null);
     return true;
   });
 
@@ -47,6 +49,20 @@ export default function FlowTestList({ siteId, onCount, onExport, exportLabel = 
     try {
       const test = await addFlowTest(newFlowTest(siteId, kind));
       navigate(`/site/${siteId}/flow/${test.id}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function duplicate(test: FlowTest) {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await duplicateFlowTest(test);
+      const all = await listFlowTests(siteId);
+      setTests(all);
+      onCount(all.length);
+      setMenu(null);
     } finally {
       setBusy(false);
     }
@@ -84,9 +100,10 @@ export default function FlowTestList({ siteId, onCount, onExport, exportLabel = 
             onSwipeClose={() => setOpenSwipeId((id) => (id === t.id ? null : id))}
             onOpen={() => navigate(`/site/${siteId}/flow/${t.id}`)}
             onDelete={() => setConfirming(t)}
+            onHold={() => setMenu(t)}
           />
         ))}
-        {!!tests?.length && <div style={{ fontSize: 11.5, color: "var(--muted-2)", textAlign: "center" }}>Swipe a test left to delete it.</div>}
+        {!!tests?.length && <div style={{ fontSize: 11.5, color: "var(--muted-2)", textAlign: "center" }}>Swipe a test left to delete it, hold it to duplicate.</div>}
       </div>
 
       <div style={{ flexShrink: 0, padding: "12px 16px calc(28px + var(--sa-bottom))", borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 10 }}>
@@ -132,6 +149,27 @@ export default function FlowTestList({ siteId, onCount, onExport, exportLabel = 
         </div>
       )}
 
+      {menu && (
+        <div className="sheet-backdrop" onClick={() => setMenu(null)} style={{ position: "absolute", inset: 0, background: "rgba(10,11,13,0.6)", display: "flex", alignItems: "flex-end", zIndex: 5 }}>
+          <div
+            className="sheet-panel"
+            role="menu"
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: "100%", background: "var(--panel)", borderRadius: "20px 20px 0 0", padding: "22px 20px calc(28px + var(--sa-bottom))", display: "flex", flexDirection: "column", gap: 10 }}
+          >
+            <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{menu.name || "Untitled"}</div>
+            <button
+              role="menuitem"
+              disabled={busy}
+              onClick={() => duplicate(menu)}
+              style={{ width: "100%", padding: "14px", borderRadius: 14, background: "var(--panel-2)", border: "1px solid var(--border)", color: "var(--text)", textAlign: "left", fontSize: 14, fontWeight: 800 }}
+            >
+              Duplicate flow test
+            </button>
+          </div>
+        </div>
+      )}
+
       {confirming && (
         <ConfirmDialog
           title="Delete this flow test?"
@@ -154,6 +192,7 @@ function FlowRow({
   onSwipeClose,
   onOpen,
   onDelete,
+  onHold,
 }: {
   test: FlowTest;
   index: number;
@@ -162,6 +201,7 @@ function FlowRow({
   onSwipeClose: () => void;
   onOpen: () => void;
   onDelete: () => void;
+  onHold: () => void;
 }) {
   const v = summary(test);
   const sub =
@@ -173,7 +213,7 @@ function FlowRow({
 
   // swipe-to-delete: the shared row, the same everywhere
   return (
-    <SwipeRow index={index} label="Delete flow test" swipeOpen={swipeOpen} onSwipeOpen={onSwipeOpen} onSwipeClose={onSwipeClose} onOpen={onOpen} onDelete={onDelete}>
+    <SwipeRow index={index} label="Delete flow test" swipeOpen={swipeOpen} onSwipeOpen={onSwipeOpen} onSwipeClose={onSwipeClose} onOpen={onOpen} onDelete={onDelete} onHold={onHold}>
         <div style={{ width: 72, height: 52, flexShrink: 0, borderRadius: 8, background: "var(--bg)", overflow: "hidden" }} dangerouslySetInnerHTML={{ __html: thumb }} />
         <div style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
           <div style={{ fontSize: 14, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{test.name || "Untitled"}</div>

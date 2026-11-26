@@ -3,8 +3,9 @@ import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as R
 // Swipe-to-delete, the same feel everywhere (the findings, site and test
 // rows): drag a row left to reveal its red button, tap the row to open it
 // (or to close the reveal). What the button does, and asking first, is the
-// caller's.
+// caller's. onHold: holding the row still (HOLD_MS) does that instead of opening it.
 const SWIPE_REVEAL = 84;
+const HOLD_MS = 500;
 const SWIPE_START_PX = 8;
 
 export default function SwipeRow({
@@ -16,6 +17,7 @@ export default function SwipeRow({
   onSwipeClose,
   onOpen,
   onDelete,
+  onHold,
   children,
   rowStyle,
   chevron = true,
@@ -30,6 +32,7 @@ export default function SwipeRow({
   onSwipeClose: () => void;
   onOpen: () => void;
   onDelete: () => void;
+  onHold?: () => void;
   children: ReactNode;
   rowStyle?: CSSProperties; // the row's own look, over the default
   chevron?: boolean;
@@ -40,6 +43,13 @@ export default function SwipeRow({
   const [swiping, setSwiping] = useState(false);
   const start = useRef({ x: 0, y: 0, offset: 0 });
   const moved = useRef(false);
+  const holdTimer = useRef<number | null>(null);
+  const held = useRef(false);
+  const cancelHold = () => {
+    if (holdTimer.current !== null) window.clearTimeout(holdTimer.current);
+    holdTimer.current = null;
+  };
+  useEffect(() => cancelHold, []);
 
   useEffect(() => {
     setDragX(swipeOpen ? -SWIPE_REVEAL : 0);
@@ -48,10 +58,18 @@ export default function SwipeRow({
   function down(e: ReactPointerEvent<HTMLButtonElement>) {
     start.current = { x: e.clientX, y: e.clientY, offset: swipeOpen ? -SWIPE_REVEAL : 0 };
     moved.current = false;
+    held.current = false;
+    if (onHold)
+      holdTimer.current = window.setTimeout(() => {
+        holdTimer.current = null;
+        held.current = true;
+        onHold();
+      }, HOLD_MS);
   }
   function move(e: ReactPointerEvent<HTMLButtonElement>) {
     const dx = e.clientX - start.current.x;
     const dy = e.clientY - start.current.y;
+    if (Math.hypot(dx, dy) > SWIPE_START_PX) cancelHold();
     if (!swiping) {
       if (Math.abs(dx) > SWIPE_START_PX && Math.abs(dx) > Math.abs(dy) * 1.2) {
         setSwiping(true);
@@ -62,6 +80,7 @@ export default function SwipeRow({
     setDragX(Math.min(0, Math.max(-SWIPE_REVEAL, start.current.offset + dx)));
   }
   function end() {
+    cancelHold();
     if (!swiping) return;
     setSwiping(false);
     setDragX((x) => {
@@ -86,8 +105,9 @@ export default function SwipeRow({
         onPointerMove={move}
         onPointerUp={end}
         onPointerCancel={end}
+        onContextMenu={onHold ? (e) => e.preventDefault() : undefined}
         onClick={() => {
-          if (moved.current) return;
+          if (moved.current || held.current) return;
           if (swipeOpen) onSwipeClose();
           else onOpen();
         }}
@@ -102,6 +122,7 @@ export default function SwipeRow({
           transform: `translateX(${dragX}px)`,
           transition: swiping ? "none" : "transform 220ms cubic-bezier(0.16, 1, 0.3, 1)",
           touchAction: "pan-y",
+          ...(onHold ? { userSelect: "none", WebkitUserSelect: "none", WebkitTouchCallout: "none" } : {}),
         }}
       >
         {children}

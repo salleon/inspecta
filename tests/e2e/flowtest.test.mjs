@@ -769,3 +769,19 @@ test("upright readings: a number cell brings up the blue pad, not the phone's ke
   assert.equal(await pad.count(), 0, "back hid the pad");
   assert.match(page.url(), /\/flow\/t1$/, "still on the test");
 });
+
+test("holding a flow test offers Duplicate flow test, which adds a copy just below it", async () => {
+  await go(page, app, "/site/s1-flow/findings");
+  const before = await flowCount("s1-flow");
+  const row = page.locator("button:has-text('Sprinkler')").first();
+  const box = await row.boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(700);
+  await page.mouse.up();
+  assert.equal(page.url().endsWith("/site/s1-flow/findings"), true, "holding doesn't open the test");
+  await page.click("text=Duplicate flow test");
+  await page.waitForTimeout(700);
+  assert.equal(await flowCount("s1-flow"), before + 1);
+  assert.ok(await page.isVisible("text=Sprinkler (copy)"));
+});

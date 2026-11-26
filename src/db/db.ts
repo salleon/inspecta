@@ -592,6 +592,16 @@ export async function addFlowTest(test: Omit<FlowTest, "id" | "order" | "created
   return saved;
 }
 
+// a copy of a flow test, readings and all (not its defect photos), just below it
+export async function duplicateFlowTest(test: FlowTest) {
+  const now = Date.now();
+  const { fromBackup: _, ...rest } = structuredClone(test);
+  const copy: FlowTest = { ...rest, id: uid(), name: `${test.name || "Untitled"} (copy)`, order: test.order + 0.5, createdAt: now, updatedAt: now };
+  await db.flowTests.add(copy);
+  await touchSite(test.siteId);
+  return copy;
+}
+
 export async function saveFlowTest(test: FlowTest) {
   await db.flowTests.put({ ...test, updatedAt: Date.now() });
 }
