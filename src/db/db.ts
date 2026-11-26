@@ -8,6 +8,7 @@ import { RENAMED_CODES } from "../lib/esrCategories";
 import { isExportBusy } from "../lib/exportBusy";
 import { renderMarkedSafe, rotatePhoto, shownBlob } from "../lib/markup";
 import { photoJob, whenCameraIdle } from "../lib/photoWork";
+import { GROUP_COLOURS, mergeInductions, type Induction, type InductionGroup } from "../lib/inductions";
 
 class InspectaDB extends Dexie {
   sites!: Table<Site, string>;
@@ -17,6 +18,8 @@ class InspectaDB extends Dexie {
   exportCopies!: Table<ExportCopy, string>;
   flowTests!: Table<FlowTest, string>;
   stairTests!: Table<StairTest, string>;
+  inductions!: Table<Induction, string>;
+  inductionGroups!: Table<InductionGroup, string>;
 
   constructor() {
     super("inspecta");
@@ -127,6 +130,18 @@ class InspectaDB extends Dexie {
           if (lastBackup && site.createdAt <= lastBackup && site.backedUpAt === undefined) site.backedUpAt = lastBackup;
         });
       });
+    // v10: site inductions (Settings → Site inductions). Additive only.
+    this.version(10).stores({
+      sites: "id, updatedAt, kind",
+      findings: "id, siteId, createdAt, order",
+      photos: "id, findingId, siteId, order",
+      thumbnails: "photoId, siteId",
+      exportCopies: "photoId, siteId",
+      flowTests: "id, siteId",
+      stairTests: "id, siteId",
+      inductions: "id, groupId",
+      inductionGroups: "id",
+    });
   }
 }
 
@@ -861,4 +876,70 @@ export async function finishSiteRestore(siteId: string) {
 export async function deleteAllData() {
   db.close({ disableAutoOpen: true });
   await Dexie.delete("inspecta");
+}
+
+// ---- site inductions (lib/inductions) ----
+
+export async function listInductions() {
+  const [groups, sites] = await Promise.all([db.inductionGroups.toArray(), db.inductions.toArray()]);
+  return { groups, sites };
+}
+
+export async function saveInduction(site: Omit<Induction, "createdAt" | "updatedAt"> & { createdAt?: number }) {
+  const now = Date.now();
+  await db.inductions.put({ ...site, createdAt: site.createdAt ?? now, updatedAt: now });
+}
+
+export async function deleteInduction(id: string) {
+  await db.inductions.delete(id);
+}
+
+// a new group takes the next colour along
+export async function saveInductionGroup(group: Omit<InductionGroup, "createdAt" | "updatedAt" | "colour"> & { createdAt?: number; colour?: string }): Promise<InductionGroup> {
+  const now = Date.now();
+  const colour = group.colour ?? GROUP_COLOURS[(await db.inductionGroups.count()) % GROUP_COLOURS.length];
+  const saved: InductionGroup = { ...group, colour, createdAt: group.createdAt ?? now, updatedAt: now };
+  await db.transaction("rw", [db.inductionGroups, db.inductions], async () => {
+    const had = await db.inductionGroups.get(group.id);
+    await db.inductionGroups.put(saved);
+    // a group just given a code: its sites without their own use it
+    if (!had?.code && saved.code)
+      await db.inductions.where("groupId").equals(group.id).modify((s) => {
+        if (!s.code) {
+          s.useGroup = true;
+          s.updatedAt = now;
+        }
+      });
+  });
+  return saved;
+}
+
+// Deleting a group keeps its sites: they move out of it, and the ones that
+// used its code keep a copy of it as their own.
+export async function deleteInductionGroup(id: string) {
+  const now = Date.now();
+  await db.transaction("rw", [db.inductionGroups, db.inductions], async () => {
+    const g = await db.inductionGroups.get(id);
+    await db.inductions.where("groupId").equals(id).modify((s) => {
+      if (s.useGroup && g?.code) {
+        s.code = g.code;
+        s.expires = g.expires;
+      }
+      delete s.groupId;
+      s.useGroup = false;
+      s.updatedAt = now;
+    });
+    await db.inductionGroups.delete(id);
+  });
+}
+
+// Restore: merged by id, the later edit winning; returns how many came in
+export async function mergeInductionRecords(groups: InductionGroup[], sites: Induction[]): Promise<number> {
+  return db.transaction("rw", [db.inductionGroups, db.inductions], async () => {
+    const g = mergeInductions(await db.inductionGroups.toArray(), groups);
+    const s = mergeInductions(await db.inductions.toArray(), sites);
+    await db.inductionGroups.bulkPut(g.write);
+    await db.inductions.bulkPut(s.write);
+    return g.changed + s.changed;
+  });
 }

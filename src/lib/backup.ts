@@ -1,5 +1,6 @@
 import type { Finding, FlowTest, Photo, Site, StairTest } from "../db/types";
-import { backupRecords, finishSiteRestore, listSites, mergeSiteRecords, photoBlob, photoExists, replaceRestoredPhoto, restorePhoto, restoreSiteRecords, siteRecords } from "../db/db";
+import type { Induction, InductionGroup } from "./inductions";
+import { backupRecords, finishSiteRestore, listInductions, listSites, mergeInductionRecords, mergeSiteRecords, photoBlob, photoExists, replaceRestoredPhoto, restorePhoto, restoreSiteRecords, siteRecords } from "../db/db";
 import { copyRecords, mergeChangesAnything, planMerge, type MergePlan, type SiteRecords } from "./siteMerge";
 import { photoExtension, photoFiles, siteChangedAt, siteFolders } from "./backupNames";
 import { readZip, ZipWriter, type ZipEntry } from "./zip";
@@ -10,6 +11,8 @@ import { isoDay } from "./dates";
 //
 //   README.txt                       what this file is
 //   backup.json                      when, what kind, which site folders
+//   inductions.json                  the inspector's site inductions
+//                                    (every backup has them all)
 //   Harbour Tower - 1 Harbour St/
 //     site.json                      the site, its findings and tests, and
 //                                    which photo file is which photo
@@ -31,11 +34,22 @@ import { isoDay } from "./dates";
 // backup again finishes that site instead of skipping it as "already here".
 //
 // Not included: settings, name, admin PIN and keyword changes — they
-// belong to the phone and person, not the inspections.
+// belong to the phone and person, not the inspections. Site inductions are
+// included (whole, in every backup) so they survive a change of phone;
+// restoring merges them in, the later edit of one on both winning.
 
 const TYPE = "inspecta-backup";
 const SITE_TYPE = "inspecta-site";
 const VERSION = 2;
+const INDUCTIONS_TYPE = "inspecta-inductions";
+
+// inductions.json
+interface InductionsJson {
+  type: typeof INDUCTIONS_TYPE;
+  version: number;
+  groups: InductionGroup[];
+  sites: Induction[];
+}
 
 export type BackupKind = "full" | "chosen" | "since";
 
@@ -98,6 +112,8 @@ const README = (kind: BackupKind, when: Date, folders: string[]) =>
     "and pick this .zip file. Site folders can be copied in from another",
     "backup, or deleted, and Restore reads whichever are here.",
     "",
+    "inductions.json holds your site induction numbers.",
+    "",
     ...folders.map((f) => `  ${f}/`),
     "",
   ].join("\r\n");
@@ -148,6 +164,11 @@ export async function writeBackup(
     };
     await zip.addFile(`${folder}/site.json`, new TextEncoder().encode(JSON.stringify(json, null, 1)), now);
   }
+  const inductions = await listInductions();
+  if (inductions.groups.length || inductions.sites.length) {
+    const json: InductionsJson = { type: INDUCTIONS_TYPE, version: 1, ...inductions };
+    await zip.addFile("inductions.json", new TextEncoder().encode(JSON.stringify(json, null, 1)), now);
+  }
   const index: IndexJson = { type: TYPE, version: VERSION, createdAt: now.toISOString(), kind, sites: sites.map((s) => ({ id: s.id, name: s.name, folder: folders.get(s.id)! })) };
   await zip.addFile("backup.json", new TextEncoder().encode(JSON.stringify(index, null, 1)), now);
   await zip.finish();
@@ -189,6 +210,8 @@ export interface RestorePlan {
   sharedSites: { site: Site; merge: MergePlan }[];
   // on this phone, with everything the backup's copy has: left as they are
   existingSites: Site[];
+  // the backup's site inductions, if it has any
+  inductions?: { groups: InductionGroup[]; sites: Induction[] };
 }
 
 // a backup's site as records (the photos' places in the zip apart)
@@ -261,13 +284,20 @@ export async function readBackup(file: Blob): Promise<RestorePlan> {
     }
   }
 
-  if (!units.size) {
+  let inductions: RestorePlan["inductions"];
+  const inductionsName = names.find((n) => n === "inductions.json" || (n.endsWith("/inductions.json") && n.split("/").length === 2));
+  if (inductionsName) {
+    const json = await readJson<InductionsJson>(entries, inductionsName);
+    if (json?.type === INDUCTIONS_TYPE && Array.isArray(json.groups) && Array.isArray(json.sites) && (json.groups.length || json.sites.length)) inductions = { groups: json.groups, sites: json.sites };
+  }
+
+  if (!units.size && !inductions) {
     if (tooNew) throw new Error("This backup is from a newer version of Inspecta. Update the app, then restore it.");
     if (!indexName) throw new Error("There are no Inspecta sites in this zip, so it isn't an Inspecta backup.");
     throw new Error("This backup has no sites in it.");
   }
 
-  const plan: RestorePlan = { entries, units, newSites: [], unfinished: [], sharedSites: [], existingSites: [] };
+  const plan: RestorePlan = { entries, units, newSites: [], unfinished: [], sharedSites: [], existingSites: [], inductions };
   const phone = await listSites();
   const byId = new Map(phone.map((s) => [s.id, s]));
   for (const unit of [...units.values()].sort((a, b) => a.site.name.localeCompare(b.site.name))) {
@@ -298,6 +328,8 @@ interface RestoreResult {
   photos: number;
   unreadable: number;
   skipped: number;
+  // site inductions added or updated
+  inductions: number;
 }
 
 // One site at a time: new ones are added, unfinished ones finished, and the
@@ -315,7 +347,9 @@ export async function applyRestore(plan: RestorePlan, choice: SharedChoice, onPh
     ...plan.unfinished.map((u) => ({ unit: plan.units.get(u.site.id)!, how: u.how, target: u.target })),
     ...(choice === "leave" ? [] : plan.sharedSites.map(({ site, merge }) => ({ unit: plan.units.get(site.id)!, how: choice, merge }))),
   ];
-  const result: RestoreResult = { sites: plan.newSites.length, finished: 0, merged: [], copies: [], findings: 0, photos: 0, unreadable: 0, skipped: plan.existingSites.length };
+  const result: RestoreResult = { sites: plan.newSites.length, finished: 0, merged: [], copies: [], findings: 0, photos: 0, unreadable: 0, skipped: plan.existingSites.length, inductions: 0 };
+  // site inductions first: small, and wanted whatever is chosen for the sites
+  if (plan.inductions) result.inductions = await mergeInductionRecords(plan.inductions.groups, plan.inductions.sites);
   if (choice === "leave") result.skipped += plan.sharedSites.length;
 
   // what each job writes: its records, and its photos with where each is in the zip

@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import RoundIconButton from "../components/RoundIconButton";
 import { IconChevronLeft, IconChevronRight } from "../components/Icons";
@@ -12,6 +12,8 @@ import { startTour } from "../lib/tour";
 import { useBackHandler } from "../lib/backButton";
 import { IS_TEST_BUILD } from "../lib/buildInfo";
 import { IS_CONTRACTOR } from "../lib/edition";
+import { listInductions } from "../db/db";
+import { inductionsHint } from "../lib/inductions";
 
 // Settings (canvas SettingsTidy): its own page, the gear on the home page
 // opens it. Grouped: You, Backup, Help & updates, Admin. (Contractor mode's
@@ -21,7 +23,7 @@ import { IS_CONTRACTOR } from "../lib/edition";
 declare const __BUILD_LABEL__: string;
 const version = `Build ${__BUILD_LABEL__}${IS_TEST_BUILD ? " · Test version" : ""}`;
 
-function Item({ icon, title, hint, right, onClick, switchOn, tour }: { icon: ReactNode; title: string; hint: string; right?: ReactNode; onClick: () => void; switchOn?: boolean; tour?: string }) {
+function Item({ icon, title, hint, right, onClick, switchOn, tour }: { icon: ReactNode; title: string; hint: ReactNode; right?: ReactNode; onClick: () => void; switchOn?: boolean; tour?: string }) {
   return (
     <button type="button" data-tour={tour} onClick={onClick} style={groupRowStyle} {...(switchOn === undefined ? {} : { role: "switch", "aria-checked": switchOn })}>
       {icon}
@@ -40,6 +42,10 @@ export default function Settings() {
   const [draft, setDraft] = useState<string | null>(null);
   // the company's name, logo and colours are in Admin (behind the PIN)
   const contractor = IS_CONTRACTOR;
+  const [inductions, setInductions] = useState<{ text: string; expired: number } | null>(null);
+  useEffect(() => {
+    void listInductions().then(({ groups, sites }) => setInductions(inductionsHint(groups, sites)));
+  }, []);
 
   useBackHandler(() => {
     if (draft === null) return false;
@@ -71,6 +77,12 @@ export default function Settings() {
             title="Your name"
             hint={`${name || "Not set"} · on your reports`}
             onClick={() => setDraft(name)}
+          />
+          <Item
+            icon={<RowIcon name="key" />}
+            title="Site inductions"
+            hint={inductions ? <span data-testid="inductions-hint" style={inductions.expired ? { color: "#ff6b6b", fontWeight: 700 } : undefined}>{inductions.text}</span> : "\u00a0"}
+            onClick={() => navigate("/settings/inductions")}
           />
         </Group>
         {lastNativeError() && (

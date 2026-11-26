@@ -5,6 +5,18 @@ matches a commit on the `test` branch (called `advanced_controls` until
 29 September 2026) or `main`; the commit itself has
 the technical detail.
 
+## 26 November 2026
+
+- **[Both] Site inductions.** Settings → Site inductions keeps your
+  induction numbers for the sites you visit, so they're on hand at the
+  gate. Each has a Copy button, and its expiry date changes colour as it
+  gets closer: teal, then lime inside 60 days, amber inside 30, orange
+  inside a week, red once it's due or expired. Put sites in a group
+  (Mirvac, Lendlease and so on) with one shared code; a site can still
+  have its own, and a group can be just its code with no sites. Settings
+  shows how many are expired. Every backup includes them, and restoring
+  brings them back.
+
 ## 24 November 2026
 
 - **[Contractor] Site Inspections out with the same changes (still 1.1).**

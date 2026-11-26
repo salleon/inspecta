@@ -26,7 +26,7 @@ function lastBackup(): string {
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 const names = (sites: { name: string }[]) => sites.map((s) => s.name || "Untitled").join(", ");
-const hasWork = (p: RestorePlan) => p.newSites.length + p.unfinished.length + p.sharedSites.length > 0;
+const hasWork = (p: RestorePlan) => p.newSites.length + p.unfinished.length + p.sharedSites.length > 0 || !!p.inductions;
 
 // "a", "a and b", "a, b and c"
 const list = (parts: string[]) => (parts.length < 2 ? parts.join("") : `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`);
@@ -114,7 +114,7 @@ export default function BackupSettings({ rowStyle, hintStyle, onRestored, icons 
 
   async function restore(p: RestorePlan, choice: SharedChoice) {
     setAsking(null);
-    if (choice === "leave" && !p.newSites.length && !p.unfinished.length) {
+    if (choice === "leave" && !p.newSites.length && !p.unfinished.length && !p.inductions) {
       setMessage({ title: "Nothing restored", text: "The sites on this phone were left as they are." });
       return;
     }
@@ -132,6 +132,7 @@ export default function BackupSettings({ rowStyle, hintStyle, onRestored, icons 
         result.finished ? `Finished restoring ${plural(result.finished, "site")} that ${result.finished === 1 ? "was" : "were"} left part way last time.` : "",
         !result.sites && !result.merged.length && result.finished ? `${plural(result.photos, "photo")} added.` : "",
         result.unreadable ? `${plural(result.unreadable, "photo")} couldn't be read from the backup and ${result.unreadable === 1 ? "was" : "were"} left out.` : "",
+        result.inductions ? `${plural(result.inductions, "site induction")} brought in.` : "",
         result.skipped ? `${plural(result.skipped, "site")} already on this phone ${result.skipped === 1 ? "was" : "were"} left as ${result.skipped === 1 ? "it is" : "they are"}.` : "",
       ];
       setMessage({ title: "Restore finished", text: parts.filter(Boolean).join(" ") });
@@ -156,8 +157,9 @@ export default function BackupSettings({ rowStyle, hintStyle, onRestored, icons 
       ? `${plural(shared.length, "site")} ${shared.length === 1 ? "is" : "are"} on this phone too, with differences: ${names(shared)}. You'll choose what to do with ${shared.length === 1 ? "it" : "them"} next.`
       : "";
     const skips = p.existingSites.length ? `${plural(p.existingSites.length, "site")} already here ${p.existingSites.length === 1 ? "has" : "have"} nothing new and will be left as ${p.existingSites.length === 1 ? "it is" : "they are"}.` : "";
+    const ind = p.inductions ? `Your site inductions are merged in.` : "";
     if (!hasWork(p)) return `Every site in this backup is already on this phone, with nothing new, so there's nothing to add. Nothing on this phone is overwritten.`;
-    return [adds, finishes, both, skips].filter(Boolean).join(" ");
+    return [adds, finishes, both, skips, ind].filter(Boolean).join(" ");
   };
 
   const askText = (p: RestorePlan) =>

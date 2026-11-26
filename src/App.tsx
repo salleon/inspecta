@@ -26,6 +26,7 @@ import Message from "./components/Message";
 const ExportPreview = lazy(() => import("./pages/Export"));
 const Admin = lazy(() => import("./pages/Admin"));
 const Backup = lazy(() => import("./pages/Backup"));
+const Inductions = lazy(() => import("./pages/Inductions"));
 const FlowTest = lazy(() => import("./pages/FlowTest"));
 const FlowExport = lazy(() => import("./pages/FlowExport"));
 const StairSystem = lazy(() => import("./pages/StairSystem"));
@@ -174,6 +175,7 @@ function AnimatedRoutes() {
           <Route path="/site/:siteId/ffcp/:testId" element={<FfcpTestPage />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/settings/backup" element={<Backup />} />
+          <Route path="/settings/inductions" element={<Inductions />} />
           <Route path="/admin/*" element={<Admin />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
