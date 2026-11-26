@@ -7,6 +7,12 @@ the technical detail.
 
 ## 26 November 2026
 
+- **[EnFact] Out to coworkers with site inductions (still Build 10.0).**
+  Android to coworkers; iPhone on TestFlight.
+
+- **[Contractor] Site Inspections out with site inductions (still 1.1).**
+  Android to internal testing; iPhone on TestFlight.
+
 - **[Both] Site inductions.** Settings → Site inductions keeps your
   induction numbers for the sites you visit, so they're on hand at the
   gate. Each has a Copy button, and its expiry date changes colour as it
