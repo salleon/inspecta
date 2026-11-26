@@ -7,6 +7,9 @@ the technical detail.
 
 ## 26 November 2026
 
+- **[EnFact] Out to coworkers with flow test duplicate (still Build 10.0).**
+  Android to coworkers; iPhone on TestFlight.
+
 - **[Both] Duplicate a flow test.** Hold a flow test in the list and tap
   Duplicate flow test: a copy with all its readings, demand and details
   appears just below it, named "(copy)", ready to change. Its defect photos
