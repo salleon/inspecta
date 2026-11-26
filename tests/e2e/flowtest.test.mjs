@@ -167,7 +167,7 @@ test("a new sprinkler test: flows are typed (never worked out from \" Hg), the r
   const flowBox = await page.locator('[aria-label="Flow"]').nth(1).boundingBox();
   assert.ok(flowBox.x > hgBox.x + hgBox.width - 1 && Math.abs(flowBox.y - hgBox.y) < 2, "side by side");
   // the L/min ⇄ L/s switch under Flow: the flows show converted, and switch back
-  const unitSwitch = page.getByRole("button", { name: "Switch flow unit" });
+  const unitSwitch = page.getByRole("button", { name: "Switch flow unit" }).last();
   assert.equal(await unitSwitch.innerText(), "L/min ⇄");
   await unitSwitch.click();
   assert.equal(await unitSwitch.innerText(), "L/s ⇄");
@@ -180,6 +180,13 @@ test("a new sprinkler test: flows are typed (never worked out from \" Hg), the r
   for (const [i, v] of ["600", "500", "420", "350", "300"].entries()) await dis.nth(i).fill(v);
   await page.fill('[aria-label="Demand flow"]', "1000");
   await page.fill('[aria-label="Demand pressure"]', "300");
+  // the demand points' Flow heading has the same switch
+  const demandSwitch = page.getByRole("button", { name: "Switch flow unit" }).first();
+  await demandSwitch.click();
+  assert.equal(await page.inputValue('[aria-label="Demand flow"]'), "16.7", "1000 L/min is 16.7 L/s");
+  assert.equal(await unitSwitch.innerText(), "L/s ⇄");
+  await demandSwitch.click();
+  assert.equal(await page.inputValue('[aria-label="Demand flow"]'), "1000");
   await page.waitForTimeout(300);
   assert.equal(await page.locator("text=Supply 1: Above all demand points").count(), 1);
   // name it from the tab's list, then a second of the same kind numbers both

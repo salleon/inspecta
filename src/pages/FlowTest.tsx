@@ -662,9 +662,8 @@ export default function FlowTest() {
           <div style={lbl}>Demand points</div>
         )}
         <div style={{ display: "grid", gridTemplateColumns: combined ? "1fr 1fr 76px 26px" : "1fr 1fr 26px", gap: 6 }}>
-          <div style={th}>
-            Flow {unitLabel}
-          </div>
+          {/* a combined system switches with its pump duty unit above; the others tap the pill here too */}
+          {combined ? <div style={th}>Flow {unitLabel}</div> : flowHead}
           <div style={th}>Pressure kPa</div>
           {combined && <div />}
           <div />

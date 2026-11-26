@@ -5,6 +5,12 @@ matches a commit on the `test` branch (called `advanced_controls` until
 29 September 2026) or `main`; the commit itself has
 the technical detail.
 
+## 27 November 2026
+
+- **[Both] Flow tests: the L/min ⇄ L/s switch in Demand points too.** The
+  Flow heading over the demand points has the same pill as the readings;
+  tap either to switch every flow on the test.
+
 ## 26 November 2026
 
 - **[EnFact] Out to coworkers with flow test duplicate (still Build 10.0).**
