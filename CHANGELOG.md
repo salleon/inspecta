@@ -7,6 +7,10 @@ the technical detail.
 
 ## 27 November 2026
 
+- **[Both] Flow Excel and PDF: no empty " Hg column.** A sprinkler
+  supply's table only has " Hg when a reading has one, like every other
+  column.
+
 - **[EnFact] Out to coworkers with the long-Done flow pad and the demand
   points unit switch (still Build 10.0).** Android to coworkers; iPhone on
   TestFlight.

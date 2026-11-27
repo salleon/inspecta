@@ -135,7 +135,8 @@ export function printTables(test: FlowTest): PrintTable[] {
         return f === null ? "" : r1(f / div(test));
       };
       if (hyd) cols.push({ head: `Flow ${printUnit(test)}`, cell: flow });
-      if (!hyd || any((r) => r.hg)) cols.push({ head: '" Hg', cell: (r) => r.hg });
+      // like every other column, " Hg only when a reading has one
+      if (any((r) => r.hg)) cols.push({ head: '" Hg', cell: (r) => r.hg });
       if (!hyd) cols.push({ head: `Flow ${printUnit(test)}`, cell: flow });
       cols.push({ head: "Discharge kPa", cell: (r) => r.dis });
       if (any((r) => r.suc)) cols.push({ head: "Suction kPa", cell: (r) => r.suc });
